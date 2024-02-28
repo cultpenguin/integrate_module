@@ -6,6 +6,5 @@ This repository hold the INTEGRATE Python module
 Installation 
 ------------
 
-    pip install --upgrade numpy scipy matplotlib jupyterlab h5py tqdm'
+    pip install --upgrade -r requirements.txt
     pip install -e .
-    

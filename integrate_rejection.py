@@ -25,6 +25,9 @@ Arguments:
     --parallel: int, optional (default=1)
         A flag indicating whether to process the data in parallel using multiple processes.
 
+    --updatePostStat: int, optional (default=1)
+        A flag determining where poster statistics is computed [1] or not [0]
+
 
 Output:
     A HDF5 file named "{f_prior_h5[:-9]}_POST_Nu{N_use}_aT{autoT}.h5" containing the indices realizations of the posterior.
@@ -106,9 +109,9 @@ autoT = args.autoT
 N_use = args.N_use
 ns = args.ns
 parallel = args.parallel
-UpdatePostStat = args.updatePostStat
+updatePostStat = args.updatePostStat
 
-print('Running: integrate_rejection.py %s %s --autoT %d --N_use %d --ns %d --parallel %d' % (f_prior_h5,f_data_h5,autoT,N_use,ns,parallel))
+print('Running: integrate_rejection.py %s %s --autoT %d --N_use %d --ns %d --parallel %d --updatePostStat %d' % (f_prior_h5,f_data_h5,autoT,N_use,ns,parallel,updatePostStat))
 
 #%% Check that hdf5 files exists
 import os.path
@@ -196,7 +199,7 @@ with h5py.File(f_post_h5, 'w') as f:
     f.attrs['N_use'] = N_use
 
 #%% Update posterior statistics
-if UpdatePostStat:
+if updatePostStat:
     ig.integrate_posterior_stats(f_post_h5)
         
 # %%
