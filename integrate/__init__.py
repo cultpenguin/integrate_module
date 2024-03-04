@@ -4,4 +4,9 @@ from integrate.integrate import integrate_update_prior_attributes
 from integrate.integrate import integrate_posterior_stats
 from integrate.integrate import logl_T_est
 from integrate.integrate import lu_post_sample_logl
+from integrate.integrate import integrate_prior_data
+
+from integrate.integrate_io import read_gex
+from integrate.integrate_io import write_stm_files
+from integrate.integrate_io import gex_to_stm
 from integrate.integrate_io import read_gex

@@ -1,80 +1,310 @@
 import os
 import numpy as np
 
-def read_gex(name=None):
+
+#def write_stm_files(GEX, Nhank=140, Nfreq=6, Ndig=7, **kwargs):
+def write_stm_files(GEX, **kwargs):
     """
-    This function gets information from a given gex file.
+    Write STM (System Transfer Matrix) files based on the provided GEX (Geophysical EXchange) data.
+
+    Parameters:
+    - GEX (dict): The GEX data containing the system information.
+    - Nhank (int): The number of Hankel transform abscissae for both low and high frequency windows.
+    - Nfreq (int): The number of frequencies per decade for both low and high frequency windows.
+    - Ndig (int): The number of digits for waveform digitizing frequency.
+    - file_gex (str): The path to the GEX file.
+    - **kwargs: Additional keyword arguments for customization.
+
+    Returns:
+    - stm_files (list): A list of file paths for the generated STM files.
     """
-    # Find local system file if "name" is not provided
-    if name is None:
-        local_dir = os.listdir()
-        gex_files = [file for file in local_dir if file.endswith('.gex')]
+    format_long = "{:.15f}"
+    system_name = GEX['General']['Description']
+
+    # Parse kwargs
+    Nhank = kwargs.get('Nhank', 140)
+    Nfreq = kwargs.get('Nfreq', 6)
+    Ndig = kwargs.get('Ndig', 7)
+
+    NumAbsHM = kwargs.get('NumAbsHM', Nhank)
+    NumAbsLM = kwargs.get('NumAbsLM', Nhank)
+    NumFreqHM = kwargs.get('NumFreqHM', Nfreq)
+    NumFreqLM = kwargs.get('NumFreqLM', Nfreq)
+    DigitFreq = kwargs.get('DigitFreq', 4E6)
+    stm_dir = kwargs.get('stm_dir', os.getcwd())
+    file_gex = kwargs.get('file_gex', '')
+
+    print('Nhank = %d' % Nhank)
+
+    windows = GEX['General']['GateArray']
+
+    LastWin_LM = int(GEX['Channel1']['NoGates'][0])
+    LastWin_HM = int(GEX['Channel2']['NoGates'][0])
+
+    SkipWin_LM = int(GEX['Channel1']['RemoveInitialGates'][0])
+    SkipWin_HM = int(GEX['Channel2']['RemoveInitialGates'][0])
+
+    TimeShiftLM = GEX['Channel1']['GateTimeShift'][0]
+    TimeShiftHM = GEX['Channel2']['GateTimeShift'][0]
+
+    windows_LM = windows[SkipWin_LM:LastWin_LM, :] + TimeShiftLM
+    windows_HM = windows[SkipWin_HM:LastWin_HM, :] + TimeShiftHM
+
+    NWin_LM = windows_LM.shape[0]
+    NWin_HM = windows_HM.shape[0]
+
+    # PREPARE WAVEFORMS
+    LMWF = GEX['General']['WaveformLM']
+    HMWF = GEX['General']['WaveformHM']
+
+
+    LMWFTime1 = LMWF[0, 0]
+    LMWFTime2 = LMWF[-1, 0]
+
+    HMWFTime1 = LMWF[0, 0]
+    HMWFTime2 = LMWF[-1, 0]
+
+    LMWF_Period = 1. / GEX['Channel1']['RepFreq'][0]
+    HMWF_Period = 1. / GEX['Channel2']['RepFreq'][0]
+
+    # Check if full waveform is defined
+    LMWF_isfull = (LMWFTime2 - LMWFTime1) == LMWF_Period
+    HMWF_isfull = (HMWFTime2 - HMWFTime1) == HMWF_Period
+
+    
+
+    if not LMWF_isfull:
+        LMWF = np.vstack((LMWF, [LMWFTime1 + LMWF_Period, 0]))
+
+    if not HMWF_isfull:
+        HMWF = np.vstack((HMWF, [HMWFTime1 + HMWF_Period, 0]))
+
+    # Make sure the output folder exists
+    if not os.path.isdir(stm_dir):
+        os.mkdir(stm_dir)
+
+    if len(file_gex) > 0:
+        p, gex_f = os.path.split(file_gex)
+        # get filename without extension
+        gex_f = os.path.splitext(gex_f)[0]
+        gex_str = gex_f + '_'
+        # Remove next line when working OK
+        gex_str = gex_f + '-P-'
+    else:
+        gex_str = ''
+
+    LM_name = os.path.join(stm_dir, gex_str + system_name + '_LM.stm')
+    HM_name = os.path.join(stm_dir, gex_str + system_name + '_HM.stm')
+
+    stm_files = [LM_name, HM_name]
+
+    print('writing LM to %s'%(LM_name))
+    print('writing HM to %s'%(HM_name))
+
+    # WRITE LM AND HM FILES
+    with open(LM_name, 'w') as fID_LM:
+        fID_LM.write('System Begin\n')
         
-        if len(gex_files) == 0:
-            print('No GEX file found in local directory')
-            return
-        else:
-            name = gex_files[0]
-            print(f'Found GEX file in local directory: {name}')
+        fID_LM.write('\tName = %s\n' % (GEX['General']['Description']))        
+        fID_LM.write("\tType = Time Domain\n\n")
 
-    print(f'{__file__}: Reading \'{name}\'')
+        fID_LM.write("\tTransmitter Begin\n")
+        fID_LM.write("\t\tNumberOfTurns = 1\n")
+        fID_LM.write("\t\tPeakCurrent = 1\n")
+        fID_LM.write("\t\tLoopArea = 1\n")
+        fID_LM.write("\t\tBaseFrequency = %f\n" % GEX['Channel1']['RepFreq'][0])
+        fID_LM.write("\t\tWaveformDigitisingFrequency = %s\n" % ('%21.8f' % DigitFreq))
+        fID_LM.write("\t\tWaveFormCurrent Begin\n")
+        np.savetxt(fID_LM, GEX['General']['WaveformLM'], fmt='%23.6e', delimiter=' ')
+        fID_LM.write("\t\tWaveFormCurrent End\n")
+        fID_LM.write("\tTransmitter End\n\n")
+        
+        fID_LM.write("\tReceiver Begin\n")
+        fID_LM.write("\t\tNumberOfWindows = %d\n" % NWin_LM)
+        fID_LM.write("\t\tWindowWeightingScheme = BoxCar\n")
+        fID_LM.write('\t\tWindowTimes Begin\n')
+        #np.savetxt(fID_LM, windows_LM, fmt='%23.6e', delimiter=' ')
+        np.savetxt(fID_LM, windows_LM[:,1::], fmt='%23.6e', delimiter=' ')
+        fID_LM.write('\t\tWindowTimes End\n\n')
+        TiBFilt = GEX['Channel1']['TiBLowPassFilter']
+        fID_LM.write('\t\tLowPassFilter Begin\n')
+        fID_LM.write('\t\t\tCutOffFrequency = %s\n' % ('%f' % TiBFilt[1]))
+        fID_LM.write('\t\t\tOrder = %s\n' % ('%3.1f' % TiBFilt[0]))
+        fID_LM.write('\t\tLowPassFilter End\n\n')
+        fID_LM.write('\tReceiver End\n\n')
+        
+        fID_LM.write('\tForwardModelling Begin\n')
+        fID_LM.write('\t\tModellingLoopRadius = %f\n' % (np.sqrt(GEX['General']['TxLoopArea'][0] / np.pi)))
+        fID_LM.write('\t\tOutputType = dB/dt\n')
+        fID_LM.write('\t\tSaveDiagnosticFiles = no\n')
+        fID_LM.write('\t\tXOutputScaling = 0\n')
+        fID_LM.write('\t\tYOutputScaling = 0\n')
+        fID_LM.write('\t\tZOutputScaling = 1\n')
+        fID_LM.write('\t\tSecondaryFieldNormalisation = none\n')
+        fID_LM.write('\t\tFrequenciesPerDecade = %d\n' % NumFreqLM)
+        fID_LM.write('\t\tNumberOfAbsiccaInHankelTransformEvaluation = %d\n' % NumAbsLM)
+        fID_LM.write('\tForwardModelling End\n\n')
 
-    # Read File
-    with open(name, 'r') as file:
-        lines = file.readlines()
+        fID_LM.write('System End\n')
 
-    S = {}
-    temporary_array = []
-    CheckWaveForm = CheckGateArray = CheckTxArray = False
+    with open(HM_name, 'w') as fID_HM:
+        fID_HM.write('System Begin\n')
+        fID_HM.write('\tName = %s\n' % (GEX['General']['Description']))
+        fID_HM.write("\tType = Time Domain\n\n")
 
-    for line in lines:
-        line = line.strip()
+        fID_HM.write("\tTransmitter Begin\n")
+        fID_HM.write("\t\tNumberOfTurns = 1\n")
+        fID_HM.write("\t\tPeakCurrent = 1\n")
+        fID_HM.write("\t\tLoopArea = 1\n")
+        fID_HM.write("\t\tBaseFrequency = %f\n" % GEX['Channel2']['RepFreq'][0])
+        fID_HM.write("\t\tWaveformDigitisingFrequency = %s\n" % ('%21.8f' % DigitFreq))
+        fID_HM.write("\t\tWaveFormCurrent Begin\n")
+        np.savetxt(fID_HM, GEX['General']['WaveformHM'], fmt='%23.6e', delimiter=' ')
+        fID_HM.write("\t\tWaveFormCurrent End\n")
+        fID_HM.write("\tTransmitter End\n\n")
 
-        # Skip if Line is empty
-        if len(line) > 0:
-            # If a square bracket is encountered make new struct field
-            newsection = line[0] == '['
-            if newsection:
-                CurStruct = line[1:-1]
-                S[CurStruct] = {}
+        fID_HM.write("\tReceiver Begin\n")
+        fID_HM.write("\t\tNumberOfWindows = %d\n" % NWin_HM)
+        fID_HM.write("\t\tWindowWeightingScheme = BoxCar\n")
+        fID_HM.write('\t\tWindowTimes Begin\n')
+        #np.savetxt(fID_HM, windows_HM, fmt='%23.6e', delimiter=' ')
+        np.savetxt(fID_HM, windows_HM[:,1::], fmt='%23.6e', delimiter=' ')
+        fID_HM.write('\t\tWindowTimes End\n\n')
+        TiBFilt = GEX['Channel2']['TiBLowPassFilter']
+        fID_HM.write('\t\tLowPassFilter Begin\n')
+        fID_HM.write('\t\t\tCutOffFrequency = %s\n' % ('%f' % TiBFilt[1]))
+        fID_HM.write('\t\t\tOrder = %s\n' % ('%31f' % TiBFilt[0]))
+        fID_HM.write('\t\tLowPassFilter End\n\n')
+        fID_HM.write('\tReceiver End\n\n')
 
-            # Check if the Line contains an '=' sign
-            if '=' in line:
-                # Split line at equal sign
-                fieldname, Right_Handside = map(str.strip, line.split('='))
+        fID_HM.write('\tForwardModelling Begin\n')
+        fID_HM.write('\t\tModellingLoopRadius = %f\n' % (np.sqrt(GEX['General']['TxLoopArea'][0] / np.pi)))
+        fID_HM.write('\t\tOutputType = dB/dt\n')
+        fID_HM.write('\t\tSaveDiagnosticFiles = no\n')
+        fID_HM.write('\t\tXOutputScaling = 0\n')
+        fID_HM.write('\t\tYOutputScaling = 0\n')
+        fID_HM.write('\t\tZOutputScaling = 1\n')
+        fID_HM.write('\t\tSecondaryFieldNormalisation = none\n')
+        fID_HM.write('\t\tFrequenciesPerDecade = %d\n' % NumFreqHM)
+        fID_HM.write('\t\tNumberOfAbsiccaInHankelTransformEvaluation = %d\n' % NumAbsHM)
+        fID_HM.write('\tForwardModelling End\n\n')
 
-                # Split right handside part by spaces to separate multiple values
-                SplitLine2 = Right_Handside.split()
-                numericvalue = np.array([float(x) if x.replace('.', '', 1).isdigit() else np.nan for x in SplitLine2])
+        fID_HM.write('System End\n')
 
-                # Determine if right hand side is numeric or string
-                right_handside_string = np.isnan(numericvalue).any()
+    return stm_files
 
-                if right_handside_string:
-                    fieldvalue = SplitLine2
-                else:
-                    fieldvalue = numericvalue
 
-                # Check for specific array types
-                CheckWaveForm = fieldname.startswith('Wave')
-                CheckGateArray = fieldname.startswith('Gate')
-                CheckTxArray = fieldname.startswith('TxLo') and fieldname.endswith('int')
+def read_gex(file_gex):
+    """
+    Read a GEX file and parse its contents into a dictionary.
 
-                # If any is true then store the information
-                if any([CheckWaveForm, CheckGateArray, CheckTxArray]):
-                    temporary_array.append(fieldvalue)
-                else:
-                    S[CurStruct][fieldname] = fieldvalue
+    Args:
+        file_gex (str): The path to the GEX file.
+        - Nhank (int): The number of Hankel transform abscissae for both low and high frequency windows.
+        - Nfreq (int): The number of frequencies per decade for both low and high frequency windows.
+        - Ndig (int): The number of digits for waveform digitizing frequency.
+        - **kwargs: Additional keyword arguments for customization.
 
-        else:
-            # Empty line! Clear temporary array if it exists after placing it inside field!
-            if temporary_array:
-                if CheckWaveForm:
-                    S[CurStruct][fieldname[:10]] = np.array(temporary_array)
-                elif CheckGateArray:
-                    S[CurStruct]['GateArray'] = np.array(temporary_array)
-                elif CheckTxArray:
-                    S[CurStruct]['TxArray'] = np.array(temporary_array)
-                temporary_array = []
+    Returns:
+        dict: A dictionary containing the parsed contents of the GEX file.
 
-    return S
+    """
+
+    GEX = {}
+    GEX['filename']=file_gex
+    comment_counter = 1
+    current_key = None
+
+    # Chec if file_gex exists
+    if not os.path.exists(file_gex):
+        print(f"Error: file {file_gex} does not exist")
+        exit(1)
+
+    with open(file_gex, 'r') as file:
+        for line in file.readlines():
+            line = line.strip()
+            if line.startswith('/'):
+                GEX[f'comment{comment_counter}'] = line[1:].strip()
+                comment_counter += 1
+            elif line.startswith('['):
+                current_key = line[1:-1]
+                GEX[current_key] = {}
+            else:
+                key_value = line.split('=')
+                if len(key_value) == 2:
+                    key, value = key_value[0].strip(), key_value[1].strip()
+                    
+                    try:                        
+                        GEX[current_key][key] = np.fromstring(value, sep=' ')
+                    #except ValueError:
+                    except:
+                        GEX[current_key][key] = value
+
+                    if len(GEX[current_key][key])==0:
+                        # value is probably a string
+                        GEX[current_key][key]=value
+
+
+    # WaveformLM
+    waveform_keys = [key for key in GEX['General'].keys() if 'WaveformLMPoint' in key]
+    waveform_keys.sort(key=lambda x: int(x.replace('WaveformLMPoint', '')))
+
+    waveform_values = [GEX['General'][key] for key in waveform_keys]
+    GEX['General']['WaveformLM'] = np.vstack(waveform_values)
+    
+    for key in waveform_keys:
+        del GEX['General'][key]
+
+    # WaveformHM
+    waveform_keys = [key for key in GEX['General'].keys() if 'WaveformHMPoint' in key]
+    waveform_keys.sort(key=lambda x: int(x.replace('WaveformHMPoint', '')))
+
+    waveform_values = [GEX['General'][key] for key in waveform_keys]
+    GEX['General']['WaveformHM']=np.vstack(waveform_values)
+
+    for key in waveform_keys:
+        del GEX['General'][key]
+
+    # GateArray
+    gate_keys = [key for key in GEX['General'].keys() if 'GateTime' in key]
+    gate_keys.sort(key=lambda x: int(x.replace('GateTime', '')))
+
+    gate_values = [GEX['General'][key] for key in gate_keys]
+    GEX['General']['GateArray']=np.vstack(gate_values)
+
+    for key in gate_keys:
+        del GEX['General'][key]
+
+    return GEX
+    
+
+
+# gex_to_stm: convert a GEX file to a set of STM files
+def gex_to_stm(file_gex, **kwargs):
+    """
+    Convert a GEX file to STM files.
+
+    Args:
+        file_gex (str or dict): The path to the GEX file or a GEX dictionary.
+        **kwargs: Additional keyword arguments to be passed to the write_stm_files function.
+
+    Returns:
+        tuple: A tuple containing the STM files and the GEX dictionary.
+
+    Raises:
+        TypeError: If the file_gex argument is not a string or a dictionary.
+
+    Notes:
+        - If the file_gex argument is a string, it is assumed to be the path to the GEX file, which will be read using the read_gex function.
+        - If the file_gex argument is a dictionary, it is assumed to be a GEX dictionary.
+        - The write_stm_files function is called to generate the STM files based on the GEX data.
+
+    """
+    if isinstance(file_gex, str):
+        GEX = read_gex(file_gex)
+        stm_files = write_stm_files(GEX, file_gex=file_gex, **kwargs)
+    else:
+        GEX = file_gex
+        stm_files = write_stm_files(GEX, file_gex=GEX['filename'], **kwargs)
+
+    return stm_files, GEX

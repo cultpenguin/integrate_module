@@ -357,3 +357,46 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         integrate_posterior_stats(f_post_h5)
     
     return f_post_h5
+
+#%% integrate_prior_data: updates PRIOR strutcure with DATA
+def integrate_prior_data(f_prior_in_h5, f_forward_h5, id=1, im=1, doMakePriorCopy=0):
+    # Check if at least two inputs are provided
+    if f_prior_in_h5 is None or f_forward_h5 is None:
+        print(f'{__name__}: Use at least two inputs to')
+        help(__name__)
+        return ''
+
+    # Open HDF5 files
+    with h5py.File(f_forward_h5, 'r') as f:
+        # Check type=='TDEM'
+        if 'type' in f.attrs:
+            data_type = f.attrs['type']
+        else:
+            data_type = 'TDEM'
+
+    f_prior_h5 = ''
+    if data_type.lower() == 'tdem':
+        # TDEM
+        with h5py.File(f_forward_h5, 'r') as f:
+            if 'method' in f.attrs:
+                method = f.attrs['method']
+            else:
+                print(f'{__name__}: "TDEM/{method}" not supported')
+                return
+
+        if method.lower() == 'ga-aem':
+            f_prior_h5, id, im = integrate_prior_data_gaaem(f_prior_in_h5, f_forward_h5, id, im, doMakePriorCopy)
+        else:
+            print(f'{__name__}: "TDEM/{method}" not supported')
+            return
+    elif data_type.lower() == 'identity':
+        f_prior_h5, id, im = integrate_prior_data_identity(f_prior_in_h5, f_forward_h5, id, im, doMakePriorCopy)
+    else:
+        print(f'{__name__}: "{data_type}" not supported')
+        return
+
+    # update prior data with an attribute defining the prior
+    with h5py.File(f_prior_h5, 'a') as f:
+        f.attrs[f'/D{id}'] = 'f5_forward'
+
+    return f_prior_h5
