@@ -22,10 +22,10 @@ def write_stm_files(GEX, **kwargs):
     system_name = GEX['General']['Description']
 
     # Parse kwargs
-    #Nhank = kwargs.get('Nhank', 280)
-    #Nfreq = kwargs.get('Nfreq', 12)
-    Nhank = kwargs.get('Nhank', 140)
-    Nfreq = kwargs.get('Nfreq', 6)
+    Nhank = kwargs.get('Nhank', 280)
+    Nfreq = kwargs.get('Nfreq', 12)
+    #Nhank = kwargs.get('Nhank', 140)
+    #Nfreq = kwargs.get('Nfreq', 6)
     #Nhank = kwargs.get('Nhank', 70)
     #Nfreq = kwargs.get('Nfreq', 3)
     Ndig = kwargs.get('Ndig', 7)
