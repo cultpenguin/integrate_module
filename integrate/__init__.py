@@ -5,6 +5,7 @@ from integrate.integrate import integrate_posterior_stats
 from integrate.integrate import logl_T_est
 from integrate.integrate import lu_post_sample_logl
 from integrate.integrate import integrate_prior_data
+from integrate.integrate import forward_gaaem
 
 from integrate.integrate_io import read_gex
 from integrate.integrate_io import write_stm_files

@@ -400,3 +400,161 @@ def integrate_prior_data(f_prior_in_h5, f_forward_h5, id=1, im=1, doMakePriorCop
         f.attrs[f'/D{id}'] = 'f5_forward'
 
     return f_prior_h5
+
+
+'''
+Forward simulation
+'''
+
+def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', stmfiles=[], showtime=False, **kwargs):
+    """
+    Perform forward modeling using the GAAEM method.
+
+    Args:
+        C (numpy.ndarray, optional): Conductivity array. Defaults to np.array(()).
+        thickness (numpy.ndarray, optional): Thickness array. Defaults to np.array(()).
+        GEX (dict, optional): GEX dictionary. Defaults to {}.
+        file_gex (str, optional): Path to GEX file. Defaults to ''.
+        stmfiles (list, optional): List of STM files. Defaults to [].
+        showtime (bool, optional): Flag to display execution time. Defaults to False.
+        **kwargs: Additional keyword arguments.
+
+    Returns:
+        numpy.ndarray: Forward data.
+
+    Raises:
+        ValueError: If the thickness array does not match the number of layers minus 1.
+
+        
+    Todo: 
+        Allow using only 1 moment/STM file at a time.
+    """
+    
+    from gatdaem1d import Earth;
+    from gatdaem1d import Geometry;
+    # Next should probably only be loaded if the DLL is not allready loaded!!!
+    from gatdaem1d import TDAEMSystem; # loads the DLL!!
+    import integrate as ig
+    import time 
+    from tqdm import tqdm
+
+    if (len(stmfiles)>0) and (file_gex != '') and (len(GEX)==0):
+        # GEX FILE and STM FILES
+        print('Using submitted GEX file (%s)' % (file_gex))
+        GEX =   ig.read_gex(file_gex)
+    elif (len(stmfiles)==0) and (file_gex != '') and (len(GEX)==0):
+        # ONLY GEX FILE
+        stmfiles, GEX = ig.gex_to_stm(file_gex, **kwargs)
+    elif (len(stmfiles)>0) and (file_gex == '') and (len(GEX)>0):
+        # Using GEX dict and STM FILES
+        a = 1
+    elif (len(GEX)>0) and (len(stmfiles)>1):
+        # using the GEX file in stmfiles
+        print('Using submitted GEX and STM files')
+    elif (len(GEX)>0) and (len(stmfiles)==0):
+        # using GEX file and writing STM files
+        print('Using submitted GEX and writing STM files')
+        stmfiles = ig.write_stm_files(GEX, **kwargs)
+    elif (len(GEX)==0) and (len(stmfiles)>1):
+        if (file_gex == ''):
+            print('Error: file_gex not provided')
+            return -1
+        else:
+            print('Converting STM files to GEX')
+            GEX =   ig.read_gex(file_gex)
+    elif (len(GEX)>0) and (len(stmfiles)==0):
+        stmfiles, GEX = ig.gex_to_stm(file_gex, **kwargs)
+    elif (file_gex != ''):
+        a=1
+        #stmfiles, GEX = ig.gex_to_stm(file_gex, **kwargs)
+    else:   
+        print('Error: No GEX or STM files provided')
+        return -1
+
+    print('Using GEX file: ', GEX['filename'])
+
+
+
+    nstm=len(stmfiles)
+    for i in range(len(stmfiles)):
+        print('Using MOMENT:', stmfiles[i])
+
+    nd,nl=C.shape
+    nt = thickness.shape[0]
+    if nt != (nl-1):
+        raise ValueError('Error: thickness array (nt=%d) does not match the number of layers minus 1(nl=%d)' % (nt,nl))
+
+    print('nd=%s, nl=%d,  nstm=%d' %(nd,nl,nstm))
+
+    # SETTING UP t1=time.time()
+    t1=time.time()
+    #S=[]
+    #for i in range(nstm):
+    #    S.append = TDAEMSystem(stmfiles[i])
+    
+    S_LM = TDAEMSystem(stmfiles[0])
+    if nstm>1:
+        S_HM = TDAEMSystem(stmfiles[1])
+        S=[S_LM, S_HM]
+    else:
+        S=[S_LM]
+    t2=time.time()
+    t_system = 1000*(t2-t1)
+    if showtime:
+        print("Time, Setting up systems = %4.1fms" % t_system)
+
+    # Setting up geometry
+    t1=time.time()
+    GEX = ig.read_gex(file_gex)
+    txrx_dx = float(GEX['General']['RxCoilPosition1'][0])-float(GEX['General']['TxCoilPosition1'][0])
+    txrx_dy = float(GEX['General']['RxCoilPosition1'][1])-float(GEX['General']['TxCoilPosition1'][1])
+    txrx_dz = float(GEX['General']['RxCoilPosition1'][2])-float(GEX['General']['TxCoilPosition1'][2])
+    tx_height = -float(GEX['General']['TxCoilPosition1'][2])
+    #G = Geometry(tx_height=tx_height, txrx_dx = -txrx_dx, txrx_dz = -txrx_dz)
+    #G = Geometry(tx_height=.01, txrx_dx = -12.62, txrx_dz = +2.16)
+    G = Geometry(tx_height=tx_height, txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
+    print('tx_height=%f, txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (tx_height, txrx_dx, txrx_dy, txrx_dz))
+    t2=time.time()
+    t_geometry = 1000*(t2-t1)
+    if showtime:
+        print("Time, Setting up geometry = %4.1fms" % t_geometry)
+
+
+    ng0 = GEX['Channel1']['NoGates']-GEX['Channel1']['RemoveInitialGates'][0]
+    if nstm>1:
+        ng1 = GEX['Channel2']['NoGates']-GEX['Channel2']['RemoveInitialGates'][0]
+    else:
+        ng1 = 0
+
+    
+    ng = int(ng0+ng1)
+    D = np.zeros((nd,ng))
+
+    # Compute forward data
+    t1=time.time()
+    for i in tqdm(range(nd)):
+        conductivity = C[i]
+        E = Earth(conductivity,thickness)
+
+        fm0 = S[0].forwardmodel(G,E)
+        d = -fm0.SZ
+        if nstm>1:
+            fm1 = S[1].forwardmodel(G,E)
+            d1 = -fm1.SZ
+            d = np.concatenate((d,d1))    
+
+        D[i] = d    
+
+        '''
+        fm_lm = S_LM.forwardmodel(G,E)
+        fm_hm = S_HM.forwardmodel(G,E)
+        # combine -fm_lm.SZ and -fm_hm.SZ
+        d = np.concatenate((-fm_lm.SZ,-fm_hm.SZ))
+        d_ref = D[i]
+        '''
+        
+    t2=time.time()
+    if showtime:
+        print("Time = %4.1fms per model and %d model tests" % (1000*(t2-t1)/nd, nd))
+
+    return D
