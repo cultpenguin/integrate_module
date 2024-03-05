@@ -25,6 +25,9 @@ def write_stm_files(GEX, **kwargs):
     Nhank = kwargs.get('Nhank', 140)
     Nfreq = kwargs.get('Nfreq', 6)
     Ndig = kwargs.get('Ndig', 7)
+    WindowWeightingScheme  = kwargs.get('WindowWeightingScheme', 'AreaUnderCurve')
+    #WindowWeightingScheme  = kwargs.get('WindowWeightingScheme', 'BoxCar')
+
 
     NumAbsHM = kwargs.get('NumAbsHM', Nhank)
     NumAbsLM = kwargs.get('NumAbsLM', Nhank)
@@ -121,20 +124,23 @@ def write_stm_files(GEX, **kwargs):
         
         fID_LM.write("\tReceiver Begin\n")
         fID_LM.write("\t\tNumberOfWindows = %d\n" % NWin_LM)
-        fID_LM.write("\t\tWindowWeightingScheme = BoxCar\n")
+        fID_LM.write("\t\tWindowWeightingScheme = %s\n" % WindowWeightingScheme)
         fID_LM.write('\t\tWindowTimes Begin\n')
         #np.savetxt(fID_LM, windows_LM, fmt='%23.6e', delimiter=' ')
         np.savetxt(fID_LM, windows_LM[:,1::], fmt='%23.6e', delimiter=' ')
         fID_LM.write('\t\tWindowTimes End\n\n')
         TiBFilt = GEX['Channel1']['TiBLowPassFilter']
+
         fID_LM.write('\t\tLowPassFilter Begin\n')
-        fID_LM.write('\t\t\tCutOffFrequency = %s\n' % ('%f' % TiBFilt[1]))
-        fID_LM.write('\t\t\tOrder = %s\n' % ('%3.1f' % TiBFilt[0]))
+        fID_LM.write('\t\t\tCutOffFrequency = %10.0f\n' % (TiBFilt[1]))
+        fID_LM.write('\t\t\tOrder = %d\n' % (TiBFilt[0]))
         fID_LM.write('\t\tLowPassFilter End\n\n')
+        
         fID_LM.write('\tReceiver End\n\n')
         
         fID_LM.write('\tForwardModelling Begin\n')
-        fID_LM.write('\t\tModellingLoopRadius = %f\n' % (np.sqrt(GEX['General']['TxLoopArea'][0] / np.pi)))
+        #fID_LM.write('\t\tModellingLoopRadius = %f\n' % (np.sqrt(GEX['General']['TxLoopArea'][0] / np.pi)))
+        fID_LM.write('\t\tModellingLoopRadius = %5.4f\n' % (np.sqrt(GEX['General']['TxLoopArea'][0] / np.pi)))
         fID_LM.write('\t\tOutputType = dB/dt\n')
         fID_LM.write('\t\tSaveDiagnosticFiles = no\n')
         fID_LM.write('\t\tXOutputScaling = 0\n')
@@ -165,20 +171,23 @@ def write_stm_files(GEX, **kwargs):
 
         fID_HM.write("\tReceiver Begin\n")
         fID_HM.write("\t\tNumberOfWindows = %d\n" % NWin_HM)
-        fID_HM.write("\t\tWindowWeightingScheme = BoxCar\n")
+        fID_HM.write("\t\tWindowWeightingScheme = %s\n" % WindowWeightingScheme)
         fID_HM.write('\t\tWindowTimes Begin\n')
         #np.savetxt(fID_HM, windows_HM, fmt='%23.6e', delimiter=' ')
         np.savetxt(fID_HM, windows_HM[:,1::], fmt='%23.6e', delimiter=' ')
         fID_HM.write('\t\tWindowTimes End\n\n')
         TiBFilt = GEX['Channel2']['TiBLowPassFilter']
+        
         fID_HM.write('\t\tLowPassFilter Begin\n')
-        fID_HM.write('\t\t\tCutOffFrequency = %s\n' % ('%f' % TiBFilt[1]))
-        fID_HM.write('\t\t\tOrder = %s\n' % ('%31f' % TiBFilt[0]))
+        fID_HM.write('\t\t\tCutOffFrequency = %10.0f\n' % (TiBFilt[1]))
+        fID_HM.write('\t\t\tOrder = %d\n' % (TiBFilt[0]))
         fID_HM.write('\t\tLowPassFilter End\n\n')
+        
         fID_HM.write('\tReceiver End\n\n')
 
         fID_HM.write('\tForwardModelling Begin\n')
-        fID_HM.write('\t\tModellingLoopRadius = %f\n' % (np.sqrt(GEX['General']['TxLoopArea'][0] / np.pi)))
+        #fID_HM.write('\t\tModellingLoopRadius = %f\n' % (np.sqrt(GEX['General']['TxLoopArea'][0] / np.pi)))
+        fID_HM.write('\t\tModellingLoopRadius = %5.4f\n' % (np.sqrt(GEX['General']['TxLoopArea'][0] / np.pi)))
         fID_HM.write('\t\tOutputType = dB/dt\n')
         fID_HM.write('\t\tSaveDiagnosticFiles = no\n')
         fID_HM.write('\t\tXOutputScaling = 0\n')
