@@ -493,7 +493,12 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
         for i in range(len(stmfiles)):
             print('Using MOMENT:', stmfiles[i])
 
-    nd,nl=C.shape
+    if C.ndim==1:
+        nd=1
+        nl=C.shape[0]
+    else:
+        nd,nl=C.shape
+
     nt = thickness.shape[0]
     if nt != (nl-1):
         raise ValueError('Error: thickness array (nt=%d) does not match the number of layers minus 1(nl=%d)' % (nt,nl))
@@ -543,7 +548,11 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
     # Compute forward data
     t1=time.time()
     for i in tqdm(range(nd), mininterval=1):
-        conductivity = C[i]
+        if C.ndim==1:
+            # Only one model
+            conductivity = C
+        else:
+            conductivity = C[i]
         E = Earth(conductivity,thickness)
 
         fm0 = S[0].forwardmodel(G,E)
