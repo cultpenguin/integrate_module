@@ -450,7 +450,8 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
     from tqdm import tqdm
 
     showInfo = kwargs.get('showInfo', 0)
-    
+    doCompress = kwargs.get('doCompress', True)
+
     if (len(stmfiles)>0) and (file_gex != '') and (len(GEX)==0):
         # GEX FILE and STM FILES
         if (showInfo)>-1:
@@ -553,7 +554,25 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
             conductivity = C
         else:
             conductivity = C[i]
-        E = Earth(conductivity,thickness)
+
+        #doCompress=True
+        if doCompress:
+            i_change=np.where(np.diff(conductivity) != 0 )[0]+1
+            n_change = len(i_change)
+            conductivity_compress = np.zeros(n_change+1)+conductivity[0]
+            thickness_compress = np.zeros(n_change)
+            for il in range(n_change):
+                conductivity_compress[il+1] = conductivity[i_change[il]]
+                if il==0:
+                    thickness_compress[il]=np.sum(thickness[0:i_change[il]])
+                else:   
+                    i1=i_change[il-1]
+                    i2=i_change[il]
+                    #print("i1: %d, i2: %d" % (i1, i2))
+                    thickness_compress[il]=np.sum(thickness[i1:i2]) 
+            E = Earth(conductivity_compress,thickness_compress)
+        else:   
+            E = Earth(conductivity,thickness)
 
         fm0 = S[0].forwardmodel(G,E)
         d = -fm0.SZ
@@ -702,3 +721,4 @@ def prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, im=1, id=1, Nha
     f_prior.close()
 
     return f_prior_data_h5
+# %%
