@@ -1,6 +1,6 @@
 import os
 import numpy as np
-
+import h5py
 
 #def write_stm_files(GEX, Nhank=140, Nfreq=6, Ndig=7, **kwargs):
 def write_stm_files(GEX, **kwargs):
@@ -18,17 +18,13 @@ def write_stm_files(GEX, **kwargs):
     Returns:
     - stm_files (list): A list of file paths for the generated STM files.
     """
-    format_long = "{:.15f}"
     system_name = GEX['General']['Description']
 
     # Parse kwargs
     Nhank = kwargs.get('Nhank', 280)
     Nfreq = kwargs.get('Nfreq', 12)
-    #Nhank = kwargs.get('Nhank', 140)
-    #Nfreq = kwargs.get('Nfreq', 6)
-    #Nhank = kwargs.get('Nhank', 70)
-    #Nfreq = kwargs.get('Nfreq', 3)
     Ndig = kwargs.get('Ndig', 7)
+    showInfo = kwargs.get('showInfo', 0)
     WindowWeightingScheme  = kwargs.get('WindowWeightingScheme', 'AreaUnderCurve')
     #WindowWeightingScheme  = kwargs.get('WindowWeightingScheme', 'BoxCar')
 
@@ -40,8 +36,6 @@ def write_stm_files(GEX, **kwargs):
     DigitFreq = kwargs.get('DigitFreq', 4E6)
     stm_dir = kwargs.get('stm_dir', os.getcwd())
     file_gex = kwargs.get('file_gex', '')
-
-    print('Nhank = %d' % Nhank)
 
     windows = GEX['General']['GateArray']
 
@@ -104,9 +98,9 @@ def write_stm_files(GEX, **kwargs):
     HM_name = os.path.join(stm_dir, gex_str + system_name + '_HM.stm')
 
     stm_files = [LM_name, HM_name]
-
-    print('writing LM to %s'%(LM_name))
-    print('writing HM to %s'%(HM_name))
+    if (showInfo>0):
+        print('writing LM to %s'%(LM_name))
+        print('writing HM to %s'%(HM_name))
 
     # WRITE LM AND HM FILES
     with open(LM_name, 'w') as fID_LM:
@@ -207,7 +201,7 @@ def write_stm_files(GEX, **kwargs):
     return stm_files
 
 
-def read_gex(file_gex):
+def read_gex(file_gex, **kwargs):
     """
     Read a GEX file and parse its contents into a dictionary.
 
@@ -222,7 +216,8 @@ def read_gex(file_gex):
         dict: A dictionary containing the parsed contents of the GEX file.
 
     """
-
+    showInfo = kwargs.get('showInfo', 0)
+    
     GEX = {}
     GEX['filename']=file_gex
     comment_counter = 1
@@ -321,3 +316,24 @@ def gex_to_stm(file_gex, **kwargs):
         stm_files = write_stm_files(GEX, file_gex=GEX['filename'], **kwargs)
 
     return stm_files, GEX
+
+
+def get_gex_file_from_data(f_data_h5, id=1):
+    """
+    Retrieves the 'gex' attribute from the specified HDF5 file.
+
+    Args:
+        f_data_h5 (str): The path to the HDF5 file.
+        id (int, optional): The ID of the dataset within the HDF5 file. Defaults to 1.
+
+    Returns:
+        str: The value of the 'gex' attribute if found, otherwise an empty string.
+    """
+    with h5py.File(f_data_h5, 'r') as f:
+        dname = '/D%d' % id
+        if 'gex' in f[dname].attrs:
+            file_gex = f[dname].attrs['gex']
+        else:
+            print('"gex" attribute not found in %s:%s' % (f_data_h5,dname))
+            file_gex = ''
+    return file_gex

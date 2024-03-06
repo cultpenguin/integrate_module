@@ -3,7 +3,8 @@ import numpy as np
 import os.path
 import subprocess
 from sys import exit
-
+from multiprocessing import Pool
+from functools import partial
 
 
 def is_notebook():
@@ -214,7 +215,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
 
                     m_mean = np.mean(m_post, axis=0)
                     m_median = np.median(m_post, axis=0)
-                    m_std = np.std(m_post, axis=0)
+                    m_std = np.std(np.log10(m_post), axis=0)
 
                     M_mean[iid,:] = m_mean
                     M_median[iid,:] = m_median
@@ -232,6 +233,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
 
 def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=1000000, autoT=1, ns=400):
             
+    # This is extremely memory efficicent, but perhaps not CPU efficiwent, when lookup table is small?
     d_obs = h5py.File(f_data_h5, 'r')['/D1/d_obs'][is_,:]
     d_std = h5py.File(f_data_h5, 'r')['/D1/d_std'][is_,:]
     i_use = np.where(~np.isnan(d_obs) & (np.abs(d_obs) > 0))[0]
@@ -241,7 +243,7 @@ def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=10000
 
     logL = np.zeros(N_use)
     for i in range(N_use):
-        dd = (d_sim[is_,i_use] - d_obs)**2
+        dd = (d_sim[i,i_use] - d_obs)**2
         logL[i] = -.5*np.sum(dd/d_var)
 
     if autoT == 1:
@@ -272,7 +274,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
     from tqdm import tqdm
     from functools import partial
     from multiprocessing import Pool
- 
+    import os
 
     print('Running: integrate_rejection.py %s %s --autoT %d --N_use %d --ns %d -parallel %d' % (f_prior_h5,f_data_h5,autoT,N_use,ns,parallel))
 
@@ -292,21 +294,24 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         nd = d_obs.shape[1]
         nsoundings = d_obs.shape[0]
 
+
     data_str = '/D1'
     with h5py.File(f_prior_h5, 'r') as f:
         d_sim = f[data_str]
         N = d_sim.shape[0]
     N_use = min([N_use, N])
+    
     # Read 'd' for to get the correct subset
     with h5py.File(f_prior_h5, 'r') as f:
         d_sim = f[data_str][:, :N_use]
 
     if not f_post_h5:
-        f_post_h5 = f"{f_prior_h5[:-9]}_POST_Nu{N_use}_aT{autoT}.h5"
+        f_post_h5 = "POST_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_prior_h5)[0],N_use,autoT)
+        #f_post_h5 = f"{f_prior_h5[:-3]}_POST_Nu{N_use}_aT{autoT}.h5"
 
     print('nsoundings:%d, N_use:%d, nd:%d' % (nsoundings,N_use,nd))
     print('Writing results to ',f_post_h5)
-
+    
     # remaining code...
 
     date_start = str(datetime.now())
@@ -314,6 +319,11 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
     i_use_all = np.zeros((ns,nsoundings), dtype=int)
     POST_T = np.ones(nsoundings) * np.nan
     POST_EV = np.ones(nsoundings) * np.nan
+
+    #is_ = 2000
+    #print(d_sim.shape)
+    #i_use, T, EV, is_out = sample_from_posterior(is_,d_sim,f_data_h5, N_use,autoT,ns)            
+    #return 1        
 
     if parallel:
         # # % PARALLEL
@@ -324,6 +334,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         os.system(cmd)
     else:
         # SEQUENTIAL
+        print(d_sim.shape)
         for is_ in tqdm(range(nsoundings)):
             i_use, T, EV, is_out = sample_from_posterior(is_,d_sim,f_data_h5, N_use,autoT,ns)            
             POST_T[is_] = T
@@ -359,7 +370,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
     return f_post_h5
 
 #%% integrate_prior_data: updates PRIOR strutcure with DATA
-def integrate_prior_data(f_prior_in_h5, f_forward_h5, id=1, im=1, doMakePriorCopy=0):
+def prior_data(f_prior_in_h5, f_forward_h5, id=1, im=1, doMakePriorCopy=0, parallel=False):
     # Check if at least two inputs are provided
     if f_prior_in_h5 is None or f_forward_h5 is None:
         print(f'{__name__}: Use at least two inputs to')
@@ -438,9 +449,12 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
     import time 
     from tqdm import tqdm
 
+    showInfo = kwargs.get('showInfo', 0)
+    
     if (len(stmfiles)>0) and (file_gex != '') and (len(GEX)==0):
         # GEX FILE and STM FILES
-        print('Using submitted GEX file (%s)' % (file_gex))
+        if (showInfo)>-1:
+            print('Using submitted GEX file (%s)' % (file_gex))
         GEX =   ig.read_gex(file_gex)
     elif (len(stmfiles)==0) and (file_gex != '') and (len(GEX)==0):
         # ONLY GEX FILE
@@ -471,20 +485,21 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
         print('Error: No GEX or STM files provided')
         return -1
 
-    print('Using GEX file: ', GEX['filename'])
-
-
+    if (showInfo>0):
+        print('Using GEX file: ', GEX['filename'])
 
     nstm=len(stmfiles)
-    for i in range(len(stmfiles)):
-        print('Using MOMENT:', stmfiles[i])
+    if (showInfo>0):
+        for i in range(len(stmfiles)):
+            print('Using MOMENT:', stmfiles[i])
 
     nd,nl=C.shape
     nt = thickness.shape[0]
     if nt != (nl-1):
         raise ValueError('Error: thickness array (nt=%d) does not match the number of layers minus 1(nl=%d)' % (nt,nl))
 
-    print('nd=%s, nl=%d,  nstm=%d' %(nd,nl,nstm))
+    if (showInfo>0):
+        print('nd=%s, nl=%d,  nstm=%d' %(nd,nl,nstm))
 
     # SETTING UP t1=time.time()
     t1=time.time()
@@ -504,7 +519,6 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
         print("Time, Setting up systems = %4.1fms" % t_system)
 
     # Setting up geometry
-    t1=time.time()
     GEX = ig.read_gex(file_gex)
     txrx_dx = float(GEX['General']['RxCoilPosition1'][0])-float(GEX['General']['TxCoilPosition1'][0])
     txrx_dy = float(GEX['General']['RxCoilPosition1'][1])-float(GEX['General']['TxCoilPosition1'][1])
@@ -513,13 +527,9 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
     #G = Geometry(tx_height=tx_height, txrx_dx = -txrx_dx, txrx_dz = -txrx_dz)
     #G = Geometry(tx_height=.01, txrx_dx = -12.62, txrx_dz = +2.16)
     G = Geometry(tx_height=tx_height, txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
-    print('tx_height=%f, txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (tx_height, txrx_dx, txrx_dy, txrx_dz))
-    t2=time.time()
-    t_geometry = 1000*(t2-t1)
-    if showtime:
-        print("Time, Setting up geometry = %4.1fms" % t_geometry)
-
-
+    if (showInfo>0):
+        print('tx_height=%f, txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (tx_height, txrx_dx, txrx_dy, txrx_dz))
+    
     ng0 = GEX['Channel1']['NoGates']-GEX['Channel1']['RemoveInitialGates'][0]
     if nstm>1:
         ng1 = GEX['Channel2']['NoGates']-GEX['Channel2']['RemoveInitialGates'][0]
@@ -532,7 +542,7 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
 
     # Compute forward data
     t1=time.time()
-    for i in tqdm(range(nd)):
+    for i in tqdm(range(nd), mininterval=1):
         conductivity = C[i]
         E = Earth(conductivity,thickness)
 
@@ -558,3 +568,128 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
         print("Time = %4.1fms per model and %d model tests" % (1000*(t2-t1)/nd, nd))
 
     return D
+
+
+
+import time
+
+def compute_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **kwargs):
+    # pause for random time
+    # time.sleep(np.random.rand()*10)
+    return forward_gaaem(C=C_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)
+
+def prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, im=1, id=1, Nhank=280, Nfreq=12, parallel=False, **kwargs):
+    """
+    Generate prior data for the ga-aem method.
+
+    Parameters:
+    - f_prior_h5 (str): Path to the prior data file in HDF5 format.
+    - file_gex (str): Path to the file containing geophysical exploration data.
+    - doMakePriorCopy (bool): Flag indicating whether to make a copy of the prior file (default: True).
+    - im (int): Index of the model (default: 1).
+    - id (int): Index of the data (default: 1).
+    - Nhank (int): Number of Hankel transform quadrature points (default: 18).
+    - Nfreq (int): Number of frequencies (default: 5).
+    - parallel (bool): Flag indicating whether multiprocessing is used
+    - Nproc (int): Number of processes to use (default: ncpus).
+    
+    Returns:
+    f_prior_data: filename of hdf5 fille containing the updated prior data
+    """
+    import shutil
+    import integrate as ig
+    import multiprocessing
+    from multiprocessing import Pool
+    import time
+
+    type = 'TDEM'
+    method = 'ga-aem'
+    showInfo = kwargs.get('showInfo', 0)
+    Nproc = kwargs.get('Nproc', 0)
+    
+    if doMakePriorCopy:
+        f_prior_data_h5 = '%s_%s_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex)[0], Nhank, Nfreq)
+        if (showInfo>-1):
+            print("Creating a copy of %s as %s" % (f_prior_h5, f_prior_data_h5))
+        # make a copy of the prior file
+        shutil.copy(f_prior_h5, f_prior_data_h5)
+    else:
+        f_prior_data_h5 = f_prior_h5
+
+    Mname = '/M%d' % im
+    Dname = '/D%d' % id
+    f_prior = h5py.File(f_prior_data_h5, 'a')
+
+    # Get thickness
+    if 'x' in f_prior[Mname].attrs:
+        z = f_prior[Mname].attrs['x']
+    else:
+        z = f_prior[Mname].attrs['z']
+    thickness = np.diff(z)
+
+    # Get conductivity
+    if Mname in f_prior.keys():
+        C = 1 / f_prior[Mname][:]
+    else:
+        print('Could not load %s from %s' % (Mname, f_prior_data_h5))
+
+    N = f_prior[Mname].shape[0]
+    t1 = time.time()
+    if not parallel:
+        # Sequential
+        D = ig.forward_gaaem(C=C, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)
+    else:
+    
+        # Make sure STM files are only written once!!! (need for multihreading)
+        # D = ig.forward_gaaem(C=C[0:1,:], thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)
+        stmfiles, GEX = ig.gex_to_stm(file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
+
+        # Parallel
+        if Nproc < 1 :
+            Nproc =  int(multiprocessing.cpu_count()/2)
+        if (showInfo>0):
+            print("Using %d parallel threads." % (Nproc))
+
+        # 1: Define a function to compute a chunk
+        ## OUTSIDE
+        # 2: Create chunks
+        C_chunks = np.array_split(C, Nproc)
+
+        # 3: Compute the chunks in parallel
+        compute_chunk_partial = partial(compute_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
+
+        # Create a multiprocessing pool and compute D for each chunk of C
+        with Pool() as p:
+            D_chunks = p.map(compute_chunk_partial, C_chunks)
+        
+        #useIterative=0
+        #if useIterative==1:
+        #    D_chunks = []
+        #    for C_chunk in C_chunks:    
+        #        D_chunk = ig.forward_gaaem(C=C_chunk, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)
+        #        D_chunks.append(D_chunk)
+
+        # 4: Combine the chunks into D
+        print('Concatenating D_chunks')
+        D = np.concatenate(D_chunks)
+        print("D.shape", D.shape)
+
+        # D = ig.forward_gaaem(C=C, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)
+
+    t2 = time.time()
+    t_elapsed = t2 - t1
+    print('Time elapsed: %5.1f s, for %d soundings. %4.3f ms/sounding. %4.1fit/s' % (t_elapsed, N, 1000*t_elapsed/N,N/t_elapsed))
+    
+    # Write D to f_prior['/D1']
+    f_prior[Dname] = D
+
+    # Add method, type, file_ex, and im as attributes to '/D1'
+    f_prior[Dname].attrs['method'] = method
+    f_prior[Dname].attrs['type'] = type
+    f_prior[Dname].attrs['im'] = im
+    f_prior[Dname].attrs['Nhank'] = Nhank
+    f_prior[Dname].attrs['Nfreq'] = Nfreq
+
+    f_prior.close()
+
+    return f_prior_data_h5

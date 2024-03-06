@@ -44,6 +44,7 @@ import argparse
 from tqdm import tqdm
 
 import integrate as ig
+import os 
 
 def is_notebook():
     try:
@@ -142,7 +143,8 @@ with h5py.File(f_prior_h5, 'r') as f:
     d_sim = f[data_str][:, :N_use]
 
 if not f_post_h5:
-    f_post_h5 = f"{f_prior_h5[:-9]}_POST_Nu{N_use}_aT{autoT}.h5"
+    f_post_h5 = "POST_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_prior_h5)[0],N_use,autoT)
+    #f_post_h5 = f"{f_prior_h5[:-9]}_POST_Nu{N_use}_aT{autoT}.h5"
 
 print('nsoundings:%d, N_use:%d, nd:%d' % (nsoundings,N_use,nd))
 print('Writing results to ',f_post_h5)
