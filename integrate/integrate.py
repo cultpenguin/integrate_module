@@ -454,7 +454,7 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
 
     if (len(stmfiles)>0) and (file_gex != '') and (len(GEX)==0):
         # GEX FILE and STM FILES
-        if (showInfo)>-1:
+        if (showInfo)>0:
             print('Using submitted GEX file (%s)' % (file_gex))
         GEX =   ig.read_gex(file_gex)
     elif (len(stmfiles)==0) and (file_gex != '') and (len(GEX)==0):
@@ -675,7 +675,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, im=1, id=1, Nha
         # Parallel
         if Nproc < 1 :
             Nproc =  int(multiprocessing.cpu_count()/2)
-        if (showInfo>0):
+        if (showInfo>-1):
             print("Using %d parallel threads." % (Nproc))
 
         # 1: Define a function to compute a chunk
