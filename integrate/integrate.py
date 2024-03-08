@@ -217,7 +217,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                     #    for j in range(len(ir)):
                     #        m_post[:, j] = dataset[:, ir[j]]
 
-                    m_mean = np.mean(m_post, axis=0)
+                    m_mean = np.exp(np.mean(np.log(m_post), axis=0))
                     m_median = np.median(m_post, axis=0)
                     m_std = np.std(np.log10(m_post), axis=0)
 
@@ -299,7 +299,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
     if not os.path.isfile(f_data_h5):
         print('File %s does not exist' % f_data_h5)
         exit()
-
+ 
     with h5py.File(f_data_h5, 'r') as f:
         d_obs = f['/D1/d_obs']
         nd = d_obs.shape[1]
