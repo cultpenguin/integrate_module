@@ -257,15 +257,15 @@ def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=10000
     return i_use, T, EV, is_
 
 
-
-
+#def sample_from_posterior_chunk(is_,d_sim,f_data_h5, N_use,autoT,ns):
+#    return sample_from_posterior(is_,d_sim,f_data_h5, N_use,autoT,ns) 
 
 def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
                             f_data_h5='tTEM-Djursland.h5',
                             autoT=1,
                             N_use=1000000,
                             ns=400,
-                            parallel=0):
+                            parallel=0, **kwargs):
 
     import h5py
     import numpy as np
@@ -273,10 +273,15 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
     import argparse
     from tqdm import tqdm
     from functools import partial
+    import multiprocessing
     from multiprocessing import Pool
     import os
 
     print('Running: integrate_rejection.py %s %s --autoT %d --N_use %d --ns %d -parallel %d' % (f_prior_h5,f_data_h5,autoT,N_use,ns,parallel))
+
+    Nproc = kwargs.get('Nproc', 0)
+    showInfo = kwargs.get('showInfo', 0)
+    doPosteriorStats = kwargs.get('doPosteriorStats', True)
 
     #% Check that hdf5 files exists
     import os.path
@@ -325,13 +330,59 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
     #i_use, T, EV, is_out = sample_from_posterior(is_,d_sim,f_data_h5, N_use,autoT,ns)            
     #return 1        
 
-    if parallel:
-        # # % PARALLEL
+    if parallel==1:
+        ## % PARALLEL IN SCRIPT
+        # Parallel
+        if Nproc < 1 :
+            Nproc =  int(multiprocessing.cpu_count()/2)
+        if (showInfo>0-1):
+            print("Using %d parallel threads." % (Nproc))
+        print("nsoundings: %d" % nsoundings)
+
+
+        # PARTIAL
+        sample_from_posterior_partial = partial(sample_from_posterior, d_sim=d_sim,f_data_h5=f_data_h5, N_use=N_use,autoT=autoT,ns=ns)
+
+        #sample_from_posterior_partial(1)
+        #out=[]
+        #for is_ in tqdm(range(nsoundings)):
+        #    out_tmp = sample_from_posterior_partial(is_)
+        #    out.append(out_tmp)    
+        
+        # Create a multiprocessing pool and compute D for each chunk of C
+        with Pool() as p:
+            out = list(tqdm(p.imap(sample_from_posterior_partial, range(nsoundings)), total=nsoundings))
+
+#            out = p.map(sample_from_posterior_partial, range(nsoundings))        
+#            result_iterator = p.imap_unordered(process, range(nsoundings))
+#            results = list(tqdm(result_iterator, total=nsoundings))
+
+        for output in out:
+            i_use = output[0]
+            T = output[1]
+            EV = output[2]
+            is_ = output[3]
+            POST_T[is_] = T
+            POST_EV[is_] = EV
+            i_use_all[:,is_] = i_use
+    
+        date_end = str(datetime.now())
+        t_end = datetime.now()
+        t_elapsed = (t_end - t_start).total_seconds()
+        t_per_sounding = t_elapsed / nsoundings
+
+        print('Average temperature, T=%3.1f ' % (np.nanmean(POST_T)))
+        print('Time elapsed: %5.1f s, for %d soundings' % (t_elapsed,nsoundings))
+        print('Time per sounding: %4.3f ms' % (t_per_sounding*1000))
+
+
+    elif parallel==2:
         print('CALL SCRIPT FROM COMMANDLINE!!!!')
         cmd = 'python integrate_rejection.py %s %s --N_use=%d --autoT=%d --ns=%d' % (f_prior_h5,f_data_h5,N_use,autoT,ns) 
         print('Executing "%s"'%(cmd))
         import os
         os.system(cmd)
+
     else:
         # SEQUENTIAL
         print(d_sim.shape)
@@ -361,8 +412,6 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
             f.attrs['f5_data'] = f_data_h5
             f.attrs['N_use'] = N_use
 
-    doPosteriorStats = True
-    #doPosteriorStats = False
     if doPosteriorStats:
         print('Running posterior stats')
         integrate_posterior_stats(f_post_h5)
@@ -601,7 +650,7 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
 
 import time
 
-def compute_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **kwargs):
+def forward_gaaem_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **kwargs):
     # pause for random time
     # time.sleep(np.random.rand()*10)
     return forward_gaaem(C=C_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)
@@ -675,7 +724,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, im=1, id=1, Nha
         # Parallel
         if Nproc < 1 :
             Nproc =  int(multiprocessing.cpu_count()/2)
-        if (showInfo>-1):
+        if (showInfo>0):
             print("Using %d parallel threads." % (Nproc))
 
         # 1: Define a function to compute a chunk
@@ -684,11 +733,11 @@ def prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, im=1, id=1, Nha
         C_chunks = np.array_split(C, Nproc)
 
         # 3: Compute the chunks in parallel
-        compute_chunk_partial = partial(compute_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
+        forward_gaaem_chunk_partial = partial(forward_gaaem_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
 
         # Create a multiprocessing pool and compute D for each chunk of C
         with Pool() as p:
-            D_chunks = p.map(compute_chunk_partial, C_chunks)
+            D_chunks = p.map(forward_gaaem_chunk_partial, C_chunks)
         
         #useIterative=0
         #if useIterative==1:
