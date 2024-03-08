@@ -266,6 +266,7 @@ def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=10000
 
 def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
                             f_data_h5='tTEM-Djursland.h5',
+                            f_post_h5='',
                             autoT=1,
                             N_use=1000000,
                             ns=400,
@@ -299,9 +300,6 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         print('File %s does not exist' % f_data_h5)
         exit()
 
-    f_post_h5=False 
-
-
     with h5py.File(f_data_h5, 'r') as f:
         d_obs = f['/D1/d_obs']
         nd = d_obs.shape[1]
@@ -317,9 +315,24 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         d_sim = f[data_str][:N_use,:]
         #d_sim = f[data_str][:,:N_use]
 
-    print(d_sim.shape)
 
-    if not f_post_h5:
+    # Create shared memory block
+    shm = shared_memory.SharedMemory(create=True, size=d_sim.nbytes)
+    # Now create a NumPy array backed by shared memory
+    d_sim_shared = np.ndarray(d_sim.shape, dtype=d_sim.dtype, buffer=shm.buf)
+    # Copy the data to our shared array
+    np.copyto(d_sim_shared, d_sim)
+
+    '''
+    # In subprocess
+    shm = shared_memory.SharedMemory(name=shm_name)
+    d_sim = np.ndarray(d_sim_shape, dtype=d_sim_dtype, buffer=shm.buf)
+    # In main process, after all subprocesses have finished
+    shm.close()
+    shm.unlink()
+    '''
+
+    if len(f_post_h5)==0:
         f_post_h5 = "POST_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_prior_h5)[0],N_use,autoT)
         #f_post_h5 = f"{f_prior_h5[:-3]}_POST_Nu{N_use}_aT{autoT}.h5"
 
@@ -401,16 +414,6 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
 
         print('T_av=%3.1f ' % (np.nanmean(POST_T)))
         
-        with h5py.File(f_post_h5, 'w') as f:
-            f.create_dataset('i_use', data=i_use_all.T)
-            f.create_dataset('T', data=POST_T.T)
-            f.create_dataset('EV', data=POST_EV.T)
-            f.attrs['date_start'] = date_start
-            f.attrs['date_end'] = date_end
-            f.attrs['inv_time'] = t_elapsed
-            f.attrs['f5_prior'] = f_prior_h5
-            f.attrs['f5_data'] = f_data_h5
-            f.attrs['N_use'] = N_use
     
     date_end = str(datetime.now())
     t_end = datetime.now()
@@ -418,7 +421,20 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
     t_per_sounding = t_elapsed / nsoundings
     if (showInfo>-1):
         print('T_av=%3.1f, Time=%5.1fs/%d soundings ,%4.3fms/sounding' % (np.nanmean(POST_T),t_elapsed,nsoundings,t_per_sounding*1000))
-        
+
+    if showInfo>0:
+        print('Writing to file: ',f_post_h5)
+    with h5py.File(f_post_h5, 'w') as f:
+        f.create_dataset('i_use', data=i_use_all.T)
+        f.create_dataset('T', data=POST_T.T)
+        f.create_dataset('EV', data=POST_EV.T)
+        f.attrs['date_start'] = date_start
+        f.attrs['date_end'] = date_end
+        f.attrs['inv_time'] = t_elapsed
+        f.attrs['f5_prior'] = f_prior_h5
+        f.attrs['f5_data'] = f_data_h5
+        f.attrs['N_use'] = N_use
+
     if updatePostStat:
         integrate_posterior_stats(f_post_h5, **kwargs)
     
