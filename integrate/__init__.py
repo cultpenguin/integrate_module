@@ -13,3 +13,7 @@ from integrate.integrate_io import write_stm_files
 from integrate.integrate_io import gex_to_stm
 from integrate.integrate_io import read_gex
 from integrate.integrate_io import get_gex_file_from_data
+from integrate.integrate_io import get_geometry 
+
+from integrate.integrate_plot import plot_profile_continuous
+

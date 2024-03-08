@@ -337,3 +337,25 @@ def get_gex_file_from_data(f_data_h5, id=1):
             print('"gex" attribute not found in %s:%s' % (f_data_h5,dname))
             file_gex = ''
     return file_gex
+
+
+def get_geometry(f_data_h5):
+    with h5py.File(f_data_h5,'r') as f_data:
+        X = f_data['/UTMX'][:].flatten()
+        Y = f_data['/UTMY'][:].flatten()
+        LINE = f_data['/LINE'][:].flatten()
+        ELEVATION = f_data['/ELEVATION'][:].flatten()
+
+
+    return X, Y, LINE, ELEVATION
+
+
+def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
+
+    Mstr = '/M%d' % im
+
+    with h5py.File(f_post_h5,'r') as f_post:
+        f_prior_h5 = f_post['/'].attrs['f5_prior']
+        f_data_h5 = f_post['/'].attrs['f5_data']
+    
+    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5
