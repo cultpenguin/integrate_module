@@ -348,14 +348,3 @@ def get_geometry(f_data_h5):
 
 
     return X, Y, LINE, ELEVATION
-
-
-def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
-
-    Mstr = '/M%d' % im
-
-    with h5py.File(f_post_h5,'r') as f_post:
-        f_prior_h5 = f_post['/'].attrs['f5_prior']
-        f_data_h5 = f_post['/'].attrs['f5_data']
-    
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5

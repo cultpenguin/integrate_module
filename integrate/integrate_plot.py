@@ -4,6 +4,51 @@ import h5py
 import integrate as ig
 import matplotlib.pyplot as plt
 
+
+def plot_T(f_post_h5, i1=1, i2=1e+9, **kwargs):
+    
+    with h5py.File(f_post_h5,'r') as f_post:
+        f_prior_h5 = f_post['/'].attrs['f5_prior']
+        f_data_h5 = f_post['/'].attrs['f5_data']
+    
+    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+
+    with h5py.File(f_post_h5,'r') as f_post:
+        T=f_post['/T'][:].T
+        try:
+            T=f_post['/T_mul'][:]
+        except:
+            a=1
+
+    nd = X.shape[0]
+    if i1<1: 
+        i1=0
+    if i2>nd-1:
+        i2=nd
+
+    if i2<i1:
+        i2=i1+1
+
+    plt.figure(1, figsize=(20, 10))
+    plt.scatter(X[i1:i2],Y[i1:i2],c=T[i1:i2],cmap='jet', clim=(0,30),**kwargs)            
+    plt.grid()
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.colorbar()
+    plt.clim(0,40)
+    plt.title('Temperature')
+    plt.axis('equal')
+    plt.show()
+
+    # get filename without extension
+    f_png = '%s_%d_%d_T.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
+    plt.savefig(f_png)
+
+
+
+
+    return 1
+
 def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
     """
     Plot continuous profiles from a given HDF5 file.
@@ -101,5 +146,9 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
     plt.xlabel('ID')
     plt.tight_layout()
     plt.show()
+
+    # get filename without extension
+    f_png = '%s_%d_%d_profile.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
+    plt.savefig(f_png)
 
             

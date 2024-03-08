@@ -270,7 +270,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
                             autoT=1,
                             N_use=1000000,
                             ns=400,
-                            parallel=0, **kwargs):
+                            parallel=1, **kwargs):
 
     import h5py
     import numpy as np
@@ -336,6 +336,21 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         f_post_h5 = "POST_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_prior_h5)[0],N_use,autoT)
         #f_post_h5 = f"{f_prior_h5[:-3]}_POST_Nu{N_use}_aT{autoT}.h5"
 
+    # Check that f_post_h5 allready exists, and warn the user   
+    if os.path.isfile(f_post_h5):
+        print('File %s allready exists' % f_post_h5)
+        print('Overwriting...')    
+        
+        #print('Do you want to overwrite it?')    
+        #print('Press "y" to overwrite, or "n" to exit')
+        #response = input()
+        #if response.lower() != 'y':
+        #    print('Exiting...')
+        #    exit()
+        #else:
+#            print('Overwriting...')
+    
+
     if showInfo>0:
         print('nsoundings:%d, N_use:%d, nd:%d' % (nsoundings,N_use,nd))
         print('Writing results to ',f_post_h5)
@@ -399,8 +414,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         os.system(cmd)
 
     else:
-        # SEQUENTIAL
-        print(d_sim.shape)
+        # SEQUENTIAL        
         for is_ in tqdm(range(nsoundings)):
             i_use, T, EV, is_out = sample_from_posterior(is_,d_sim,f_data_h5, N_use,autoT,ns)            
             POST_T[is_] = T
@@ -441,7 +455,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
     return f_post_h5
 
 #%% integrate_prior_data: updates PRIOR strutcure with DATA
-def prior_data(f_prior_in_h5, f_forward_h5, id=1, im=1, doMakePriorCopy=0, parallel=False):
+def prior_data(f_prior_in_h5, f_forward_h5, id=1, im=1, doMakePriorCopy=0, parallel=True):
     # Check if at least two inputs are provided
     if f_prior_in_h5 is None or f_forward_h5 is None:
         print(f'{__name__}: Use at least two inputs to')
@@ -677,7 +691,7 @@ def forward_gaaem_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **
     # time.sleep(np.random.rand()*10)
     return forward_gaaem(C=C_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)
 
-def prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, im=1, id=1, Nhank=280, Nfreq=12, parallel=False, **kwargs):
+def prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, im=1, id=1, Nhank=280, Nfreq=12, parallel=True, **kwargs):
     """
     Generate prior data for the ga-aem method.
 
@@ -793,3 +807,94 @@ def prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, im=1, id=1, Nha
 
     return f_prior_data_h5
 # %%
+
+
+
+
+
+def prior_model_layered(lay_dist='uniform', NLAY_min=3, NLAY_max=6, NLAY_deg=6, rho_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80, N=100000):
+    """
+    Generate a prior model with layered structure.
+
+    Args:
+        lay_dist (str): Distribution of the number of layers. Options are 'chi2' and 'uniform'. Default is 'chi2'.
+        NLAY_min (int): Minimum number of layers. Default is 3.
+        NLAY_max (int): Maximum number of layers. Default is 6.
+        NLAY_deg (int): Degrees of freedom for chi-square distribution. Only applicable if lay_dist is 'chi2'. Default is 6.
+        rho_dist (str): Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', and 'lognormal'. Default is 'log-uniform'.
+        RHO_min (float): Minimum resistivity value. Default is 0.1.
+        RHO_max (float): Maximum resistivity value. Default is 100.
+        RHO_MEAN (float): Mean resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 100.
+        RHO_std (float): Standard deviation of resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 80.
+        N (int): Number of prior models to generate. Default is 100000.
+
+    Returns:
+        str: Filepath of the saved prior model.
+
+    """
+    
+    if NLAY_max < NLAY_min:
+        #raise ValueError('NLAY_max must be greater than or equal to NLAY_min.')
+        NLAY_max = NLAY_min
+
+    if NLAY_min < 1:
+        #raise ValueError('NLAY_min must be greater than or equal to 1.')
+        NLAY_min = 1
+        
+    if lay_dist == 'uniform':
+        NLAY = np.random.randint(NLAY_min, NLAY_max+1, N)
+        f_prior_h5 = 'PRIOR_UNIFORM_NL_%d-%d_%s_N%d.h5' % (NLAY_min, NLAY_max, rho_dist, N)
+
+    elif lay_dist == 'chi2':
+        NLAY = np.random.chisquare(NLAY_deg, N)
+        NLAY = np.ceil(NLAY).astype(int)    
+        f_prior_h5 = 'PRIOR_CHI2_NF_%d_%s_N%d.h5' % (NLAY_deg, rho_dist, N)
+
+
+    dz = 1
+    z_max = 90
+    z_min = 0
+    z = np.arange(z_min, z_max, dz)
+    nz= len(z)
+    
+    M_rho = np.zeros((N, nz))
+
+    # save to hdf5 file
+    
+
+    #% simulate the number of layers as in integer
+    for i in range(N):
+
+        i_boundaries = np.sort(np.random.choice(nz, NLAY[i]-1, replace=False))        
+
+        ### simulate the resistivity in each layer
+        if rho_dist=='log-normal':
+            rho_all=np.random.lognormal(mean=np.log10(RHO_MEAN), sigma=np.log10(RHO_std), size=NLAY[i])
+        elif rho_dist=='normal':
+            rho_all=np.random.normal(mean=RHO_MEAN, sigma=RHO_std, size=NLAY[i])
+        elif rho_dist=='log-uniform':
+            rho_all=np.exp(np.random.uniform(np.log(RHO_min), np.log(RHO_max), NLAY[i]))
+        elif rho_dist=='uniform':
+            rho_all=np.random.uniform(RHO_min, RHO_max, NLAY[i])
+
+        rho = np.zeros(nz)+rho_all[0]
+        for j in range(len(i_boundaries)):
+            rho[i_boundaries[j]:] = rho_all[j+1]
+
+        M_rho[i]=rho        
+
+
+    print("Saving prior model to %s" % f_prior_h5)
+    f_prior = h5py.File(f_prior_h5, 'w')
+    f_prior.create_dataset('/M1', data=M_rho)
+    f_prior['/M1'].attrs['is_discrete'] = 0
+    f_prior['/M1'].attrs['z'] = z
+    f_prior['/M1'].attrs['x'] = z
+    f_prior.create_dataset('/M2', data=NLAY)
+    f_prior['/M2'].attrs['is_discrete'] = 0
+    f_prior['/M2'].attrs['z'] = z
+    f_prior['/M2'].attrs['x'] = z
+    f_prior.close()    
+
+    return f_prior_h5
+    
