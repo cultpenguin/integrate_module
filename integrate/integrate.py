@@ -834,6 +834,8 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
 
     """
     
+    from tqdm import tqdm
+
     if NLAY_max < NLAY_min:
         #raise ValueError('NLAY_max must be greater than or equal to NLAY_min.')
         NLAY_max = NLAY_min
@@ -862,8 +864,8 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
     # save to hdf5 file
     
     #% simulate the number of layers as in integer
-    for i in range(N):
-
+    for i in tqdm(range(N), mininterval=1):
+    
         i_boundaries = np.sort(np.random.choice(nz, NLAY[i]-1, replace=False))        
 
         ### simulate the resistivity in each layer

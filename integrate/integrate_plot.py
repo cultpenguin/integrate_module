@@ -101,11 +101,11 @@ def plot_T(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, **kwargs):
     plt.clim(T_min,T_max)
     plt.title('Temperature')
     plt.axis('equal')
-    plt.show()
-
     # get filename without extension
     f_png = '%s_%d_%d_T.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
     plt.savefig(f_png)
+    plt.show()
+
 
     return 1
 
@@ -210,10 +210,10 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
     plt.grid()
     plt.xlabel('ID')
     plt.tight_layout()
-    plt.show()
 
     # get filename without extension
     f_png = '%s_%d_%d_profile.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
     plt.savefig(f_png)
+    plt.show()
 
             
