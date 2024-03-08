@@ -4,6 +4,7 @@ import os.path
 import subprocess
 from sys import exit
 from multiprocessing import Pool
+from multiprocessing import shared_memory
 from functools import partial
 
 
@@ -155,11 +156,13 @@ def integrate_update_prior_attributes(f_prior_h5):
                         dataset.attrs['class_name'] = [str(x) for x in class_id]
 
 
-def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_Nu1000_aT1.h5'):
+def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_Nu1000_aT1.h5', **kwargs):
     import h5py
     import numpy as np
     import integrate
     from tqdm import tqdm
+
+    showInfo = kwargs.get('showInfo', 0)
 
     #f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_Nu50000_aT1.h5'
     # Check if f_prior_h5 attribute exists in the HDF5 file
@@ -183,7 +186,8 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
     # Process each dataset in f_prior_h5
     with h5py.File(f_prior_h5, 'r') as f_prior, h5py.File(f_post_h5, 'a') as f_post:
         for name, dataset in f_prior.items():
-            print(name.upper())
+            if showInfo>0:
+                print(name.upper())
                 
             if name.upper().startswith('M') and 'is_discrete' in dataset.attrs and dataset.attrs['is_discrete'] == 0:
                 nm = dataset.shape[1]
@@ -277,11 +281,14 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
     from multiprocessing import Pool
     import os
 
-    print('Running: integrate_rejection.py %s %s --autoT %d --N_use %d --ns %d -parallel %d' % (f_prior_h5,f_data_h5,autoT,N_use,ns,parallel))
+    id=1
 
     Nproc = kwargs.get('Nproc', 0)
     showInfo = kwargs.get('showInfo', 0)
-    doPosteriorStats = kwargs.get('doPosteriorStats', True)
+    updatePostStat = kwargs.get('updatePostStat', True)
+    if showInfo>0:
+        print('Running: integrate_rejection.py %s %s --autoT %d --N_use %d --ns %d -parallel %d' % (f_prior_h5,f_data_h5,autoT,N_use,ns,parallel))
+
 
     #% Check that hdf5 files exists
     import os.path
@@ -294,28 +301,31 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
 
     f_post_h5=False 
 
+
     with h5py.File(f_data_h5, 'r') as f:
         d_obs = f['/D1/d_obs']
         nd = d_obs.shape[1]
         nsoundings = d_obs.shape[0]
 
-
-    data_str = '/D1'
+    data_str = '/D%d' % id
     with h5py.File(f_prior_h5, 'r') as f:
         d_sim = f[data_str]
         N = d_sim.shape[0]
     N_use = min([N_use, N])
-    
-    # Read 'd' for to get the correct subset
+
     with h5py.File(f_prior_h5, 'r') as f:
-        d_sim = f[data_str][:, :N_use]
+        d_sim = f[data_str][:N_use,:]
+        #d_sim = f[data_str][:,:N_use]
+
+    print(d_sim.shape)
 
     if not f_post_h5:
         f_post_h5 = "POST_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_prior_h5)[0],N_use,autoT)
         #f_post_h5 = f"{f_prior_h5[:-3]}_POST_Nu{N_use}_aT{autoT}.h5"
 
-    print('nsoundings:%d, N_use:%d, nd:%d' % (nsoundings,N_use,nd))
-    print('Writing results to ',f_post_h5)
+    if showInfo>0:
+        print('nsoundings:%d, N_use:%d, nd:%d' % (nsoundings,N_use,nd))
+        print('Writing results to ',f_post_h5)
     
     # remaining code...
 
@@ -335,9 +345,9 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         # Parallel
         if Nproc < 1 :
             Nproc =  int(multiprocessing.cpu_count()/2)
-        if (showInfo>0-1):
+        if (showInfo>-1):
             print("Using %d parallel threads." % (Nproc))
-        print("nsoundings: %d" % nsoundings)
+            # print("nsoundings: %d" % nsoundings)
 
 
         # PARTIAL
@@ -350,8 +360,8 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         #    out.append(out_tmp)    
         
         # Create a multiprocessing pool and compute D for each chunk of C
-        with Pool() as p:
-            out = list(tqdm(p.imap(sample_from_posterior_partial, range(nsoundings)), total=nsoundings))
+        with Pool(Nproc) as p:
+            out = list(tqdm(p.imap(sample_from_posterior_partial, range(nsoundings), chunksize=1), total=nsoundings))
 
 #            out = p.map(sample_from_posterior_partial, range(nsoundings))        
 #            result_iterator = p.imap_unordered(process, range(nsoundings))
@@ -366,19 +376,11 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
             POST_EV[is_] = EV
             i_use_all[:,is_] = i_use
     
-        date_end = str(datetime.now())
-        t_end = datetime.now()
-        t_elapsed = (t_end - t_start).total_seconds()
-        t_per_sounding = t_elapsed / nsoundings
-
-        print('Average temperature, T=%3.1f ' % (np.nanmean(POST_T)))
-        print('Time elapsed: %5.1f s, for %d soundings' % (t_elapsed,nsoundings))
-        print('Time per sounding: %4.3f ms' % (t_per_sounding*1000))
 
 
     elif parallel==2:
         print('CALL SCRIPT FROM COMMANDLINE!!!!')
-        cmd = 'python integrate_rejection.py %s %s --N_use=%d --autoT=%d --ns=%d' % (f_prior_h5,f_data_h5,N_use,autoT,ns) 
+        cmd = 'python integrate_rejection.py %s %s --N_use=%d --autoT=%d --ns=%d --updatePostStat=%d' % (f_prior_h5,f_data_h5,N_use,autoT,ns,updatePostStat) 
         print('Executing "%s"'%(cmd))
         import os
         os.system(cmd)
@@ -397,10 +399,8 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         t_elapsed = (t_end - t_start).total_seconds()
         t_per_sounding = t_elapsed / nsoundings
 
-        print('Average temperature, T=%3.1f ' % (np.nanmean(POST_T)))
-        print('Time elapsed: %5.1f s, for %d soundings' % (t_elapsed,nsoundings))
-        print('Time per sounding: %4.3f ms' % (t_per_sounding*1000))
-
+        print('T_av=%3.1f ' % (np.nanmean(POST_T)))
+        
         with h5py.File(f_post_h5, 'w') as f:
             f.create_dataset('i_use', data=i_use_all.T)
             f.create_dataset('T', data=POST_T.T)
@@ -411,10 +411,16 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
             f.attrs['f5_prior'] = f_prior_h5
             f.attrs['f5_data'] = f_data_h5
             f.attrs['N_use'] = N_use
-
-    if doPosteriorStats:
-        print('Running posterior stats')
-        integrate_posterior_stats(f_post_h5)
+    
+    date_end = str(datetime.now())
+    t_end = datetime.now()
+    t_elapsed = (t_end - t_start).total_seconds()
+    t_per_sounding = t_elapsed / nsoundings
+    if (showInfo>-1):
+        print('T_av=%3.1f, Time=%5.1fs/%d soundings ,%4.3fms/sounding' % (np.nanmean(POST_T),t_elapsed,nsoundings,t_per_sounding*1000))
+        
+    if updatePostStat:
+        integrate_posterior_stats(f_post_h5, **kwargs)
     
     return f_post_h5
 

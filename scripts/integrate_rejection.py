@@ -140,7 +140,8 @@ with h5py.File(f_prior_h5, 'r') as f:
 N_use = min([N_use, N])
 
 with h5py.File(f_prior_h5, 'r') as f:
-    d_sim = f[data_str][:, :N_use]
+    d_sim = f[data_str][:N_use,:]
+print(d_sim.shape)
 
 if not f_post_h5:
     f_post_h5 = "POST_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_prior_h5)[0],N_use,autoT)
@@ -168,7 +169,7 @@ if parallel:
 
         for res in results:
             i_use, T, EV, is_ = res
-            POST_T[is_] = T
+            POST_T[is_] = T            
             POST_EV[is_] = EV
             i_use_all[:,is_] = i_use
 
