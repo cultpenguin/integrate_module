@@ -190,6 +190,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                 print(name.upper())
                 
             if name.upper().startswith('M') and 'is_discrete' in dataset.attrs and dataset.attrs['is_discrete'] == 0:
+                print(name)
                 nm = dataset.shape[1]
                 nsounding, nr = i_use.shape
                 m_post = np.zeros((nm, nr))
@@ -270,7 +271,9 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
                             autoT=1,
                             N_use=1000000,
                             ns=400,
-                            parallel=1, **kwargs):
+                            parallel=1, 
+                            updatePostStat= True,
+                            **kwargs):
 
     import h5py
     import numpy as np
@@ -286,10 +289,8 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
 
     Nproc = kwargs.get('Nproc', 0)
     showInfo = kwargs.get('showInfo', 0)
-    updatePostStat = kwargs.get('updatePostStat', True)
     if showInfo>0:
-        print('Running: integrate_rejection.py %s %s --autoT %d --N_use %d --ns %d -parallel %d' % (f_prior_h5,f_data_h5,autoT,N_use,ns,parallel))
-
+        print('Running: integrate_rejection.py %s %s --autoT %d --N_use %d --ns %d -parallel %d --updatePostStat %d' % (f_prior_h5,f_data_h5,autoT,N_use,ns,parallel,updatePostStat))
 
     #% Check that hdf5 files exists
     import os.path
@@ -812,7 +813,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, im=1, id=1, Nha
 
 
 
-def prior_model_layered(lay_dist='uniform', NLAY_min=3, NLAY_max=6, NLAY_deg=6, rho_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80, N=100000):
+def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY_max=6, NLAY_deg=6, rho_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80, N=100000):
     """
     Generate a prior model with layered structure.
 
@@ -850,18 +851,16 @@ def prior_model_layered(lay_dist='uniform', NLAY_min=3, NLAY_max=6, NLAY_deg=6, 
         NLAY = np.ceil(NLAY).astype(int)    
         f_prior_h5 = 'PRIOR_CHI2_NF_%d_%s_N%d.h5' % (NLAY_deg, rho_dist, N)
 
-
-    dz = 1
-    z_max = 90
+    # Force NLAY to be a 2 dimensional numpy array
+    NLAY = NLAY[:, np.newaxis]
+    
     z_min = 0
     z = np.arange(z_min, z_max, dz)
     nz= len(z)
-    
     M_rho = np.zeros((N, nz))
 
     # save to hdf5 file
     
-
     #% simulate the number of layers as in integer
     for i in range(N):
 

@@ -18,4 +18,5 @@ from integrate.integrate_io import get_geometry
 
 from integrate.integrate_plot import plot_profile_continuous
 from integrate.integrate_plot import plot_T
+from integrate.integrate_plot import plot_feature_2d
 
