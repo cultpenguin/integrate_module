@@ -210,7 +210,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                 #if dataset.size <= 1e6:  # arbitrary threshold for loading all data into memory
                 M_all = dataset[:]
 
-                for iid in tqdm(range(nsounding)):
+                for iid in tqdm(range(nsounding), mininterval=1):
                     ir = np.int64(i_use[iid,:]-1)
                     #if dataset.size <= 1e6:
                     m_post = M_all[ir,:]
@@ -236,7 +236,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
 
     return 1
 
-def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=1000000, autoT=1, ns=400):
+def sample_from_posterior_old(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=1000000, autoT=1, ns=400):
             
     # This is extremely memory efficicent, but perhaps not CPU efficiwent, when lookup table is small?
     d_obs = h5py.File(f_data_h5, 'r')['/D1/d_obs'][is_,:]
@@ -262,6 +262,29 @@ def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=10000
     return i_use, T, EV, is_
 
 
+def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=1000000, autoT=1, ns=400):
+    with h5py.File(f_data_h5, 'r') as f:
+        d_obs = f['/D1/d_obs'][is_,:]
+        d_std = f['/D1/d_std'][is_,:]
+    
+    i_use = np.where(~np.isnan(d_obs) & (np.abs(d_obs) > 0))[0]
+    d_obs = d_obs[i_use]
+    d_var = d_std[i_use]**2
+
+    dd = (d_sim[:, i_use] - d_obs)**2
+    logL = -.5*np.sum(dd/d_var, axis=1)
+
+    if autoT == 1:
+        T = logl_T_est(logL)
+    else:
+        T = 1
+    maxlogL = np.nanmax(logL)
+    
+    exp_logL = np.exp(logL - maxlogL)
+    i_use, P_acc = lu_post_sample_logl(logL, ns, T)
+    EV = maxlogL + np.log(np.nansum(exp_logL)/len(logL))
+    return i_use, T, EV, is_
+
 #def sample_from_posterior_chunk(is_,d_sim,f_data_h5, N_use,autoT,ns):
 #    return sample_from_posterior(is_,d_sim,f_data_h5, N_use,autoT,ns) 
 
@@ -283,6 +306,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
     from functools import partial
     import multiprocessing
     from multiprocessing import Pool
+    #from multiprocessing.dummy import Pool
     import os
 
     id=1
@@ -329,10 +353,10 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
     shm = shared_memory.SharedMemory(name=shm_name)
     d_sim = np.ndarray(d_sim_shape, dtype=d_sim_dtype, buffer=shm.buf)
     # In main process, after all subprocesses have finished
+    '''
     shm.close()
     shm.unlink()
-    '''
-
+    
     if len(f_post_h5)==0:
         f_post_h5 = "POST_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_prior_h5)[0],N_use,autoT)
         #f_post_h5 = f"{f_prior_h5[:-3]}_POST_Nu{N_use}_aT{autoT}.h5"
@@ -390,7 +414,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         
         # Create a multiprocessing pool and compute D for each chunk of C
         with Pool(Nproc) as p:
-            out = list(tqdm(p.imap(sample_from_posterior_partial, range(nsoundings), chunksize=1), total=nsoundings))
+            out = list(tqdm(p.imap(sample_from_posterior_partial, range(nsoundings), chunksize=1), total=nsoundings, mininterval=1))
 
 #            out = p.map(sample_from_posterior_partial, range(nsoundings))        
 #            result_iterator = p.imap_unordered(process, range(nsoundings))

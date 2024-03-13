@@ -67,7 +67,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
                 print("Key %s not found in %s" % (key, dstr))
     return 1
 
-def plot_T(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, **kwargs):
+def plot_T(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, clim=(0,200), **kwargs):
     
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -96,9 +96,9 @@ def plot_T(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, **kwargs):
     plt.grid()
     plt.xlabel('X')
     plt.ylabel('Y')
-    plt.clim(T_min,T_max)  
+    #plt.clim(T_min,T_max)  
+    plt.clim(clim)  
     plt.colorbar()
-    plt.clim(T_min,T_max)
     plt.title('Temperature')
     plt.axis('equal')
     # get filename without extension
