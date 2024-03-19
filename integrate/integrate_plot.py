@@ -171,6 +171,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
             clim = f_prior[Mstr].attrs['clim'][:].flatten()
         else:
             clim = [.1, 2600]
+            clim = [10, 500]
         print(clim)
 
     if is_discrete:
@@ -215,7 +216,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
     plt.figure(1, figsize=(20, 10))
     plt.subplot(4,1,1)
     plt.pcolor(ID[:,i1:i2], ZZ[:,i1:i2], Mean[:,i1:i2], 
-            cmap='hsv',            
+            cmap='jet',            
             shading='auto',
             norm=LogNorm())
     plt.clim(clim[0],clim[1])        
@@ -224,7 +225,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
 
     plt.subplot(4,1,2)
     plt.pcolor(ID[:,i1:i2], ZZ[:,i1:i2], Median[:,i1:i2], 
-            cmap='hsv',            
+            cmap='jet',            
             shading='auto',
             norm=LogNorm())  # Set color scale to logarithmic
     plt.clim(clim[0],clim[1])        
@@ -233,7 +234,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
 
     plt.subplot(4,1,3)
     plt.pcolor(ID[:,i1:i2], ZZ[:,i1:i2], Std[:,i1:i2], 
-            cmap='jet', 
+            cmap='hot_r', 
             vmin=0, vmax=0.5, 
             shading='auto')
     plt.title('Std')
