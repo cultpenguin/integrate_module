@@ -45,12 +45,14 @@ def write_stm_files(GEX, **kwargs):
     SkipWin_LM = int(GEX['Channel1']['RemoveInitialGates'][0])
     SkipWin_HM = int(GEX['Channel2']['RemoveInitialGates'][0])
 
-    TimeShiftLM = GEX['Channel1']['GateTimeShift'][0]
-    TimeShiftHM = GEX['Channel2']['GateTimeShift'][0]
+    windows_LM = windows[SkipWin_LM:LastWin_LM, :] + GEX['Channel1']['GateTimeShift'][0] + GEX['Channel1']['MeaTimeDelay'][0]
+    windows_HM = windows[SkipWin_HM:LastWin_HM, :] + GEX['Channel2']['GateTimeShift'][0] + GEX['Channel2']['MeaTimeDelay'][0]
 
-    windows_LM = windows[SkipWin_LM:LastWin_LM, :] + TimeShiftLM
-    windows_HM = windows[SkipWin_HM:LastWin_HM, :] + TimeShiftHM
-
+    #windows_LM = GEX['Channel1']['GateFactor'][0] * windows_LM
+    #windows_HM = GEX['Channel2']['GateFactor'][0] * windows_HM
+    #windows_LM = windows_LM/GEX['Channel1']['GateFactor'][0] 
+    #windows_HM = windows_HM/GEX['Channel2']['GateFactor'][0] 
+    
     NWin_LM = windows_LM.shape[0]
     NWin_HM = windows_HM.shape[0]
 
