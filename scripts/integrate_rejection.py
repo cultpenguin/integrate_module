@@ -59,7 +59,7 @@ def is_notebook():
         return False      # Probably standard Python interpreter
 
 
-def process(is_):
+def process_old(is_):
     import integrate as ig
     d_obs = h5py.File(f_data_h5, 'r')['/D1/d_obs'][is_,:]
     d_std = h5py.File(f_data_h5, 'r')['/D1/d_std'][is_,:]
@@ -80,6 +80,30 @@ def process(is_):
     
     i_use, P_acc = ig.lu_post_sample_logl(logL, ns, T)
     EV=maxlogL + np.log(np.nansum(np.exp(logL-maxlogL))/len(logL))
+    return i_use, T, EV, is_
+
+def process(is_):
+    import integrate as ig
+    with h5py.File(f_data_h5, 'r') as f:
+        d_obs = f['/D1/d_obs'][is_,:]
+        d_std = f['/D1/d_std'][is_,:]
+    
+    i_use = np.where(~np.isnan(d_obs) & (np.abs(d_obs) > 0))[0]
+    d_obs = d_obs[i_use]
+    d_var = d_std[i_use]**2
+
+    dd = (d_sim[:, i_use] - d_obs)**2
+    logL = -.5*np.sum(dd/d_var, axis=1)
+
+    if autoT == 1:
+        T = ig.logl_T_est(logL)
+    else:
+        T = 1
+    maxlogL = np.nanmax(logL)
+    
+    exp_logL = np.exp(logL - maxlogL)
+    i_use, P_acc = ig.lu_post_sample_logl(logL, ns, T)
+    EV = maxlogL + np.log(np.nansum(exp_logL)/len(logL))
     return i_use, T, EV, is_
 
 

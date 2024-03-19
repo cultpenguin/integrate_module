@@ -66,20 +66,27 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
                 print("Key %s not found in %s" % (key, dstr))
     return 1
 
-def plot_T(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, **kwargs):
+def plot_T(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, pl='both', **kwargs):
     
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
     
     X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    clim=(T_min,T_max)
 
     with h5py.File(f_post_h5,'r') as f_post:
         T=f_post['/T'][:].T
+        EV=f_post['/EV'][:].T
         try:
-            T=f_post['/T_mul'][:]
+            T_mul=f_post['/T_mul'][:]
         except:
-            a=1
+            T_mul=[]
+
+        try:
+            EV_mul=f_post['/EV_mul'][:]
+        except:
+            EV_mu=[]
 
     nd = X.shape[0]
     if i1<1: 
@@ -90,20 +97,44 @@ def plot_T(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, **kwargs):
     if i2<i1:
         i2=i1+1
 
-    plt.figure(1, figsize=(20, 10))
-    plt.scatter(X[i1:i2],Y[i1:i2],c=T[i1:i2],cmap='jet',**kwargs)            
-    plt.grid()
-    plt.xlabel('X')
-    plt.ylabel('Y')
-    plt.clim(T_min,T_max)  
-    plt.colorbar()
-    plt.clim(T_min,T_max)
-    plt.title('Temperature')
-    plt.axis('equal')
-    # get filename without extension
-    f_png = '%s_%d_%d_T.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
-    plt.savefig(f_png)
-    plt.show()
+    
+    if (pl=='both') or (pl=='T'):
+        plt.figure(1, figsize=(20, 10))
+        plt.scatter(X[i1:i2],Y[i1:i2],c=T[i1:i2],cmap='jet',**kwargs)            
+        plt.grid()
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.clim(clim)  
+        plt.colorbar()
+        plt.title('Temperature')
+        plt.axis('equal')
+        # get filename without extension
+        f_png = '%s_%d_%d_T.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
+        plt.savefig(f_png)
+        plt.show()
+
+    if (pl=='both') or (pl=='EV'):
+        # get the 99% percentile of EV values
+        EV_max = np.percentile(EV,99)
+        EV_max = 0
+        EV_min = np.percentile(EV,1)
+        if 'vmin' not in kwargs:
+            kwargs['vmin'] = EV_min
+        if 'vmax' not in kwargs:
+            kwargs['vmax'] = EV_max
+        print('EV_min=%f, EV_max=%f' % (EV_min, EV_max))
+        plt.figure(2, figsize=(20, 10))
+        plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],cmap='jet', **kwargs)            
+        plt.grid()
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.colorbar()
+        plt.title('EV')
+        plt.axis('equal')
+        # get filename without extension
+        f_png = '%s_%d_%d_EV.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
+        plt.savefig(f_png)
+        plt.show()
 
 
     return 1
@@ -131,7 +162,10 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
     Mstr = '/M%d' % im
 
     with h5py.File(f_prior_h5,'r') as f_prior:
-        z = f_prior[Mstr].attrs['z'][:].flatten()
+        try:
+            z = f_prior[Mstr].attrs['z'][:].flatten()
+        except:
+            z = f_prior[Mstr].attrs['x'][:].flatten()
         is_discrete = f_prior[Mstr].attrs['is_discrete']
         if 'clim' in f_prior[Mstr].attrs.keys():
             clim = f_prior[Mstr].attrs['clim'][:].flatten()
@@ -147,8 +181,9 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
         Median=f_post[Mstr+'/Median'][:].T
         Std=f_post[Mstr+'/Std'][:].T
         T=f_post['/T'][:].T
+        EV=f_post['/EV'][:].T
         try:
-            T=f_post['/T_mul'][:]
+            EV=f_post['/EV_mul'][:]
         except:
             a=1
 
@@ -203,12 +238,16 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
             shading='auto')
     plt.title('Std')
     plt.colorbar()
-    plt.subplot(4,1,4)
-    plt.plot(ID[0,i1:i2],T[i1:i2], 'k')
-    plt.ylabel('Temperature')
+    ax = plt.subplot(4,1,4)
+    plt.semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
+    plt.semilogy(ID[0,i1:i2],-EV[i1:i2], 'r', label='-EV')
+    #plt.ylabel('Temperature')
+    plt.legend()
     plt.grid()
     plt.xlabel('ID')
     plt.tight_layout()
+    ax.set_xlim(ID[0,i1], ID[0,i2])
+    ax.set_ylim(0.99, 250)
 
     # get filename without extension
     f_png = '%s_%d_%d_profile.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
