@@ -182,8 +182,9 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
         Median=f_post[Mstr+'/Median'][:].T
         Std=f_post[Mstr+'/Std'][:].T
         T=f_post['/T'][:].T
+        EV=f_post['/EV'][:].T
         try:
-            T=f_post['/T_mul'][:]
+            EV=f_post['/EV_mul'][:]
         except:
             a=1
 
@@ -239,12 +240,15 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
     plt.title('Std')
     plt.colorbar()
     ax = plt.subplot(4,1,4)
-    plt.plot(ID[0,i1:i2],T[i1:i2], 'k')
-    plt.ylabel('Temperature')
+    plt.semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
+    plt.semilogy(ID[0,i1:i2],-EV[i1:i2], 'r', label='-EV')
+    #plt.ylabel('Temperature')
+    plt.legend()
     plt.grid()
     plt.xlabel('ID')
     plt.tight_layout()
     ax.set_xlim(ID[0,i1], ID[0,i2])
+    ax.set_ylim(0.99, 250)
 
     # get filename without extension
     f_png = '%s_%d_%d_profile.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
