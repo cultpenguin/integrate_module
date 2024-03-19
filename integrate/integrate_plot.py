@@ -34,7 +34,6 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
     if i2<i1:
         i2=i1+1
 
-    
     if len(key)==0:
         with h5py.File(f_post_h5,'r') as f_post:
             key = list(f_post[dstr].keys())[0]
@@ -57,12 +56,12 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
                 plt.colorbar()
                 plt.title("%s/%s[%d,:] %s %s" %(dstr,key,iz,title_text,name))
                 plt.axis('equal')
+                
+                f_png = '%s_%d_%d_%d_%s%d_feature.png' % (os.path.splitext(f_post_h5)[0],i1,i2,im,key,iz)
+                plt.savefig(f_png)
                 plt.show()
 
-                # get filename without extension
-                #f_png = '%s_%d_%d_%s_feature.png' % (os.path.splitext(f_post_h5)[0],i1,i2,dstr[0:-1])
-                #plt.savefig(f_png)
-
+                
             else:
                 print("Key %s not found in %s" % (key, dstr))
     return 1
