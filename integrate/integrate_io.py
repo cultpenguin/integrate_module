@@ -350,3 +350,79 @@ def get_geometry(f_data_h5):
 
 
     return X, Y, LINE, ELEVATION
+
+
+def post_h5_to_xyz(f_post_h5='', Mstr='/M1'):
+
+    import pandas as pd
+    import integrate as ig
+
+    #Mstr = '/M1'
+    # if f_post_h5 is Null then use the last f_post_h5 file
+
+    if len(f_post_h5)==0:
+        f_post_h5 = 'POST_PRIOR_Daugaard_N2000000_TX07_20230731_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5'
+
+    f_post =  h5py.File(f_post_h5, 'r')
+    f_prior_h5 = f_post.attrs['f5_prior']
+    f_prior =  h5py.File(f_prior_h5, 'r')
+    f_data_h5 = f_post.attrs['f5_data']
+    if 'x' in f_prior[Mstr].attrs.keys():
+        z = f_prior[Mstr].attrs['x']
+    else:
+        z = f_prior[Mstr].attrs['z']    
+    is_discrete = f_prior[Mstr].attrs['is_discrete']
+
+    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+
+    # Check that Dstr exist in f_poyt_h5
+    if Mstr not in f_post:
+        print("ERROR: %s not in %s" % (Mstr, f_post_h5))
+        sys.exit(1)
+
+    D_mul = []
+    D_name = []
+    if is_discrete:
+        D_mul.append(f_post[Mstr+'/Mode'])
+        D_name.append('Mode')
+        D_mul.append(f_post[Mstr+'/Entropy'])
+        D_name.append('Entropy')
+    else:
+        D_mul.append(f_post[Mstr+'/Median'])
+        D_name.append('Median')
+        D_mul.append(f_post[Mstr+'/Mean'])
+        D_name.append('Mean')
+        D_mul.append(f_post[Mstr+'/Std'])
+        D_name.append('Std')
+    
+
+    # replicate z[1::] to be a 2D matric of zie ndx89
+    ZZ = np.tile(z[1::], (D_mul[0].shape[0], 1))
+
+    #
+    df = pd.DataFrame(data={'X': X, 'Y': Y, 'Line': LINE, 'ELEVATION': ELEVATION})
+
+    dataframes = [df]
+
+    for i in range(len(D_mul)):
+        D = D_mul[i][:]
+        
+        for j in range(D.shape[1]):
+            temp_df = pd.DataFrame(D[:,j], columns=[D_name[i]+'_'+str(j)])
+            dataframes.append(temp_df)
+
+    for j in range(ZZ.shape[1]):
+        temp_df = pd.DataFrame(ZZ[:,j], columns=['zbot_'+str(j)])
+        dataframes.append(temp_df)
+
+    df = pd.concat(dataframes, axis=1)
+    f_post_csv='%s_%s.csv' % (os.path.splitext(f_post_h5)[0],Mstr[1::])
+    #f_post_csv='%s.csv' % (os.path.splitext(f_post_h5)[0])
+    #f_post_csv = f_post_h5.replace('.h5', '.csv')
+    print('Writing to %s' % f_post_csv)
+    df.to_csv(f_post_csv, index=False)
+
+    f_post.close()
+    f_prior.close()
+
+    return f_post_csv
