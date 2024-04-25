@@ -11,7 +11,7 @@ import integrate as ig
 
 # %% Choose the GEX file used for forward modeling. THis should be stored in the data file.
 #f_data_h5 = 'tTEM_20230727_20230814_RAW_export.h5'
-#f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J1000.h5'
+f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J1000.h5'
 #f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J200.h5'
 #id = 1  
 #file_gex= ig.get_gex_file_from_data(f_data_h5, id=id)
@@ -40,17 +40,15 @@ f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5)
 # %% Compute prior DATA
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
-
-
 # %% [markdown]
 # ## Sample the posteriorm $\sigma(\mathbf{m})$
 #
 # The posterior distribution is sampling using the extended rejection sampler.
 
 # %% READY FOR INVERSION [markdown]
-# f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = 50000000, parallel=1, updatePostStat=False, showInfo=1)
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = 5000000, parallel=1, updatePostStat=False, showInfo=1)
 # # Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
-# ig.integrate_posterior_stats(f_post_h5)
+ig.integrate_posterior_stats(f_post_h5)
 
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$
@@ -70,6 +68,5 @@ ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of lay
 ig.plot_feature_2d(f_post_h5,im=1,key='Median', uselog=1, cmap='jet', s=10)
 #ig.plot_feature_2d(f_post_h5,im=1,iz=80,key='Median')
 
-# %% Pickle - DePickle , Serializations/DeSeriualization test
 
 # %%
