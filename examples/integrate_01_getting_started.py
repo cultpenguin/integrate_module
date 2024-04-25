@@ -12,10 +12,12 @@ import integrate as ig
 # %% Choose the GEX file used for forward modeling. THis should be stored in the data file.
 #f_data_h5 = 'tTEM_20230727_20230814_RAW_export.h5'
 #f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J1000.h5'
-f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J200.h5'
-id = 1  
-file_gex= ig.get_gex_file_from_data(f_data_h5, id=id)
+#f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J200.h5'
+#id = 1  
+#file_gex= ig.get_gex_file_from_data(f_data_h5, id=id)
 
+
+file_gex ='ttem_example.gex'
 print("Using GEX file: %s" % file_gex)
 
 
