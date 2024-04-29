@@ -4,6 +4,19 @@
 #
 # This notebook contains a simple example of geeting started with INTEGRATE
 
+#%% 
+try:
+    # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
+    get_ipython()
+    # If the above line doesn't raise an error, it means we are in a Jupyter environment
+    # Execute the magic commands using IPython's run_line_magic function
+    get_ipython().run_line_magic('load_ext', 'autoreload')
+    get_ipython().run_line_magic('autoreload', '2')
+except:
+    # If get_ipython() raises an error, we are not in a Jupyter environment
+    %load_ext autoreload
+    %autoreload 2
+
 # %%
 import integrate as ig
 
@@ -30,9 +43,10 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=500000
-f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5)
-
+#N=5000000
+#f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5)
+N=100000
+f_prior_h5 = 'PRIOR_Daugaard_N100000.h5'
 
 # %% [markdown]
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
@@ -47,7 +61,8 @@ f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
 # %% READY FOR INVERSION [markdown]
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = 5000000, parallel=1, updatePostStat=False, showInfo=1)
-# # Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
+
+# %% Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
 ig.integrate_posterior_stats(f_post_h5)
 
 # %% [markdown]
