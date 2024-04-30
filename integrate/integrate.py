@@ -165,6 +165,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
     import h5py
     import numpy as np
     import integrate
+    import scipy as sp
     from tqdm import tqdm
 
     showInfo = kwargs.get('showInfo', 0)
@@ -233,8 +234,70 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                 f_post['/%s/%s' % (name,'Std')][:] = M_std
 
             elif name.upper().startswith('M') and 'is_discrete' in dataset.attrs and dataset.attrs['is_discrete'] == 1:
-                print('%s: DISCRETE' % name)
                 
+                nm = dataset.shape[1]
+                nsounding, nr = i_use.shape
+                nsounding, nr = i_use.shape
+                nm = dataset.shape[1]
+                # Get number of classes for name    
+                class_id = f_prior[name].attrs['class_id']
+                n_classes = len(class_id)
+                
+                if showInfo>0:
+                    print('%s: DISCRETE, N_classes =%d' % (name,n_classes))    
+
+                M_mode = np.zeros((nsounding,nm))
+                M_entropy = np.zeros((nsounding,nm))
+                M_P= np.zeros((nsounding,n_classes,nm))
+
+                # Create datasets in h5 file
+                for stat in ['Mode', 'Entropy']:
+                    if stat not in f_post:
+                        dset = '/%s/%s' % (name,stat)
+                        if dset not in f_post:
+                            print('Creating %s' % dset)
+                            f_post.create_dataset(dset, (nsounding,nm))
+                for stat in ['Mode', 'P']:
+                    if stat not in f_post:
+                        dset = '/%s/%s' % (name,stat)
+                        if dset not in f_post:
+                            print('Creating %s' % dset)
+                            f_post.create_dataset(dset, (nsounding,n_classes,nm))
+
+                M_all = dataset[:]
+
+                for iid in tqdm(range(nsounding), mininterval=1):
+
+                    # Get the indices of the rows to use
+                    ir = np.int64(i_use[iid,:]-1)
+                    
+                    # Load ALL DATA AND EXTRACT
+                    # load from all models in memory
+                    #m_post = dataset[:][ir,:]
+                    m_post = M_all[ir,:]
+                    # Load only the needed data
+                    #m_post = np.zeros((nr,nm))
+                    #for j in range(nr):
+                    #    m_post[j,:] = dataset[ir[j],:]
+                    
+
+                    # Compute the class probability
+                    n_count = np.zeros((n_classes,nm))
+                    for ic in range(n_classes):
+                        n_count[ic,:]=np.sum(class_id[ic]==m_post, axis=0)/nr    
+                    M_P[iid,:,:] = n_count
+
+                    # Compute the mode
+                    M_mode[iid,:] = class_id[np.argmax(n_count, axis=0)]
+
+                    # Compute the entropy
+                    M_entropy[iid,:]=sp.stats.entropy(n_count, base=n_classes)
+
+                f_post['/%s/%s' % (name,'Mode')][:] = M_median
+                f_post['/%s/%s' % (name,'Entropy')][:] = M_entropy
+                f_post['/%s/%s' % (name,'P')][:] = M_P
+
+
             else: 
                 if (showInfo>0):
                     print('%s: NOT RECOGNIZED' % name.upper())
@@ -242,7 +305,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
             
                 
 
-    return 1
+    return None
 
 def sample_from_posterior_old(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=1000000, autoT=1, ns=400):
             

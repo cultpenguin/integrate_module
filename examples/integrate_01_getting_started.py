@@ -65,6 +65,103 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = 5000000, 
 # %% Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
 ig.integrate_posterior_stats(f_post_h5)
 
+#%% 
+import h5py
+import scipy as sp
+import numpy as np
+import matplotlib.pyplot as plt
+
+f_prior = h5py.File(f_prior_data_h5, 'r')
+f_post = h5py.File(f_post_h5, 'a')
+
+name = '/M2'
+dataset = f_prior[name]
+i_use = f_post['i_use'][:]
+nsounding, nr = i_use.shape
+nm = dataset.shape[1]
+# Get number of classes for name    
+
+
+class_id = f_prior[name].attrs['class_id']
+n_classes = len(class_id)
+
+
+#m_post = np.zeros((nm, nr))
+M_all = dataset[:]
+M_mode = np.zeros((nsounding,nm))
+M_entropy = np.zeros((nsounding,nm))
+M_P= np.zeros((nsounding,n_classes,nm))
+
+t0 = time.time()
+
+for iid in range(nsounding):
+
+    # Get the indices of the rows to use
+    ir = np.int64(i_use[iid,:]-1)
+    
+    # Load ALL DATA AND EXTRACT
+    #m_post = dataset[:][ir,:]
+    m_post = M_all[ir,:]
+    
+    # Load only the needed data
+    #m_post = np.zeros((nr,nm))
+    #for j in range(nr):
+    #    m_post[j,:] = dataset[ir[j],:]
+    
+    #ir = np.sort(ir)
+    #m_post = dataset[ir,:] # dows not work when ir contains duplicates
+    
+
+    """
+    # Compute the mode
+    m_mode_single, count_mode = sp.stats.mode(m_post)
+    M_mode[iid,:] = m_mode_single
+    """
+   
+    # Compute the class probability
+    n_count = np.zeros((n_classes,nm))
+    for ic in range(n_classes):
+        n_count[ic,:]=np.sum(class_id[ic]==m_post, axis=0)/nr    
+    M_P[iid,:,:] = n_count
+
+    # Compute the entropy
+    M_entropy[iid,:]=sp.stats.entropy(n_count, base=n_classes)
+    """
+    for im in range(nm):
+        M_entropy[iid,im] = sp.stats.entropy(n_count[:,im], base=n_classes)
+    """
+
+
+t1 = time.time()
+
+print('Elapsed time: %f' % (t1-t0))
+
+#%% 
+m_real = m_post[:30]    
+# copmute pdf using the the dicrete values in class_id
+# Compute histogram
+hist, bin_edges = np.histogram(m_real, bins=class_id)
+
+#%% 
+
+plt.figure()
+plt.subplot(2,1,1)
+plt.imshow(M_mode[0:-1:1,:].T, aspect='auto')
+plt.subplot(2,1,2)
+plt.imshow(M_entropy[0:-1:1,:].T, aspect='auto')
+plt.colorbar()
+
+#m_mean = np.exp(np.mean(np.log(m_post), axis=0))
+#m_median = np.median(m_post, axis=0)
+#m_std = np.std(np.log10(m_post), axis=0)
+
+#M_mean[iid,:] = m_mean
+#M_median[iid,:] = m_median
+#M_std[iid,:] = m_std
+
+
+
+
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$
 
