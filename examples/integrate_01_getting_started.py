@@ -4,6 +4,19 @@
 #
 # This notebook contains a simple example of geeting started with INTEGRATE
 
+#%% 
+try:
+    # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
+    get_ipython()
+    # If the above line doesn't raise an error, it means we are in a Jupyter environment
+    # Execute the magic commands using IPython's run_line_magic function
+    get_ipython().run_line_magic('load_ext', 'autoreload')
+    get_ipython().run_line_magic('autoreload', '2')
+except:
+    # If get_ipython() raises an error, we are not in a Jupyter environment
+    %load_ext autoreload
+    %autoreload 2
+
 # %%
 import integrate as ig
 
@@ -11,11 +24,13 @@ import integrate as ig
 
 # %% Choose the GEX file used for forward modeling. THis should be stored in the data file.
 #f_data_h5 = 'tTEM_20230727_20230814_RAW_export.h5'
-#f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J1000.h5'
-f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J200.h5'
-id = 1  
-file_gex= ig.get_gex_file_from_data(f_data_h5, id=id)
+f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J1000.h5'
+#f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J200.h5'
+#id = 1  
+#file_gex= ig.get_gex_file_from_data(f_data_h5, id=id)
 
+
+file_gex ='ttem_example.gex'
 print("Using GEX file: %s" % file_gex)
 
 
@@ -28,9 +43,10 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=500000
-f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5)
-
+#N=5000000
+#f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5)
+N=100000
+f_prior_h5 = 'PRIOR_Daugaard_N100000.h5'
 
 # %% [markdown]
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
@@ -38,17 +54,17 @@ f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5)
 # %% Compute prior DATA
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
-
-
 # %% [markdown]
 # ## Sample the posteriorm $\sigma(\mathbf{m})$
 #
 # The posterior distribution is sampling using the extended rejection sampler.
 
 # %% READY FOR INVERSION [markdown]
-# f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = 50000000, parallel=1, updatePostStat=False, showInfo=1)
-# # Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
-# ig.integrate_posterior_stats(f_post_h5)
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = 5000000, parallel=1, updatePostStat=False, showInfo=1)
+
+# %% Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
+ig.integrate_posterior_stats(f_post_h5)
+
 
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$
@@ -68,6 +84,5 @@ ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of lay
 ig.plot_feature_2d(f_post_h5,im=1,key='Median', uselog=1, cmap='jet', s=10)
 #ig.plot_feature_2d(f_post_h5,im=1,iz=80,key='Median')
 
-# %% Pickle - DePickle , Serializations/DeSeriualization test
 
 # %%

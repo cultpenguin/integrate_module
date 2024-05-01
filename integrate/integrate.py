@@ -99,7 +99,7 @@ def lu_post_sample_logl(logL, ns=1, T=1):
     
     return i_use_all, P_acc
 
-def integrate_update_prior_attributes(f_prior_h5):
+def integrate_update_prior_attributes(f_prior_h5, **kwargs):
     """
     Update the 'is_discrete' attribute of datasets in an HDF5 file.
 
@@ -117,16 +117,20 @@ def integrate_update_prior_attributes(f_prior_h5):
         The path to the HDF5 file to process.
     """
     
+    showInfo = kwargs.get('showInfo', 0)
+    
     # Check that hdf5 files exists
     if not os.path.isfile(f_prior_h5):
         print('File %s does not exist' % f_prior_h5)
         exit()  
+
     with h5py.File(f_prior_h5, 'a') as f:  # open file in append mode
         for name, dataset in f.items():
             if name.upper().startswith('M'):
                 # Check if the attribute 'is_discrete' exists
                 if 'is_discrete' in dataset.attrs:
-                    print('%s: %s.is_discrete=%d' % (f_prior_h5,name,dataset.attrs['is_discrete']))
+                    if (showInfo>0):
+                        print('%s: %s.is_discrete=%d' % (f_prior_h5,name,dataset.attrs['is_discrete']))
                 else:
                     # Check if M is discrete
                     M_sample = dataset[:1000]  # get the first 1000 elements
@@ -142,7 +146,8 @@ def integrate_update_prior_attributes(f_prior_h5):
                     else:
                         is_discrete = 0
 
-                    print(f'Setting is_discrete={is_discrete}, for {name}')
+                    if (showInfo>0):
+                        print(f'Setting is_discrete={is_discrete}, for {name}')
                     dataset.attrs['is_discrete'] = is_discrete
 
                 if dataset.attrs['is_discrete']==1:
@@ -160,6 +165,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
     import h5py
     import numpy as np
     import integrate
+    import scipy as sp
     from tqdm import tqdm
 
     showInfo = kwargs.get('showInfo', 0)
@@ -172,7 +178,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
         else:
             raise ValueError(f"'f5_prior' attribute does not exist in {f_post_h5}")
 
-    integrate.integrate_update_prior_attributes(f_prior_h5)
+    integrate.integrate_update_prior_attributes(f_prior_h5, **kwargs)
 
 
     # Load 'i_use' data from the HDF5 file
@@ -186,11 +192,11 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
     # Process each dataset in f_prior_h5
     with h5py.File(f_prior_h5, 'r') as f_prior, h5py.File(f_post_h5, 'a') as f_post:
         for name, dataset in f_prior.items():
-            if showInfo>0:
-                print(name.upper())
                 
             if name.upper().startswith('M') and 'is_discrete' in dataset.attrs and dataset.attrs['is_discrete'] == 0:
-                print(name)
+                if showInfo>0:
+                    print('%s: CONTINUOUS' % name)
+
                 nm = dataset.shape[1]
                 nsounding, nr = i_use.shape
                 m_post = np.zeros((nm, nr))
@@ -212,11 +218,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
 
                 for iid in tqdm(range(nsounding), mininterval=1):
                     ir = np.int64(i_use[iid,:]-1)
-                    #if dataset.size <= 1e6:
                     m_post = M_all[ir,:]
-                    #else:
-                    #    for j in range(len(ir)):
-                    #        m_post[:, j] = dataset[:, ir[j]]
 
                     m_mean = np.exp(np.mean(np.log(m_post), axis=0))
                     m_median = np.median(m_post, axis=0)
@@ -226,15 +228,84 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                     M_median[iid,:] = m_median
                     M_std[iid,:] = m_std
 
-                    #¤f_post['/%s/%s' % (name,'Mean')][iid,:] = m_mean
-                    #f_post['/%s/%s' % (name,'Median')][iid,:] = m_median
-                    #f_post['/%s/%s' % (name,'Std')][iid,:] = m_std
 
                 f_post['/%s/%s' % (name,'Mean')][:] = M_mean
                 f_post['/%s/%s' % (name,'Median')][:] = M_median
                 f_post['/%s/%s' % (name,'Std')][:] = M_std
 
-    return 1
+            elif name.upper().startswith('M') and 'is_discrete' in dataset.attrs and dataset.attrs['is_discrete'] == 1:
+                
+                nm = dataset.shape[1]
+                nsounding, nr = i_use.shape
+                nsounding, nr = i_use.shape
+                nm = dataset.shape[1]
+                # Get number of classes for name    
+                class_id = f_prior[name].attrs['class_id']
+                n_classes = len(class_id)
+                
+                if showInfo>0:
+                    print('%s: DISCRETE, N_classes =%d' % (name,n_classes))    
+
+                M_mode = np.zeros((nsounding,nm))
+                M_entropy = np.zeros((nsounding,nm))
+                M_P= np.zeros((nsounding,n_classes,nm))
+
+                # Create datasets in h5 file
+                for stat in ['Mode', 'Entropy']:
+                    if stat not in f_post:
+                        dset = '/%s/%s' % (name,stat)
+                        if dset not in f_post:
+                            print('Creating %s' % dset)
+                            f_post.create_dataset(dset, (nsounding,nm))
+                for stat in ['Mode', 'P']:
+                    if stat not in f_post:
+                        dset = '/%s/%s' % (name,stat)
+                        if dset not in f_post:
+                            print('Creating %s' % dset)
+                            f_post.create_dataset(dset, (nsounding,n_classes,nm))
+
+                M_all = dataset[:]
+
+                for iid in tqdm(range(nsounding), mininterval=1):
+
+                    # Get the indices of the rows to use
+                    ir = np.int64(i_use[iid,:]-1)
+                    
+                    # Load ALL DATA AND EXTRACT
+                    # load from all models in memory
+                    #m_post = dataset[:][ir,:]
+                    m_post = M_all[ir,:]
+                    # Load only the needed data
+                    #m_post = np.zeros((nr,nm))
+                    #for j in range(nr):
+                    #    m_post[j,:] = dataset[ir[j],:]
+                    
+
+                    # Compute the class probability
+                    n_count = np.zeros((n_classes,nm))
+                    for ic in range(n_classes):
+                        n_count[ic,:]=np.sum(class_id[ic]==m_post, axis=0)/nr    
+                    M_P[iid,:,:] = n_count
+
+                    # Compute the mode
+                    M_mode[iid,:] = class_id[np.argmax(n_count, axis=0)]
+
+                    # Compute the entropy
+                    M_entropy[iid,:]=sp.stats.entropy(n_count, base=n_classes)
+
+                f_post['/%s/%s' % (name,'Mode')][:] = M_median
+                f_post['/%s/%s' % (name,'Entropy')][:] = M_entropy
+                f_post['/%s/%s' % (name,'P')][:] = M_P
+
+
+            else: 
+                if (showInfo>0):
+                    print('%s: NOT RECOGNIZED' % name.upper())
+                
+            
+                
+
+    return None
 
 def sample_from_posterior_old(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=1000000, autoT=1, ns=400):
             
