@@ -385,7 +385,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
     #shm.unlink()
     
     if len(f_post_h5)==0:
-        f_post_h5 = "POST_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_prior_h5)[0],N_use,autoT)
+        f_post_h5 = "POST_%s_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_h5)[0],N_use,autoT)
         #f_post_h5 = f"{f_prior_h5[:-3]}_POST_Nu{N_use}_aT{autoT}.h5"
 
     # Check that f_post_h5 allready exists, and warn the user   
