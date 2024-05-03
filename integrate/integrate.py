@@ -997,4 +997,74 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
     f_prior.close()    
 
     return f_prior_h5
+
+def prior_model_workbench(N=10000, rho_dist='uniform', z1=0, z2= 100, nlayers=30, p=2, rho_min = 1, rho_max= 300, rho_mean=180, rho_std=80, chi2_deg= 100):
+    """
+
+    Generate a prior model with increasingly thick layers
+ 
+    Args:
+        N (int): Number of prior models to generate. Default is 100000.
+        rho_dist (str): Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', 'lognormal', and 'chi2'. Default is 'log-uniform'.
+        # rho_dist='uniform', 'log-uniform'
+        rho_min (float): Minimum resistivity value. Default is 0.1.
+        rho_max (float): Maximum resistivity value. Default is 100.
+        # rho_dist='normal', 'log-normal'
+        rho_mean (float): Mean resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 100.
+        rho_std (float): Standard deviation of resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 80.
+        # rho_dist='chi2'
+        chi2_def (int): Degrees of freedom for chi2 distribution. Only applicable if rho_dist is 'chi2'. Default is 100.
+
+    Returns:
+        str: Filepath of the saved prior model.
+
+
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import h5py
+    from tqdm import tqdm
+    
+
+    f_prior_h5 = 'PRIOR_WB%d_N%d_%s' % (nlayers,N,rho_dist)
+
+    z= z1 + (z2 - z1) * np.linspace(0, 1, nlayers) ** p
+
+    nz = len(z)
+    
+    if rho_dist=='uniform':
+        M_rho = np.random.uniform(low=rho_min, high = rho_max, size=(N, nz))
+        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, rho_min, rho_max)
+    elif rho_dist=='log-uniform':
+        M_rho = np.exp(np.random.uniform(low=np.log(rho_min), high = np.log(rho_max), size=(N, nz)))
+        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, rho_min, rho_max)
+    elif rho_dist=='normal':
+        M_rho = np.random.normal(loc=rho_mean, scale = rho_std, size=(N, nz))
+        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, rho_mean, rho_std)
+    elif rho_dist=='log-normal':
+        M_rho = np.random.lognormal(mean=np.log(rho_mean), sigma = rho_std/rho_mean, size=(N, nz))
+        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, rho_mean, rho_std)
+    elif rho_dist=='chi2':
+        M_rho = np.random.chisquare(df = chi2_deg, size=(N, nz))
+        f_prior_h5 = '%s_deg%d.h5' % (f_prior_h5,chi2_deg)
+
+    f_prior_h5 = f_prior_h5 + '.h5'
+
+    print("Saving prior model to %s" % f_prior_h5)
+    f_prior = h5py.File(f_prior_h5, 'w')
+    f_prior.create_dataset('/M1', data=M_rho)
+    f_prior['/M1'].attrs['is_discrete'] = 0
+    f_prior['/M1'].attrs['z'] = z
+    f_prior['/M1'].attrs['x'] = z
+
+    #plt.figure()
+    #plt.subplot(121)
+    #plt.hist(M_rho.flatten())
+    #plt.subplot(122)
+    #plt.hist(np.log10(M_rho.flatten()))
+
+    # return the full filepath to f_prior_h5
+    
+    return f_prior_h5
+
     

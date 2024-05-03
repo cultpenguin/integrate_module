@@ -14,9 +14,9 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # %load_ext autoreload
-    # %autoreload 2
-
+    %load_ext autoreload
+    %autoreload 2
+    pass
 # %%
 import integrate as ig
 
@@ -44,9 +44,16 @@ print("Using GEX file: %s" % file_gex)
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
 #N=5000000
-N=100000
+N=10000
+# Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5)
-#N=100000
+# WorkBench type layered model
+f_prior_h5 = ig.prior_model_workbench(rho_dist='chi2', nlayers=5)
+f_prior_h5 = ig.prior_model_workbench(rho_dist='normal', nlayers=5)
+f_prior_h5 = ig.prior_model_workbench(rho_dist='uniform', nlayers=5)
+f_prior_h5 = ig.prior_model_workbench(rho_dist='log-normal', nlayers=5)
+f_prior_h5 = ig.prior_model_workbench(rho_dist='log-uniform', nlayers=11, rho_min = 10, rho_max = 300)
+
 #f_prior_h5 = 'PRIOR_Daugaard_N100000.h5'
 
 # %% [markdown]
@@ -78,12 +85,18 @@ ig.plot_T(f_post_h5)
 ig.plot_profile_continuous(f_post_h5, i1=1000, i2=2000, im=1)
 # %%
 
-# Plot a 2D feature: The number of layers
-ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of layers', cmap='jet', s=12)
-
 # Plot a 2D feature: Resistivity in layer 10
 ig.plot_feature_2d(f_post_h5,im=1,key='Median', uselog=1, cmap='jet', s=10)
 #ig.plot_feature_2d(f_post_h5,im=1,iz=80,key='Median')
+
+try:
+    # Plot a 2D feature: The number of layers
+    ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of layers', cmap='jet', s=12)
+except:
+    pass
+
+
+
 
 
 # %%
