@@ -44,7 +44,7 @@ print("Using GEX file: %s" % file_gex)
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
 N=5000000
-#N=100000
+#N=10000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5)
 # WorkBench type layered model
@@ -52,7 +52,7 @@ f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='chi2', nlayers=5)
 f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='normal', nlayers=5)
 f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='uniform', nlayers=5)
 f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='log-normal', nlayers=5)
-f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='log-uniform', nlayers=11, rho_min = 10, rho_max = 300)
+f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='log-uniform', nlayers=30, rho_min = 10, rho_max = 300)
 
 #f_prior_h5 = 'PRIOR_Daugaard_N100000.h5'
 
