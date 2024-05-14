@@ -28,6 +28,7 @@ f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J1000.h5'
 #f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J200.h5'
 #id = 1  
 #file_gex= ig.get_gex_file_from_data(f_data_h5, id=id)
+f_data_h5 = 'DAUGAARD_AVG.h5'
 
 
 file_gex ='ttem_example.gex'
@@ -44,17 +45,23 @@ print("Using GEX file: %s" % file_gex)
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
 N=5000000
-#N=10000
+N=1000000
 # Layered model
-f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5)
+#f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5)
 # WorkBench type layered model
-f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='chi2', nlayers=5)
-f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='normal', nlayers=5)
-f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='uniform', nlayers=5)
-f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='log-normal', nlayers=5)
-f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='log-uniform', nlayers=30, rho_min = 10, rho_max = 300)
+#f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='chi2', nlayers=5)
+#f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='normal', nlayers=5)
+#f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='uniform', nlayers=5)
+#f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='log-normal', nlayers=5)
+f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='log-uniform', nlayers=10, rho_min = 5, rho_max = 300)
 
 #f_prior_h5 = 'PRIOR_Daugaard_N100000.h5'
+
+#N=20000
+#f_prior_h5 = 'detailed_daugaard_informed_Daugaard_N20000.h5'
+#f_prior_h5 = 'detailed_daugaard_informed_Daugaard_N200000.h5'
+
+
 
 # %% [markdown]
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
@@ -63,12 +70,13 @@ f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='log-uniform', nlayers=30, rh
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
 # %% [markdown]
-# ## Sample the posteriorm $\sigma(\mathbf{m})$
+# ## Sample the posterior $\sigma(\mathbf{m})$
 #
 # The posterior distribution is sampling using the extended rejection sampler.
 
 # %% READY FOR INVERSION
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = 5000000, parallel=1, updatePostStat=False, showInfo=1)
+N_use = 1000000
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1)
 
 # %% Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
 ig.integrate_posterior_stats(f_post_h5)
