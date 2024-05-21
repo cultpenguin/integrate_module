@@ -76,7 +76,7 @@ N=1000000
 
 # %% READY FOR INVERSION
 f_prior_data_h5 = 'PRIOR_Daugaard_N2000000_TX07_20230731_2x4_RC20-33_Nh280_Nf12.h5'
-N_use = 1000000
+N_use = 10000
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1)
 
 # %% Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
