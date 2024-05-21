@@ -23,14 +23,8 @@ import integrate as ig
 
 
 # %% Choose the GEX file used for forward modeling. THis should be stored in the data file.
-#f_data_h5 = 'tTEM_20230727_20230814_RAW_export.h5'
-f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J1000.h5'
-#f_data_h5 = 'tTEM_20230727_20230814_AVG_export_J200.h5'
-#id = 1  
 #file_gex= ig.get_gex_file_from_data(f_data_h5, id=id)
 f_data_h5 = 'DAUGAARD_AVG.h5'
-
-
 file_gex ='ttem_example.gex'
 print("Using GEX file: %s" % file_gex)
 
@@ -43,31 +37,15 @@ print("Using GEX file: %s" % file_gex)
 # %% [markdown]
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
-# %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=5000000
-N=1000000
-# Layered model
-#f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5)
-# WorkBench type layered model
-#f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='chi2', nlayers=5)
-#f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='normal', nlayers=5)
-#f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='uniform', nlayers=5)
-#f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='log-normal', nlayers=5)
-#f_prior_h5 = ig.prior_model_workbench(N=N,rho_dist='log-uniform', nlayers=10, rho_min = 5, rho_max = 300)
-
-#f_prior_h5 = 'PRIOR_Daugaard_N100000.h5'
-
-#N=20000
-#f_prior_h5 = 'detailed_daugaard_informed_Daugaard_N20000.h5'
-#f_prior_h5 = 'detailed_daugaard_informed_Daugaard_N200000.h5'
-
-
+# %% A. LOAD PRIOR MODEL OR USE EXISTING
+#f_prior_h5 = 'PRIOR_Daugaard_N2000000.h5'
 
 # %% [markdown]
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
 
 # %% Compute prior DATA
 #f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
+f_prior_data_h5 = 'PRIOR_Daugaard_N2000000_TX07_20230731_2x4_RC20-33_Nh280_Nf12.h5'
 
 # %% [markdown]
 # ## Sample the posterior $\sigma(\mathbf{m})$
@@ -75,8 +53,7 @@ N=1000000
 # The posterior distribution is sampling using the extended rejection sampler.
 
 # %% READY FOR INVERSION
-f_prior_data_h5 = 'PRIOR_Daugaard_N2000000_TX07_20230731_2x4_RC20-33_Nh280_Nf12.h5'
-N_use = 10000
+N_use = 5000000
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1)
 
 # %% Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
