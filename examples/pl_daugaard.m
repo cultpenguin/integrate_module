@@ -1,9 +1,10 @@
 f_data_h5 = 'DAUGAARD_AVG.h5';
 f_prior_data ='PRIOR_Daugaard_N2000000_TX07_20230731_2x4_RC20-33_Nh280_Nf12.h5';
 f_post_h5 = 'POST_DAUGAARD_AVG_PRIOR_Daugaard_N2000000_TX07_20230731_2x4_RC20-33_Nh280_Nf12_Nu100000_aT1.h5';
+f_post_h5 = 'POST_DAUGAARD_AVG_PRIOR_Daugaard_N2000000_TX07_20230731_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5'
 
-
-
+%%
+integrate_posterior_stats(f_post_h5)
 
 %% plot profile
 close all

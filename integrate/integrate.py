@@ -483,6 +483,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         # Parallel
         if Nproc < 1 :
             Nproc =  int(multiprocessing.cpu_count()/2)
+            #Nproc =  int(multiprocessing.cpu_count())
         if (showInfo>-1):
             print("Using %d parallel threads." % (Nproc))
             # print("nsoundings: %d" % nsoundings)
@@ -860,6 +861,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, im=1, id=1, Nha
         # Parallel
         if Nproc < 1 :
             Nproc =  int(multiprocessing.cpu_count()/2)
+            Nproc =  int(multiprocessing.cpu_count())
         if (showInfo>0):
             print("Using %d parallel threads." % (Nproc))
 

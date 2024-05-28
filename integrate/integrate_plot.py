@@ -56,8 +56,10 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
                 plt.colorbar()
                 plt.title("%s/%s[%d,:] %s %s" %(dstr,key,iz,title_text,name))
                 plt.axis('equal')
+                if 'clim' in kwargs:
+                    plt.clim(kwargs['clim'])
                 
-                f_png = '%s_%d_%d_%d_%s%d_feature.png' % (os.path.splitext(f_post_h5)[0],i1,i2,im,key,iz)
+                f_png = '%s_%d_%d_%d_%s%02d_feature.png' % (os.path.splitext(f_post_h5)[0],i1,i2,im,key,iz)
                 plt.savefig(f_png)
                 plt.show()
 
@@ -139,7 +141,7 @@ def plot_T(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, pl='both', **kwargs):
 
     return 1
 
-def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
+def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
     Plot continuous profiles from a given HDF5 file.
 
@@ -161,6 +163,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
 
     Mstr = '/M%d' % im
 
+    print("Plotting profile %s from %s" % (Mstr, f_post_h5))
+
     with h5py.File(f_prior_h5,'r') as f_prior:
         try:
             z = f_prior[Mstr].attrs['z'][:].flatten()
@@ -170,8 +174,12 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1):
         if 'clim' in f_prior[Mstr].attrs.keys():
             clim = f_prior[Mstr].attrs['clim'][:].flatten()
         else:
-            clim = [.1, 2600]
-            clim = [10, 500]
+            # if clim set in kwargs, use it, otherwise use default
+            if 'clim' in kwargs:
+                clim = kwargs['clim']
+            else:
+                clim = [.1, 2600]
+                clim = [10, 500]
         print(clim)
 
     if is_discrete:
