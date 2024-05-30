@@ -41,9 +41,9 @@ RHO_max = 800
 #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, dz=1, z_max = 50, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
 #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', dz = 1, z_max = 50, NLAY_min=1, NLAY_max=3, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
 # N layer model with increasing thickness
-f_prior_h5 = ig.prior_model_workbench(N=N, z2 = 30, nlayers=12, rho_min = RHO_min, rho_max = RHO_max)
-f_prior_h5 = ig.prior_model_workbench(N=N, z2 = 30, nlayers=5, rho_dist='log-uniform', rho_min = RHO_min, rho_max = RHO_max)
-f_prior_h5 = ig.prior_model_workbench(N=N, rho_mean=45, rho_std=55, rho_dist='log-normal', z2 = 30, nlayers=12, rho_min = RHO_min, rho_max = RHO_max)
+f_prior_h5 = ig.prior_model_workbench(N=N, z2 = 30, nlayers=20, rho_min = RHO_min, rho_max = RHO_max)
+#f_prior_h5 = ig.prior_model_workbench(N=N, z2 = 30, nlayers=5, rho_dist='log-uniform', rho_min = RHO_min, rho_max = RHO_max)
+#f_prior_h5 = ig.prior_model_workbench(N=N, rho_mean=45, rho_std=55, rho_dist='log-normal', z2 = 30, nlayers=12, rho_min = RHO_min, rho_max = RHO_max)
 
 ig.plot_prior_stats(f_prior_h5)
 # %% A2. Compute prior DATA

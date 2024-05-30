@@ -20,21 +20,23 @@ def is_notebook():
     except NameError:
         return False      # Probably standard Python interpreter
 
+import numpy as np
+
 def logl_T_est(logL, N_above=10, P_acc_lev=0.2):
     """
     Estimate a temperature (T_est) based on a given logarithmic likelihood (logL), 
     a number (N_above), and an acceptance level (P_acc_lev).
 
-    Parameters:
-    logL (numpy.ndarray): An array of logarithmic likelihoods.
-    N_above (int, optional): The number of elements above which to consider in the sorted logL array. Default is 10.
-    P_acc_lev (float, optional): The acceptance level for the calculation. Default is 0.2.
+    :param logL: An array of logarithmic likelihoods.
+    :type logL: numpy.ndarray
+    :param N_above: The number of elements above which to consider in the sorted logL array. Default is 10.
+    :type N_above: int, optional
+    :param P_acc_lev: The acceptance level for the calculation. Default is 0.2.
+    :type P_acc_lev: float, optional
+    :return: The estimated temperature. It's either a positive number or infinity.
+    :rtype: float
 
-    Returns:
-    float: The estimated temperature. It's either a positive number or infinity.
-
-    Note:
-    The function sorts the logL array in ascending order after normalizing the data by subtracting the maximum value from each element.
+    note: The function sorts the logL array in ascending order after normalizing the data by subtracting the maximum value from each element.
     It then removes any NaN values from the sorted array.
     If the sorted array is not empty, it calculates T_est based on the N_above+1th last element in the sorted array and the natural logarithm of P_acc_lev.
     If the sorted array is empty, it sets T_est to infinity.
@@ -69,9 +71,10 @@ def lu_post_sample_logl(logL, ns=1, T=1):
     Perform a likelihood-utility (LU) post-sampling on the given logarithmic likelihoods (logL).
 
     Parameters:
-    logL (numpy.ndarray): An array of logarithmic likelihoods.
-    ns (int, optional): The number of samples to generate. Default is 1.
-    T (float, optional): The temperature parameter for the acceptance probability calculation. Default is 1.
+
+    :logL: (numpy.ndarray): An array of logarithmic likelihoods.
+    :ns: (int, optional): The number of samples to generate. Default is 1.
+    :T: (float, optional): The temperature parameter for the acceptance probability calculation. Default is 1.
 
     Returns:
     tuple: A tuple containing two numpy arrays. The first array contains the indices of the selected samples. 
@@ -607,26 +610,24 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
     """
     Perform forward modeling using the GAAEM method.
 
-    Args:
-        C (numpy.ndarray, optional): Conductivity array. Defaults to np.array(()).
-        thickness (numpy.ndarray, optional): Thickness array. Defaults to np.array(()).
-        GEX (dict, optional): GEX dictionary. Defaults to {}.
-        file_gex (str, optional): Path to GEX file. Defaults to ''.
-        stmfiles (list, optional): List of STM files. Defaults to [].
-        showtime (bool, optional): Flag to display execution time. Defaults to False.
-        **kwargs: Additional keyword arguments.
-
-    Returns:
-        numpy.ndarray: Forward data.
-
-    Raises:
-        ValueError: If the thickness array does not match the number of layers minus 1.
-
-        
-    Todo: 
-        Allow using only 1 moment/STM file at a time.
+    :param C: Conductivity array, defaults to np.array(())
+    :type C: numpy.ndarray, optional
+    :param thickness: Thickness array, defaults to np.array(())
+    :type thickness: numpy.ndarray, optional
+    :param GEX: GEX dictionary, defaults to {}
+    :type GEX: dict, optional
+    :param file_gex: Path to GEX file, defaults to ''
+    :type file_gex: str, optional
+    :param stmfiles: List of STM files, defaults to []
+    :type stmfiles: list, optional
+    :param showtime: Flag to display execution time, defaults to False
+    :type showtime: bool, optional
+    :param **kwargs: Additional keyword arguments
+    :returns: Forward data as a numpy.ndarray
+    :raises ValueError: If the thickness array does not match the number of layers minus 1
+    :todo: Allow using only 1 moment/STM file at a time
     """
-    
+
     from gatdaem1d import Earth;
     from gatdaem1d import Geometry;
     # Next should probably only be loaded if the DLL is not allready loaded!!!
