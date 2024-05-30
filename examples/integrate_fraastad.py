@@ -33,7 +33,7 @@ print("Using GEX file: %s" % file_gex)
 #
 # In this example a simple layered prior model will be considered
 # %% A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=100000
+N=5000000
 #N=100000
 RHO_min = 1
 RHO_max = 800
