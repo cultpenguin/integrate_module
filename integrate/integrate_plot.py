@@ -68,8 +68,8 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
                 print("Key %s not found in %s" % (key, dstr))
     return 1
 
-def plot_T(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, pl='both', **kwargs):
-    
+def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, pl='both', hardcopy=False, **kwargs):
+
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
@@ -98,7 +98,6 @@ def plot_T(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, pl='both', **kwargs):
 
     if i2<i1:
         i2=i1+1
-
     
     if (pl=='both') or (pl=='T'):
         plt.figure(1, figsize=(20, 10))
@@ -110,10 +109,11 @@ def plot_T(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, pl='both', **kwargs):
         plt.colorbar()
         plt.title('Temperature')
         plt.axis('equal')
-        # get filename without extension
-        f_png = '%s_%d_%d_T.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
-        plt.savefig(f_png)
-        plt.show()
+        if hardcopy:
+            # get filename without extension        
+            f_png = '%s_%d_%d_T.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
+            plt.savefig(f_png)
+            plt.show()
 
     if (pl=='both') or (pl=='EV'):
         # get the 99% percentile of EV values
@@ -133,11 +133,33 @@ def plot_T(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, pl='both', **kwargs):
         plt.colorbar()
         plt.title('EV')
         plt.axis('equal')
-        # get filename without extension
-        f_png = '%s_%d_%d_EV.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
-        plt.savefig(f_png)
-        plt.show()
+        if hardcopy:
+            # get filename without extension
+            f_png = '%s_%d_%d_EV.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
+            plt.savefig(f_png)
+            plt.show()
+    if (pl=='ND'):
+        # 
+        f_data = h5py.File(f_data_h5,'r')
+        ndata,ns = f_data['/%s' % 'D1']['d_obs'].shape
+        # find number of nan values on d_obs
+        non_nan = np.sum(~np.isnan(f_data['/%s' % 'D1']['d_obs']), axis=1)
+        print(non_nan)
 
+        plt.figure(3, figsize=(20, 10))
+        plt.scatter(X[i1:i2],Y[i1:i2],c=non_nan[i1:i2],cmap='jet', **kwargs)            
+        plt.grid()
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.colorbar(label='Number of Data')
+        plt.title('N data')
+        plt.axis('equal')
+        if hardcopy:
+            # get filename without extension
+            f_png = '%s_%d_%d_ND.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
+            plt.savefig(f_png)
+            plt.show()
+            
 
     return 1
 
@@ -145,7 +167,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
     Plot continuous profiles from a given HDF5 file.
 
-    Parameters:
+    Parameters: 
     - f_post_h5 (str): Path to the HDF5 file.
     - i1 (int, optional): Starting index for the profile. Defaults to 1.
     - i2 (int, optional): Ending index for the profile. Defaults to 1e+9.
@@ -155,6 +177,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     - None
     """
 
+    kwargs.setdefault('hardcopy', True)
+    
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
@@ -208,6 +232,9 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     YY, ZZ = np.meshgrid(Y,z)
     ID, ZZ = np.meshgrid(id,z)
 
+    ID = np.sort(ID, axis=0)
+    ZZ = np.sort(ZZ, axis=0)
+
     # compute the depth from the surface plus the elevation
     for i in range(nd):
         ZZ[:,i] = ELEVATION[i]-ZZ[:,i]
@@ -221,42 +248,56 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     from matplotlib.colors import LogNorm
 
     # Create a figure with 3 subplots sharing the same Xaxis!
-    plt.figure(1, figsize=(20, 10))
-    plt.subplot(4,1,1)
-    plt.pcolor(ID[:,i1:i2], ZZ[:,i1:i2], Mean[:,i1:i2], 
+    fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
+
+    # MEAN
+    im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mean[:,i1:i2], 
             cmap='jet',            
             shading='auto',
             norm=LogNorm())
-    plt.clim(clim[0],clim[1])        
-    plt.title('Mean')
-    plt.colorbar()
-
-    plt.subplot(4,1,2)
-    plt.pcolor(ID[:,i1:i2], ZZ[:,i1:i2], Median[:,i1:i2], 
+    im1.set_clim(clim[0],clim[1])        
+    ax[0].set_title('Mean')
+    fig.colorbar(im1, ax=ax[0], label='Resistivity (Ohm.m)')
+    
+    # MEDIAN
+    im2 = ax[1].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Median[:,i1:i2], 
             cmap='jet',            
             shading='auto',
             norm=LogNorm())  # Set color scale to logarithmic
-    plt.clim(clim[0],clim[1])        
-    plt.title('Median')
-    plt.colorbar()
+    im2.set_clim(clim[0],clim[1])        
+    ax[1].set_title('Median')
+    fig.colorbar(im2, ax=ax[1], label='Resistivity (Ohm.m)')
 
-    plt.subplot(4,1,3)
-    plt.pcolor(ID[:,i1:i2], ZZ[:,i1:i2], Std[:,i1:i2], 
+    # STD
+    im3 = ax[2].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Std[:,i1:i2], 
             cmap='hot_r', 
             vmin=0, vmax=0.5, 
             shading='auto')
-    plt.title('Std')
-    plt.colorbar()
-    ax = plt.subplot(4,1,4)
-    plt.semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
+    im2.set_clim(clim[0],clim[1])        
+    ax[2].set_title('std')
+    fig.colorbar(im3, ax=ax[2], label='Standard deviation (Ohm.m)')
+
+
+    ## T and V
+    ax[0].set_xticks([])
+    ax[1].set_xticks([])
+    ax[2].set_xticks([])
+    
+    im4 = ax[3].semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
     plt.semilogy(ID[0,i1:i2],-EV[i1:i2], 'r', label='-EV')
-    #plt.ylabel('Temperature')
-    plt.legend()
-    plt.grid()
-    plt.xlabel('ID')
     plt.tight_layout()
-    ax.set_xlim(ID[0,i1], ID[0,i2])
-    ax.set_ylim(0.99, 250)
+    ax[3].set_xlim(ID[0,i1], ID[0,i2])
+    ax[3].set_ylim(0.99, 200)
+    ax[3].legend(loc='upper right')
+    plt.grid(True)
+
+    # Create an invisible colorbar for the last subplot
+    cbar4 = fig.colorbar(im3, ax=ax[3])
+    cbar4.solids.set(alpha=0)
+    cbar4.outline.set_visible(False)
+    cbar4.ax.set_yticks([])  # Hide the colorbar ticks
+    cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
+
 
     # get filename without extension
     f_png = '%s_%d_%d_profile.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
@@ -264,3 +305,206 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     plt.show()
 
             
+
+def plot_data(f_data_h5, i_plot=[], Dkey=[], **kwargs):
+    """
+    Plot the data from an HDF5 file.
+
+    Parameters:
+    - f_data_h5 (str): The path to the HDF5 file.
+    - i_plot (int or array-like, optional): The indices of the data to plot. Default is 0.
+    - Dkey (str or list, optional): The key(s) of the data set(s) to plot. Default is an empty list.
+    - **kwargs: Additional keyword arguments.
+
+    Returns:
+    - None
+
+    Raises:
+    - None
+
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib
+    import h5py
+
+    # Check if the data file f_data_h5 exists
+    if not os.path.exists(f_data_h5):
+        print("plot_data: File %s does not exist" % f_data_h5)
+        return
+
+
+    f_data = h5py.File(f_data_h5,'r')
+
+    if len(Dkey)==0:
+        nd = 0
+        Dkeys = []
+        for key in f_data.keys():
+            if key[0]=='D':
+                print("plot_data: Found data set %s" % key)
+                Dkeys.append(key)
+            nd += 1
+        Dkey=Dkeys[0]
+        print("plot_data: Using data set %s" % Dkey)
+ 
+    noise_model = f_data['/%s' % Dkey].attrs['noise_model']
+    if noise_model == 'gaussian':
+        noise_model = 'Gaussian'
+        d_obs = f_data['/%s' % Dkey]['d_obs'][:]
+        d_std = f_data['/%s' % Dkey]['d_std'][:]
+
+
+        ndata,ns = f_data['/%s' % Dkey]['d_obs'].shape
+        # set i_plot as an array from 0 to ndata
+        if len(i_plot)==0:
+            i_plot = np.arange(ndata)
+            #i_plot = 1000+np.arange(5000)
+
+        # remove all values in i_plot that are larger than the number of data
+        i_plot = i_plot[i_plot<ndata]
+        # remove all values in i_plot that are smaller than 0
+        i_plot = i_plot[i_plot>=0]
+        
+        # reaplce values larger than 1 with nan in d_std
+        d_std[d_std>1] = np.nan
+
+        # find number of nan values on d_obs
+        non_nan = np.sum(~np.isnan(d_obs), axis=1)
+
+        # Calculate the extent
+        xlim = [i_plot.min(), i_plot.max()]
+        extent = [xlim[0], xlim[1], 0, d_obs.shape[1]]
+
+        # plot figure with data
+
+        fig, ax = plt.subplots(4,1,figsize=(10,12), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
+        im1 = ax[0].imshow(d_obs[i_plot,:].T, aspect='auto', cmap='jet_r', norm=matplotlib.colors.LogNorm(), extent=extent)
+        im2 = ax[1].imshow(d_std[i_plot,:].T, aspect='auto', cmap='hot_r', norm=matplotlib.colors.LogNorm(), extent=extent)
+        im3 = ax[2].imshow((d_std[i_plot,:]/d_obs[i_plot,:]).T, aspect='auto', vmin = 0.00, vmax = 0.10, extent=extent)
+        ax[0].set_title('d_obs: observed data')
+        ax[1].set_title('d_std: standard deviation')
+        ax[2].set_title('d_std/d_obs: relative standard deviation')
+        fig.colorbar(im1, ax=ax[0])
+        fig.colorbar(im2, ax=ax[1])
+        fig.colorbar(im3, ax=ax[2])
+        ax[0].set_ylabel('Data #')
+        ax[1].set_ylabel('Data #')
+        ax[2].set_ylabel('Data #')
+
+        im4 = ax[3].plot(i_plot,non_nan[i_plot], 'k.', markersize=.5)
+        ax[3].set_ylabel('Number of data')
+        ax[3].grid()
+        ax[3].set_xlim(xlim)
+
+        # Create an invisible colorbar for the last subplot
+        cbar4 = fig.colorbar(im3, ax=ax[3])
+        cbar4.solids.set(alpha=0)
+        cbar4.outline.set_visible(False)
+        cbar4.ax.set_yticks([])  # Hide the colorbar ticks
+        cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
+
+        ax[-1].set_xlabel('Index')
+        
+        plt.suptitle('Data set %s' % Dkey)
+        plt.tight_layout()
+    else:
+        print("plot_data: Unknown noise model: %s" % noise_model)
+        
+    # set plot in kwarg to True if not allready set
+    if 'hardcopy' not in kwargs:
+        kwargs['hardcopy'] = True
+    if kwargs['hardcopy']:
+        # strip the filename from f_data_h5
+        plt.savefig('%s_%s.png' % (os.path.basename(f_data_h5),Dkey))
+
+
+
+
+
+def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
+    """
+    Plot the prior and posterior data for a given dataset.
+
+    Parameters:
+    - f_post_h5 (str): The path to the post data file.
+    - i_plot (int): The index of the observation to plot..  
+    - Dkey (str): String of the hdf5 key for the data set.    
+    - **kwargs: Additional keyword arguments.
+
+    Returns:
+    - None
+    """
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib
+    import h5py
+    import os
+    
+    ## Check if the data file f_data_h5 exists
+    if not os.path.exists(f_post_h5):
+        print("plot_data: File %s does not exist" % f_data_h5)
+        return
+
+    f_post = h5py.File(f_post_h5,'r')
+
+    f_prior_h5 = f_post['/'].attrs['f5_prior']
+    f_data_h5 = f_post['/'].attrs['f5_data']
+
+    f_data = h5py.File(f_data_h5,'r')
+    f_prior = h5py.File(f_prior_h5,'r')
+    
+    if len(Dkey)==0:
+        nd = 0
+        Dkeys = []
+        for key in f_data.keys():
+            if key[0]=='D':
+                #print("plot_data: Found data set %s" % key)
+                Dkeys.append(key)
+            nd += 1
+        Dkey=Dkeys[0]
+        #print("plot_data: Using data set %s" % Dkey)
+
+    noise_model = f_data['/%s' % Dkey].attrs['noise_model']
+    if noise_model == 'gaussian':
+        noise_model = 'Gaussian'
+        d_obs = f_data['/%s' % Dkey]['d_obs'][:]
+        d_std = f_data['/%s' % Dkey]['d_std'][:]
+
+        i_use = f_post['/i_use'][i_plot,:]
+        #i_use.sort()
+        # flatten i_use
+        i_use = i_use.flatten()
+
+        nr=len(i_use)
+        ns,ndata = f_data['/%s' % Dkey]['d_obs'].shape
+        d_post = np.zeros((nr,ndata))
+        d_prior = np.zeros((nr,ndata))
+
+        for i in range(nr):
+            d_post[i]=f_prior[Dkey][i_use[i]-1,:]
+            d_prior[i]=f_prior[Dkey][i,:]    
+
+        #i_plot=[]
+        fig, ax = plt.subplots(1,1,figsize=(10,10))
+        ax.semilogy(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
+        ax.semilogy(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
+        
+        ax.semilogy(d_obs[i_plot,:],'r.',markersize=6, label='d_obs')
+        ax.semilogy(d_obs[i_plot,:]-2*d_std[i_plot,:],'r.',markersize=3, label='d_obs')
+        ax.semilogy(d_obs[i_plot,:]+2*d_std[i_plot,:],'r.',markersize=3, label='d_obs')
+        
+        plt.title('Data set %s, Observation # %d' % (Dkey, i_plot+1))
+        plt.xlabel('Data #')
+        plt.ylabel('Data')
+        plt.grid()
+
+        # set plot in kwarg to True if not allready set
+        if 'hardcopy' not in kwargs:
+            kwargs['hardcopy'] = True
+        if kwargs['hardcopy']:
+            # strip the filename from f_data_h5
+            # get filename without extension of f_post_h5
+            plt.savefig('%s_%s_id%05d.png' % (os.path.splitext(f_post_h5)[0],Dkey,i_plot+1))
+
+

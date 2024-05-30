@@ -34,15 +34,15 @@ print("Using GEX file: %s" % file_gex)
 # In this example a simple layered prior model will be considered
 # %% A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
 N=5000000
-N=1000000
+#N=100000
 RHO_min = 1
-RHO_max = 300
+RHO_max = 800
 # Layered model
-f_prior_h5 =ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', NLAY_min=1, NLAY_max=4, rho_dist='log-uniform', RHO_min=1, RHO_max=100)
+f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, dz=1, z_max = 50, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+#f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', dz = 1, z_max = 40, NLAY_min=8, NLAY_max=8, rho_dist='log-uniform', RHO_min=1, RHO_max=100)
 
 # %% A2. Compute prior DATA
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Nproc=16)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
 # %% [markdown]
 # ## Sample the posterior $\sigma(\mathbf{m})$
@@ -50,11 +50,11 @@ f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Nproc=16)
 # The posterior distribution is sampling using the extended rejection sampler.
 
 # %% READY FOR INVERSION
-N_use = 10000000
+N_use = 1000000
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1)
 #convert -delay 10 -loop 0 POST_*Median*feature*.png animation.gif
 #ffmpeg -i animation.gif -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" animation.mp4
-# %% Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
+# %% Compute some generic statistic of the posterior distribution (Mean, Median, Std)
 ig.integrate_posterior_stats(f_post_h5)
 
 
@@ -66,15 +66,15 @@ ig.integrate_posterior_stats(f_post_h5)
 ig.plot_T(f_post_h5)
 
 # %% Plot Profiles
-ig.plot_profile_continuous(f_post_h5, i1=1000, i2=2000, im=1, clim=[1,100])
+ig.plot_profile_continuous(f_post_h5, i1=7000, i2=7300, im=1, clim=[1,300])
 # %%
 
-# Plot a 2D feature: Resistivity in layer 10
-ig.plot_feature_2d(f_post_h5,im=1,iz=12, key='Median', uselog=1, cmap='jet', s=10, clim=np.log10([RHO_min,RHO_max]))
-#ig.plot_feature_2d(f_post_h5,im=1,iz=80,key='Median')
+## Plot a 2D feature: Resistivity in layer 10
+#ig.plot_feature_2d(f_post_h5,im=1,iz=12, key='Median', uselog=1, cmap='jet', s=10, clim=np.log10([RHO_min,RHO_max]))
+##ig.plot_feature_2d(f_post_h5,im=1,iz=80,key='Median')
 
 #%% 
-for iz in range(90):
+for iz in range(40):
     ig.plot_feature_2d(f_post_h5,im=1,iz=iz, key='Median', uselog=1, cmap='jet', s=10, clim=np.log10([RHO_min,RHO_max]))
 
 #%%
@@ -87,6 +87,16 @@ except:
 
 
 
+
+
+# %%
+import h5py
+
+f_data = h5py.File(f_data_h5, 'r')
+
+
+#%%
+f_data.close()
 
 
 # %%
