@@ -23,10 +23,13 @@ import h5py
 f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_PRIOR_CHI2_NF_5_log-uniform_N5000000_fraastad_ttem_Nh280_Nf12_Nu1000000_aT1.h5'
 #f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_PRIOR_UNIFORM_NL_1-8_log-uniform_N5000000_fraastad_ttem_Nh280_Nf12_Nu1000000_aT1.h5'
 #f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_PRIOR_UNIFORM_NL_8-8_log-uniform_N5000000_fraastad_ttem_Nh280_Nf12_Nu1000000_aT1.h5'
-#f_post_h5 = 'POST_DAUGAARD_AVG_PRIOR_Daugaard_N2000000_TX07_20230731_2x4_RC20-33_Nh280_Nf12_Nu1000_aT1.h5'
+f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_PRIOR_WB5_N500000_log-uniform_R1_800.h5_fraastad_ttem_Nh280_Nf12_Nu500000_aT1.h5'
+f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_PRIOR_WB12_N50000_log-uniform_R1_800.h5_fraastad_ttem_Nh280_Nf12_Nu50000_aT1.h5'
+f_post_h5 = 'POST_DAUGAARD_AVG_PRIOR_Daugaard_N2000000_TX07_20230731_2x4_RC20-33_Nh280_Nf12_Nu1000_aT1.h5'
 f_post = h5py.File(f_post_h5,'r')
 f_prior_h5 = f_post['/'].attrs['f5_prior']
 f_data_h5 = f_post['/'].attrs['f5_data']
+
 
 ig.plot_prior_stats(f_prior_h5)
 

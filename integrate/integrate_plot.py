@@ -531,10 +531,10 @@ def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
 
         M = f_prior[Mkey][:]
         fig, ax = plt.subplots(2,2,figsize=(10,10))
-        m0 = ax[0,0].hist(M.flatten())
+        m0 = ax[0,0].hist(M.flatten(),101)
         ax[0,0].set_xlabel(Mkey)
         ax[0,0].set_ylabel('Distribution')
-        m1 = ax[0,1].hist(np.log10(M.flatten()))
+        m1 = ax[0,1].hist(np.log10(M.flatten()),101)
         ax[0,1].set_xlabel(Mkey)
 
         # set xtcik labels as 10^x where x i the xtick valye
