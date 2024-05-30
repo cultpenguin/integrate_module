@@ -1000,7 +1000,7 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
 
     return f_prior_h5
 
-def prior_model_workbench(N=100000, rho_dist='uniform', z1=0, z2= 100, nlayers=30, p=2, rho_min = 1, rho_max= 300, rho_mean=180, rho_std=80, chi2_deg= 100):
+def prior_model_workbench(N=100000, rho_dist='log-uniform', z1=0, z2= 100, nlayers=30, p=2, rho_min = 1, rho_max= 300, rho_mean=180, rho_std=80, chi2_deg= 100):
     """
 
     Generate a prior model with increasingly thick layers

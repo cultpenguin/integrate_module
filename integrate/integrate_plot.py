@@ -68,7 +68,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
                 print("Key %s not found in %s" % (key, dstr))
     return 1
 
-def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, pl='both', hardcopy=False, **kwargs):
+def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='both', hardcopy=False, **kwargs):
 
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -99,14 +99,15 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, pl='both', hardcopy=
     if i2<i1:
         i2=i1+1
     
-    if (pl=='both') or (pl=='T'):
+    if (pl=='all') or (pl=='T'):
         plt.figure(1, figsize=(20, 10))
-        plt.scatter(X[i1:i2],Y[i1:i2],c=T[i1:i2],cmap='jet',**kwargs)            
+        plt.scatter(X[i1:i2],Y[i1:i2],c=np.log10(T[i1:i2]),cmap='jet',**kwargs)            
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
-        plt.clim(clim)  
-        plt.colorbar()
+        plt.clim(np.log10(clim))  
+        print(clim)
+        plt.colorbar(label='log10(T)')
         plt.title('Temperature')
         plt.axis('equal')
         if hardcopy:
@@ -115,18 +116,18 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, pl='both', hardcopy=
             plt.savefig(f_png)
             plt.show()
 
-    if (pl=='both') or (pl=='EV'):
+    if (pl=='all') or (pl=='EV'):
         # get the 99% percentile of EV values
         EV_max = np.percentile(EV,99)
         EV_max = 0
         EV_min = np.percentile(EV,1)
-        if 'vmin' not in kwargs:
-            kwargs['vmin'] = EV_min
-        if 'vmax' not in kwargs:
-            kwargs['vmax'] = EV_max
+        #if 'vmin' not in kwargs:
+        #    kwargs['vmin'] = EV_min
+        #if 'vmax' not in kwargs:
+        #    kwargs['vmax'] = EV_max
         print('EV_min=%f, EV_max=%f' % (EV_min, EV_max))
         plt.figure(2, figsize=(20, 10))
-        plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],cmap='jet', **kwargs)            
+        plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],cmap='jet', vmin = EV_min, vmax=EV_max, **kwargs)            
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -138,7 +139,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=0, T_max=100, pl='both', hardcopy=
             f_png = '%s_%d_%d_EV.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
             plt.savefig(f_png)
             plt.show()
-    if (pl=='ND'):
+    if (pl=='all') or (pl=='ND'):
         # 
         f_data = h5py.File(f_data_h5,'r')
         ndata,ns = f_data['/%s' % 'D1']['d_obs'].shape
@@ -415,9 +416,7 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], **kwargs):
         kwargs['hardcopy'] = True
     if kwargs['hardcopy']:
         # strip the filename from f_data_h5
-        plt.savefig('%s_%s.png' % (os.path.basename(f_data_h5),Dkey))
-
-
+        plt.savefig('%s_%s.png' % (os.path.splitext(f_data_h5)[0],Dkey))
 
 
 
@@ -486,7 +485,7 @@ def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
             d_prior[i]=f_prior[Dkey][i,:]    
 
         #i_plot=[]
-        fig, ax = plt.subplots(1,1,figsize=(10,10))
+        fig, ax = plt.subplots(1,1,figsize=(7,7))
         ax.semilogy(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
         ax.semilogy(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
         
@@ -494,6 +493,10 @@ def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
         ax.semilogy(d_obs[i_plot,:]-2*d_std[i_plot,:],'r.',markersize=3, label='d_obs')
         ax.semilogy(d_obs[i_plot,:]+2*d_std[i_plot,:],'r.',markersize=3, label='d_obs')
         
+        #ax.text(0.1, 0.1, 'Data set %s, Observation # %d' % (Dkey, i_plot+1), transform=ax.transAxes)
+        ax.text(0.1, 0.1, 'T = %4.2f.' % (f_post['/T'][i_plot]), transform=ax.transAxes)
+        ax.text(0.1, 0.2, 'EV = %4.2f.' % (f_post['/EV'][i_plot]), transform=ax.transAxes)
+        print(f_post['/T'][i_plot])
         plt.title('Data set %s, Observation # %d' % (Dkey, i_plot+1))
         plt.xlabel('Data #')
         plt.ylabel('Data')
@@ -507,4 +510,59 @@ def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
             # get filename without extension of f_post_h5
             plt.savefig('%s_%s_id%05d.png' % (os.path.splitext(f_post_h5)[0],Dkey,i_plot+1))
 
+
+
+def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
+
+    f_prior = h5py.File(f_prior_h5,'r')
+    f_prior['/%s'%Mkey].attrs.keys()
+    if 'x' in f_prior['/%s'%Mkey].attrs.keys():
+        z = f_prior['/%s'%Mkey].attrs['x']
+    else:
+        z = f_prior['/%s'%Mkey].attrs['z']
+
+    is_discrete = f_prior['/%s'%Mkey].attrs['is_discrete']    
+
+
+    if not is_discrete:
+
+        # setup a figure with two suplots in row ONE AND ONE SUBPLOT IN ROW 2
+        
+
+        M = f_prior[Mkey][:]
+        fig, ax = plt.subplots(2,2,figsize=(10,10))
+        m0 = ax[0,0].hist(M.flatten())
+        ax[0,0].set_xlabel(Mkey)
+        ax[0,0].set_ylabel('Distribution')
+        m1 = ax[0,1].hist(np.log10(M.flatten()))
+        ax[0,1].set_xlabel(Mkey)
+
+        # set xtcik labels as 10^x where x i the xtick valye
+        ax[0,1].set_xticklabels(['$10^{%3.1f}$'%i for i in ax[0,1].get_xticks()])
+        ax[0,1].set_ylabel('Distribution')
+
+
+        # use the ax[1,0] and ax[1,1] for one ploit
+        nr=100
+        # set the extent from 1,nr and z[0],z[-1]
+        extent = [1,nr,z[0],z[-1]]
+
+        ax[1, 0].axis('off')    
+        ax[1, 1].axis('off')
+
+        ax[1, 0] = plt.subplot2grid((2, 2), (1, 0), colspan=2)
+        m2 = ax[1,0].imshow(M[0:nr,:].T, aspect='auto', extent=extent)
+        fig.colorbar(m2, ax=ax[1,0], label=Mkey)
+        tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],Mkey) 
+        plt.suptitle(tit)
+    else:
+        print("is_discrete=%d not yet implemented" % is_discrete)
+
+    f_prior.close()
+
+    if 'hardcopy' not in kwargs:
+        kwargs['hardcopy'] = True
+    if kwargs['hardcopy']:
+        # strip the filename from f_data_h5
+        plt.savefig('%s_%s.png' % (os.path.splitext(f_prior_h5)[0],Mkey))
 

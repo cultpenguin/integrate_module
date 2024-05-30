@@ -21,13 +21,17 @@ import h5py
 # %%
 
 f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_PRIOR_CHI2_NF_5_log-uniform_N5000000_fraastad_ttem_Nh280_Nf12_Nu1000000_aT1.h5'
-f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_PRIOR_UNIFORM_NL_1-8_log-uniform_N5000000_fraastad_ttem_Nh280_Nf12_Nu1000000_aT1.h5'
-f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_PRIOR_UNIFORM_NL_8-8_log-uniform_N5000000_fraastad_ttem_Nh280_Nf12_Nu1000000_aT1.h5'
+#f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_PRIOR_UNIFORM_NL_1-8_log-uniform_N5000000_fraastad_ttem_Nh280_Nf12_Nu1000000_aT1.h5'
+#f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_PRIOR_UNIFORM_NL_8-8_log-uniform_N5000000_fraastad_ttem_Nh280_Nf12_Nu1000000_aT1.h5'
 #f_post_h5 = 'POST_DAUGAARD_AVG_PRIOR_Daugaard_N2000000_TX07_20230731_2x4_RC20-33_Nh280_Nf12_Nu1000_aT1.h5'
 f_post = h5py.File(f_post_h5,'r')
 f_prior_h5 = f_post['/'].attrs['f5_prior']
 f_data_h5 = f_post['/'].attrs['f5_data']
 
+ig.plot_prior_stats(f_prior_h5)
+
+#m2 = ax[1,0].imshow(M[0:nr,:].T, aspect='auto')
+#fig.colorbar(m2, ax=ax[1,1])
 
 # %% DATA
 #ig.plot_data(f_data_h5, i_plot=[], Dkey='D1', hardcopy=False)
@@ -39,8 +43,9 @@ ig.plot_data(f_data_h5)
 #%%
 ig.plot_T_EV(f_post_h5, pl='T')
 ig.plot_T_EV(f_post_h5, pl='EV')
-ig.plot_T_EV(f_post_h5, pl='ND')
-#
+ig.plot_T_EV(f_post_h5, pl='ND', s=5)
+#ig.plot_T_EV(f_post_h5, pl='all', s=5)
+
 
 #f_post.close()
 #f_data.close()
@@ -54,3 +59,5 @@ ig.plot_data_prior_post(f_post_h5, i_plot = 1199)
 
 #%% plot profile
 ig.plot_profile_continuous(f_post_h5,i1=0, i2=2000, clim=[1,1000])
+
+#%% 
