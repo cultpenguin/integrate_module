@@ -17,8 +17,8 @@ print("Using GEX file: %s" % file_gex)
 
 # %% TIMING
 
-N_arr = np.array([100,200,300])
-Nproc_arr=[8, 16]
+N_arr = np.array([100,1000,10000])
+Nproc_arr=[8, 16. 32]
 
 n1 = len(N_arr)
 n2 = len(Nproc_arr)
@@ -79,20 +79,114 @@ for j in np.arange(n2):
 
 
 # Save T_prior, N_arr, Nproc_arr in one file
-np.savez('timing_Nproc%d_N%d.npz' % (len(Nproc_arr), len(N_arr)), T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr)
+file_out  = 'timing_Nproc%d_N%d' % (len(Nproc_arr), len(N_arr))
+np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr)
 
 
-#%% 
-ax, fig = plt.subplots(1,1, figsize=(10,5))
-plt.loglog(N_arr, t_prior, '-*',label='Prior model')
-plt.plot(N_arr, t_forward, '-*', label='Forward model')
-plt.plot(N_arr, t_rejection, '-*', label='Rejection sampling')
-plt.plot(N_arr, t_poststat, '-*', label='Posterior statistics')
-plt.xlabel('Number of samples')
+#%%
+ax, fig = plt.subplots(1,1, figsize=(8,8))
+plt.plot(N_arr, T_prior, 'k-*',label='Prior model')
+plt.plot(N_arr, T_forward, 'r-*', label='Forward model')
+plt.plot(N_arr, T_rejection, 'b-*', label='Rejection sampling')
+plt.plot(N_arr, T_poststat, 'g-*', label='Posterior statistics')
+plt.xlabel('Number of realizations')
 plt.ylabel('Time [s]')
 plt.legend()
+plt.grid()
+plt.savefig('%s_Narr' % file_out)
 plt.show()
 
+
+ax, fig = plt.subplots(1,1, figsize=(8,8))
+plt.plot(Nproc_arr, T_prior.T, 'k-*',label='Prior model')
+plt.plot(Nproc_arr, T_forward.T, 'r-*', label='Forward model')
+plt.plot(Nproc_arr, T_rejection.T, 'b-*', label='Rejection sampling')
+plt.plot(Nproc_arr, T_poststat.T, 'g-*', label='Posterior statistics')
+plt.xlabel('Number of processors')
+plt.ylabel('Time [s]')
+plt.legend()
+plt.grid()
+plt.savefig('%s_Nproc' % file_out)
+plt.show()
+
+
+
+# %%
+dlw = 1.0
+ax, fig = plt.subplots(2,2, figsize=(8,8))
+plt.subplot(2,2,1)
+for i in range(len(Nproc_arr)):
+    plt.plot(N_arr, T_prior[:,i], 'k-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
+plt.xlabel('Number of realizations')
+plt.ylabel('Time [s]')
+plt.legend()
+plt.grid()
+
+plt.subplot(2,2,2)
+for i in range(len(Nproc_arr)):
+    plt.plot(N_arr, T_forward[:,i], 'r-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
+plt.xlabel('Number of realizations')
+plt.ylabel('Time [s]')
+plt.legend()
+plt.grid()
+
+plt.subplot(2,2,3)
+for i in range(len(Nproc_arr)):
+    plt.plot(N_arr, T_rejection[:,i], 'b-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
+plt.xlabel('Number of realizations')
+plt.ylabel('Time [s]')
+plt.legend()
+plt.grid()
+
+plt.subplot(2,2,4)
+for i in range(len(Nproc_arr)):
+    plt.plot(N_arr, T_poststat[:,i], 'g-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
+plt.xlabel('Number of realizations')
+plt.ylabel('Time [s]')
+plt.legend()
+plt.grid()
+
+plt.savefig('%s_N_arr_sp' % file_out)
+plt.show()
+
+
+
+# %%
+ax, fig = plt.subplots(2,2, figsize=(8,8))
+plt.subplot(2,2,1)
+for i in range(len(N_arr)):
+    plt.plot(Nproc_arr, T_prior[i,:].T, 'k-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
+plt.xlabel('Number of processors')
+plt.ylabel('Time [s]')
+plt.legend()
+plt.grid()
+
+plt.subplot(2,2,2)
+for i in range(len(N_arr)):
+    plt.plot(Nproc_arr, T_forward[i,:].T, 'r-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
+plt.xlabel('Number of processors')
+plt.ylabel('Time [s]')
+plt.legend()
+plt.grid()
+
+plt.subplot(2,2,3)
+for i in range(len(N_arr)):
+    plt.plot(Nproc_arr, T_rejection[i,:].T, 'b-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
+plt.xlabel('Number of processors')
+plt.ylabel('Time [s]')
+plt.legend()
+plt.grid()
+
+plt.subplot(2,2,4)
+for i in range(len(N_arr)):
+    plt.plot(Nproc_arr, T_poststat[i,:].T, 'g-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
+plt.xlabel('Number of processors')
+plt.ylabel('Time [s]')
+plt.legend()
+plt.grid()
+
+plt.savefig('%s_N_proc_sp' % file_out)
+plt.show()
 
 
 # %%
