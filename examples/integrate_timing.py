@@ -18,7 +18,7 @@ print("Using GEX file: %s" % file_gex)
 # %% TIMING
 
 N_arr = np.array([100,1000,10000])
-Nproc_arr=[8, 16, 32]
+Nproc_arr=[1, 2, 4, 8, 16,  32]
 
 n1 = len(N_arr)
 n2 = len(Nproc_arr)
@@ -119,6 +119,7 @@ for i in range(len(Nproc_arr)):
     plt.plot(N_arr, T_prior[:,i], 'k-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
 plt.xlabel('Number of realizations')
 plt.ylabel('Time [s]')
+plt.title('Prior')
 plt.legend()
 plt.grid()
 
@@ -127,6 +128,7 @@ for i in range(len(Nproc_arr)):
     plt.plot(N_arr, T_forward[:,i], 'r-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
 plt.xlabel('Number of realizations')
 plt.ylabel('Time [s]')
+plt.title('Forward')
 plt.legend()
 plt.grid()
 
@@ -135,6 +137,7 @@ for i in range(len(Nproc_arr)):
     plt.plot(N_arr, T_rejection[:,i], 'b-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
 plt.xlabel('Number of realizations')
 plt.ylabel('Time [s]')
+plt.title('Rejection sampling')
 plt.legend()
 plt.grid()
 
@@ -143,9 +146,11 @@ for i in range(len(Nproc_arr)):
     plt.plot(N_arr, T_poststat[:,i], 'g-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
 plt.xlabel('Number of realizations')
 plt.ylabel('Time [s]')
+plt.title('Posterior statistics')
 plt.legend()
 plt.grid()
 
+plt.tight_layout()
 plt.savefig('%s_N_arr_sp' % file_out)
 plt.show()
 
@@ -155,35 +160,41 @@ plt.show()
 ax, fig = plt.subplots(2,2, figsize=(8,8))
 plt.subplot(2,2,1)
 for i in range(len(N_arr)):
-    plt.plot(Nproc_arr, T_prior[i,:].T, 'k-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
+    plt.semilogy(Nproc_arr, T_prior[i,:].T, 'k-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
 plt.xlabel('Number of processors')
 plt.ylabel('Time [s]')
+plt.title('Prior')
 plt.legend()
 plt.grid()
 
 plt.subplot(2,2,2)
 for i in range(len(N_arr)):
-    plt.plot(Nproc_arr, T_forward[i,:].T, 'r-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
+    plt.semilogy(Nproc_arr, T_forward[i,:].T, 'r-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
 plt.xlabel('Number of processors')
 plt.ylabel('Time [s]')
+plt.title('Forward')
 plt.legend()
 plt.grid()
 
 plt.subplot(2,2,3)
 for i in range(len(N_arr)):
-    plt.plot(Nproc_arr, T_rejection[i,:].T, 'b-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
+    plt.semilogy(Nproc_arr, T_rejection[i,:].T, 'b-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
 plt.xlabel('Number of processors')
 plt.ylabel('Time [s]')
+plt.title('Rejection sampling')
 plt.legend()
 plt.grid()
 
 plt.subplot(2,2,4)
 for i in range(len(N_arr)):
-    plt.plot(Nproc_arr, T_poststat[i,:].T, 'g-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
+    plt.semilogy(Nproc_arr, T_poststat[i,:].T, 'g-*',label='N=%d' % N_arr[i], linewidth=2+(2*(i*dlw)))
 plt.xlabel('Number of processors')
 plt.ylabel('Time [s]')
+plt.title('Posterior statistics')
 plt.legend()
 plt.grid()
+
+plt.tight_layout()
 
 plt.savefig('%s_N_proc_sp' % file_out)
 plt.show()
