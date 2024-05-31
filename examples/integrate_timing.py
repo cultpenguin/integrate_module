@@ -60,7 +60,7 @@ for j in np.arange(n2):
         N=N_arr[i]
 
         print('=====================================================')
-        print('N=%d, Nproc=%d'%(N,Nproc_arr))
+        print('N=%d, Nproc=%d'%(N,Nproc))
 
         RHO_min = 1
         RHO_max = 800
