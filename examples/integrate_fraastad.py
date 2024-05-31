@@ -33,21 +33,23 @@ print("Using GEX file: %s" % file_gex)
 #
 # In this example a simple layered prior model will be considered
 # %% A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=5000000
-#N=100000
+N=1000000
 RHO_min = 1
 RHO_max = 800
-# Layered model
-#f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, dz=1, z_max = 50, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-#f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', dz = 1, z_max = 50, NLAY_min=1, NLAY_max=3, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-# N layer model with increasing thickness
-f_prior_h5 = ig.prior_model_workbench(N=N, z2 = 30, nlayers=20, rho_min = RHO_min, rho_max = RHO_max)
+z_max = 50 
+## Layered model
+f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=3, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=8, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+
+## N layer model with increasing thickness
+#f_prior_h5 = ig.prior_model_workbench(N=N, z2 = 30, nlayers=20, rho_min = RHO_min, rho_max = RHO_max)
 #f_prior_h5 = ig.prior_model_workbench(N=N, z2 = 30, nlayers=5, rho_dist='log-uniform', rho_min = RHO_min, rho_max = RHO_max)
 #f_prior_h5 = ig.prior_model_workbench(N=N, rho_mean=45, rho_std=55, rho_dist='log-normal', z2 = 30, nlayers=12, rho_min = RHO_min, rho_max = RHO_max)
 
 ig.plot_prior_stats(f_prior_h5)
 # %% A2. Compute prior DATA
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Nproc=16)
 
 # %% [markdown]
 # ## Sample the posterior $\sigma(\mathbf{m})$
