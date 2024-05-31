@@ -57,7 +57,7 @@ for j in np.arange(n2):
         #t_prior.append(time.time()-t0_prior)
         T_prior[i,j] = time.time()-t0_prior
 
-        if (Nproc<5 and N>4000)| (Nproc<7 and N>40000):
+        if (Nproc<5 and N>9000)| (Nproc<7 and N>40000):
             pass
         else:   
 
@@ -78,6 +78,8 @@ for j in np.arange(n2):
             ig.integrate_posterior_stats(f_post_h5)
             T_poststat[i,j]=time.time()-t0_poststat
 
+
+# %% Save T_prior, N_arr, Nproc_arr in one file
 # get name of CPU
 import os
 import socket
@@ -87,7 +89,6 @@ Ncpu = os.cpu_count()
 #print("Hostname: %s" % hostname)
 #print("Number of processors: %d" % Ncpu)
 
-# Save T_prior, N_arr, Nproc_arr in one file
 file_out  = 'timing_%s-%d_Nproc%d_N%d' % (hostname,Ncpu,len(Nproc_arr), len(N_arr))
 print(file_out)
 np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr)
@@ -95,7 +96,7 @@ np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection
 
 #%%
 ax, fig = plt.subplots(1,1, figsize=(8,8))
-plt.plot(N_arr, T_prior, 'k-*',label='Prior model')
+plt.loglog(N_arr, T_prior, 'k-*',label='Prior model')
 plt.plot(N_arr, T_forward, 'r-*', label='Forward model')
 plt.plot(N_arr, T_rejection, 'b-*', label='Rejection sampling')
 plt.plot(N_arr, T_poststat, 'g-*', label='Posterior statistics')
@@ -108,7 +109,7 @@ plt.show()
 
 
 ax, fig = plt.subplots(1,1, figsize=(8,8))
-plt.plot(Nproc_arr, T_prior.T, 'k-*',label='Prior model')
+plt.loglog(Nproc_arr, T_prior.T, 'k-*',label='Prior model')
 plt.plot(Nproc_arr, T_forward.T, 'r-*', label='Forward model')
 plt.plot(Nproc_arr, T_rejection.T, 'b-*', label='Rejection sampling')
 plt.plot(Nproc_arr, T_poststat.T, 'g-*', label='Posterior statistics')
@@ -122,11 +123,11 @@ plt.show()
 
 
 # %%
-dlw = 0.4
+dlw = 0.1
 ax, fig = plt.subplots(2,2, figsize=(8,8))
 plt.subplot(2,2,1)
 for i in range(len(Nproc_arr)):
-    plt.plot(N_arr, T_prior[:,i], 'k-*',label='Np=%d' % Nproc_arr[i], linewidth=2+(2*(i*dlw)))
+    plt.loglog(N_arr, T_prior[:,i], 'k-*',label='Np=%d' % Nproc_arr[i], linewidth=2+(2*(i*dlw)))
 plt.xlabel('Number of realizations')
 plt.ylabel('Time [s]')
 plt.title('Prior')
@@ -169,6 +170,7 @@ plt.show()
 
 
 # %%
+dlw = 0.4
 ax, fig = plt.subplots(2,2, figsize=(8,8))
 plt.subplot(2,2,1)
 for i in range(len(N_arr)):
@@ -183,9 +185,9 @@ plt.ylim(ymin*.9, ymax*1.1)
 
 plt.subplot(2,2,2)
 for i in range(len(N_arr)):
-    plt.semilogy(Nproc_arr, T_forward[i,:].T, 'r-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
+    plt.loglog(Nproc_arr, T_forward[i,:].T, 'r-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
 plt.xlabel('Number of processors')
-plt.ylabel('Time [s]')
+plt.ylabel('Time [m]')
 plt.title('Forward')
 plt.legend()
 plt.grid()
@@ -218,6 +220,63 @@ plt.ylim(ymin*.9, ymax*1.1)
 plt.tight_layout()
 
 plt.savefig('%s_N_proc_sp' % file_out)
+plt.show()
+
+
+# %%
+
+
+# %% PER SOUNDING
+dlw = 0.4
+ax, fig = plt.subplots(2,2, figsize=(8,8))
+plt.subplot(2,2,1)
+for i in range(len(N_arr)):
+    plt.loglog(Nproc_arr, 1000*T_prior[i,:].T/N_arr[i], 'k-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
+plt.xlabel('Number of processors')
+plt.ylabel('Time/sonding [ms]')
+plt.title('Prior')
+plt.legend()
+plt.grid()
+ymin, ymax = plt.ylim()
+plt.ylim(ymin*.9, ymax*1.1)
+
+plt.subplot(2,2,2)
+for i in range(len(N_arr)):
+    plt.loglog(Nproc_arr, 1000*T_forward[i,:].T/N_arr[i], 'r-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
+plt.xlabel('Number of processors')
+plt.ylabel('Time/sonding [ms]')
+plt.title('Forward')
+plt.legend()
+plt.grid()
+ymin, ymax = plt.ylim()
+plt.ylim(ymin*.9, ymax*1.1)
+
+plt.subplot(2,2,3)
+for i in range(len(N_arr)):
+    plt.loglog(Nproc_arr, 1000*T_rejection[i,:].T/N_arr[i], 'b-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
+plt.xlabel('Number of processors')
+plt.ylabel('Time/sonding [ms]')
+plt.title('Rejection sampling')
+plt.legend()
+plt.grid()
+ymin, ymax = plt.ylim()
+plt.ylim(ymin*.9, ymax*1.1)
+
+plt.subplot(2,2,4)
+for i in range(len(N_arr)):
+    plt.semilogx(Nproc_arr, 1000*T_poststat[i,:].T/N_arr[i], 'g-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
+plt.xlabel('Number of processors')
+plt.ylabel('Time/sonding [ms]')
+plt.title('Posterior statistics')
+plt.legend()
+plt.grid()
+# get yaxis limits
+ymin, ymax = plt.ylim()
+plt.ylim(ymin*.9, ymax*1.1)
+
+plt.tight_layout()
+
+plt.savefig('%s_N_proc_sp_per_sounding' % file_out)
 plt.show()
 
 
