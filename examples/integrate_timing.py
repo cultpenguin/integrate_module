@@ -9,6 +9,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
+# get name of CPU
+import os
+import socket
+hostname = socket.gethostname()
+# Get number of processors
+Ncpu = os.cpu_count()
+print("Hostname: %s" % hostname)
+print("Number of processors: %d" % Ncpu)
+
 # %% Choose the GEX file used for forward modeling. THis should be stored in the data file.
 f_data_h5 = 'Fra20200930_202001001_1_AVG_export.h5'
 file_gex ='fraastad_ttem.gex'
@@ -20,6 +29,7 @@ print("Using GEX file: %s" % file_gex)
 N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000])
 #N_arr = np.array([100,1000,10000,50000])
 Nproc_arr=[1, 2, 4, 8, 16,  32]
+Nproc_arr=(1+np.arange(int(Ncpu**(0.5))))**2
 
 n1 = len(N_arr)
 n2 = len(Nproc_arr)
@@ -80,14 +90,7 @@ for j in np.arange(n2):
 
 
 # %% Save T_prior, N_arr, Nproc_arr in one file
-# get name of CPU
-import os
-import socket
-hostname = socket.gethostname()
-# Get number of processors
-Ncpu = os.cpu_count()
-#print("Hostname: %s" % hostname)
-#print("Number of processors: %d" % Ncpu)
+
 
 file_out  = 'timing_%s-%d_Nproc%d_N%d' % (hostname,Ncpu,len(Nproc_arr), len(N_arr))
 print(file_out)
