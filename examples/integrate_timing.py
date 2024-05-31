@@ -18,7 +18,7 @@ print("Using GEX file: %s" % file_gex)
 # %% TIMING
 
 N_arr = np.array([100,1000,10000])
-Nproc_arr=[8, 16. 32]
+Nproc_arr=[8, 16, 32]
 
 n1 = len(N_arr)
 n2 = len(Nproc_arr)
