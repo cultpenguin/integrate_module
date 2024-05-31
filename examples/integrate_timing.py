@@ -59,6 +59,9 @@ for j in np.arange(n2):
     for i in np.arange(len(N_arr)):
         N=N_arr[i]
 
+        print('=====================================================')
+        print('N=%d, Nproc=%d'%(N,Nproc_arr))
+
         RHO_min = 1
         RHO_max = 800
         z_max = 50 
