@@ -58,7 +58,7 @@ for j in np.arange(n2):
     t_poststat = []
 
     for i in np.arange(len(N_arr)):
-        N=N_arr[i]
+        N=int(N_arr[i])
 
         print('=====================================================')
         print('N=%d, Nproc=%d'%(N,Nproc))
