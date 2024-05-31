@@ -28,8 +28,13 @@ print("Using GEX file: %s" % file_gex)
 # N_arr = logspace form 100 to 1000000 in ns stesp
 N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000])
 #N_arr = np.array([100,1000,10000,50000])
-Nproc_arr=[1, 2, 4, 8, 16,  32]
-Nproc_arr=(1+np.arange(int(Ncpu**(0.5))))**2
+Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu)))))
+#Nproc_arr=(1+(np.arange(int(Ncpu**(0.5)))))**2
+# Commpute the opposite of Nproc=2**64, that is compute 64 as output
+
+
+print(N_arr)
+print(Nproc_arr)
 
 n1 = len(N_arr)
 n2 = len(Nproc_arr)
@@ -37,13 +42,14 @@ n2 = len(Nproc_arr)
 file_out  = 'timing_%s-%d_Nproc%d_N%d' % (hostname,Ncpu,len(Nproc_arr), len(N_arr))
 print(file_out)
 
+#%%
+
 T_prior = np.zeros((n1,n2))*np.nan
 T_forward = np.zeros((n1,n2))*np.nan
 T_rejection = np.zeros((n1,n2))*np.nan
 T_poststat = np.zeros((n1,n2))*np.nan
-
 for j in np.arange(n2):
-    Nproc = Nproc_arr[j]
+    Nproc = int(Nproc_arr[j])
     
     t_prior = []
     t_forward  = []
@@ -70,7 +76,7 @@ for j in np.arange(n2):
         #t_prior.append(time.time()-t0_prior)
         T_prior[i,j] = time.time()-t0_prior
 
-        if (Nproc<5 and N>9000)| (Nproc<7 and N>40000):
+        if (Nproc<5 and N>11000)| (Nproc<7 and N>51000):
             pass
         else:   
 
