@@ -27,6 +27,7 @@ print("Using GEX file: %s" % file_gex)
 # %% TIMING
 # N_arr = logspace form 100 to 1000000 in ns stesp
 N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000])
+N_arr = np.logspace(2,6,13)
 #N_arr = np.array([100,1000,10000,50000])
 Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu)))))
 #Nproc_arr=(1+(np.arange(int(Ncpu**(0.5)))))**2
@@ -79,7 +80,7 @@ for j in np.arange(n2):
         #t_prior.append(time.time()-t0_prior)
         T_prior[i,j] = time.time()-t0_prior
 
-        if (Nproc<5 and N>11000)| (Nproc<7 and N>51000):
+        if (Nproc<3 and N>11000)| (Nproc<7 and N>151000):
             pass
         else:   
 
