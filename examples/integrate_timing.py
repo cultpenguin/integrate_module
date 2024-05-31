@@ -103,9 +103,19 @@ for j in np.arange(n2):
         np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr)
 
 
-# %% Save T_prior, N_arr, Nproc_arr in one file
-
-
+# %% Load T_prior, N_arr, Nproc_arr in one file
+# load T_prior, T_forward, N_arr, N_proc from timing_d52534-32_Nproc5_N9.npz
+loadFromFile=False
+if loadFromFile:
+    file_out='timing_d52534-32_Nproc5_N9'
+    file_out='timing_d52534-32_Nproc6_N9'
+    data = np.load('%s.npz' % file_out)
+    T_prior = data['T_prior']
+    T_forward = data['T_forward']
+    T_rejection = data['T_rejection']
+    T_poststat = data['T_poststat']
+    N_arr = data['N_arr']
+    Nproc_arr = data['Nproc_arr']
 
 
 #%%
@@ -159,7 +169,7 @@ plt.grid()
 
 plt.subplot(2,2,3)
 for i in range(len(Nproc_arr)):
-    plt.plot(N_arr, T_rejection[:,i], 'b-*',label='Np=%d' % Nproc_arr[i], linewidth=2+(2*(i*dlw)))
+    plt.loglog(N_arr, T_rejection[:,i], 'b-*',label='Np=%d' % Nproc_arr[i], linewidth=2+(2*(i*dlw)))
 plt.xlabel('Number of realizations')
 plt.ylabel('Time [s]')
 plt.title('Rejection sampling')
@@ -168,7 +178,7 @@ plt.grid()
 
 plt.subplot(2,2,4)
 for i in range(len(Nproc_arr)):
-    plt.plot(N_arr, T_poststat[:,i], 'g-*',label='Np=%d' % Nproc_arr[i], linewidth=2+(2*(i*dlw)))
+    plt.loglog(N_arr, T_poststat[:,i], 'g-*',label='Np=%d' % Nproc_arr[i], linewidth=2+(2*(i*dlw)))
 plt.xlabel('Number of realizations')
 plt.ylabel('Time [s]')
 plt.title('Posterior statistics')
@@ -235,9 +245,6 @@ plt.tight_layout()
 
 plt.savefig('%s_N_proc_sp' % file_out)
 plt.show()
-
-
-# %%
 
 
 # %% PER SOUNDING
