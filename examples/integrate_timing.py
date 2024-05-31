@@ -34,6 +34,9 @@ Nproc_arr=(1+np.arange(int(Ncpu**(0.5))))**2
 n1 = len(N_arr)
 n2 = len(Nproc_arr)
 
+file_out  = 'timing_%s-%d_Nproc%d_N%d' % (hostname,Ncpu,len(Nproc_arr), len(N_arr))
+print(file_out)
+
 T_prior = np.zeros((n1,n2))*np.nan
 T_forward = np.zeros((n1,n2))*np.nan
 T_rejection = np.zeros((n1,n2))*np.nan
@@ -87,14 +90,13 @@ for j in np.arange(n2):
             t0_poststat = time.time()
             ig.integrate_posterior_stats(f_post_h5)
             T_poststat[i,j]=time.time()-t0_poststat
+            
+        np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr)
 
 
 # %% Save T_prior, N_arr, Nproc_arr in one file
 
 
-file_out  = 'timing_%s-%d_Nproc%d_N%d' % (hostname,Ncpu,len(Nproc_arr), len(N_arr))
-print(file_out)
-np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr)
 
 
 #%%
