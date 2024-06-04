@@ -50,7 +50,7 @@ elif useP==2:
 else:
     f_prior_h5 = 'gotaelv_Daugaard_N1000000.h5'
     f_prior_h5 = 'gotaelv2_N50000.h5'
-#    f_prior_h5 = 'gotaelv2_N1000000.h5'
+    f_prior_h5 = 'gotaelv2_N1000000.h5'
 
 
 ig.plot_prior_stats(f_prior_h5)
@@ -71,7 +71,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, pa
 #convert -delay 10 -loop 0 POST_*Median*feature*.png animation.gif
 #ffmpeg -i animation.gif -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" animation.mp4
 # %% Compute some generic statistic of the posterior distribution (Mean, Median, Std)
-#ig.integrate_posterior_stats(f_post_h5)
+ig.integrate_posterior_stats(f_post_h5)
 
 
 # %% [markdown]
