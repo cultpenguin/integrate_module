@@ -27,9 +27,14 @@ print("Using GEX file: %s" % file_gex)
 # %% TIMING
 # N_arr = logspace form 100 to 1000000 in ns stesp
 N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000])
+<<<<<<< HEAD
 N_arr = np.logspace(2,6,25)
+=======
+N_arr = np.logspace(2,6,13)
+
+>>>>>>> 504f31c2e160c56102e127ce973e188731e23325
 #N_arr = np.array([100,1000,10000,50000])
-Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu)))))
+Nproc_arr=2**(np.double(np.arange(2+int(np.log2(Ncpu)))))
 #Nproc_arr=(1+(np.arange(int(Ncpu**(0.5)))))**2
 # Commpute the opposite of Nproc=2**64, that is compute 64 as output
 
