@@ -2,7 +2,7 @@
 # %% [markdown]
 # # INTEGRATE Fraastad example
 
-# %%
+# %% Imports
 try:
     # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
     get_ipython()
@@ -16,7 +16,6 @@ except:
     #%autoreload 2
     pass
 
-# %%
 import integrate as ig
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,9 +28,10 @@ print("Using GEX file: %s" % file_gex)
 
 
 # %% [markdown]
-# ## 1. Setup the prior model ($\rho(\mathbf{m},\mathbf{d})$
+# ## 1. Setup the prior model, $\rho(\mathbf{m},\mathbf{d})$.
+
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
+N=10000
 RHO_min = 1
 RHO_max = 800
 z_max = 50 
@@ -54,8 +54,12 @@ else:
 
 
 ig.plot_prior_stats(f_prior_h5)
+
+# %% [markdown]
+# ## 2. Compute prior data, $\rho(\mathbf{d})$.
+
 # %% A2. Compute prior DATA
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Nproc=0)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Nproc=0, N=N)
 #f_prior_data_h5 = 'gotaelv_Daugaard_N1000000_fraastad_ttem_Nh280_Nf12.h5'
 
 # %% [markdown]
@@ -64,7 +68,8 @@ f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Nproc=0)
 # The posterior distribution is sampling using the extended rejection sampler.
 
 # %% READY FOR INVERSION
-N_use = 1000000
+N_use = N
+#f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1)
 
 #f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_gotaelv_Daugaard_N1000000_fraastad_ttem_Nh280_Nf12_Nu1000000_aT1.h5'
@@ -75,7 +80,7 @@ ig.integrate_posterior_stats(f_post_h5)
 
 
 # %% [markdown]
-# ### Plot some statistic from $\sigma(\mathbf{m})$
+# ### Plot some statistics from $\sigma(\mathbf{m})$
 
 # %% Posterior analysis
 # Plot the Temperature used for inversion
@@ -89,9 +94,8 @@ ig.plot_data_prior_post(f_post_h5, i_plot = 0)
 ig.plot_data_prior_post(f_post_h5, i_plot = 1199)
 
 # %% Plot Profiles
-ig.plot_profile_continuous(f_post_h5, i1=7000, i2=7300, im=1, clim=[1,800])
-#%%
-ig.plot_profile_discrete(f_post_h5, i1=7000, i2=7300, im=2)
+ig.plot_profile(f_post_h5, i1=7000, i2=7300, im=1)
+ig.plot_profile(f_post_h5, i1=7000, i2=7300, im=2)
  # %%
 
 ## Plot a 2D feature: Resistivity in layer 10
@@ -106,22 +110,8 @@ ig.plot_profile_discrete(f_post_h5, i1=7000, i2=7300, im=2)
 
 try:
     # Plot a 2D feature: The number of layers
-    ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of layers', cmap='jet', s=12)
+    #ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of layers', cmap='jet', s=12)
+    ig.plot_feature_2d(f_post_h5,im=2,iz=22,key='Mode', title_text = 'Lithology Mode', cmap='jet', s=12)
 except:
     pass
 
-
-
-
-
-# %%
-import h5py
-
-f_data = h5py.File(f_data_h5, 'r')
-
-
-#%%
-f_data.close()
-
-
-# %%

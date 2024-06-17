@@ -798,7 +798,31 @@ def forward_gaaem_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **
     # time.sleep(np.random.rand()*10)
     return forward_gaaem(C=C_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)
 
-def prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, im=1, id=1, Nhank=280, Nfreq=12, parallel=True, **kwargs):
+
+
+def copy_hdf5_file(input_filename, output_filename, N=None):
+    # Open the input file
+    with h5py.File(input_filename, 'r') as input_file:
+        # Create the output file
+        with h5py.File(output_filename, 'w') as output_file:
+            # Copy each group/dataset from the input file to the output file
+            for name in input_file:
+                if isinstance(input_file[name], h5py.Dataset):
+                    # If N is specified, only copy the first N elements
+                    data = input_file[name][:N]
+                    # Create new dataset in output file
+                    output_dataset = output_file.create_dataset(name, data=data)
+                    # Copy the attributes of the dataset
+                    for key, value in input_file[name].attrs.items():
+                        output_dataset.attrs[key] = value
+                else:
+                    input_file.copy(name, output_file)
+
+            # Copy the attributes of the input file to the output file
+            for key, value in input_file.attrs.items():
+                output_file.attrs[key] = value
+
+def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1, Nhank=280, Nfreq=12, parallel=True, **kwargs):
     """
     Generate prior data for the ga-aem method.
 
@@ -821,18 +845,36 @@ def prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, im=1, id=1, Nha
     import multiprocessing
     from multiprocessing import Pool
     import time
+    import datetime
 
     type = 'TDEM'
     method = 'ga-aem'
     showInfo = kwargs.get('showInfo', 0)
     Nproc = kwargs.get('Nproc', 0)
     
+    with h5py.File(f_prior_h5, 'a') as f:
+        N_in = f['M1'].shape[0]
+    if N==0: 
+        N = N_in     
+    if N>N_in:
+        N=N_in
+           
+    print('N=%d, N_in=%d' % (N,N_in))
     if doMakePriorCopy:
-        f_prior_data_h5 = '%s_%s_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex)[0], Nhank, Nfreq)
+        if N < N_in:
+            f_prior_data_h5 = '%s_%s_N%d_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex)[0], N, Nhank, Nfreq)
+        else:
+            f_prior_data_h5 = '%s_%s_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex)[0], Nhank, Nfreq)
         if (showInfo>-1):
             print("Creating a copy of %s as %s" % (f_prior_h5, f_prior_data_h5))
         # make a copy of the prior file
-        shutil.copy(f_prior_h5, f_prior_data_h5)
+        #copy_hdf5_file(input_filename, output_filename, N=None)
+        copy_hdf5_file(f_prior_h5, f_prior_data_h5,N)
+        #if N < N_in:
+        #    # Truncate
+        #    truncate_and_repack_hdf5_file(f_prior_data_h5, N)
+            
+        
     else:
         f_prior_data_h5 = f_prior_h5
 
