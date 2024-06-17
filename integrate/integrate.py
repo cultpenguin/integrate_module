@@ -858,7 +858,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         N = N_in     
     if N>N_in:
         N=N_in
-           
+
     print('N=%d, N_in=%d' % (N,N_in))
     if doMakePriorCopy:
         if N < N_in:
@@ -1098,7 +1098,7 @@ def prior_model_workbench(N=100000, rho_dist='log-uniform', z1=0, z2= 100, nlaye
         M_rho = np.random.chisquare(df = chi2_deg, size=(N, nz))
         f_prior_h5 = '%s_deg%d.h5' % (f_prior_h5,chi2_deg)
 
-    f_prior_h5 = f_prior_h5 + '.h5'
+    #f_prior_h5 = f_prior_h5 + '.h5'
 
     print("Saving prior model to %s" % f_prior_h5)
     f_prior = h5py.File(f_prior_h5, 'w')
