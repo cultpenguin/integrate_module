@@ -1118,7 +1118,7 @@ def prior_model_workbench(N=100000, rho_dist='log-uniform', z1=0, z2= 100, nlaye
     return f_prior_h5
 
 
-def posterior_cumulative_thickness(f_post_h5,im=2, icat=[0]):
+def posterior_cumulative_thickness(f_post_h5,im=2, icat=[0], usePrior=False, **kwargs):
     import h5py
     import integrate as ig
 
@@ -1175,10 +1175,15 @@ def posterior_cumulative_thickness(f_post_h5,im=2, icat=[0]):
         #print('clim %f-%f' % (clim[0],clim[1]))
 
     with h5py.File(f_post_h5,'r') as f_post:
-        P=f_post[Mstr+'/P'][:]
+        #P=f_post[Mstr+'/P'][:]
         i_use = f_post['/i_use'][:]
 
     ns,nr=i_use.shape
+
+    if usePrior:
+        for i in range(ns):
+            i_use[i,:]=np.arange(nr)
+        
 
     f_prior = h5py.File(f_prior_h5,'r')
     M_prior = f_prior[Mstr][:]
@@ -1193,11 +1198,14 @@ def posterior_cumulative_thickness(f_post_h5,im=2, icat=[0]):
     thick = np.diff(z)
 
     for i in range(ns):
-        jj = i_use[i,:].astype(int)
+
+        jj = i_use[i,:].astype(int)-1
+        m_sample = M_prior[jj,:]
+            
         cum_thick = np.zeros((nr))
         for ic in range(len(icat)):
-        
-            m_sample = M_prior[jj,:]
+
+            
             # the number of values of i_cat in the sample
 
             i_match = (m_sample == class_id[icat[ic]]).astype(int)
@@ -1215,3 +1223,5 @@ def posterior_cumulative_thickness(f_post_h5,im=2, icat=[0]):
 
     return thick_mean, thick_median, thick_std, class_out, X, Y
     
+
+# %%
