@@ -12,8 +12,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # #%load_ext autoreload
-    # #%autoreload 2
+    #%load_ext autoreload
+    #%autoreload 2
     pass
 
 import integrate as ig
@@ -29,18 +29,14 @@ print("Using GEX file: %s" % file_gex)
 
 # %% [markdown]
 # ## 1. Setup the prior model, $\rho(\mathbf{m},\mathbf{d})$.
+
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-
-# %%
-
-
-
-N=10000
+N=25000
 RHO_min = 1
 RHO_max = 1500
 z_max = 50 
 
-useP=2
+useP=3
 if useP==1:
     ## Layered model
     #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
@@ -93,7 +89,7 @@ ig.plot_T_EV(f_post_h5, pl='EV')
 ig.plot_T_EV(f_post_h5, pl='ND')
 #
 
-# %%
+#%%
 ig.plot_data_prior_post(f_post_h5, i_plot = 0)
 ig.plot_data_prior_post(f_post_h5, i_plot = 1199)
 
@@ -103,17 +99,17 @@ try:
     ig.plot_profile(f_post_h5, i1=7000, i2=7300, im=2)
 except:
     pass
-# %%
+ # %%
 
 ## Plot a 2D feature: Resistivity in layer 10
 #ig.plot_feature_2d(f_post_h5,im=1,iz=12, key='Median', uselog=1, cmap='jet', s=10, clim=np.log10([RHO_min,RHO_max]))
 ##ig.plot_feature_2d(f_post_h5,im=1,iz=80,key='Median')
 
-# %%
+#%% 
 #for iz in range(40):
 #    ig.plot_feature_2d(f_post_h5,im=1,iz=iz, key='Median', uselog=1, cmap='jet', s=10, clim=np.log10([RHO_min,RHO_max]))
 
-# %%
+#%%
 
 try:
     # Plot a 2D feature: The number of layers
@@ -121,6 +117,29 @@ try:
     ig.plot_feature_2d(f_post_h5,im=2,iz=22,key='Mode', title_text = 'Lithology Mode', cmap='jet', s=12)
 except:
     pass
+
+
+# %% Compute cumulative category
+
+im = 2 
+icat=np.array([2])
+thick_mean, thick_median, thick_std, class_names, X, Y = ig.posterior_cumulative_thickness(f_post_h5,im=2, icat=icat)
+plt.scatter(X,Y, c=thick_median, cmap='jet', s=10)
+plt.colorbar()
+plt.title('Cumulative Thickness - mean - %s ' % class_names)
+plt.show()
+
+
+im = 2 
+icat=np.array([4])
+thick_mean, thick_median, thick_std, class_names, X, Y = ig.posterior_cumulative_thickness(f_post_h5,im=2, icat=icat)
+plt.scatter(X,Y, c=thick_std, cmap='jet', s=10)
+plt.colorbar()
+plt.title('Cumulative Thickness - std - %s ' % class_names)
+plt.show()
+
+
+
 
 
 # %%

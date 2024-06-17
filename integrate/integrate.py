@@ -1117,4 +1117,101 @@ def prior_model_workbench(N=100000, rho_dist='log-uniform', z1=0, z2= 100, nlaye
     
     return f_prior_h5
 
+
+def posterior_cumulative_thickness(f_post_h5,im=2, icat=[0]):
+    import h5py
+    import integrate as ig
+
+    with h5py.File(f_post_h5,'r') as f_post:
+        f_prior_h5 = f_post['/'].attrs['f5_prior']
+        f_data_h5 = f_post['/'].attrs['f5_data']
+
+    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+
+    Mstr = '/M%d' % im
+    with h5py.File(f_prior_h5,'r') as f_prior:
+        if not Mstr in f_prior.keys():
+            print('No %s found in %s' % (Mstr, f_prior_h5))
+            #return 1
+        if not f_prior[Mstr].attrs['is_discrete']:
+            print('M%d is not discrete' % im)
+            #return 1
+
+
+
+    with h5py.File(f_prior_h5,'r') as f_prior:
+        try:
+            z = f_prior[Mstr].attrs['z'][:].flatten()
+        except:
+            z = f_prior[Mstr].attrs['x'][:].flatten()
+        is_discrete = f_prior[Mstr].attrs['is_discrete']
+        if 'clim' in f_prior[Mstr].attrs.keys():
+            clim = f_prior[Mstr].attrs['clim'][:].flatten()
+        else:
+            # if clim set in kwargs, use it, otherwise use default
+            if 'clim' in kwargs:
+                clim = kwargs['clim']
+            else:
+                clim = [.1, 2600]
+                clim = [10, 500]
+        if 'class_id' in f_prior[Mstr].attrs.keys():
+            class_id = f_prior[Mstr].attrs['class_id'][:].flatten()
+        else:   
+            print('No class_id found')
+        if 'class_name' in f_prior[Mstr].attrs.keys():
+            class_name = f_prior[Mstr].attrs['class_name'][:].flatten()
+        else:
+            class_name = []
+        n_class = len(class_name)
+        if 'cmap' in f_prior[Mstr].attrs.keys():
+            cmap = f_prior[Mstr].attrs['cmap'][:]
+        else:
+            cmap = plt.cm.hot(np.linspace(0, 1, n_class)).T
+        from matplotlib.colors import ListedColormap
+        cmap = ListedColormap(cmap.T)            
+        #print(cmap)
+        #print(cmap.shape)
+        #print('class_name = %s' % class_name)
+        #print('clim %f-%f' % (clim[0],clim[1]))
+
+    with h5py.File(f_post_h5,'r') as f_post:
+        P=f_post[Mstr+'/P'][:]
+        i_use = f_post['/i_use'][:]
+
+    ns,nr=i_use.shape
+
+    f_prior = h5py.File(f_prior_h5,'r')
+    M_prior = f_prior[Mstr][:]
+    f_prior.close()
+    nz = M_prior.shape[1]
+
+    thick_mean = np.zeros((ns))
+    thick_median = np.zeros((ns))
+    thick_std = np.zeros((ns))
+
+
+    thick = np.diff(z)
+
+    for i in range(ns):
+        jj = i_use[i,:].astype(int)
+        cum_thick = np.zeros((nr))
+        for ic in range(len(icat)):
+        
+            m_sample = M_prior[jj,:]
+            # the number of values of i_cat in the sample
+
+            i_match = (m_sample == class_id[icat[ic]]).astype(int)
+            i_match = i_match[:,0:nz-1]
+            
+            n_cat = np.sum(m_sample==icat[ic], axis=0)
+        
+            cum_thick = cum_thick + np.sum(i_match*thick, axis=1)
+
+        thick_mean[i] = np.mean(cum_thick)
+        thick_median[i] = np.median(cum_thick)
+        thick_std[i] = np.std(cum_thick)
+
+    class_out = class_name[icat]
+
+    return thick_mean, thick_median, thick_std, class_out, X, Y
     

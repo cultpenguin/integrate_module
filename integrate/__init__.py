@@ -9,6 +9,7 @@ from integrate.integrate import prior_data_gaaem
 from integrate.integrate import forward_gaaem
 from integrate.integrate import prior_model_layered
 from integrate.integrate import prior_model_workbench
+from integrate.integrate import posterior_cumulative_thickness
 
 from integrate.integrate_io import read_gex
 from integrate.integrate_io import write_stm_files
