@@ -20,6 +20,7 @@ from integrate.integrate_io import post_h5_to_xyz
 
 from integrate.integrate_plot import plot_profile_continuous
 from integrate.integrate_plot import plot_T_EV
+from integrate.integrate_plot import plot_data_xy
 from integrate.integrate_plot import plot_data
 from integrate.integrate_plot import plot_data_prior_post
 from integrate.integrate_plot import plot_prior_stats

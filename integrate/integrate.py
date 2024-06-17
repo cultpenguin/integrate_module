@@ -243,7 +243,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                 nsounding, nr = i_use.shape
                 nm = dataset.shape[1]
                 # Get number of classes for name    
-                class_id = f_prior[name].attrs['class_id']
+                class_id = f_prior[name].attrs['class_id']                
                 n_classes = len(class_id)
                 
                 if showInfo>0:
@@ -274,16 +274,8 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                     # Get the indices of the rows to use
                     ir = np.int64(i_use[iid,:]-1)
                     
-                    # Load ALL DATA AND EXTRACT
-                    # load from all models in memory
-                    #m_post = dataset[:][ir,:]
                     m_post = M_all[ir,:]
-                    # Load only the needed data
-                    #m_post = np.zeros((nr,nm))
-                    #for j in range(nr):
-                    #    m_post[j,:] = dataset[ir[j],:]
                     
-
                     # Compute the class probability
                     n_count = np.zeros((n_classes,nm))
                     for ic in range(n_classes):
@@ -296,7 +288,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                     # Compute the entropy
                     M_entropy[iid,:]=sp.stats.entropy(n_count, base=n_classes)
 
-                f_post['/%s/%s' % (name,'Mode')][:] = M_median
+                f_post['/%s/%s' % (name,'Mode')][:] = M_mode
                 f_post['/%s/%s' % (name,'Entropy')][:] = M_entropy
                 f_post['/%s/%s' % (name,'P')][:] = M_P
 

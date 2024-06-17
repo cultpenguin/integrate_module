@@ -305,7 +305,23 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     plt.savefig(f_png)
     plt.show()
 
-            
+def plot_data_xy(f_data_h5, i_plot=[], Dkey=[], **kwargs):
+    import integrate as ig
+    import matplotlib.pyplot as plt
+    
+    # Get 'f_prior' and 'f_data' from the selected file 
+    # and display them in the sidebar
+    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    fig, ax = plt.subplots()
+    ax.set_title('GEOMETRY')
+    cbar1 = plt.colorbar(ax.scatter(X/1000, Y/1000, c=ELEVATION, s=20, cmap='jet'))
+    cbar1.set_label('Elevation (m)')
+    cbar2 = plt.colorbar(ax.scatter(X/1000, Y/1000, c=LINE, s=1, cmap='gray'))
+    cbar2.set_label('LINE')
+    ax.set_xlabel('X (km)')
+    ax.set_ylabel('Y (km)')
+    return fig
+          
 
 def plot_data(f_data_h5, i_plot=[], Dkey=[], **kwargs):
     """
