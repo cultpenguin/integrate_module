@@ -131,6 +131,19 @@ def integrate_update_prior_attributes(f_prior_h5, **kwargs):
         for name, dataset in f.items():
             if name.upper().startswith('M'):
                 # Check if the attribute 'is_discrete' exists
+                if 'x' in dataset.attrs:
+                    pass
+                else:
+                    if 'z' in dataset.attrs:
+                        dataset.attrs['x'] = dataset.attrs['z']
+                    else:
+                        if 'M1' in f.keys():
+                            if 'x' in f['/M1'].attrs.keys():
+                                f[name].attrs['x'] = f['/M1'].attrs['x']
+                                print('Setting %s/x = /M1/x ' % name)
+                            else:
+                                print('No x attribute found in %s' % name)    
+                
                 if 'is_discrete' in dataset.attrs:
                     if (showInfo>0):
                         print('%s: %s.is_discrete=%d' % (f_prior_h5,name,dataset.attrs['is_discrete']))

@@ -90,6 +90,8 @@ ig.plot_data_prior_post(f_post_h5, i_plot = 1199)
 
 # %% Plot Profiles
 ig.plot_profile_continuous(f_post_h5, i1=7000, i2=7300, im=1, clim=[1,800])
+#%%
+ig.plot_profile_discrete(f_post_h5, i1=7000, i2=7300, im=2)
  # %%
 
 ## Plot a 2D feature: Resistivity in layer 10

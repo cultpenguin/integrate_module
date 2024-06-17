@@ -164,6 +164,205 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='both', hardcopy=
 
     return 1
 
+def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
+
+    with h5py.File(f_post_h5,'r') as f_post:
+        f_prior_h5 = f_post['/'].attrs['f5_prior']
+        f_data_h5 = f_post['/'].attrs['f5_data']
+
+    print(im)
+    if (im==0):
+        print('Plot profile for all model parameters')
+
+        with h5py.File(f_prior_h5,'r') as f_prior:
+            for key in f_prior.keys():
+                im = int(key[1:])
+                if key[0]=='M':
+                    plot_profile(f_post_h5, i1, i2, im=im, **kwargs)
+                
+        return 1
+    
+    
+    Mstr = '/M%d' % im
+    with h5py.File(f_prior_h5,'r') as f_prior:
+        is_discrete = f_prior[Mstr].attrs['is_discrete']    
+    #print(Mstr)
+    #print(is_discrete)
+    if is_discrete:
+        plot_profile_discrete(f_post_h5, i1, i2, im, **kwargs)
+    elif not is_discrete:
+        plot_profile_continuous(f_post_h5, i1, i2, im, **kwargs)
+
+
+def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
+    """
+    Plot discrete profiles from a given HDF5 file.
+
+    Parameters: 
+    - f_post_h5 (str): Path to the HDF5 file.
+    - i1 (int, optional): Starting index for the profile. Defaults to 1.
+    - i2 (int, optional): Ending index for the profile. Defaults to 1e+9.
+    - im (int, optional): Index of the profile to plot. Defaults to 1.
+
+    Returns:
+    - None
+    """
+    from matplotlib.colors import LogNorm
+
+    kwargs.setdefault('hardcopy', True)
+    
+    with h5py.File(f_post_h5,'r') as f_post:
+        f_prior_h5 = f_post['/'].attrs['f5_prior']
+        f_data_h5 = f_post['/'].attrs['f5_data']
+    
+    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+
+    Mstr = '/M%d' % im
+
+    print("Plotting profile %s from %s" % (Mstr, f_post_h5))
+
+    with h5py.File(f_prior_h5,'r') as f_prior:
+        try:
+            z = f_prior[Mstr].attrs['z'][:].flatten()
+        except:
+            z = f_prior[Mstr].attrs['x'][:].flatten()
+        is_discrete = f_prior[Mstr].attrs['is_discrete']
+        if 'clim' in f_prior[Mstr].attrs.keys():
+            clim = f_prior[Mstr].attrs['clim'][:].flatten()
+        else:
+            # if clim set in kwargs, use it, otherwise use default
+            if 'clim' in kwargs:
+                clim = kwargs['clim']
+            else:
+                clim = [.1, 2600]
+                clim = [10, 500]
+        if 'class_id' in f_prior[Mstr].attrs.keys():
+            class_id = f_prior[Mstr].attrs['class_id'][:].flatten()
+        else:   
+            print('No class_id found')
+        if 'class_name' in f_prior[Mstr].attrs.keys():
+            class_name = f_prior[Mstr].attrs['class_name'][:].flatten()
+        else:
+            class_name = []
+        n_class = len(class_name)
+        if 'cmap' in f_prior[Mstr].attrs.keys():
+            cmap = f_prior[Mstr].attrs['cmap'][:]
+        else:
+            cmap = plt.cm.hot(np.linspace(0, 1, n_class)).T
+        from matplotlib.colors import ListedColormap
+        cmap = ListedColormap(cmap.T)            
+        #print(cmap)
+        #print(cmap.shape)
+        #print('class_name = %s' % class_name)
+        #print('clim %f-%f' % (clim[0],clim[1]))
+
+    if not is_discrete:
+        print("%s refers to a continuous model. Use plot_profile_continuous instead" % Mstr)
+
+    with h5py.File(f_post_h5,'r') as f_post:
+        Mode=f_post[Mstr+'/Mode'][:].T
+        Entropy=f_post[Mstr+'/Entropy'][:].T
+        P=f_post[Mstr+'/P'][:]
+        T=f_post['/T'][:].T
+        EV=f_post['/EV'][:].T
+        try:
+            EV=f_post['/EV_mul'][:]
+        except:
+            a=1
+
+    nm = Mode.shape[0]
+    if nm<=1:
+        print('Only nm=%d, model parameters. no profile will be plot' % (nm))
+        return 1
+
+    nd = LINE.shape[0]
+    id = np.arange(nd)
+    # Create a meshgrid from X and Y
+    XX, ZZ = np.meshgrid(X,z)
+    YY, ZZ = np.meshgrid(Y,z)
+    ID, ZZ = np.meshgrid(id,z)
+
+    ID = np.sort(ID, axis=0)
+    ZZ = np.sort(ZZ, axis=0)
+
+    # compute the depth from the surface plus the elevation
+    for i in range(nd):
+        ZZ[:,i] = ELEVATION[i]-ZZ[:,i]
+
+    if i1<1: 
+        i1=0
+    if i2>nd-1:
+        i2=nd
+
+    # ii is a numpy array from i1 to i2
+    ii = np.arange(i1,i2)
+
+    # Create a figure with 3 subplots sharing the same Xaxis!
+    fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
+
+    # MODE
+    im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mode[:,i1:i2], 
+            cmap=cmap,            
+            shading='auto')
+    im1.set_clim(clim[0]-.5,clim[1]+.5)        
+
+    ax[0].set_title('Mode')
+    # /fix set the ticks to be 1 to n_class, and use class_name as tick labels
+    cbar1 = fig.colorbar(im1, ax=ax[0], label='label')
+    cbar1.set_ticks(np.arange(n_class)+1)
+    cbar1.set_ticklabels(class_name)
+    cbar1.ax.invert_yaxis()
+
+    # ENTROPY
+    im2 = ax[1].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Entropy[:,i1:i2],
+            cmap='hot_r', 
+            shading='auto')
+    im2.set_clim(0,1)
+    ax[1].set_title('Entropy')
+    fig.colorbar(im2, ax=ax[1], label='Entropy')
+
+    # MODE with transparency set using entropy
+    im3 = ax[2].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mode[:,i1:i2],
+            cmap=cmap, 
+            shading='auto',
+            alpha=1-Entropy[:,i1:i2])
+    im3.set_clim(clim[0]-.5,clim[1]+.5)
+    ax[2].set_title('Mode with transparency')
+    #fig.colorbar(im3, ax=ax[2], label='label')
+    cbar3 = fig.colorbar(im3, ax=ax[2], label='label')
+    cbar3.set_ticks(np.arange(n_class)+1)
+    cbar3.set_ticklabels(class_name)
+    cbar3.ax.invert_yaxis()
+
+    ## T and V
+    ax[0].set_xticks([])
+    ax[1].set_xticks([])
+    ax[2].set_xticks([])
+    
+    im4 = ax[3].semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
+    plt.semilogy(ID[0,i1:i2],-EV[i1:i2], 'r', label='-EV')
+    plt.tight_layout()
+    ax[3].set_xlim(ID[0,i1], ID[0,i2])
+    ax[3].set_ylim(0.99, 200)
+    ax[3].legend(loc='upper right')
+    plt.grid(True)
+
+    # Create an invisible colorbar for the last subplot
+    cbar4 = fig.colorbar(im3, ax=ax[3])
+    cbar4.solids.set(alpha=0)
+    cbar4.outline.set_visible(False)
+    cbar4.ax.set_yticks([])  # Hide the colorbar ticks
+    cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
+
+
+    # get filename without extension
+    if kwargs['hardcopy']:
+        f_png = '%s_%d_%d_profile_%s.png' % (os.path.splitext(f_post_h5)[0],i1,i2,Mstr[1:])
+        plt.savefig(f_png)
+    plt.show()
+
+
+
 def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
     Plot continuous profiles from a given HDF5 file.
@@ -177,6 +376,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     Returns:
     - None
     """
+    from matplotlib.colors import LogNorm
 
     kwargs.setdefault('hardcopy', True)
     
@@ -206,9 +406,19 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
                 clim = [.1, 2600]
                 clim = [10, 500]
         print(clim)
+        if 'cmap' in f_prior[Mstr].attrs.keys():
+            cmap = f_prior[Mstr].attrs['cmap'][:]
+            from matplotlib.colors import ListedColormap
+            cmap = ListedColormap(cmap.T)
+        else:
+            cmap = 'hot'
+
+        print(cmap)
+        print(clim)
 
     if is_discrete:
-        print("This is a discrete model. Use plot_profile_discrete instead")
+        print("%s refers to a discrete model. Use plot_profile_discrete instead" % Mstr)
+
 
     with h5py.File(f_post_h5,'r') as f_post:
         Mean=f_post[Mstr+'/Mean'][:].T
@@ -246,14 +456,14 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     if i2>nd-1:
         i2=nd
 
-    from matplotlib.colors import LogNorm
+    
 
     # Create a figure with 3 subplots sharing the same Xaxis!
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
 
     # MEAN
     im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mean[:,i1:i2], 
-            cmap='jet',            
+            cmap=cmap,            
             shading='auto',
             norm=LogNorm())
     im1.set_clim(clim[0],clim[1])        
@@ -262,7 +472,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     
     # MEDIAN
     im2 = ax[1].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Median[:,i1:i2], 
-            cmap='jet',            
+            cmap=cmap,            
             shading='auto',
             norm=LogNorm())  # Set color scale to logarithmic
     im2.set_clim(clim[0],clim[1])        
@@ -270,11 +480,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     fig.colorbar(im2, ax=ax[1], label='Resistivity (Ohm.m)')
 
     # STD
+    import matplotlib
     im3 = ax[2].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Std[:,i1:i2], 
-            cmap='hot_r', 
-            vmin=0, vmax=0.5, 
-            shading='auto')
-    im2.set_clim(clim[0],clim[1])        
+                cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]), 
+                shading='auto')
+    im3.set_clim(0,1)
     ax[2].set_title('std')
     fig.colorbar(im3, ax=ax[2], label='Standard deviation (Ohm.m)')
 
@@ -301,8 +511,9 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
 
     # get filename without extension
-    f_png = '%s_%d_%d_profile.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
-    plt.savefig(f_png)
+    if kwargs['hardcopy']:
+        f_png = '%s_%d_%d_profile_%s.png' % (os.path.splitext(f_post_h5)[0],i1,i2,Mstr[1:])
+        plt.savefig(f_png)
     plt.show()
 
 def plot_data_xy(f_data_h5, i_plot=[], Dkey=[], **kwargs):
