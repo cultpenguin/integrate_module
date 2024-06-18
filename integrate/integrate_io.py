@@ -5,18 +5,14 @@ import h5py
 #def write_stm_files(GEX, Nhank=140, Nfreq=6, Ndig=7, **kwargs):
 def write_stm_files(GEX, **kwargs):
     """
-    Write STM (System Transfer Matrix) files based on the provided GEX (Geophysical EXchange) data.
+    Write STM (System Transfer Matrix) files based on the provided GEX system data file.
 
-    Parameters:
-    - GEX (dict): The GEX data containing the system information.
-    - Nhank (int): The number of Hankel transform abscissae for both low and high frequency windows.
-    - Nfreq (int): The number of frequencies per decade for both low and high frequency windows.
-    - Ndig (int): The number of digits for waveform digitizing frequency.
-    - file_gex (str): The path to the GEX file.
-    - **kwargs: Additional keyword arguments for customization.
-
-    Returns:
-    - stm_files (list): A list of file paths for the generated STM files.
+    :param GEX: The GEX data containing the system information.
+    :type GEX: dict
+    :param kwargs: Additional keyword arguments for customization.
+    :type kwargs: dict
+    :return: A list of file paths for the generated STM files.
+    :rtype: list
     """
     system_name = GEX['General']['Description']
 
@@ -207,16 +203,16 @@ def read_gex(file_gex, **kwargs):
     """
     Read a GEX file and parse its contents into a dictionary.
 
-    Args:
-        file_gex (str): The path to the GEX file.
-        - Nhank (int): The number of Hankel transform abscissae for both low and high frequency windows.
-        - Nfreq (int): The number of frequencies per decade for both low and high frequency windows.
-        - Ndig (int): The number of digits for waveform digitizing frequency.
-        - **kwargs: Additional keyword arguments for customization.
-
-    Returns:
-        dict: A dictionary containing the parsed contents of the GEX file.
-
+    :param str file_gex: The path to the GEX file.
+    :param kwargs: Additional keyword arguments for customization.
+    :type kwargs: dict
+    :keyword int Nhank: The number of Hankel transform abscissae for both low and high frequency windows.
+    :keyword int Nfreq: The number of frequencies per decade for both low and high frequency windows.
+    :keyword int Ndig: The number of digits for waveform digitizing frequency.
+    :keyword int showInfo: Flag to control the display of information. Default is 0.
+    :return: A dictionary containing the parsed contents of the GEX file.
+    :rtype: dict
+    :raises FileNotFoundError: If the specified GEX file does not exist.
     """
     showInfo = kwargs.get('showInfo', 0)
     
@@ -225,10 +221,9 @@ def read_gex(file_gex, **kwargs):
     comment_counter = 1
     current_key = None
 
-    # Chec if file_gex exists
+    # Check if file_gex exists
     if not os.path.exists(file_gex):
-        print(f"Error: file {file_gex} does not exist")
-        exit(1)
+        raise FileNotFoundError(f"Error: file {file_gex} does not exist")
 
     with open(file_gex, 'r') as file:
         for line in file.readlines():
@@ -294,21 +289,16 @@ def gex_to_stm(file_gex, **kwargs):
     """
     Convert a GEX file to STM files.
 
-    Args:
-        file_gex (str or dict): The path to the GEX file or a GEX dictionary.
-        **kwargs: Additional keyword arguments to be passed to the write_stm_files function.
-
-    Returns:
-        tuple: A tuple containing the STM files and the GEX dictionary.
-
-    Raises:
-        TypeError: If the file_gex argument is not a string or a dictionary.
-
-    Notes:
+    :param file_gex: The path to the GEX file or a GEX dictionary.
+    :type file_gex: str or dict
+    :param kwargs: Additional keyword arguments to be passed to the write_stm_files function.
+    :return: A tuple containing the STM files and the GEX dictionary.
+    :rtype: tuple
+    :raises TypeError: If the file_gex argument is not a string or a dictionary.
+    :notes:
         - If the file_gex argument is a string, it is assumed to be the path to the GEX file, which will be read using the read_gex function.
         - If the file_gex argument is a dictionary, it is assumed to be a GEX dictionary.
         - The write_stm_files function is called to generate the STM files based on the GEX data.
-
     """
     if isinstance(file_gex, str):
         GEX = read_gex(file_gex)
@@ -324,12 +314,10 @@ def get_gex_file_from_data(f_data_h5, id=1):
     """
     Retrieves the 'gex' attribute from the specified HDF5 file.
 
-    Args:
-        f_data_h5 (str): The path to the HDF5 file.
-        id (int, optional): The ID of the dataset within the HDF5 file. Defaults to 1.
-
-    Returns:
-        str: The value of the 'gex' attribute if found, otherwise an empty string.
+    :param str f_data_h5: The path to the HDF5 file.
+    :param int id: The ID of the dataset within the HDF5 file. Defaults to 1.
+    :return: The value of the 'gex' attribute if found, otherwise an empty string.
+    :rtype: str
     """
     with h5py.File(f_data_h5, 'r') as f:
         dname = '/D%d' % id
@@ -342,18 +330,46 @@ def get_gex_file_from_data(f_data_h5, id=1):
 
 
 def get_geometry(f_data_h5):
-    with h5py.File(f_data_h5,'r') as f_data:
+    """
+    Retrieve geometry information from an HDF5 file.
+
+    :param str f_data_h5: The path to the HDF5 file.
+
+    :return: A tuple containing the X, Y, LINE, and ELEVATION arrays.
+    :rtype: tuple
+
+    :raises IOError: If the HDF5 file cannot be opened or read.
+
+    :example:
+    >>> get_geometry('/path/to/file.h5')
+    (array([1, 2, 3]), array([4, 5, 6]), array([7, 8, 9]), array([10, 11, 12]))
+    
+    """
+
+    with h5py.File(f_data_h5, 'r') as f_data:
         X = f_data['/UTMX'][:].flatten()
         Y = f_data['/UTMY'][:].flatten()
         LINE = f_data['/LINE'][:].flatten()
         ELEVATION = f_data['/ELEVATION'][:].flatten()
 
-
     return X, Y, LINE, ELEVATION
 
 
 def post_h5_to_xyz(f_post_h5='', Mstr='/M1'):
+    """
+    Convert a post-processing HDF5 file to a CSV file containing XYZ data.
 
+    :param f_post_h5: Path to the post-processing HDF5 file. If not provided, the last used file will be used.
+    :type f_post_h5: str
+    :param Mstr: The dataset path within the HDF5 file. Default is '/M1'.
+    :type Mstr: str
+
+    :return: Path to the generated CSV file.
+    :rtype: str
+
+    :raises KeyError: If the specified dataset path does not exist in the HDF5 file.
+    :raises FileNotFoundError: If the specified HDF5 file does not exist.
+    """
     import pandas as pd
     import integrate as ig
 
@@ -426,3 +442,39 @@ def post_h5_to_xyz(f_post_h5='', Mstr='/M1'):
     f_prior.close()
 
     return f_post_csv
+
+
+
+def copy_hdf5_file(input_filename, output_filename, N=None):
+    """
+    Copy the contents of an HDF5 file to another HDF5 file.
+
+    :param input_filename: The path to the input HDF5 file.
+    :type input_filename: str
+    :param output_filename: The path to the output HDF5 file.
+    :type output_filename: str
+    :param N: The number of elements to copy from each dataset. If not specified, all elements will be copied.
+    :type N: int, optional
+
+    :return: None
+    """
+    # Open the input file
+    with h5py.File(input_filename, 'r') as input_file:
+        # Create the output file
+        with h5py.File(output_filename, 'w') as output_file:
+            # Copy each group/dataset from the input file to the output file
+            for name in input_file:
+                if isinstance(input_file[name], h5py.Dataset):
+                    # If N is specified, only copy the first N elements
+                    data = input_file[name][:N]
+                    # Create new dataset in output file
+                    output_dataset = output_file.create_dataset(name, data=data)
+                    # Copy the attributes of the dataset
+                    for key, value in input_file[name].attrs.items():
+                        output_dataset.attrs[key] = value
+                else:
+                    input_file.copy(name, output_file)
+
+            # Copy the attributes of the input file to the output file
+            for key, value in input_file.attrs.items():
+                output_file.attrs[key] = value

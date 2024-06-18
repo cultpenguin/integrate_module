@@ -53,38 +53,24 @@ def logl_T_est(logL, N_above=10, P_acc_lev=0.2):
 
     return T_est
 
-# def logl_T_est(logL, N_above=10, P_acc_lev=0.2):
-#     sorted_logL = np.sort(logL - np.nanmax(logL))
-#     sorted_logL = sorted_logL[~np.isnan(sorted_logL)]
-    
-#     if sorted_logL.size > 0:
-#         logL_lev = sorted_logL[-N_above-1]
-#         T_est = logL_lev / np.log(P_acc_lev)
-#         T_est = np.nanmax([1, T_est])
-#     else:
-#         T_est = np.inf
-    
-#     return T_est
 
 def lu_post_sample_logl(logL, ns=1, T=1):
     """
-    Perform a likelihood-utility (LU) post-sampling on the given logarithmic likelihoods (logL).
+    Perform LU post-sampling log-likelihood calculation.
 
-    Parameters:
+    :param logL: Array of log-likelihood values.
+    :type logL: array-like
+    :param ns: Number of samples to generate. Defaults to 1.
+    :type ns: int, optional
+    :param T: Temperature parameter. Defaults to 1.
+    :type T: float, optional
 
-    :logL: (numpy.ndarray): An array of logarithmic likelihoods.
-    :ns: (int, optional): The number of samples to generate. Default is 1.
-    :T: (float, optional): The temperature parameter for the acceptance probability calculation. Default is 1.
-
-    Returns:
-    tuple: A tuple containing two numpy arrays. The first array contains the indices of the selected samples. 
-           The second array contains the calculated acceptance probabilities for each likelihood.
-
-    Note:
-    The function calculates the acceptance probability for each likelihood by exponentiating the likelihood divided by the temperature T.
-    It then generates a cumulative distribution function (CDF) from these probabilities.
-    The function generates ns samples by selecting the index where the CDF first exceeds a randomly generated number.
+    :return: A tuple containing the generated samples and the acceptance probabilities.
+    :rtype: tuple
+        - i_use_all (numpy darray): Array of indices of the selected samples.
+        - P_acc (numpy array): Array of acceptance probabilities.
     """
+
     N = len(logL)
     P_acc = np.exp((1/T) * (logL - np.nanmax(logL)))
     P_acc[np.isnan(P_acc)] = 0
@@ -613,7 +599,7 @@ Forward simulation
 
 def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', stmfiles=[], showtime=False, **kwargs):
     """
-    Perform forward modeling using the GAAEM method.
+    Perform forward modeling using the **GAAEM** method.
 
     :param C: Conductivity array, defaults to np.array(())
     :type C: numpy.ndarray, optional
@@ -626,13 +612,8 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
     :param stmfiles: List of STM files, defaults to []
     :type stmfiles: list, optional
     :param showtime: Flag to display execution time, defaults to False
-    :type showtime: bool, optional
-    :param **kwargs: Additional keyword arguments
-    :returns: Forward data as a numpy.ndarray
-    :raises ValueError: If the thickness array does not match the number of layers minus 1
-    :todo: Allow using only 1 moment/STM file at a time
     """
-
+    
     from gatdaem1d import Earth;
     from gatdaem1d import Geometry;
     # Next should probably only be loaded if the DLL is not allready loaded!!!
@@ -799,53 +780,39 @@ def forward_gaaem_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **
     return forward_gaaem(C=C_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)
 
 
-
-def copy_hdf5_file(input_filename, output_filename, N=None):
-    # Open the input file
-    with h5py.File(input_filename, 'r') as input_file:
-        # Create the output file
-        with h5py.File(output_filename, 'w') as output_file:
-            # Copy each group/dataset from the input file to the output file
-            for name in input_file:
-                if isinstance(input_file[name], h5py.Dataset):
-                    # If N is specified, only copy the first N elements
-                    data = input_file[name][:N]
-                    # Create new dataset in output file
-                    output_dataset = output_file.create_dataset(name, data=data)
-                    # Copy the attributes of the dataset
-                    for key, value in input_file[name].attrs.items():
-                        output_dataset.attrs[key] = value
-                else:
-                    input_file.copy(name, output_file)
-
-            # Copy the attributes of the input file to the output file
-            for key, value in input_file.attrs.items():
-                output_file.attrs[key] = value
-
 def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1, Nhank=280, Nfreq=12, parallel=True, **kwargs):
     """
     Generate prior data for the ga-aem method.
 
-    Parameters:
-    - f_prior_h5 (str): Path to the prior data file in HDF5 format.
-    - file_gex (str): Path to the file containing geophysical exploration data.
-    - doMakePriorCopy (bool): Flag indicating whether to make a copy of the prior file (default: True).
-    - im (int): Index of the model (default: 1).
-    - id (int): Index of the data (default: 1).
-    - Nhank (int): Number of Hankel transform quadrature points (default: 18).
-    - Nfreq (int): Number of frequencies (default: 5).
-    - parallel (bool): Flag indicating whether multiprocessing is used
-    - Nproc (int): Number of processes to use (default: ncpus).
-    
-    Returns:
-    f_prior_data: filename of hdf5 fille containing the updated prior data
+    :param f_prior_h5: Path to the prior data file in HDF5 format.
+    :type f_prior_h5: str
+    :param file_gex: Path to the file containing geophysical exploration data.
+    :type file_gex: str
+    :param N: Number of soundings to consider (default: 0).
+    :type N: int
+    :param doMakePriorCopy: Flag indicating whether to make a copy of the prior file (default: True).
+    :type doMakePriorCopy: bool
+    :param im: Index of the model (default: 1).
+    :type im: int
+    :param id: Index of the data (default: 1).
+    :type id: int
+    :param Nhank: Number of Hankel transform quadrature points (default: 280).
+    :type Nhank: int
+    :param Nfreq: Number of frequencies (default: 12).
+    :type Nfreq: int
+    :param parallel: Flag indicating whether multiprocessing is used (default: True).
+    :type parallel: bool
+    :param kwargs: Additional keyword arguments.
+    :type kwargs: dict
+
+    :return: Filename of the HDF5 file containing the updated prior data.
+    :rtype: str
     """
-    import shutil
     import integrate as ig
     import multiprocessing
     from multiprocessing import Pool
     import time
-    import datetime
+    import integrate as ig
 
     type = 'TDEM'
     method = 'ga-aem'
@@ -869,7 +836,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
             print("Creating a copy of %s as %s" % (f_prior_h5, f_prior_data_h5))
         # make a copy of the prior file
         #copy_hdf5_file(input_filename, output_filename, N=None)
-        copy_hdf5_file(f_prior_h5, f_prior_data_h5,N)
+        ig.copy_hdf5_file(f_prior_h5, f_prior_data_h5,N)
         #if N < N_in:
         #    # Truncate
         #    truncate_and_repack_hdf5_file(f_prior_data_h5, N)
@@ -966,21 +933,29 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
     """
     Generate a prior model with layered structure.
 
-    Args:
-        lay_dist (str): Distribution of the number of layers. Options are 'chi2' and 'uniform'. Default is 'chi2'.
-        NLAY_min (int): Minimum number of layers. Default is 3.
-        NLAY_max (int): Maximum number of layers. Default is 6.
-        NLAY_deg (int): Degrees of freedom for chi-square distribution. Only applicable if lay_dist is 'chi2'. Default is 6.
-        rho_dist (str): Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', and 'lognormal'. Default is 'log-uniform'.
-        RHO_min (float): Minimum resistivity value. Default is 0.1.
-        RHO_max (float): Maximum resistivity value. Default is 100.
-        RHO_MEAN (float): Mean resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 100.
-        RHO_std (float): Standard deviation of resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 80.
-        N (int): Number of prior models to generate. Default is 100000.
+    :param lay_dist: Distribution of the number of layers. Options are 'chi2' and 'uniform'. Default is 'chi2'.
+    :type lay_dist: str
+    :param NLAY_min: Minimum number of layers. Default is 3.
+    :type NLAY_min: int
+    :param NLAY_max: Maximum number of layers. Default is 6.
+    :type NLAY_max: int
+    :param NLAY_deg: Degrees of freedom for chi-square distribution. Only applicable if lay_dist is 'chi2'. Default is 6.
+    :type NLAY_deg: int
+    :param rho_dist: Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', and 'lognormal'. Default is 'log-uniform'.
+    :type rho_dist: str
+    :param RHO_min: Minimum resistivity value. Default is 0.1.
+    :type RHO_min: float
+    :param RHO_max: Maximum resistivity value. Default is 100.
+    :type RHO_max: float
+    :param RHO_MEAN: Mean resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 100.
+    :type RHO_MEAN: float
+    :param RHO_std: Standard deviation of resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 80.
+    :type RHO_std: float
+    :param N: Number of prior models to generate. Default is 100000.
+    :type N: int
 
-    Returns:
-        str: Filepath of the saved prior model.
-
+    :return: Filepath of the saved prior model.
+    :rtype: str
     """
     
     from tqdm import tqdm
@@ -1050,31 +1025,34 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
 
 def prior_model_workbench(N=100000, rho_dist='log-uniform', z1=0, z2= 100, nlayers=30, p=2, rho_min = 1, rho_max= 300, rho_mean=180, rho_std=80, chi2_deg= 100):
     """
-
     Generate a prior model with increasingly thick layers
  
-    Args:
-        N (int): Number of prior models to generate. Default is 100000.
-        rho_dist (str): Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', 'lognormal', and 'chi2'. Default is 'log-uniform'.
-        # rho_dist='uniform', 'log-uniform'
-        rho_min (float): Minimum resistivity value. Default is 0.1.
-        rho_max (float): Maximum resistivity value. Default is 100.
-        # rho_dist='normal', 'log-normal'
-        rho_mean (float): Mean resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 100.
-        rho_std (float): Standard deviation of resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 80.
-        # rho_dist='chi2'
-        chi2_def (int): Degrees of freedom for chi2 distribution. Only applicable if rho_dist is 'chi2'. Default is 100.
+    :param N: Number of prior models to generate. Default is 100000.
+    :type N: int
+    :param rho_dist: Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', 'lognormal', and 'chi2'. Default is 'log-uniform'.
+    :type rho_dist: str
+    :param z1: Minimum depth value. Default is 0.
+    :type z1: float
+    :param z2: Maximum depth value. Default is 100.
+    :type z2: float
+    :param nlayers: Number of layers. Default is 30.
+    :type nlayers: int
+    :param p: Power parameter for thickness increase. Default is 2.
+    :type p: int
+    :param rho_min: Minimum resistivity value. Default is 1.
+    :type rho_min: float
+    :param rho_max: Maximum resistivity value. Default is 300.
+    :type rho_max: float
+    :param rho_mean: Mean resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 180.
+    :type rho_mean: float
+    :param rho_std: Standard deviation of resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 80.
+    :type rho_std: float
+    :param chi2_deg: Degrees of freedom for chi2 distribution. Only applicable if rho_dist is 'chi2'. Default is 100.
+    :type chi2_deg: int
 
-    Returns:
-        str: Filepath of the saved prior model.
-
-
+    :return: Filepath of the saved prior model.
+    :rtype: str
     """
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import h5py
-    from tqdm import tqdm
-    
 
     f_prior_h5 = 'PRIOR_WB%d_N%d_%s' % (nlayers,N,rho_dist)
 
@@ -1130,7 +1108,7 @@ def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **
     :type icat: list
     :param usePrior: Flag indicating whether to use prior.
     :type usePrior: bool
-    :param **kwargs: Additional keyword arguments.
+    :param kwargs: Additional keyword arguments.
     :returns: 
         - thick_mean (ndarray): Array of mean cumulative thickness.
         - thick_median (ndarray): Array of median cumulative thickness.
@@ -1193,11 +1171,6 @@ def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **
         else:
             cmap = plt.cm.hot(np.linspace(0, 1, n_class)).T
         from matplotlib.colors import ListedColormap
-        cmap = ListedColormap(cmap.T)            
-        #print(cmap)
-        #print(cmap.shape)
-        #print('class_name = %s' % class_name)
-        #print('clim %f-%f' % (clim[0],clim[1]))
 
     with h5py.File(f_post_h5,'r') as f_post:
         #P=f_post[Mstr+'/P'][:]

@@ -9,25 +9,27 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
     """
     Plots the posterior cumulative thickness.
 
-    Parameters:
-    - f_post_h5 (str): The file path to the posterior data in HDF5 format.
-    - im (int): The index of the image.
-    - icat (int or list): The index or list of indices of the categories.
-    - property (str): The property to plot ('median', 'mean', 'std', 'relstd').
-    - usePrior (bool): Whether to use prior data.
-    - **kwargs: Additional keyword arguments.
-
-    Returns:
-    - fig: The matplotlib figure object.
+    :param f_post_h5: The file path to the posterior data in HDF5 format.
+    :type f_post_h5: str
+    :param im: The index of the image.
+    :type im: int
+    :param icat: The index or list of indices of the categories.
+    :type icat: int or list
+    :param property: The property to plot ('median', 'mean', 'std', 'relstd').
+    :type property: str
+    :param usePrior: Whether to use prior data.
+    :type usePrior: bool
+    :param kwargs: Additional keyword arguments.
+    :returns: fig -- The matplotlib figure object.
     """
 
     if isinstance(icat, int):
         icat = np.array([icat])
-        
+
     thick_mean, thick_median, thick_std, class_names, X, Y = ig.posterior_cumulative_thickness(f_post_h5, im=2, icat=icat, usePrior=usePrior, **kwargs)
 
     # set hardcopy to True as kwarg if not already set
-    kwargs.setdefault('hardcopy', True)
+    kwargs.setdefault('hardcopy', False)
     kwargs.setdefault('s', 10)
     s = kwargs['s']
 
@@ -62,10 +64,33 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
     return fig
 
 def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, title_text='', **kwargs):
-    
-    
+    """
+    Plot a 2D feature from a given HDF5 file.
+
+    :param f_post_h5: Path to the HDF5 file.
+    :type f_post_h5: str
+    :param key: Key of the feature to plot. If not provided, the first key found in the file will be used.
+    :type key: str
+    :param i1: Start index of the feature to plot.
+    :type i1: int
+    :param i2: End index of the feature to plot.
+    :type i2: int
+    :param im: Index of the feature.
+    :type im: int
+    :param iz: Index of the z-coordinate.
+    :type iz: int
+    :param uselog: Flag indicating whether to apply logarithmic scaling to the data.
+    :type uselog: int
+    :param title_text: Additional text to include in the plot title.
+    :type title_text: str
+    :param kwargs: Additional keyword arguments to be passed to the scatter plot.
+    :returns: int -- 1 if the plot is successful.
+    """
+
     dstr = '/M%d' % im
     
+    kwargs.setdefault('hardcopy', False)
+
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
@@ -101,6 +126,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
         if dstr in f_post:
             if key in f_post[dstr].keys():
                 D = f_post[dstr][key][:,iz][:]
+                print(D.shape)
                 if uselog==1:
                     D=np.log10(D)
                 # plot this KEY
@@ -114,14 +140,15 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
                 if 'clim' in kwargs:
                     plt.clim(kwargs['clim'])
                 
-                f_png = '%s_%d_%d_%d_%s%02d_feature.png' % (os.path.splitext(f_post_h5)[0],i1,i2,im,key,iz)
-                plt.savefig(f_png)
+                if kwargs['hardcopy']:
+                    f_png = '%s_%d_%d_%d_%s%02d_feature.png' % (os.path.splitext(f_post_h5)[0],i1,i2,im,key,iz)
+                    plt.savefig(f_png)
                 plt.show()
-
                 
             else:
                 print("Key %s not found in %s" % (key, dstr))
     return 1
+
 
 def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='both', hardcopy=False, **kwargs):
 
@@ -264,7 +291,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
     from matplotlib.colors import LogNorm
 
-    kwargs.setdefault('hardcopy', True)
+    kwargs.setdefault('hardcopy', False)
     
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -433,7 +460,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
     from matplotlib.colors import LogNorm
 
-    kwargs.setdefault('hardcopy', True)
+    kwargs.setdefault('hardcopy', False)
     
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -593,19 +620,21 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], **kwargs):
     """
     Plot the data from an HDF5 file.
 
-    Parameters:
-    - f_data_h5 (str): The path to the HDF5 file.
-    - i_plot (int or array-like, optional): The indices of the data to plot. Default is 0.
-    - Dkey (str or list, optional): The key(s) of the data set(s) to plot. Default is an empty list.
-    - **kwargs: Additional keyword arguments.
+    :param f_data_h5: The path to the HDF5 file.
+    :type f_data_h5: str
+    :param i_plot: The indices of the data to plot. Default is 0.
+    :type i_plot: int or array-like, optional
+    :param Dkey: The key(s) of the data set(s) to plot. Default is an empty list.
+    :type Dkey: str or list, optional
+    :param kwargs: Additional keyword arguments.
+    :type kwargs: dict
 
-    Returns:
-    - None
+    :returns: None
+    :rtype: None
 
-    Raises:
-    - None
-
+    :raises: None
     """
+
     import numpy as np
     import matplotlib.pyplot as plt
     import matplotlib
@@ -706,15 +735,19 @@ def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
     """
     Plot the prior and posterior data for a given dataset.
 
-    Parameters:
-    - f_post_h5 (str): The path to the post data file.
-    - i_plot (int): The index of the observation to plot..  
-    - Dkey (str): String of the hdf5 key for the data set.    
-    - **kwargs: Additional keyword arguments.
+    :param f_post_h5: The path to the post data file.
+    :type f_post_h5: str
+    :param i_plot: The index of the observation to plot.
+    :type i_plot: int
+    :param Dkey: String of the hdf5 key for the data set.
+    :type Dkey: str
+    :param kwargs: Additional keyword arguments.
+    :type kwargs: dict
 
-    Returns:
-    - None
+    :returns: None
+    :rtype: None
     """
+
 
     import numpy as np
     import matplotlib.pyplot as plt
@@ -786,7 +819,7 @@ def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
 
         # set plot in kwarg to True if not allready set
         if 'hardcopy' not in kwargs:
-            kwargs['hardcopy'] = True
+            kwargs['hardcopy'] = False
         if kwargs['hardcopy']:
             # strip the filename from f_data_h5
             # get filename without extension of f_post_h5

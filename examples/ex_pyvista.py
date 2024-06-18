@@ -20,6 +20,7 @@ import h5py
 
 # %%
 f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12_Nu1000000_aT1.h5'
+f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12_Nu100000_aT1.h5'
 with h5py.File(f_post_h5,'r') as f_post:
     f_prior_h5 = f_post['/'].attrs['f5_prior']
     f_data_h5 = f_post['/'].attrs['f5_data']

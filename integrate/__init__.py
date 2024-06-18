@@ -18,6 +18,7 @@ from integrate.integrate_io import read_gex
 from integrate.integrate_io import get_gex_file_from_data
 from integrate.integrate_io import get_geometry 
 from integrate.integrate_io import post_h5_to_xyz
+from integrate.integrate_io import copy_hdf5_file
 
 from integrate.integrate_plot import plot_profile
 from integrate.integrate_plot import plot_profile_continuous
