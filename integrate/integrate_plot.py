@@ -5,6 +5,61 @@ import integrate as ig
 import matplotlib.pyplot as plt
 
 
+def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='median', usePrior=False, **kwargs):
+    """
+    Plots the posterior cumulative thickness.
+
+    Parameters:
+    - f_post_h5 (str): The file path to the posterior data in HDF5 format.
+    - im (int): The index of the image.
+    - icat (int or list): The index or list of indices of the categories.
+    - property (str): The property to plot ('median', 'mean', 'std', 'relstd').
+    - usePrior (bool): Whether to use prior data.
+    - **kwargs: Additional keyword arguments.
+
+    Returns:
+    - fig: The matplotlib figure object.
+    """
+
+    if isinstance(icat, int):
+        icat = np.array([icat])
+        
+    thick_mean, thick_median, thick_std, class_names, X, Y = ig.posterior_cumulative_thickness(f_post_h5, im=2, icat=icat, usePrior=usePrior, **kwargs)
+
+    # set hardcopy to True as kwarg if not already set
+    kwargs.setdefault('hardcopy', True)
+    kwargs.setdefault('s', 10)
+    s = kwargs['s']
+
+    fig = plt.figure(figsize=(8, 8))
+    if property == 'median':
+        plt.scatter(X, Y, c=thick_median, cmap='jet', s=s)
+    elif property == 'mean':
+        plt.scatter(X, Y, c=thick_mean, cmap='jet', s=s)
+    elif property == 'std':
+        plt.scatter(X, Y, c=thick_std, cmap='jet', s=s)
+    elif property == 'relstd':
+        thick_std_rel = thick_std / thick_median
+        plt.scatter(X, Y, c=thick_std_rel, cmap='gray_r', s=s, vmin=0, vmax=2)
+
+    plt.colorbar().set_label('Thickness (m)')
+    title_txt = 'Cumulative Thickness - %s - %s ' % (property, class_names)
+    if usePrior:
+        title_txt = title_txt + ' - Prior'
+    plt.title(title_txt)
+    plt.grid()
+    plt.axis('equal')
+
+    if kwargs['hardcopy']:
+        # get filename without extension
+        icat_str = '-'.join([str(i) for i in icat])
+        f_png = '%s_im%d_ic%s_%s' % (os.path.splitext(f_post_h5)[0], im, icat_str, property)
+        if usePrior:
+            f_png = f_png + '_prior'
+        plt.savefig(f_png + '.png')
+        # plt.show()
+
+    return fig
 
 def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, title_text='', **kwargs):
     

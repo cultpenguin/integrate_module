@@ -1118,9 +1118,57 @@ def prior_model_workbench(N=100000, rho_dist='log-uniform', z1=0, z2= 100, nlaye
     return f_prior_h5
 
 
+def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **kwargs):
+    """
+    Calculate the posterior cumulative thickness based on the given inputs.
+
+    :param f_post_h5: Path to the input h5 file.
+    :type f_post_h5: str
+    :param im: Index of model parameter number, M[im].
+    :type im: int
+    :param icat: List of category indices.
+    :type icat: list
+    :param usePrior: Flag indicating whether to use prior.
+    :type usePrior: bool
+    :param **kwargs: Additional keyword arguments.
+    :returns: 
+        - thick_mean (ndarray): Array of mean cumulative thickness.
+        - thick_median (ndarray): Array of median cumulative thickness.
+        - thick_std (ndarray): Array of standard deviation of cumulative thickness.
+        - class_out (list): List of class names.
+        - X (ndarray): Array of X values.
+        - Y (ndarray): Array of Y values.
+    :rtype: tuple
+    """
+
+    import h5py
+    import integrate as ig
+
+    if isinstance(icat, int):
+        icat = np.array([icat])
+
+    with h5py.File(f_post_h5,'r') as f_post:
+        f_prior_h5 = f_post['/'].attrs['f5_prior']
+        f_data_h5 = f_post['/'].attrs['f5_data']
+
+    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+
+    Mstr = '/M%d' % im
+    with h5py.File(f_prior_h5,'r') as f_prior:
+        if not Mstr in f_prior.keys():
+            print('No %s found in %s' % (Mstr, f_prior_h5))
+            #return 1
+        if not f_prior[Mstr].attrs['is_discrete']:
+            print('M%d is not discrete' % im)
+            #return 1
+
+    # Rest of the code...
 def posterior_cumulative_thickness(f_post_h5,im=2, icat=[0], usePrior=False, **kwargs):
     import h5py
     import integrate as ig
+
+    if isinstance(icat, int):
+        icat = np.array([icat])
 
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
