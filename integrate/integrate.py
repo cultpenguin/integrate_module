@@ -1135,10 +1135,10 @@ def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **
     with h5py.File(f_prior_h5,'r') as f_prior:
         if not Mstr in f_prior.keys():
             print('No %s found in %s' % (Mstr, f_prior_h5))
-            #return 1
+            return -1
         if not f_prior[Mstr].attrs['is_discrete']:
             print('M%d is not discrete' % im)
-            #return 1
+            return -1
 
 
 

@@ -29,7 +29,7 @@ print("Using GEX file: %s" % file_gex)
 N=1000
 doForward = True
 doInv = doForward
-hardcopy=False
+hardcopy=True
 
 # %% [markdown]
 # ## 1. Setup the prior model, $\rho(\mathbf{m},\mathbf{d})$.
@@ -39,7 +39,7 @@ RHO_min = 1
 RHO_max = 1500
 z_max = 50 
 
-useP=3
+useP=1
 if useP==1:
     ## Layered model
     #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)

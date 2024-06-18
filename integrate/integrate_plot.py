@@ -26,7 +26,17 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
     if isinstance(icat, int):
         icat = np.array([icat])
 
-    thick_mean, thick_median, thick_std, class_names, X, Y = ig.posterior_cumulative_thickness(f_post_h5, im=2, icat=icat, usePrior=usePrior, **kwargs)
+    out = ig.posterior_cumulative_thickness(f_post_h5, im=2, icat=icat, usePrior=usePrior, **kwargs)
+    if not isinstance(out, tuple):
+        # Then output failed
+        return
+
+    thick_mean = out[0] 
+    thick_median = out[1] 
+    thick_std = out[2] 
+    class_names = out[3] 
+    X = out[4] 
+    Y = out[5] 
 
     # set hardcopy to True as kwarg if not already set
     kwargs.setdefault('hardcopy', False)
