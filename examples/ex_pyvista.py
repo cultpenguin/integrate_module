@@ -44,18 +44,18 @@ plotter.show_axes()
 plotter.show_grid()
 
 # Number of locations to show
-n_show = 1500
+n_show = 800
 
 # Select every 10th location
 selected_loc = np.arange(0, num_locations, int(num_locations / n_show))
-#selected_loc = np.arange(n_show)
+selected_loc = np.arange(n_show)
 # Loop through each selected location and plot the 1D log at each location
 for i in selected_loc:
     x = X[i]
     y = Y[i]
 
     # Define the depths (z-axis) for the vertical logs, reversed order
-    z_values = ELEVATION[i]*5 - np.arange(1, 91)
+    z_values = ELEVATION[i] - np.arange(1, 91)
     scaled_z_values = z_values * vertical_scaling_factor
     
     # Get the 1D log data at the current X-Y location
