@@ -29,7 +29,7 @@ print("Using GEX file: %s" % file_gex)
 N=1000
 doForward = True
 doInv = doForward
-hardcopy=True
+hardcopy=False
 
 # %% [markdown]
 # ## 1. Setup the prior model, $\rho(\mathbf{m},\mathbf{d})$.
