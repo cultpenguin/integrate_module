@@ -15,8 +15,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # #%load_ext autoreload
-    # #%autoreload 2
+    # # #%load_ext autoreload
+    # # #%autoreload 2
     pass
 
 import integrate as ig
@@ -88,7 +88,7 @@ NLAY_min=4
 NLAY_max=4 
 z_max = 90 
 
-useP=1
+useP=2
 if useP==1:
     ## Layered model
     #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
@@ -116,7 +116,7 @@ elif useP==2:
 else:
     f_prior_h5 = 'existing_prior.h5'
 
-#%% plot some 1D statistics of the prior
+# %% plot some 1D statistics of the prior
 ig.plot_prior_stats(f_prior_h5)
 
 # %% [markdown]
@@ -171,7 +171,7 @@ for i in i1:
 ig.plot_profile(f_post_h5, i1=0, i2=np.min([2000,nd]), cmap='jet', hardcopy=hardcopy)
 
 
-#%% 
+# %%
 for iz in range(0,50,5):
     ig.plot_feature_2d(f_post_h5,im=1,iz=iz,key='Mean', title_text = 'XX', cmap='jet', s=12, vmin=10, vmax=1000, hardcopy=hardcopy)
 
