@@ -88,7 +88,7 @@ NLAY_min=4
 NLAY_max=4 
 z_max = 90 
 
-useP=2
+useP=1
 if useP==1:
     ## Layered model
     #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
@@ -168,12 +168,12 @@ for i in i1:
     #ig.plot_data_prior_post(f_post_h5, i_plot = 1199)
 
 # %% Plot Profiles
-ig.plot_profile(f_post_h5, i1=0, i2=np.min([2000,nd]), cmap='jet')
+ig.plot_profile(f_post_h5, i1=0, i2=np.min([2000,nd]), cmap='jet', hardcopy=hardcopy)
 
 
 #%% 
 for iz in range(0,50,5):
-    ig.plot_feature_2d(f_post_h5,im=1,iz=iz,key='Mean', title_text = 'XX', cmap='jet', s=12, vmin=10, vmax=1000, hardcopy=True)
+    ig.plot_feature_2d(f_post_h5,im=1,iz=iz,key='Mean', title_text = 'XX', cmap='jet', s=12, vmin=10, vmax=1000, hardcopy=hardcopy)
 
 # %% Export to CSV
 ig.post_to_csv(f_post_h5)
