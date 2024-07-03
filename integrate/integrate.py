@@ -932,7 +932,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
 
 
 
-def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY_max=6, NLAY_deg=6, rho_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80, N=100000):
+def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY_max=6, NLAY_deg=6, RHO_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80, N=100000):
     """
     Generate a prior model with layered structure.
 
@@ -944,15 +944,15 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
     :type NLAY_max: int
     :param NLAY_deg: Degrees of freedom for chi-square distribution. Only applicable if lay_dist is 'chi2'. Default is 6.
     :type NLAY_deg: int
-    :param rho_dist: Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', and 'lognormal'. Default is 'log-uniform'.
-    :type rho_dist: str
+    :param RHO_dist: Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', and 'lognormal'. Default is 'log-uniform'.
+    :type RHO_dist: str
     :param RHO_min: Minimum resistivity value. Default is 0.1.
     :type RHO_min: float
     :param RHO_max: Maximum resistivity value. Default is 100.
     :type RHO_max: float
-    :param RHO_MEAN: Mean resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 100.
+    :param RHO_MEAN: Mean resistivity value. Only applicable if RHO_dist is 'normal' or 'lognormal'. Default is 100.
     :type RHO_MEAN: float
-    :param RHO_std: Standard deviation of resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 80.
+    :param RHO_std: Standard deviation of resistivity value. Only applicable if RHO_dist is 'normal' or 'lognormal'. Default is 80.
     :type RHO_std: float
     :param N: Number of prior models to generate. Default is 100000.
     :type N: int
@@ -973,12 +973,12 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
         
     if lay_dist == 'uniform':
         NLAY = np.random.randint(NLAY_min, NLAY_max+1, N)
-        f_prior_h5 = 'PRIOR_UNIFORM_NL_%d-%d_%s_N%d.h5' % (NLAY_min, NLAY_max, rho_dist, N)
+        f_prior_h5 = 'PRIOR_UNIFORM_NL_%d-%d_%s_N%d.h5' % (NLAY_min, NLAY_max, RHO_dist, N)
 
     elif lay_dist == 'chi2':
         NLAY = np.random.chisquare(NLAY_deg, N)
         NLAY = np.ceil(NLAY).astype(int)    
-        f_prior_h5 = 'PRIOR_CHI2_NF_%d_%s_N%d.h5' % (NLAY_deg, rho_dist, N)
+        f_prior_h5 = 'PRIOR_CHI2_NF_%d_%s_N%d.h5' % (NLAY_deg, RHO_dist, N)
 
     # Force NLAY to be a 2 dimensional numpy array
     NLAY = NLAY[:, np.newaxis]
@@ -996,13 +996,13 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
         i_boundaries = np.sort(np.random.choice(nz, NLAY[i]-1, replace=False))        
 
         ### simulate the resistivity in each layer
-        if rho_dist=='log-normal':
+        if RHO_dist=='log-normal':
             rho_all=np.random.lognormal(mean=np.log10(RHO_MEAN), sigma=np.log10(RHO_std), size=NLAY[i])
-        elif rho_dist=='normal':
+        elif RHO_dist=='normal':
             rho_all=np.random.normal(mean=RHO_MEAN, sigma=RHO_std, size=NLAY[i])
-        elif rho_dist=='log-uniform':
+        elif RHO_dist=='log-uniform':
             rho_all=np.exp(np.random.uniform(np.log(RHO_min), np.log(RHO_max), NLAY[i]))
-        elif rho_dist=='uniform':
+        elif RHO_dist=='uniform':
             rho_all=np.random.uniform(RHO_min, RHO_max, NLAY[i])
 
         rho = np.zeros(nz)+rho_all[0]
@@ -1026,14 +1026,14 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
 
     return f_prior_h5
 
-def prior_model_workbench(N=100000, rho_dist='log-uniform', z1=0, z2= 100, nlayers=30, p=2, rho_min = 1, rho_max= 300, rho_mean=180, rho_std=80, chi2_deg= 100):
+def prior_model_workbench(N=100000, RHO_dist='log-uniform', z1=0, z_max= 100, nlayers=30, p=2, RHO_min = 1, RHO_max= 300, RHO_mean=180, RHO_std=80, chi2_deg= 100):
     """
     Generate a prior model with increasingly thick layers
  
     :param N: Number of prior models to generate. Default is 100000.
     :type N: int
-    :param rho_dist: Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', 'lognormal', and 'chi2'. Default is 'log-uniform'.
-    :type rho_dist: str
+    :param RHO_dist: Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', 'lognormal', and 'chi2'. Default is 'log-uniform'.
+    :type RHO_dist: str
     :param z1: Minimum depth value. Default is 0.
     :type z1: float
     :param z2: Maximum depth value. Default is 100.
@@ -1042,40 +1042,41 @@ def prior_model_workbench(N=100000, rho_dist='log-uniform', z1=0, z2= 100, nlaye
     :type nlayers: int
     :param p: Power parameter for thickness increase. Default is 2.
     :type p: int
-    :param rho_min: Minimum resistivity value. Default is 1.
-    :type rho_min: float
-    :param rho_max: Maximum resistivity value. Default is 300.
-    :type rho_max: float
-    :param rho_mean: Mean resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 180.
-    :type rho_mean: float
-    :param rho_std: Standard deviation of resistivity value. Only applicable if rho_dist is 'normal' or 'lognormal'. Default is 80.
-    :type rho_std: float
-    :param chi2_deg: Degrees of freedom for chi2 distribution. Only applicable if rho_dist is 'chi2'. Default is 100.
+    :param RHO_min: Minimum resistivity value. Default is 1.
+    :type RHO_min: float
+    :param RHO_max: Maximum resistivity value. Default is 300.
+    :type RHO_max: float
+    :param RHO_mean: Mean resistivity value. Only applicable if RHO_dist is 'normal' or 'lognormal'. Default is 180.
+    :type RHO_mean: float
+    :param RHO_std: Standard deviation of resistivity value. Only applicable if RHO_dist is 'normal' or 'lognormal'. Default is 80.
+    :type RHO_std: float
+    :param chi2_deg: Degrees of freedom for chi2 distribution. Only applicable if RHO_dist is 'chi2'. Default is 100.
     :type chi2_deg: int
 
     :return: Filepath of the saved prior model.
     :rtype: str
     """
 
-    f_prior_h5 = 'PRIOR_WB%d_N%d_%s' % (nlayers,N,rho_dist)
+    f_prior_h5 = 'PRIOR_WB%d_N%d_%s' % (nlayers,N,RHO_dist)
 
+    z2=z_max
     z= z1 + (z2 - z1) * np.linspace(0, 1, nlayers) ** p
 
     nz = len(z)
     
-    if rho_dist=='uniform':
-        M_rho = np.random.uniform(low=rho_min, high = rho_max, size=(N, nz))
-        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, rho_min, rho_max)
-    elif rho_dist=='log-uniform':
-        M_rho = np.exp(np.random.uniform(low=np.log(rho_min), high = np.log(rho_max), size=(N, nz)))
-        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, rho_min, rho_max)
-    elif rho_dist=='normal':
-        M_rho = np.random.normal(loc=rho_mean, scale = rho_std, size=(N, nz))
-        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, rho_mean, rho_std)
-    elif rho_dist=='log-normal':
-        M_rho = np.random.lognormal(mean=np.log(rho_mean), sigma = rho_std/rho_mean, size=(N, nz))
-        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, rho_mean, rho_std)
-    elif rho_dist=='chi2':
+    if RHO_dist=='uniform':
+        M_rho = np.random.uniform(low=RHO_min, high = RHO_max, size=(N, nz))
+        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, RHO_min, RHO_max)
+    elif RHO_dist=='log-uniform':
+        M_rho = np.exp(np.random.uniform(low=np.log(RHO_min), high = np.log(RHO_max), size=(N, nz)))
+        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, RHO_min, RHO_max)
+    elif RHO_dist=='normal':
+        M_rho = np.random.normal(loc=RHO_mean, scale = RHO_std, size=(N, nz))
+        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, RHO_mean, RHO_std)
+    elif RHO_dist=='log-normal':
+        M_rho = np.random.lognormal(mean=np.log(RHO_mean), sigma = RHO_std/RHO_mean, size=(N, nz))
+        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, RHO_mean, RHO_std)
+    elif RHO_dist=='chi2':
         M_rho = np.random.chisquare(df = chi2_deg, size=(N, nz))
         f_prior_h5 = '%s_deg%d.h5' % (f_prior_h5,chi2_deg)
 

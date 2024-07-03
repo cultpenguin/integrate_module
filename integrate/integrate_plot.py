@@ -217,6 +217,8 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='both', hardcopy=
         EV_max = np.percentile(EV,99)
         EV_max = 0
         EV_min = np.percentile(EV,1)
+        EV_min = -100
+        
         #if 'vmin' not in kwargs:
         #    kwargs['vmin'] = EV_min
         #if 'vmax' not in kwargs:
@@ -850,6 +852,7 @@ def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
     else:
         z = f_prior['/%s'%Mkey].attrs['z']
 
+    
     is_discrete = f_prior['/%s'%Mkey].attrs['is_discrete']    
 
 
@@ -880,7 +883,10 @@ def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
         ax[1, 1].axis('off')
 
         ax[1, 0] = plt.subplot2grid((2, 2), (1, 0), colspan=2)
-        m2 = ax[1,0].imshow(M[0:nr,:].T, aspect='auto', extent=extent)
+        #m2 = ax[1,0].imshow(M[0:nr,:].T, aspect='auto', extent=extent)
+        X,Y = np.meshgrid(np.arange(1,nr+1),z)
+        ax[1,0].invert_yaxis()
+        m2 = ax[1,0].pcolor(X,Y,M[0:nr,:].T)
         fig.colorbar(m2, ax=ax[1,0], label=Mkey)
         tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],Mkey) 
         plt.suptitle(tit)

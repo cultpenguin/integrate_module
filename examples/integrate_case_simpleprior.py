@@ -36,7 +36,6 @@ hardcopy=True
 #     HALD
 #
 #
-#
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
 #case = 'DAUGAARD'
@@ -83,34 +82,37 @@ ig.plot_data(f_data_h5)
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
 N=10000
 RHO_min = 10
-RHO_max = 4500
-rho_dist='log-uniform'
+RHO_max = 2500
+RHO_dist='log-uniform'
+NLAY_min=4
+NLAY_max=4 
 z_max = 90 
 
-useP=1
+useP=2
 if useP==1:
     ## Layered model
-    #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-    #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=3, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+    #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+    #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=3, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
     f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', 
                                         z_max = z_max, 
-                                        NLAY_min=4, 
-                                        NLAY_max=4, 
-                                        rho_dist=rho_dist, 
+                                        NLAY_min=NLAY_min, 
+                                        NLAY_max=NLAY_max, 
+                                        RHO_dist=RHO_dist, 
                                         RHO_min=RHO_min, 
                                         RHO_max=RHO_max)
 elif useP==2:
     ## N layer model with increasing thickness
-    #f_prior_h5 = ig.prior_model_workbench(N=N, z2 = 30, nlayers=20, rho_min = RHO_min, rho_max = RHO_max)
-    #f_prior_h5 = ig.prior_model_workbench(N=N, z2 = 30, nlayers=5, rho_dist='log-uniform', rho_min = RHO_min, rho_max = RHO_max)
     f_prior_h5 = ig.prior_model_workbench(N=N, 
-                                          rho_mean=45, 
-                                          rho_std=55, 
-                                          rho_dist='log-normal', 
-                                          z2 = 30, 
-                                          nlayers=12, 
-                                          rho_min = RHO_min, 
-                                          rho_max = RHO_max)
+                                          RHO_mean=45, 
+                                          RHO_std=45, 
+                                          RHO_dist='log-normal', 
+                                          z_max = z_max, 
+                                          nlayers=1, 
+                                          RHO_min = RHO_min, 
+                                          RHO_max = RHO_max)
+    #f_prior_h5 = ig.prior_model_workbench(N=N, z_max= 30, nlayers=20, RHO_min = RHO_min, RHO_max = RHO_max)
+    f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max, nlayers=NLAY_max, RHO_dist=RHO_dist, RHO_min = RHO_min, RHO_max = RHO_max)
+    
 else:
     f_prior_h5 = 'existing_prior.h5'
 
