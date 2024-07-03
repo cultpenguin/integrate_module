@@ -826,6 +826,9 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     if N>N_in:
         N=N_in
 
+    if not os.path.isfile(file_gex):
+        print("ERRROR: file_gex=%s does not exist in the current folder." % file_gex)
+
     print('N=%d, N_in=%d' % (N,N_in))
     if doMakePriorCopy:
         if N < N_in:

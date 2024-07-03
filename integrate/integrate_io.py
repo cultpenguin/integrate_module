@@ -355,7 +355,7 @@ def get_geometry(f_data_h5):
     return X, Y, LINE, ELEVATION
 
 
-def post_h5_to_xyz(f_post_h5='', Mstr='/M1'):
+def post_to_csv(f_post_h5='', Mstr='/M1'):
     """
     Convert a post-processing HDF5 file to a CSV file containing XYZ data.
 
@@ -478,3 +478,132 @@ def copy_hdf5_file(input_filename, output_filename, N=None):
             # Copy the attributes of the input file to the output file
             for key, value in input_file.attrs.items():
                 output_file.attrs[key] = value
+
+
+
+def file_checksum(file_path):
+    """Calculate the MD5 checksum of a file."""
+    import hashlib
+    hasher = hashlib.md5()
+    with open(file_path, 'rb') as f:
+        buf = f.read()
+        hasher.update(buf)
+    return hasher.hexdigest()
+
+def download_file(url, download_dir):
+    import requests
+    import os
+    # Extract the file name from the URL
+    file_name = os.path.basename(url)
+    file_path = os.path.join(download_dir, file_name)
+
+    # Check if the remote file exists
+    head_response = requests.head(url)
+    if head_response.status_code != 200:
+        print(f'File {file_name} does not exist on the remote server. Skipping download.')
+        return
+
+    # Check if the file already exists locally
+    if os.path.exists(file_path):
+        # Get the local file checksum
+        local_checksum = file_checksum(file_path)
+
+        # Download the remote file to a temporary location to compare checksums
+        response = requests.get(url)
+        response.raise_for_status()  # Check if the request was successful
+
+        remote_temp_path = os.path.join(download_dir, f'temp_{file_name}')
+        with open(remote_temp_path, 'wb') as temp_file:
+            temp_file.write(response.content)
+
+        # Get the remote file checksum
+        remote_checksum = file_checksum(remote_temp_path)
+
+        # Compare checksums
+        if local_checksum == remote_checksum:
+            print(f'File {file_name} already exists and is identical. Skipping download.')
+            os.remove(remote_temp_path)
+            return
+        else:
+            print(f'File {file_name} exists but is different. Downloading new version.')
+            os.remove(remote_temp_path)
+
+    # Download and save the file
+    response = requests.get(url)
+    response.raise_for_status()  # Check if the request was successful
+
+    with open(file_path, 'wb') as file:
+        file.write(response.content)
+    print(f'Downloaded {file_name}')
+
+
+
+def get_case_data(case='DAUGAARD', loadAll=False):
+    """
+    Get case data for a specific case.
+
+    :param case: The case name. Default is 'DAUGAARD'. Options are 'DAUGAARD' and 'FANGEL'.
+    :type case: str
+    :param loadAll: Whether to load all files for the case. Default is False.
+    :type loadAll: bool
+    :return: A list of file names for the case.
+    :rtype: list
+    """
+
+    print('Getting data for case: %s' % case)
+
+    if case=='DAUGAARD':
+
+        filelist = []    
+        filelist.append('DAUGAARD_AVG.h5')
+        filelist.append('TX07_20231016_2x4_RC20-33.gex')
+        filelist.append('README_DAUGAARD')
+        if loadAll:
+            filelist.append('DAUGAARD_RAW.h5')
+            filelist.append('TX07_20230731_2x4_RC20-33.gex')
+            filelist.append('TX07_20230828_2x4_RC20-33.gex')
+            filelist.append('TX07_20230906_2x4_RC20-33.gex')
+            filelist.append('tTEM_20230727_AVG_export.h5')
+            filelist.append('tTEM_20230814_AVG_export.h5')
+            filelist.append('tTEM_20230829_AVG_export.h5')
+            filelist.append('tTEM_20230913_AVG_export.h5')
+            filelist.append('tTEM_20231109_AVG_export.h5')
+            
+
+    elif case=='FANGEL':
+
+        filelist = []
+        filelist.append('FANGEL_AVG.h5')
+        filelist.append('tTEM_20230828_2x4_RC20-33.gex')
+        filelist.append('README_FANGEL')
+
+    elif case=='HALD':
+
+        filelist = []
+        filelist.append('HALD_AVG.h5')
+        filelist.append('TX07_20230731_2x4_RC20-33.gex')
+        filelist.append('README_HALD')
+        if loadAll:
+            filelist.append('TX07_20231016_2x4_RC20-33.gex')
+            filelist.append('HALD_RAW.h5')
+            filelist.append('tTEM_20230801_AVG_export.h5')
+            filelist.append('tTEM_20230815_AVG_export.h5')
+            filelist.append('tTEM_20230905_AVG_export.h5')
+            filelist.append('tTEM_20231018_AVG_export.h5')
+        
+
+    else:
+        
+        filelist = []
+        print('Case %s not found' % case)
+
+
+    urlErda = 'https://anon.erda.au.dk/share_redirect/dxOLKDtoul'
+    urlErdaCase = '%s/%s' % (urlErda,case)
+    for remotefile in filelist:
+        #print(remotefile)
+        remoteurl = '%s/%s' % (urlErdaCase,remotefile)
+        #remoteurl = 'https://anon.erda.au.dk/share_redirect/dxOLKDtoul/%s/%s' % (case,remotefile)
+        download_file(remoteurl,'.')
+
+    return filelist

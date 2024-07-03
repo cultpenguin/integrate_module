@@ -17,22 +17,25 @@
 # %%
 import integrate as ig
 import h5py
+import h5py
+import numpy as np
+import pyvista as pv
+
 
 # %%
 f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12_Nu1000000_aT1.h5'
 f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12_Nu100000_aT1.h5'
+f_post_h5 = 'POST_Fra20200930_202001001_1_AVG_export_PRIOR_UNIFORM_NL_1-8_log-uniform_N1000_fraastad_ttem_Nh280_Nf12_Nu1000_aT1.h5'
 with h5py.File(f_post_h5,'r') as f_post:
     f_prior_h5 = f_post['/'].attrs['f5_prior']
     f_data_h5 = f_post['/'].attrs['f5_data']
     D_mean =  f_post['/M1/Mean'][:]
 
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+nz=D_mean.shape[1]
 
 
 # %%
-import numpy as np
-import pyvista as pv
-
 # Example input data
 num_locations = len(X)
 
@@ -45,18 +48,18 @@ plotter.show_axes()
 plotter.show_grid()
 
 # Number of locations to show
-n_show = 800
+n_show = 380
 
 # Select every 10th location
 selected_loc = np.arange(0, num_locations, int(num_locations / n_show))
-selected_loc = np.arange(n_show)
+#selected_loc = np.arange(n_show)
 # Loop through each selected location and plot the 1D log at each location
 for i in selected_loc:
     x = X[i]
     y = Y[i]
 
     # Define the depths (z-axis) for the vertical logs, reversed order
-    z_values = ELEVATION[i] - np.arange(1, 91)
+    z_values = ELEVATION[i] - np.arange(1, nz+1)
     scaled_z_values = z_values * vertical_scaling_factor
     
     # Get the 1D log data at the current X-Y location
@@ -92,3 +95,5 @@ for i in selected_loc:
 
 # Show the plot
 plotter.show()
+
+# %%

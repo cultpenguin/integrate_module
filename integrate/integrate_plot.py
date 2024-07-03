@@ -100,6 +100,9 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
     dstr = '/M%d' % im
     
     kwargs.setdefault('hardcopy', False)
+    kwargs.setdefault('cmap', 'jet')
+    hardcopy=kwargs['hardcopy']
+    kwargs.pop('hardcopy', None)
 
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -142,6 +145,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
                 # plot this KEY
                 plt.figure(1, figsize=(20, 10))
                 plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],**kwargs)            
+                #plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2], cmap=kwargs['cmap'])            
                 plt.grid()
                 plt.xlabel('X')                
                 plt.colorbar()
@@ -150,7 +154,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
                 if 'clim' in kwargs:
                     plt.clim(kwargs['clim'])
                 
-                if kwargs['hardcopy']:
+                if hardcopy:
                     f_png = '%s_%d_%d_%d_%s%02d_feature.png' % (os.path.splitext(f_post_h5)[0],i1,i2,im,key,iz)
                     plt.savefig(f_png)
                 plt.show()
@@ -471,7 +475,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     from matplotlib.colors import LogNorm
 
     kwargs.setdefault('hardcopy', False)
-    
+    kwargs.setdefault('cmap', 'jet')
+
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
@@ -503,7 +508,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
             from matplotlib.colors import ListedColormap
             cmap = ListedColormap(cmap.T)
         else:
-            cmap = 'hot'
+            cmap = kwargs['cmap']
 
         print(cmap)
         print(clim)
@@ -615,16 +620,15 @@ def plot_data_xy(f_data_h5, i_plot=[], Dkey=[], **kwargs):
     # Get 'f_prior' and 'f_data' from the selected file 
     # and display them in the sidebar
     X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(15, 12))
     ax.set_title('GEOMETRY')
-    cbar1 = plt.colorbar(ax.scatter(X/1000, Y/1000, c=ELEVATION, s=20, cmap='jet'))
+    cbar1 = plt.colorbar(ax.scatter(X/1000, Y/1000, c=ELEVATION, s=20, cmap='gray'))
     cbar1.set_label('Elevation (m)')
-    cbar2 = plt.colorbar(ax.scatter(X/1000, Y/1000, c=LINE, s=1, cmap='gray'))
+    cbar2 = plt.colorbar(ax.scatter(X/1000, Y/1000, c=LINE, s=.1, cmap='jet'))
     cbar2.set_label('LINE')
     ax.set_xlabel('X (km)')
     ax.set_ylabel('Y (km)')
     return fig
-          
 
 def plot_data(f_data_h5, i_plot=[], Dkey=[], **kwargs):
     """

@@ -39,7 +39,7 @@ RHO_min = 1
 RHO_max = 1500
 z_max = 50 
 
-useP=1
+useP=3
 if useP==1:
     ## Layered model
     #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
