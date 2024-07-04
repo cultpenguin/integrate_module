@@ -25,22 +25,20 @@ import os
 import matplotlib.pyplot as plt
 hardcopy=True
 
-
 # %% [markdown]
 # ## Download the data for a specific case study
 #
 # The following case study areas are available: 
 #
-#     DAUGAARD
-#     FANGEL
-#     HALD
-#
+# DAUGAARD
+# FANGEL
+# HALD
 #
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
-#case = 'DAUGAARD'
+case = 'DAUGAARD'
 #case = 'FANGEL'
-case = 'HALD'
+#case = 'HALD'
 
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -51,7 +49,6 @@ if not os.path.isfile(file_gex):
 
 print('CASE: %s' % case)
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
-
 
 # %% [markdown]
 # ### Plot the geometry of the observed data
@@ -80,15 +77,16 @@ ig.plot_data(f_data_h5)
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=10000
+N=100000
 RHO_min = 10
 RHO_max = 2500
+RHO_max = 500
 RHO_dist='log-uniform'
-NLAY_min=4
+NLAY_min=4 
 NLAY_max=4 
-z_max = 90 
+z_max = 90
 
-useP=2
+useP=1
 if useP==1:
     ## Layered model
     #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
@@ -170,10 +168,9 @@ for i in i1:
 # %% Plot Profiles
 ig.plot_profile(f_post_h5, i1=0, i2=np.min([2000,nd]), cmap='jet', hardcopy=hardcopy)
 
-
 # %%
-for iz in range(0,50,5):
-    ig.plot_feature_2d(f_post_h5,im=1,iz=iz,key='Mean', title_text = 'XX', cmap='jet', s=12, vmin=10, vmax=1000, hardcopy=hardcopy)
+for iz in range(0,z_max,5):
+    ig.plot_feature_2d(f_post_h5,im=1,iz=iz,key='Mean', title_text = 'XX', cmap='jet', s=12, vmin=10, vmax=100, hardcopy=hardcopy)
 
 # %% Export to CSV
 ig.post_to_csv(f_post_h5)
