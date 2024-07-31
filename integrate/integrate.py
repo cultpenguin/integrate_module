@@ -6,9 +6,15 @@ from sys import exit
 from multiprocessing import Pool
 from multiprocessing import shared_memory
 from functools import partial
-
+import time
 
 def is_notebook():
+    """
+    Check if the code is running in a Jupyter notebook or IPython shell.
+
+    Returns:
+        bool: True if running in a Jupyter notebook or IPython shell, False otherwise.
+    """
     try:
         shell = get_ipython().__class__.__name__
         if shell == 'ZMQInteractiveShell':
@@ -100,10 +106,8 @@ def integrate_update_prior_attributes(f_prior_h5, **kwargs):
     it sets 'is_discrete' to 1; otherwise, it sets 'is_discrete' to 0. 
     The 'is_discrete' attribute is then added to the dataset.
 
-    Parameters
-    ----------
-    f_prior_h5 : str
-        The path to the HDF5 file to process.
+    :param f_prior_h5: The path to the HDF5 file to process.
+    :type f_prior_h5: str
     """
     
     showInfo = kwargs.get('showInfo', 0)
@@ -164,6 +168,18 @@ def integrate_update_prior_attributes(f_prior_h5, **kwargs):
 
 
 def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_Nu1000_aT1.h5', **kwargs):
+    """
+    Compute posterior statistics for datasets in an HDF5 file.
+
+    This function computes various statistics for datasets in an HDF5 file based on the posterior samples.
+    The statistics include mean, median, standard deviation for continuous datasets, and mode, entropy, and class probabilities for discrete datasets.
+    The computed statistics are stored in the same HDF5 file.
+
+    :param f_post_h5: The path to the HDF5 file to process.
+    :type f_post_h5: str
+    :param kwargs: Additional keyword arguments.
+    :type kwargs: dict
+    """
     import h5py
     import numpy as np
     import integrate
@@ -328,6 +344,23 @@ def sample_from_posterior_old(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=1
 
 
 def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=1000000, autoT=1, ns=400):
+    """
+    Sample from the posterior distribution.
+
+    Parameters:
+    - is\_ (int): Index of data f_data_h5.
+    - d_sim (ndarray): Simulated data.
+    - f_data_h5 (str): Filepath of the data file (default: 'tTEM-Djursland.h5').
+    - N_use (int): Number of samples to use (default: 1000000).
+    - autoT (int): Flag indicating whether to estimate temperature (default: 1).
+    - ns (int): Number of samples to draw from the posterior (default: 400).
+
+    Returns:
+    - i_use (ndarray): Indices of the samples used.
+    - T (float): Temperature.
+    - EV (float): Expected value.
+    - is\_ (int): Index of the posterior sample.
+    """
     with h5py.File(f_data_h5, 'r') as f:
         d_obs = f['/D1/d_obs'][is_,:]
         d_std = f['/D1/d_std'][is_,:]
@@ -339,14 +372,18 @@ def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=10000
     dd = (d_sim[:, i_use] - d_obs)**2
     logL = -.5*np.sum(dd/d_var, axis=1)
 
+    # Compute the annealing temperature
     if autoT == 1:
         T = logl_T_est(logL)
     else:
         T = 1
     maxlogL = np.nanmax(logL)
     
-    exp_logL = np.exp(logL - maxlogL)
+    # Find ns realizations of the posterior, using the log-likelihood values logL, and the annealing tempetrature T 
     i_use, P_acc = lu_post_sample_logl(logL, ns, T)
+    
+    # Compute the evidence
+    exp_logL = np.exp(logL - maxlogL)
     EV = maxlogL + np.log(np.nansum(exp_logL)/len(logL))
     return i_use, T, EV, is_
 
@@ -395,7 +432,31 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
                             parallel=1, 
                             updatePostStat= True,
                             **kwargs):
+    """
+    Perform rejection-based integration of data and prior simulations.
 
+    :param f_prior_h5: Path to the prior simulations HDF5 file.
+    :type f_prior_h5: str
+    :param f_data_h5: Path to the data HDF5 file.
+    :type f_data_h5: str
+    :param f_post_h5: Path to the output posterior HDF5 file. If not provided, a default filename will be generated.
+    :type f_post_h5: str
+    :param autoT: Auto-tuning parameter.
+    :type autoT: int
+    :param N_use: Number of prior simulations to use.
+    :type N_use: int
+    :param ns: Number of samples.
+    :type ns: int
+    :param parallel: Parallelization mode. 1 for parallel processing, 2 for executing the script from the command line, and any other value for sequential processing.
+    :type parallel: int
+    :param updatePostStat: Flag indicating whether to update posterior statistics.
+    :type updatePostStat: bool
+    :param \**kwargs: Additional keyword arguments.
+    :returns: Path to the output posterior HDF5 file.
+    :rtype: str
+    :raises FileNotFoundError: If the prior simulations or data file does not exist.
+    """
+    
     import h5py
     import numpy as np
     from datetime import datetime   
@@ -771,10 +832,28 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
     return D
 
 
-
-import time
-
 def forward_gaaem_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **kwargs):
+    """
+    Perform forward modeling using the GAAEM method on a chunk of data.
+
+    :param C_chunk: The chunk of data to be processed.
+    :type C_chunk: numpy.ndarray
+    :param thickness: The thickness of the model.
+    :type thickness: float
+    :param stmfiles: A list of STM files.
+    :type stmfiles: list
+    :param file_gex: The path to the GEX file.
+    :type file_gex: str
+    :param Nhank: The number of Hankel functions.
+    :type Nhank: int
+    :param Nfreq: The number of frequencies.
+    :type Nfreq: int
+    :param kwargs: Additional keyword arguments.
+    :type kwargs: dict
+
+    :return: The result of the forward modeling.
+    :rtype: numpy.ndarray
+    """
     # pause for random time
     # time.sleep(np.random.rand()*10)
     return forward_gaaem(C=C_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)

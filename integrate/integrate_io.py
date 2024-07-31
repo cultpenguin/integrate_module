@@ -438,6 +438,38 @@ def post_to_csv(f_post_h5='', Mstr='/M1'):
     print('Writing to %s' % f_post_csv)
     df.to_csv(f_post_csv, index=False)
 
+    
+    #%% Store point data sets of varianle in D_name
+    # # Save a file with columns, x, y, z, and the median.
+    for icat in range(len(D_name)):
+        #icat=0
+        Vstr = D_name[icat]
+        print('Creating point data set: %s'  % Vstr)
+        D=f_post[Mstr+'/'+Vstr]
+        nd,nz=D.shape
+        n = nd*nz
+
+        Xp = np.zeros(n)
+        Yp = np.zeros(n)
+        Zp = np.zeros(n)
+        Dp = np.zeros(n)
+
+        for i in range(nd):
+            for j in range(nz):
+                k = i*nz+j
+                Xp[k] = X[i]
+                Yp[k] = Y[i]
+                Zp[k] = ELEVATION[i]-z[j]
+                Dp[k] = D[i,j]        
+
+        df = pd.DataFrame(data={'X': Xp, 'Y': Yp, 'Z': Zp, 'D': Dp  })
+        f_csv = '%s_%s_%s.csv' % (os.path.splitext(f_post_h5)[0],Mstr[1::],Vstr)
+        print('- saving to : %s'  % f_csv)
+
+        df.to_csv(f_csv, index=False)
+
+    
+    #%% CLOSE
     f_post.close()
     f_prior.close()
 
