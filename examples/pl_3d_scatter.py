@@ -4,6 +4,13 @@ import numpy as np
 import pyvista as pv
 import matplotlib.colors as colors
 
+#pv.start_xvfb()
+pv.set_plot_theme("document")
+pv.set_jupyter_backend('static')
+#"static", "client", "server", "trame", "html", "none"
+
+# Your existing code here
+
 #%%
 # Load the CSV file
 

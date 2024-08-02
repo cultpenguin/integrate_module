@@ -606,7 +606,7 @@ def get_case_data(case='DAUGAARD', loadAll=False):
 
         filelist = []
         filelist.append('FANGEL_AVG.h5')
-        filelist.append('tTEM_20230828_2x4_RC20-33.gex')
+        filelist.append('TX07_20230828_2x4_RC20-33.gex')
         filelist.append('README_FANGEL')
 
     elif case=='HALD':

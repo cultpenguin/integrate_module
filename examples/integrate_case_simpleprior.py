@@ -37,7 +37,7 @@ hardcopy=True
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
 case = 'DAUGAARD'
-#case = 'FANGEL'
+case = 'FANGEL'
 #case = 'HALD'
 
 files = ig.get_case_data(case=case)
