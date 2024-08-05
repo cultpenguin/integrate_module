@@ -370,6 +370,13 @@ def post_to_csv(f_post_h5='', Mstr='/M1'):
     :raises KeyError: If the specified dataset path does not exist in the HDF5 file.
     :raises FileNotFoundError: If the specified HDF5 file does not exist.
     """
+    
+    # TODO: Would be nice if also the LINE number was exported (to allow filter by LINE)
+    # Perhaps this function should be split into two functions, 
+    #   one for exporting the grid data and one for exporting the point data.
+    # Also, split into a function the generates the points scatter data, and one that stores them as a csv file
+
+
     import pandas as pd
     import integrate as ig
 
@@ -441,6 +448,8 @@ def post_to_csv(f_post_h5='', Mstr='/M1'):
     
     #%% Store point data sets of varianle in D_name
     # # Save a file with columns, x, y, z, and the median.
+    print("----------------------------------------------------")
+    D_mul_out = []
     for icat in range(len(D_name)):
         #icat=0
         Vstr = D_name[icat]
@@ -452,21 +461,28 @@ def post_to_csv(f_post_h5='', Mstr='/M1'):
         Xp = np.zeros(n)
         Yp = np.zeros(n)
         Zp = np.zeros(n)
+        LINEp = np.zeros(n)
         Dp = np.zeros(n)
-
+        
         for i in range(nd):
             for j in range(nz):
                 k = i*nz+j
                 Xp[k] = X[i]
                 Yp[k] = Y[i]
                 Zp[k] = ELEVATION[i]-z[j]
+                LINEp[k] = LINE[i]
                 Dp[k] = D[i,j]        
+        D_mul_out.append(Dp)
 
-        df = pd.DataFrame(data={'X': Xp, 'Y': Yp, 'Z': Zp, 'D': Dp  })
-        f_csv = '%s_%s_%s.csv' % (os.path.splitext(f_post_h5)[0],Mstr[1::],Vstr)
-        print('- saving to : %s'  % f_csv)
+    if is_discrete:
+        df = pd.DataFrame(data={'X': Xp, 'Y': Yp, 'Z': Zp, 'LINE': LINEp, D_name[0]: D_mul_out[0], D_name[1]: D_mul_out[1] })
+    else:
+        df = pd.DataFrame(data={'X': Xp, 'Y': Yp, 'Z': Zp, 'LINE': LINEp, D_name[0]: D_mul_out[0], D_name[1]: D_mul_out[1], D_name[2]: D_mul_out[2] })
+    
+    f_csv = '%s_%s_point.csv' % (os.path.splitext(f_post_h5)[0],Mstr[1::])
+    print('- saving to : %s'  % f_csv)
 
-        df.to_csv(f_csv, index=False)
+    df.to_csv(f_csv, index=False)
 
     
     #%% CLOSE
