@@ -13,8 +13,8 @@ pv.set_jupyter_backend('static')
 
 #%%
 # Load the CSV file
-df = pd.read_csv('POST_FANGEL_AVG_PRIOR_UNIFORM_NL_4-4_log-uniform_N100000_TX07_20230828_2x4_RC20-33_Nh280_Nf12_Nu100000_aT1_M1_point.csv')
-#df = pd.read_csv('POST_DAUGAARD_AVG_PRIOR_UNIFORM_NL_4-4_log-uniform_N100000_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu100000_aT1_M1_Median.csv')
+#df = pd.read_csv('POST_FANGEL_AVG_PRIOR_UNIFORM_NL_4-4_log-uniform_N100000_TX07_20230828_2x4_RC20-33_Nh280_Nf12_Nu100000_aT1_M1_point.csv')
+df = pd.read_csv('POST_DAUGAARD_AVG_PRIOR_UNIFORM_NL_4-4_log-uniform_N100000_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu100000_aT1_M1_point.csv')
 #df_std = pd.read_csv('POST_DAUGAARD_AVG_PRIOR_UNIFORM_NL_4-4_log-uniform_N100000_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu100000_aT1_M1_Std.csv')
 
 Nmax = 10000000

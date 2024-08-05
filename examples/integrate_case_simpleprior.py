@@ -15,8 +15,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # #%load_ext autoreload
-    # # # # #%autoreload 2
+    # # # # # #%load_ext autoreload
+    # # # # # #%autoreload 2
     pass
 
 import integrate as ig
@@ -37,7 +37,7 @@ hardcopy=True
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
 case = 'DAUGAARD'
-case = 'FANGEL'
+#case = 'FANGEL'
 #case = 'HALD'
 
 files = ig.get_case_data(case=case)
