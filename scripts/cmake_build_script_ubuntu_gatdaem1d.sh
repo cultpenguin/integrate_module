@@ -35,6 +35,7 @@ cmake --build . --target python-bindings --config=Release
 cmake --install . --prefix $INSTALL_DIR
 
 ## 3. Install python module 
+echo  $INSTALL_DIR
 # cd  $INSTALL_DIR
 
 ## CHECK FOR shared library dependencies
