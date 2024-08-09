@@ -42,3 +42,7 @@ echo  $INSTALL_DIR
 cd ..
 readelf -d install-ubuntu/python/gatdaem1d/gatdaem1d.so  | grep 'Shared'
 
+## Install the Python module
+echo "# Finally, install the Python module using"
+echo "cd ga-aem/install-ubuntu/python"
+echo "pip install ."
