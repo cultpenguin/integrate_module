@@ -13,19 +13,25 @@ Assuming you allready have python 3.10 installed
 
 
 PIP (Test in a fresh install of Ubuntu 22.04, Ubuntu 22.04 in WSL) 
-================
+==================================================================
 
     # Install python3 venv
     sudo apt install python3-venv
+    
     # Create virtual environment
     python3 -m venv ~/integrate
     source ~/integrate/bin/activate
     pip install --upgrade pip
+    
     # Install integrate module
     cd path/to/integrate module
     pip install --upgrade -r requirements.txt
     pip install -e .
     
+    # install GA-AEM
+    sh scripts/cmake_build_script_ubuntu_gatdaem1d.sh
+    cd ga-aem/install-ubuntu/python
+    pip install .
     
 
 Conda + PIP
