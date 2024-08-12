@@ -616,6 +616,10 @@ def get_case_data(case='DAUGAARD', loadAll=False):
             filelist.append('tTEM_20230829_AVG_export.h5')
             filelist.append('tTEM_20230913_AVG_export.h5')
             filelist.append('tTEM_20231109_AVG_export.h5')
+            filelist.append('prior_detailed_invalleys_N2000000_dmax90.h5')
+            filelist.append('prior_detailed_outvalleys_N2000000_dmax90.h5')
+            filelist.append('prior_detailed_general_N2000000_dmax90.h5')
+            
             
 
     elif case=='FANGEL':
