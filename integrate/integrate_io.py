@@ -580,6 +580,7 @@ def download_file(url, download_dir):
     response = requests.get(url)
     response.raise_for_status()  # Check if the request was successful
 
+    print(f'Downloading {file_name}')
     with open(file_path, 'wb') as file:
         file.write(response.content)
     print(f'Downloaded {file_name}')

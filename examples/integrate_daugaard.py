@@ -30,14 +30,14 @@ hardcopy=True
 
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
-files = ig.get_case_data(case='DAUGAARD', loadAll=True)
+files = ig.get_case_data(case='DAUGAARD')
+#files = ig.get_case_data(case='DAUGAARD', loadAll=True)
 f_data_h5 = files[0]
 file_gex= ig.get_gex_file_from_data(f_data_h5)
 # check that file_gex exists
 if not os.path.isfile(file_gex):
     print("file_gex=%s does not exist in the current folder." % file_gex)
 
-print('CASE: %s' % case)
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% [markdown]
@@ -77,29 +77,24 @@ f_prior_h5_list.append('prior_detailed_general_N2000000_dmax90.h5')
 for f_prior_h5  in f_prior_h5_list:
     print('Using prior model file %s' % f_prior_h5)
 
-    # %% plot some 1D statistics of the prior
+    #% plot some 1D statistics of the prior
     ig.plot_prior_stats(f_prior_h5)
 
-    # %% Compute prior data
+    #% Compute prior data
     f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
+    #% READY FOR INVERSION
 
-    # %% [markdown]
-    # ## Sample the posterior $\sigma(\mathbf{m})$
-    #
-    # The posterior distribution is sampling using the extended rejection sampler.
-
-    # %% READY FOR INVERSION
-
-    N_use = 10000000
+    N_use = 100000
     #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
     updatePostStat =True
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=updatePostStat, showInfo=1)
     f_post_h5_list.append(f_post_h5)
 
 
+#%%
 
-for f_post_h5  in f_post_h5_list:
+for f_post_h5 in f_post_h5_list:
 
     # %% Posterior analysis
     # Plot the Temperature used for inversion
