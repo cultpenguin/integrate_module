@@ -98,6 +98,9 @@ for f_prior_h5  in f_prior_h5_list:
     f_post_h5_list.append(f_post_h5)
 
 
+
+for f_post_h5  in f_post_h5_list:
+
     # %% Posterior analysis
     # Plot the Temperature used for inversion
     ig.plot_T_EV(f_post_h5, pl='T')
@@ -110,5 +113,4 @@ for f_prior_h5  in f_prior_h5_list:
 
     # %% Export to CSV
     ig.post_to_csv(f_post_h5)
-    # %%
-
+    
