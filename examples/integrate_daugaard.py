@@ -56,7 +56,7 @@ ig.plot_data(f_data_h5)
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
 
-N_use = 100000
+N_use = 2000000
 
 f_prior_h5_list = []
 f_post_h5_list = []
@@ -75,7 +75,6 @@ for f_prior_h5  in f_prior_h5_list:
 
     #% READY FOR INVERSION [NOTE: CHANGE 'N_use', to 'N'.]
 
-    N_use = 10000000
     #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
     updatePostStat =True
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
@@ -89,16 +88,16 @@ for f_prior_h5  in f_prior_h5_list:
 #%%
 for f_post_h5 in f_post_h5_list:
 
-    # %% Posterior analysis
+    #% Posterior analysis
     # Plot the Temperature used for inversion
     ig.plot_T_EV(f_post_h5, pl='T')
     ig.plot_T_EV(f_post_h5, pl='EV')
     ig.plot_T_EV(f_post_h5, pl='ND')
 
 
-    # %% Plot Profiles
+    #% Plot Profiles
     ig.plot_profile(f_post_h5, i1=0, i2=2000, cmap='jet', hardcopy=hardcopy)
 
-    # %% Export to CSV
+    #% Export to CSV
     ig.post_to_csv(f_post_h5)
     
