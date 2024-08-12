@@ -52,21 +52,11 @@ fig = ig.plot_data_xy(f_data_h5)
 # %% Plot the observed data
 ig.plot_data(f_data_h5)
 
-# %% [markdown]
-# ## Setup up the prior , $\rho(m,d)$
-# A lookup table of prior model parameters and corresponding prior data needs to be defined
-#
-#
-
-# %% [markdown]
-# ### Prior model paramegters, $\rho(m)$: Setup the prior for the model parameters
-# In principle and arbitrarily complex prior can be used with INTEGRATE, quantifying information about both discrete and continuous model parameters, and modle parameters describing physical parameters, and geo related parameters.
-# Here, we consider using a simple generic resistivity only prior.
-#
-#
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
+
+N_use = 100000
 
 f_prior_h5_list = []
 f_post_h5_list = []
@@ -81,19 +71,22 @@ for f_prior_h5  in f_prior_h5_list:
     ig.plot_prior_stats(f_prior_h5)
 
     #% Compute prior data
-    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
+    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, N=N_use)
 
-    #% READY FOR INVERSION
+    #% READY FOR INVERSION [NOTE: CHANGE 'N_use', to 'N'.]
 
-    N_use = 100000
+    N_use = 10000000
     #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
     updatePostStat =True
-    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=updatePostStat, showInfo=1)
+    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
+                                       N_use = N_use, 
+                                       parallel=1, 
+                                       updatePostStat=updatePostStat, 
+                                       showInfo=1)
     f_post_h5_list.append(f_post_h5)
 
 
 #%%
-
 for f_post_h5 in f_post_h5_list:
 
     # %% Posterior analysis
