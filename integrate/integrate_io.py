@@ -587,7 +587,7 @@ def download_file(url, download_dir):
 
 
 
-def get_case_data(case='DAUGAARD', loadAll=False):
+def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[]):
     """
     Get case data for a specific case.
 
@@ -603,10 +603,11 @@ def get_case_data(case='DAUGAARD', loadAll=False):
 
     if case=='DAUGAARD':
 
-        filelist = []    
-        filelist.append('DAUGAARD_AVG.h5')
-        filelist.append('TX07_20231016_2x4_RC20-33.gex')
-        filelist.append('README_DAUGAARD')
+        if len(filelist)==0:
+            filelist.append('DAUGAARD_AVG.h5')
+            filelist.append('TX07_20231016_2x4_RC20-33.gex')
+            filelist.append('README_DAUGAARD')
+
         if loadAll:
             filelist.append('DAUGAARD_RAW.h5')
             filelist.append('TX07_20230731_2x4_RC20-33.gex')
@@ -617,11 +618,22 @@ def get_case_data(case='DAUGAARD', loadAll=False):
             filelist.append('tTEM_20230829_AVG_export.h5')
             filelist.append('tTEM_20230913_AVG_export.h5')
             filelist.append('tTEM_20231109_AVG_export.h5')
+        
+        if (loadAll or loadType=='prior'):            
             filelist.append('prior_detailed_invalleys_N2000000_dmax90.h5')
             filelist.append('prior_detailed_outvalleys_N2000000_dmax90.h5')
             filelist.append('prior_detailed_general_N2000000_dmax90.h5')
+        
+        if (loadAll or loadType=='prior_data' or loadType=='post'):            
+            filelist.append('prior_detailed_invalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+            filelist.append('prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+            filelist.append('prior_detailed_general_N2000000_dmax90.h5_TX07_20231016_2x4_RC20-33_Nh280_Nf12')
             
-            
+        if (loadAll or loadType=='post'):
+            filelist.append('POST_DAUGAARD_AVG_prior_detailed_general_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5')
+            filelist.append('POST_DAUGAARD_AVG_prior_detailed_invalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5')
+            filelist.append('POST_DAUGAARD_AVG_prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5')    
+                    
 
     elif case=='FANGEL':
 
