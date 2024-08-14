@@ -30,7 +30,6 @@ hardcopy=True
 
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
-files = ig.get_case_data(case='DAUGAARD') # Load only data
 files = ig.get_case_data(case='DAUGAARD', loadType='prior') # Load data and prior realizations
 f_data_h5 = files[0]
 file_gex= ig.get_gex_file_from_data(f_data_h5)
@@ -48,7 +47,7 @@ ig.plot_prior_stats(f_prior_h5)
 plt.show
 
 #% Compute prior data
-N_use = 500000
+N_use = 50000
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, N=N_use)
 
 

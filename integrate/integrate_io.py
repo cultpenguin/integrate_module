@@ -538,7 +538,52 @@ def file_checksum(file_path):
         hasher.update(buf)
     return hasher.hexdigest()
 
-def download_file(url, download_dir):
+
+def download_file(url, download_dir, use_checksum=False):
+    import requests
+    import os
+    # Extract the file name from the URL
+    file_name = os.path.basename(url)
+    file_path = os.path.join(download_dir, file_name)
+
+    # Check if the file already exists locally
+    if os.path.exists(file_path):
+        print(f'File {file_name} already exists. Skipping download.')
+        return
+
+    # Check if the remote file exists
+    head_response = requests.head(url)
+    if head_response.status_code != 200:
+        print(f'File {file_name} does not exist on the remote server. Skipping download.')
+        return
+
+    # Download and save the file
+    response = requests.get(url)
+    response.raise_for_status()  # Check if the request was successful
+
+    print(f'Downloading {file_name}')
+    with open(file_path, 'wb') as file:
+        file.write(response.content)
+    print(f'Downloaded {file_name}')
+
+    # Check if checksum verification is enabled
+    if use_checksum:
+        # Calculate the MD5 checksum of the downloaded file
+        downloaded_checksum = file_checksum(file_path)
+
+        # Get the remote file checksum
+        remote_checksum = head_response.headers.get('Content-MD5')
+
+        # Compare checksums
+        if downloaded_checksum != remote_checksum:
+            print(f'Checksum verification failed for {file_name}. Downloaded file may be corrupted.')
+            os.remove(file_path)
+        else:
+            print(f'Checksum verification successful for {file_name}.')
+    else:
+        print(f'Checksum verification disabled for {file_name}.')
+
+def download_file_old(url, download_dir):
     import requests
     import os
     # Extract the file name from the URL
