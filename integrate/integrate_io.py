@@ -680,6 +680,23 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[]):
             filelist.append('POST_DAUGAARD_AVG_prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5')    
                     
 
+    elif case=='GRUSGRAV':
+
+        filelist = []
+        filelist.append('GRUSGRAV_AVG.h5')
+        filelist.append('TX07_20230425_2x4_RC20_33.gex')
+        filelist.append('README_GRUSGRAV')                    
+
+        if (loadAll or loadType=='prior'):            
+            filelist.append('DJURSLAND_P01_N1000000_NB-13_NR03_PRIOR.h5') 
+            filelist.append('DJURSLAND_P03_N1000000_NB-13_NR03_PRIOR.h5')
+            filelist.append('DJURSLAND_P13_N1000000_NB-13_NR03_PRIOR.h5')  
+            filelist.append('DJURSLAND_P40_N1000000_NB-13_NR03_PRIOR.h5')
+            filelist.append('DJURSLAND_P02_N1000000_NB-13_NR03_PRIOR.h5')  
+            filelist.append('DJURSLAND_P12_N1000000_NB-13_NR03_PRIOR.h5')  
+            filelist.append('DJURSLAND_P34_N1000000_NB-13_NR03_PRIOR.h5')  
+            filelist.append('DJURSLAND_P60_N1000000_NB-13_NR03_PRIOR.h5')    
+            
     elif case=='FANGEL':
 
         filelist = []

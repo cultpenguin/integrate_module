@@ -36,9 +36,10 @@ hardcopy=True
 #
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
-case = 'DAUGAARD'
+#case = 'DAUGAARD'
 #case = 'FANGEL'
-#case = 'HALD'
+case = 'HALD'
+#case = 'GRUSGRAV' # NOT YET AVAILABLE
 
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -77,7 +78,7 @@ ig.plot_data(f_data_h5)
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=100000
+N=500000
 RHO_min = 10
 RHO_max = 2500
 RHO_max = 500
@@ -139,7 +140,6 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, pa
 
 
 
-
 # %% [markdown]
 # ## Plot some statistics from $\sigma(\mathbf{m})$
 
@@ -157,8 +157,7 @@ ig.plot_T_EV(f_post_h5, pl='ND')
 # %%
 import h5py
 with h5py.File(f_data_h5,'r') as f_prior:
-    nd=f_prior['UTMX'].shape[0]
-
+    nd=len(f_prior['UTMX'][:].flatten())
 
 i1 = np.linspace(0,nd-1,4).astype(int)
 for i in i1:
