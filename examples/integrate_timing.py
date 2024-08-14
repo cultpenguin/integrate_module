@@ -18,18 +18,23 @@ Ncpu = os.cpu_count()
 print("Hostname: %s" % hostname)
 print("Number of processors: %d" % Ncpu)
 
-# %% Choose the GEX file used for forward modeling. THis should be stored in the data file.
-f_data_h5 = 'Fra20200930_202001001_1_AVG_export.h5'
-file_gex ='fraastad_ttem.gex'
+
+# %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
+
+files = ig.get_case_data()
+f_data_h5 = files[0]
+file_gex= ig.get_gex_file_from_data(f_data_h5)
+
 print("Using GEX file: %s" % file_gex)
 
 
 # %% TIMING
 # N_arr = logspace form 100 to 1000000 in ns stesp
 N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000])
-N_arr = np.logspace(2,6,25)
+#N_arr = np.logspace(2,6,25)
 #N_arr = np.array([100,1000,10000,50000])
 Nproc_arr=2**(np.double(np.arange(2+int(np.log2(Ncpu)))))
+Nproc_arr=2**(np.double(4+np.arange(int(np.log2(Ncpu)-2))));print(Nproc_arr)
 #Nproc_arr=(1+(np.arange(int(Ncpu**(0.5)))))**2
 # Commpute the opposite of Nproc=2**64, that is compute 64 as output
 

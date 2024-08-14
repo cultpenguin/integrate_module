@@ -5,4 +5,7 @@ tqdm ~= 4.66.2
 jupyter ~= 1.0.0
 scipy
 jupytext
+pandas
+pyvista
+
 

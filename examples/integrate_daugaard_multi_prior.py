@@ -14,8 +14,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # #%load_ext autoreload
-    # # # # # # #%autoreload 2
+    # # # # # # # #%load_ext autoreload
+    # # # # # # # #%autoreload 2
     pass
 
 import integrate as ig
@@ -68,7 +68,7 @@ if doComputePriorData:
         f_prior_h5_list.append(f_prior_data_h5)
 
 
-#%%
+# %%
 f_data_h5 = 'DAUGAARD_AVG.h5'
 
 f_prior_data_h5_list = []
@@ -79,7 +79,7 @@ f_post_h5_list = []
 
 N_use = 500000
 
-for f_prior_data_h5 in f_prior_h5_list:
+for f_prior_data_h5 in f_prior_data_h5_list:
     print('Using prior model file %s' % f_prior_data_h5)
 
     #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
@@ -108,7 +108,7 @@ for f_post_h5 in f_post_h5_list:
     #ig.post_to_csv(f_post_h5)
     plt.show()
 
-#%%
+# %%
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
 nd=len(X)
@@ -142,7 +142,7 @@ for iev in range(nev):
     EV_P[iev] = EV_P[iev]/EV_P_sum
 
 
-#%%
+# %%
 plt.figure(figsize=(10,10))
 plt.subplot(2,2,1)
 plt.scatter(X, Y, c=EV_P[0], cmap='hot_r', s=3, vmin=0, vmax=1)
