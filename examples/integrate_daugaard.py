@@ -30,11 +30,8 @@ hardcopy=True
 
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
-#files = ig.get_case_data(case='DAUGAARD') # Load only data
-#files = ig.get_case_data(case='DAUGAARD', loadType='prior') # Load data and prior realizations
-files = ig.get_case_data(case='DAUGAARD', loadType='prior_data') # Load data and prior+data realizations
-#files = ig.get_case_data(case='DAUGAARD', loadType='post') # # Load data and posterior realizations
-#files = ig.get_case_data(case='DAUGAARD', loadAll=True) # All of the above
+files = ig.get_case_data(case='DAUGAARD') # Load only data
+files = ig.get_case_data(case='DAUGAARD', loadType='prior') # Load data and prior realizations
 f_data_h5 = files[0]
 file_gex= ig.get_gex_file_from_data(f_data_h5)
 # check that file_gex exists
