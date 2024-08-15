@@ -55,8 +55,7 @@ if doComputePriorData:
     f_post_h5_list = []
     f_prior_h5_list.append('prior_detailed_invalleys_N2000000_dmax90.h5')
     f_prior_h5_list.append('prior_detailed_outvalleys_N2000000_dmax90.h5')
-    f_prior_h5_list.append('prior_detailed_general_N2000000_dmax90.h5')
-
+    
     for f_prior_h5  in f_prior_h5_list:
         print('Using prior model file %s' % f_prior_h5)
 
@@ -134,7 +133,7 @@ for iev in range(nev):
     EV_P[iev] = np.exp(EV_mul[iev]-E_max)
 
 # Use annealing to flaten prob
-T_EV = 20
+T_EV = 10
 EV_P = EV_P**(1/T_EV)
 
 EV_P_sum = np.sum(EV_P,axis=0)
@@ -145,13 +144,13 @@ for iev in range(nev):
 # %%
 plt.figure(figsize=(10,10))
 plt.subplot(2,2,1)
-plt.scatter(X, Y, c=EV_P[0], cmap='hot_r', s=3, vmin=0, vmax=1)
+plt.scatter(X, Y, c=EV_P[0], cmap='jet_r', s=3, vmin=0, vmax=1)
 plt.tight_layout()
 plt.axis('equal')
 plt.colorbar()
 plt.title('In Valleys')
 plt.subplot(2,2,2)
-plt.scatter(X, Y, c=EV_P[1], cmap='hot_r', s=3, vmin=0, vmax=1)
+plt.scatter(X, Y, c=EV_P[1], cmap='jet_r', s=3, vmin=0, vmax=1)
 plt.tight_layout()
 plt.axis('equal')
 plt.colorbar()
