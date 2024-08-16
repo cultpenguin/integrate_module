@@ -552,16 +552,17 @@ def download_file(url, download_dir, use_checksum=False):
         return
 
     # Check if the remote file exists
+    print('Checking if file exists on the remote server...')
     head_response = requests.head(url)
     if head_response.status_code != 200:
         print(f'File {file_name} does not exist on the remote server. Skipping download.')
         return
 
     # Download and save the file
+    print(f'Downloading {file_name}')
     response = requests.get(url)
     response.raise_for_status()  # Check if the request was successful
 
-    print(f'Downloading {file_name}')
     with open(file_path, 'wb') as file:
         file.write(response.content)
     print(f'Downloaded {file_name}')
@@ -581,7 +582,8 @@ def download_file(url, download_dir, use_checksum=False):
         else:
             print(f'Checksum verification successful for {file_name}.')
     else:
-        print(f'Checksum verification disabled for {file_name}.')
+        pass
+        # print(f'Checksum verification disabled for {file_name}.')
 
 def download_file_old(url, download_dir):
     import requests

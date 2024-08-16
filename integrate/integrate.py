@@ -344,7 +344,7 @@ def sample_from_posterior_old(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=1
 
 
 def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=1000000, autoT=1, ns=400):
-    """
+    r"""
     Sample from the posterior distribution.
 
     Parameters:
@@ -432,7 +432,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
                             parallel=1, 
                             updatePostStat= True,
                             **kwargs):
-    """
+    r"""
     Perform rejection-based integration of data and prior simulations.
 
     :param f_prior_h5: Path to the prior simulations HDF5 file.

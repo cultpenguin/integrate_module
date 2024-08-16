@@ -15,8 +15,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # # #%load_ext autoreload
-    # # # # # # # #%autoreload 2
+    # # # # # # # # #%load_ext autoreload
+    # # # # # # # # #%autoreload 2
     pass
 
 import integrate as ig
@@ -50,6 +50,12 @@ if not os.path.isfile(file_gex):
 
 print('CASE: %s' % case)
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
+
+# print all filename in files
+for f in files:
+    print(f)
+
+    
 
 # %% [markdown]
 # ### Plot the geometry of the observed data

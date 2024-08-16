@@ -87,7 +87,8 @@ for f_prior_data_h5 in f_prior_data_h5_list:
                                        N_use = N_use, 
                                        parallel=1, 
                                        updatePostStat=updatePostStat, 
-                                       showInfo=1)
+                                       showInfo=1,
+                                       Nproc=8)
     f_post_h5_list.append(f_post_h5)
 
 
@@ -133,7 +134,7 @@ for iev in range(nev):
     EV_P[iev] = np.exp(EV_mul[iev]-E_max)
 
 # Use annealing to flaten prob
-T_EV = 10
+T_EV = 4
 EV_P = EV_P**(1/T_EV)
 
 EV_P_sum = np.sum(EV_P,axis=0)
