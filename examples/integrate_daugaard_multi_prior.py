@@ -76,7 +76,7 @@ f_prior_data_h5_list.append('prior_detailed_outvalleys_N2000000_dmax90_TX07_2023
 #f_prior_h5_list.append('prior_detailed_general_N2000000_dmax90.h5_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 f_post_h5_list = []
 
-N_use = 2000000
+N_use = 20000
 
 for f_prior_data_h5 in f_prior_data_h5_list:
     print('Using prior model file %s' % f_prior_data_h5)
@@ -88,7 +88,7 @@ for f_prior_data_h5 in f_prior_data_h5_list:
                                        parallel=1, 
                                        updatePostStat=updatePostStat, 
                                        showInfo=1,
-                                       Nproc=8)
+                                       Nproc=32)
     f_post_h5_list.append(f_post_h5)
 
 
