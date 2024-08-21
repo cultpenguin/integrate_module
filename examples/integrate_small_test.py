@@ -151,14 +151,16 @@ f_prior_h5 = ig.copy_hdf5_file(file12_out, 'prior.h5')
 #%%
 
 #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
-updatePostStat =True
-N_use = 4000000
+updatePostStat =False
+N_use = 400000
+f_prior_h5='prior.h5'
+f_data_h5='DAUGAARD_AVG_inout.h5'
 f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, 
                                 N_use = N_use, 
                                 parallel=1, 
                                 updatePostStat=updatePostStat, 
                                 showInfo=1,
-                                Nproc = 16)
+                                Nproc = 8)
 
 #%% 
 # get geometry
@@ -211,7 +213,7 @@ def likelihood_gaussian_full(D, d_obs, Cd):
     a = 1
     return 1
 
-
+'''
 def integrate_rejection_range(f_prior_h5, 
                               f_data_h5, 
                               N_use=1000, 
@@ -227,6 +229,9 @@ def integrate_rejection_range(f_prior_h5,
     import h5py
     import time
 
+    # get optional arguments
+    showInfo = kwargs.get('showInfo', 0)
+
     # Get number of data points from, f_data_h5
     with h5py.File(f_data_h5, 'r') as f_data:
         Ndp = f_data['/D1/d_obs'].shape[0]
@@ -235,12 +240,13 @@ def integrate_rejection_range(f_prior_h5,
         ip_range = np.arange(Ndp)
 
     nump=len(ip_range)
-    print(nump)
+    if showInfo>1:
+        print('Number of data points to invert: %d' % nump)
     i_use_all = np.zeros((nump, nr), dtype=np.int32)
     T_all = np.zeros(nump)
     EV_all = np.zeros(nump)
 
-    showInfo = kwargs.get('showInfo', 0)
+    
     with h5py.File(f_prior_h5, 'r') as f_prior:
         N = f_prior['/D1'].shape[0]
 
@@ -260,14 +266,15 @@ def integrate_rejection_range(f_prior_h5,
             # if f_data[DS] has noise_model attribute then use it
             if 'noise_model' in f_data[DS].attrs:
                 noise_model.append(f_data[DS].attrs['noise_model'])
-                print('Noise model for %s is %s' % (DS, noise_model[-1]))
+                if showInfo>0:
+                    print('Noise model for %s is %s' % (DS, noise_model[-1]))
             else:
                 print('No noise_model attribute in %s' % DS)
                 noise_model.append('none')
                         
-    #print(noise_model)    
-
-    # load D
+    
+    # load the 'mulitiple' fdata 
+    # consider making it available as shared data
     D = []
     doRandom=False    
     with h5py.File(f_prior_h5, 'r') as f_prior:
@@ -288,12 +295,9 @@ def integrate_rejection_range(f_prior_h5,
 
             #print(D[-1].shape)
 
-    #%¤
     # THIS IS THE ACTUAL INVERSION!!!!
-
     for j in tqdm(range(len(ip_range))):
         ip = ip_range[j]
-    #for ip in ip_range: # ipoint
         t=[]
         N = D[0].shape[0]
         NDsets = len(id_use)
@@ -368,9 +372,6 @@ def integrate_rejection_range(f_prior_h5,
         P_acc = np.exp((1/T) * (L - np.nanmax(L)))
         P_acc[np.isnan(P_acc)] = 0
 
-        #plt.figure()
-        #plt.plot(P_acc)
-
         # Select the index of P_acc propportion to the probabilituy given by P_acc
         t0=time.time()
         try:
@@ -383,8 +384,6 @@ def integrate_rejection_range(f_prior_h5,
         # find the number of unique indexes
         n_unique = len(np.unique(i_use))
 
-        #plt.figure()
-        #plt.plot(np.sort(L[i_use]))
 
         # Compute the evidence
         maxlogL = np.nanmax(L)
@@ -393,9 +392,9 @@ def integrate_rejection_range(f_prior_h5,
 
         t.append(time.time()-t0)
 
-        i_use_all[ip] = i_use
-        T_all[ip] = T
-        EV_all[ip] = EV
+        i_use_all[j] = i_use
+        T_all[j] = T
+        EV_all[j] = EV
 
 
         if showInfo>1:
@@ -407,7 +406,53 @@ def integrate_rejection_range(f_prior_h5,
             print('Time total: %f' % np.sum(t))
         
     return i_use_all, T_all, EV_all, ip_range
+'''
 
+def integrate_posterior_chunk(args):
+    i_chunk, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr = args
+    ip_range = ip_chunks[i_chunk]
+    #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
+
+    i_use, T, EV, ip_range = integrate_rejection_range(
+        f_prior_h5=f_prior_h5,
+        f_data_h5=f_data_h5,
+        N_use=N_use,
+        id_use=id_use,
+        ip_range=ip_range,
+        autoT=autoT,
+        T_base=T_base,
+        nr=nr,
+    )
+
+    return i_use, T, EV, ip_range
+
+def integrate_posterior_main(ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr, Ncpu):
+    from multiprocessing import Pool
+
+    with Pool(Ncpu) as p:
+        results = p.map(integrate_posterior_chunk, [(i, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr) for i in range(len(ip_chunks))])
+
+    # Get sample size N from f_prior_h5
+    with h5py.File(f_prior_h5, 'r') as f_prior:
+        N = f_prior['/D1'].shape[0]
+
+    # Get number of data points from, f_data_h5
+    with h5py.File(f_data_h5, 'r') as f_data:
+        Ndp = f_data['/D1/d_obs'].shape[0]
+
+    i_use_all = np.random.randint(0, N, (Ndp, nr))
+    T_all = np.zeros(Ndp)*np.nan
+    EV_all = np.zeros(Ndp)*np.nan
+    
+    for i, (i_use, T, EV, ip_range) in enumerate(results):
+        for i in range(len(ip_range)):
+                ip = ip_range[i]
+                #print('ip=%d, i=%d' % (ip,i))
+                i_use_all[ip] = i_use[i]
+                T_all[ip] = T[i]
+                EV_all[ip] = EV[i]
+
+    return i_use_all, T_all, EV_all
 
 def integrate_rejection_multi(f_post_h5='post.h5',
                               f_prior_h5='prior.h5', 
@@ -418,37 +463,103 @@ def integrate_rejection_multi(f_post_h5='post.h5',
                               nr=400,
                               autoT=1,
                               T_base = 1,
+                              Nchunks=0,
+                              Ncpu=1,
+                              useParallel=True,
                               **kwargs):
     from datetime import datetime   
+    from multiprocessing import Pool
+
+    # get optional arguments
+    showInfo = kwargs.get('showInfo', 0)
+
+    # Get sample size N from f_prior_h5
+    with h5py.File(f_prior_h5, 'r') as f_prior:
+        N = f_prior['/D1'].shape[0]
+
+    # Get number of data points from, f_data_h5
+    with h5py.File(f_data_h5, 'r') as f_data:
+        Ndp = f_data['/D1/d_obs'].shape[0]
+        print('Number of data points: %d' % Ndp)    
+    # if ip_range is empty then use all data points
+    if len(ip_range)==0:
+        ip_range = np.arange(Ndp)
+    Ndp_invert = len(ip_range)
+    print('Number of data points to invert: %d' % Ndp_invert)
+    
+
+    # set i_use_all to be a 2d Matrie of size (nump,nr) of random integers in range(N)
+    i_use_all = np.random.randint(0, N, (Ndp, nr))
+    T_all = np.zeros(Ndp)
+    EV_all = np.zeros(Ndp)
 
     date_start = str(datetime.now())
     t_start = datetime.now()
     
+
+    if Nchunks==0:
+        if useParallel:
+            Nchunks = Ncpu
+        else:   
+            Nchunks = 1
+    ip_chunks = np.array_split(ip_range, Nchunks) 
+
     # PERFORM INVERSION PERHAPS IN PARALLEL
-    i_use, T, EV, ip_range = integrate_rejection_range(f_prior_h5=f_prior_h5, 
-                                     f_data_h5=f_data_h5,
-                                     N_use=N_use, 
-                                     id_use=id_use,
-                                     ip_range=ip_range,
-                                     autoT=autoT,
-                                     T_base = T_base,
-                                     nr=nr,
-                                     )
-    
-    
+
+    if useParallel:
+        i_use_all, T_all, EV_all = integrate_posterior_main(
+            ip_chunks=ip_chunks,
+            f_prior_h5=f_prior_h5,
+            f_data_h5=f_data_h5,
+            N_use=N_use,
+            id_use=id_use,
+            autoT=autoT,
+            T_base=T_base,
+            nr=nr,
+            Ncpu=Ncpu,
+        )
+
+
+    else:
+
+        for i_chunk in range(len(ip_chunks)):        
+            ip_range = ip_chunks[i_chunk]
+            print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
+
+            i_use, T, EV, ip_range = ig.integrate_rejection_range(f_prior_h5=f_prior_h5, 
+                                        f_data_h5=f_data_h5,
+                                        N_use=N_use, 
+                                        id_use=id_use,
+                                        ip_range=ip_range,
+                                        autoT=autoT,
+                                        T_base = T_base,
+                                        nr=nr,
+                                        )
+        
+            for i in range(len(ip_range)):
+                ip = ip_range[i]
+                #print('ip=%d, i=%d' % (ip,i))
+                i_use_all[ip] = i_use[i]
+                T_all[ip] = T[i]
+                EV_all[ip] = EV[i]
+
+    # WHere T_all is Inf set it to Nan
+    T_all[T_all==np.inf] = np.nan
+    EV_all[EV_all==np.inf] = np.nan
+
     date_end = str(datetime.now())
     t_end = datetime.now()
     t_elapsed = (t_end - t_start).total_seconds()
-    #t_per_sounding = t_elapsed / nsoundings
-    #if (showInfo>-1):
-    #    print('T_av=%3.1f, Time=%5.1fs/%d soundings ,%4.3fms/sounding' % (np.nanmean(POST_T),t_elapsed,nsoundings,t_per_sounding*1000))
+    t_per_sounding = t_elapsed / Ndp_invert
+    if (showInfo>-1):
+        print('T_av=%3.1f, Time=%5.1fs/%d soundings ,%4.1fms/sounding, %3.1fit/s' % (np.nanmean(T_all),t_elapsed,Ndp_invert,t_per_sounding*1000,Ndp_invert/t_elapsed))
 
     # SAVE THE RESULTS to f_post_h5
     with h5py.File(f_post_h5, 'w') as f_post:
-        f_post.create_dataset('i_use', data=i_use)
-        f_post.create_dataset('T', data=T)
-        f_post.create_dataset('EV', data=EV)
-        f_post.create_dataset('ip_range', data=ip_range)
+        f_post.create_dataset('i_use', data=i_use_all)
+        f_post.create_dataset('T', data=T_all)
+        f_post.create_dataset('EV', data=EV_all)
+        #f_post.create_dataset('ip_range', data=ip_range)
         f_post.attrs['date_start'] = date_start
         f_post.attrs['date_end'] = date_end
         f_post.attrs['inv_time'] = t_elapsed
@@ -460,39 +571,73 @@ def integrate_rejection_multi(f_post_h5='post.h5',
     if updatePostStat:
         integrate_posterior_stats(f_post_h5, **kwargs)
 
-    return i_use, T, EV, ip_range
+    return T_all, EV_all, i_use_all, 
 
-
-# %%
-ip_range = [];np.arange(0,1000)   
-i_use, T, EV, ip_range = integrate_rejection_range(f_prior_h5='prior.h5', 
-                                     f_data_h5='DAUGAARD_AVG_inout.h5', 
-                                     N_use=1000, 
-                                     id_use=[1,2],
-                                     ip_range=[],
-                                     autoT=0,
-                                     T_base = 1000,
-                                     )
-
-plt.figure()
-plt.plot(EV,label='EV')
-plt.plot(T,label='T')
-plt.legend()
-plt.show()
 
 #%% 
+updatePostStat =False
+N_use = 1000000
+f_prior_h5='prior.h5'
+f_data_h5='DAUGAARD_AVG_inout.h5'
+Ncpu = 16
+
+ip_range = []
+ip_range=np.arange(0,10000,20)   
 f_post_h5 = 'post.h5'
-integrate_rejection_multi(f_post_h5=f_post_h5,
-                            f_prior_h5='prior.h5', 
-                            f_data_h5='DAUGAARD_AVG_inout.h5', 
-                            N_use=1000, 
-                            id_use=[1,2],
-                            T_base = 100,
-                            autoT=0,
+T, E, i_use = integrate_rejection_multi(f_post_h5=f_post_h5,
+                            f_prior_h5=f_prior_h5, 
+                            f_data_h5=f_data_h5, 
+                            N_use=N_use, 
+                            id_use=[1],
+                            T_base = 1,
+                            autoT=1,
+                            ip_range=ip_range,
+                            Nchunks=0,
+                            Ncpu=Ncpu,
+                            useParallel=False,
+                            showInfo=1
                             )
 
-ig.integrate_posterior_stats(f_post_h5)
+#%%  TEST OLD
+f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, 
+                                N_use = N_use, 
+                                parallel=1, 
+                                updatePostStat=updatePostStat, 
+                                showInfo=1,
+                                Nproc = Ncpu)
 
+
+#ig.integrate_posterior_stats(f_post_h5)
+
+#%%
+ig.plot_profile(f_post_h5, i1=0, i2=2000, cmap='jet', hardcopy=hardcopy)
+
+
+#%% test chunks
+f_post_h5 = 'post.h5'
+f_prior_h5 = 'prior.h5'
+f_data_h5 = 'DAUGAARD_AVG_inout.h5'
+N_use = 4000
+id_use = [1, 2]
+T_base = 1
+autoT = 1
+ip_range = np.arange(0, 2000)
+nr = 400
+Nchunks = 2
+Ncpu = 2
+
+ip_chunks = np.array_split(ip_range, Nchunks)
+#i_use_all, T_all, EV_all = integrate_posterior_main(
+i_use_all, T_all, EV_all = integrate_posterior_main(
+    ip_chunks=ip_chunks,
+    f_prior_h5=f_prior_h5,
+    f_data_h5=f_data_h5,
+    N_use=N_use,
+    id_use=id_use,
+    autoT=autoT,
+    T_base=T_base,
+    nr=nr,
+)
 
 # %%
 X, Y, LINE, ELEVATION = ig.get_geometry(f_post_h5)
@@ -514,5 +659,25 @@ ig.plot_T_EV(f_post_h5, pl='T')
 # %%
 with h5py.File(f_post_h5, 'r') as f_post:
     EV = f_post['/EV'][:]
+
+# %%
+
+# %% direct computation of the likelihood
+ip_range = []
+ip_range=np.arange(100,1000)   
+i_use, T, EV, ip_range = integrate_rejection_range(f_prior_h5='prior.h5', 
+                                     f_data_h5='DAUGAARD_AVG_inout.h5', 
+                                     N_use=4000, 
+                                     id_use=[1,2],
+                                     ip_range=ip_range,
+                                     autoT=0,
+                                     T_base = 1000,
+                                     )
+
+plt.figure()
+plt.plot(EV,label='EV')
+plt.plot(T,label='T')
+plt.legend()
+plt.show()
 
 # %%

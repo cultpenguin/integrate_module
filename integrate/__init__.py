@@ -11,6 +11,7 @@ from integrate.integrate import forward_gaaem
 from integrate.integrate import prior_model_layered
 from integrate.integrate import prior_model_workbench
 from integrate.integrate import posterior_cumulative_thickness
+from integrate.integrate import integrate_rejection_range
 
 from integrate.integrate_io import get_geometry 
 from integrate.integrate_io import read_gex
