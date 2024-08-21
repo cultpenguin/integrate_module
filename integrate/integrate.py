@@ -471,6 +471,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
 
     id=1
 
+    chunksize = kwargs.get('chunksize', 1)
     Nproc = kwargs.get('Nproc', 0)
     showInfo = kwargs.get('showInfo', 0)
     if showInfo>0:
@@ -548,7 +549,7 @@ def integrate_rejection(f_prior_h5='DJURSLAND_P01_N0010000_NB-13_NR03_PRIOR.h5',
         args_list = [(is_, shm.name, d_sim.shape, d_sim.dtype, f_data_h5, N_use, autoT, ns) for is_ in range(nsoundings)]
         # Create a multiprocessing pool and compute D for each chunk of C
         with Pool(Nproc) as p:
-            out = list(tqdm(p.imap(sample_from_posterior_shared, args_list, chunksize=1), total=nsoundings, mininterval=1))
+            out = list(tqdm(p.imap(sample_from_posterior_shared, args_list, chunksize=chunksize), total=nsoundings, mininterval=1))
 
         for output in out:
             i_use = output[0]
