@@ -407,7 +407,7 @@ def integrate_rejection_range(f_prior_h5,
         
     return i_use_all, T_all, EV_all, ip_range
 '''
-
+'''
 def integrate_posterior_chunk(args):
     i_chunk, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr = args
     ip_range = ip_chunks[i_chunk]
@@ -453,7 +453,8 @@ def integrate_posterior_main(ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, au
                 EV_all[ip] = EV[i]
 
     return i_use_all, T_all, EV_all
-
+'''
+'''
 def integrate_rejection_multi(f_post_h5='post.h5',
                               f_prior_h5='prior.h5', 
                               f_data_h5='DAUGAARD_AVG_inout.h5', 
@@ -569,34 +570,36 @@ def integrate_rejection_multi(f_post_h5='post.h5',
 
     updatePostStat=False
     if updatePostStat:
-        integrate_posterior_stats(f_post_h5, **kwargs)
+        ig.integrate_posterior_stats(f_post_h5, **kwargs)
 
     return T_all, EV_all, i_use_all, 
+'''
 
-
-#%% 
+#%% The new version of integrate_rejection using multidata
 updatePostStat =False
-N_use = 1000000
+N_use = 100000
 f_prior_h5='prior.h5'
 f_data_h5='DAUGAARD_AVG_inout.h5'
 Ncpu = 16
 
 ip_range = []
-ip_range=np.arange(0,10000,20)   
+ip_range=np.arange(0,1000,1)   
 f_post_h5 = 'post.h5'
-T, E, i_use = integrate_rejection_multi(f_post_h5=f_post_h5,
+T, E, i_use = ig.integrate_rejection_multi(f_post_h5=f_post_h5,
                             f_prior_h5=f_prior_h5, 
                             f_data_h5=f_data_h5, 
                             N_use=N_use, 
-                            id_use=[1],
+                            id_use=[1,2],
                             T_base = 1,
                             autoT=1,
                             ip_range=ip_range,
                             Nchunks=0,
                             Ncpu=Ncpu,
-                            useParallel=False,
-                            showInfo=1
+                            useParallel=True,
+                            updatePostStat=updatePostStat,                            
                             )
+
+ig.plot_T_EV(f_post_h5, pl='T')
 
 #%%  TEST OLD
 f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, 
@@ -607,9 +610,9 @@ f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5,
                                 Nproc = Ncpu)
 
 
-#ig.integrate_posterior_stats(f_post_h5)
 
 #%%
+ig.integrate_posterior_stats(f_post_h5)
 ig.plot_profile(f_post_h5, i1=0, i2=2000, cmap='jet', hardcopy=hardcopy)
 
 
