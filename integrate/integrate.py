@@ -119,6 +119,7 @@ def integrate_update_prior_attributes(f_prior_h5, **kwargs):
 
     with h5py.File(f_prior_h5, 'a') as f:  # open file in append mode
         for name, dataset in f.items():
+            print(name)
             if name.upper().startswith('M'):
                 # Check if the attribute 'is_discrete' exists
                 if 'x' in dataset.attrs:
@@ -141,6 +142,7 @@ def integrate_update_prior_attributes(f_prior_h5, **kwargs):
                     # Check if M is discrete
                     M_sample = dataset[:1000]  # get the first 1000 elements
                     class_id = np.unique(M_sample)
+                    print(class_id)
                     if len(class_id) < 20:
                         is_discrete = 1
                         dataset.attrs['class_id'] = class_id
@@ -861,6 +863,8 @@ def forward_gaaem_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **
     return forward_gaaem(C=C_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)
 
 
+# %% PRIOR DATA GENERATORS
+
 def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1, Nhank=280, Nfreq=12, parallel=True, **kwargs):
     """
     Generate prior data for the ga-aem method.
@@ -1007,12 +1011,97 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     f_prior.close()
 
     return f_prior_data_h5
-# %%
 
 
+def prior_data_identity(f_prior_h5, id=0, im=1, N=0, doMakePriorCopy=False, **kwargs):
+    '''
+    Generate data D%id from model M%im in the prior file f_prior_h5 as an identity of M%im.
+
+    :param f_prior_h5: Path to the prior data file in HDF5 format.
+    :type f_prior_h5: str
+    :param id: Index of the data (default: 0). if id=0, the next available data id is used
+    :type id: int
+    :param im: Index of the model (default: 1).
+    :type im: int
+    :param N: Number of soundings to consider (default: 0).
+    :type N: int
+    :param doMakePriorCopy: Flag indicating whether to make a copy of the prior file (default: False).
+    :type doMakePriorCopy: bool
+    :param kwargs: Additional keyword arguments.
+    :type kwargs: dict
+
+    '''
+    import integrate as ig
+    import time
+    
+    type = 'idenity'
+    method = '--'
+    showInfo = kwargs.get('showInfo', 0)
+    forceDeleteExisting = kwargs.get('forceDeleteExisting', True)
 
 
+    # check keys for the data with max id form 'D1', 'D2', 'D3', ...
+    if id==0:
+        with h5py.File(f_prior_h5, 'a') as f_prior:
+            id = 1
+            for id_test in range(15):
+                key = '/D%d' % id_test
+                if key in f_prior.keys():
+                    print('Checking key EXISTS: %s' % key)
+                    id = id_test+1
+                else:                    
+                    pass
+            print('using id = %d' % id)    
+        
+    
+    with h5py.File(f_prior_h5, 'a') as f:
+        N_in = f['M1'].shape[0]
+    if N==0: 
+        N = N_in     
+    if N>N_in:
+        N=N_in
 
+    print('N=%d, N_in=%d' % (N,N_in))
+    if doMakePriorCopy:
+        if N < N_in:
+            f_prior_data_h5 = '%s_N%s_IDEN_im%d_id%d.h5' % (os.path.splitext(f_prior_h5)[0], N, im, id)
+        else:
+            f_prior_data_h5 = '%s_IDEN_im%d_id%d.h5' % (os.path.splitext(f_prior_h5)[0], im, id)
+        if (showInfo>-1):
+            print("Creating a copy of %s as %s" % (f_prior_h5, f_prior_data_h5))
+        ig.copy_hdf5_file(f_prior_h5, f_prior_data_h5,N)
+        
+    else:
+        f_prior_data_h5 = f_prior_h5
+
+    Mname = '/M%d' % im
+    Dname = '/D%d' % id
+
+    # copy f_prior[Mname] to Dname
+    print('Copying %s to %s in filename=%s' % (Mname, Dname, f_prior_data_h5))
+
+    # f_prior = h5py.File(f_prior_data_h5, 'r+')
+    with h5py.File(f_prior_data_h5, 'a') as f:
+        D = f[Mname]
+        # check if Dname exists, if so, delete it
+        if Dname in f.keys():
+            if forceDeleteExisting:
+                print('Key %s allready exists -- DELETING !!!!' % Dname)
+                del f[Dname]
+            else:
+                print('Key %s allready exists - doing nothing' % Dname)
+                return f_prior_data_h5
+        
+        dataset = f.create_dataset(Dname, data=D)  # 'i4' represents 32-bit integers
+        dataset.attrs['description'] = 'Identiy of %s' % Mname
+        dataset.attrs['f5_forward'] = 'none'
+        dataset.attrs['with_noise'] = 0
+        #f_prior.close()
+    
+    
+    return f_prior_data_h5
+
+# %% PRIOR MODEL GENERATORS
 def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY_max=6, NLAY_deg=6, RHO_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80, N=100000):
     """
     Generate a prior model with layered structure.

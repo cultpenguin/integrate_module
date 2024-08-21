@@ -334,6 +334,7 @@ def get_geometry(f_data_h5):
     Retrieve geometry information from an HDF5 file.
 
     :param str f_data_h5: The path to the HDF5 file.
+    If a posterior hdf5 file is passed, the the corresponding data files is read from the 'h5_data' attribute.   
 
     :return: A tuple containing the X, Y, LINE, and ELEVATION arrays.
     :rtype: tuple
@@ -345,6 +346,12 @@ def get_geometry(f_data_h5):
     (array([1, 2, 3]), array([4, 5, 6]), array([7, 8, 9]), array([10, 11, 12]))
     
     """
+
+    # if f_data_h5 has a feature called 'f5_prior' then use that file
+    with h5py.File(f_data_h5, 'r') as f_data:
+        if 'f5_data' in f_data.attrs:
+            f_data_h5 = f_data.attrs['f5_data']
+            print('Using f5_data_h5: %s' % f_data_h5)
 
     with h5py.File(f_data_h5, 'r') as f_data:
         X = f_data['/UTMX'][:].flatten()
@@ -492,7 +499,9 @@ def post_to_csv(f_post_h5='', Mstr='/M1'):
     return f_post_csv
 
 
-
+'''
+HDF% related functions
+'''
 def copy_hdf5_file(input_filename, output_filename, N=None):
     """
     Copy the contents of an HDF5 file to another HDF5 file.
@@ -507,18 +516,19 @@ def copy_hdf5_file(input_filename, output_filename, N=None):
     :return: None
     """
     # Open the input file
+    print('Trying to copy %s to %s' % (input_filename, output_filename))
     with h5py.File(input_filename, 'r') as input_file:
         # Create the output file
         with h5py.File(output_filename, 'w') as output_file:
             # Copy each group/dataset from the input file to the output file
             for name in input_file:
-                if isinstance(input_file[name], h5py.Dataset):
+                if isinstance(input_file[name], h5py.Dataset):                    
                     # If N is specified, only copy the first N elements
                     data = input_file[name][:N]
                     # Create new dataset in output file
                     output_dataset = output_file.create_dataset(name, data=data)
                     # Copy the attributes of the dataset
-                    for key, value in input_file[name].attrs.items():
+                    for key, value in input_file[name].attrs.items():                        
                         output_dataset.attrs[key] = value
                 else:
                     input_file.copy(name, output_file)
@@ -526,6 +536,37 @@ def copy_hdf5_file(input_filename, output_filename, N=None):
             # Copy the attributes of the input file to the output file
             for key, value in input_file.attrs.items():
                 output_file.attrs[key] = value
+
+        return output_filename
+
+def hdf5_scan(file_path):
+    """
+    Scans an HDF5 file and prints information about datasets (including their size) and attributes.
+
+    Args:
+        file_path (str): The path to the HDF5 file.
+
+    """
+    import h5py
+    with h5py.File(file_path, 'r') as f:
+        def print_info(name, obj):
+            if isinstance(obj, h5py.Dataset):
+                print(f"Dataset: {name}")
+                print(f"  Shape: {obj.shape}")
+                print(f"  Data type: {obj.dtype}")
+                if obj.attrs:
+                    print("  Attributes:")
+                    for attr_name, attr_value in obj.attrs.items():
+                        print(f"    {attr_name}: {attr_value}")
+            elif isinstance(obj, h5py.Group):
+                if obj.attrs:
+                    print(f"Group: {name}")
+                    print("  Attributes:")
+                    for attr_name, attr_value in obj.attrs.items():
+                        print(f"    {attr_name}: {attr_value}")
+
+        f.visititems(print_info)
+
 
 
 

@@ -6,6 +6,7 @@ from integrate.integrate import logl_T_est
 from integrate.integrate import lu_post_sample_logl
 from integrate.integrate import prior_data
 from integrate.integrate import prior_data_gaaem
+from integrate.integrate import prior_data_identity
 from integrate.integrate import forward_gaaem
 from integrate.integrate import prior_model_layered
 from integrate.integrate import prior_model_workbench
@@ -18,6 +19,7 @@ from integrate.integrate_io import get_gex_file_from_data
 from integrate.integrate_io import write_stm_files
 from integrate.integrate_io import post_to_csv
 from integrate.integrate_io import copy_hdf5_file
+from integrate.integrate_io import hdf5_scan
 from integrate.integrate_io import get_case_data
 
 from integrate.integrate_plot import plot_profile
