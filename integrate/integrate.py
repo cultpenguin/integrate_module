@@ -370,7 +370,8 @@ def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=10000
     d_var = d_std[i_use]**2
 
     dd = (d_sim[:, i_use] - d_obs)**2
-    logL = -.5*np.sum(dd/d_var, axis=1)
+    #logL = -.5*np.sum(dd/d_var, axis=1)
+    logL = np.sum(-0.5 * dd / d_var, axis=1)
 
     # Compute the annealing temperature
     if autoT == 1:
