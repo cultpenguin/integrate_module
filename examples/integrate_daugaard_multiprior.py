@@ -1,0 +1,163 @@
+#!/usr/bin/env python
+# %% [markdown]
+# # INTEGRATE Daugaard Case Study with three eology-resistivity prior models.
+#
+# This notebook contains an example of inverison of the DAUGAARD tTEM data using three different geology-resistivity prior models
+
+# %% Imports
+try:
+    # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
+    get_ipython()
+    # If the above line doesn't raise an error, it means we are in a Jupyter environment
+    # Execute the magic commands using IPython's run_line_magic function
+    get_ipython().run_line_magic('load_ext', 'autoreload')
+    get_ipython().run_line_magic('autoreload', '2')
+except:
+    # If get_ipython() raises an error, we are not in a Jupyter environment
+    # # # # # # # #%load_ext autoreload
+    # # # # # # # #%autoreload 2
+    pass
+
+import integrate as ig
+import numpy as np
+import matplotlib.pyplot as plt
+import h5py
+hardcopy=True
+import time
+
+
+#%% The new version of integrate_rejection using multidata
+f_prior_h5='prior.h5'
+f_prior_h5='prior_detailed_general_N2000000_dmax90_TX07_20231016_2x4_RC20-33_N50000_Nh280_Nf12.h5'
+f_prior_h5_in='prior_detailed_invalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
+f_prior_h5_out='prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
+f_prior_h5='prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
+
+updatePostStat =False
+N_use = 1000
+f_data_h5='DAUGAARD_AVG_inout.h5'
+
+# get numer of cpu's
+import multiprocessing
+Ncpu = multiprocessing.cpu_count()/2
+Ncpu = 4
+ip_range = []
+#ip_range=np.arange(0,11000,10)   
+f_post_h5 = 'post_inout_N%d.h5'% (N_use)
+
+
+#%% TEST NEW
+t0=time.time()
+f_post_h5 = ig.integrate_rejection_multi(f_post_h5=f_post_h5,
+                            f_prior_h5=f_prior_h5, 
+                            f_data_h5=f_data_h5, 
+                            N_use=N_use, 
+                            id_use=[1],
+                            autoT=1,
+                            ip_range=ip_range,
+                            Ncpu=Ncpu,
+                            updatePostStat=updatePostStat,
+                            showInfo=1                                                        
+                            )
+t1=time.time()-t0
+
+#%% Plot probability of prior hypothesis
+ig.integrate_posterior_stats(f_post_h5)
+X, Y, LINE, ELEVATION = ig.get_geometry(f_post_h5)
+with h5py.File(f_post_h5,'r') as f_post:
+    M3_P = f_post['M3/P'][:]
+    M3_Mode = f_post['M3/Mode'][:]
+
+plt.figure(figsize=(10,8))
+plt.subplot(2,2,1)
+plt.scatter(X,Y,c=M3_P[:,0], cmap='hot_r',s=2, vmin=0, vmax=1)
+plt.axis('equal')
+plt.grid()
+plt.title('P(inside valley)')
+plt.colorbar()
+plt.subplot(2,2,2)
+plt.scatter(X,Y,c=M3_P[:,1], cmap='hot_r',s=2, vmin=0, vmax=1)
+plt.grid()
+plt.title('P(outside valley)')
+plt.axis('equal')
+plt.colorbar()
+plt.tight_layout()
+plt.savefig('P_hypothesis_N%d.png' % (N_use))
+
+
+#%%
+ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
+
+# %% Nowe
+t=[]
+f_post_list=[]
+EV=[]
+for f_prior_h5 in [f_prior_h5_in, f_prior_h5_out]:
+    t0=time.time()
+    f_post_h5_out = ig.integrate_rejection_multi(f_post_h5=f_post_h5,
+                                f_prior_h5=f_prior_h5, 
+                                f_data_h5=f_data_h5, 
+                                N_use=N_use, 
+                                id_use=[1],
+                                autoT=1,
+                                ip_range=ip_range,
+                                Ncpu=Ncpu,
+                                updatePostStat=updatePostStat,
+                                showInfo=1                                                        
+                                )
+    f_post_list.append(f_post_h5_out)
+    t.append(time.time()-t0)
+
+    with h5py.File(f_post_h5_out,'r') as f_post:
+        EVs = f_post['EV'][:]
+        EV.append(EVs)
+        
+
+#%%
+X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+
+nd=len(X)
+nev=len(EV)
+
+EV_mul = np.zeros((nev,nd))
+
+for iev in range(len(EV)):
+    # Read '/EV' from f_post_h5
+    EV_mul[iev]=EV[iev]
+
+#% Normalize EV
+
+for T_EV in [1,2,4,8,16,32,256]:
+
+    EV_P = 0*EV_mul
+    E_max = np.max(EV_mul, axis=0)
+
+    for iev in range(nev):
+        EV_P[iev] = np.exp(EV_mul[iev]-E_max)
+
+    # Use annealing to flaten prob    
+    EV_P = EV_P**(1/T_EV)
+
+    EV_P_sum = np.sum(EV_P,axis=0)
+    for iev in range(nev):
+        EV_P[iev] = EV_P[iev]/EV_P_sum
+
+    plt.figure(figsize=(10,8))
+    plt.subplot(2,2,1)
+    plt.scatter(X, Y, c=EV_P[0], cmap='hot_r', s=3, vmin=0, vmax=1)
+    plt.tight_layout()
+    plt.axis('equal')
+    plt.grid()
+    plt.colorbar()
+    plt.title('In Valleys')
+    plt.subplot(2,2,2)
+    plt.scatter(X, Y, c=EV_P[1], cmap='hot_r', s=3, vmin=0, vmax=1)
+    plt.tight_layout()
+    plt.axis('equal')
+    plt.grid()
+    plt.colorbar()
+    plt.title('Out of valleys')
+
+    plt.savefig('P_hypothesis_mulrun_EV%d_N%d.png' % (T_EV,N_use))
+
+# %%

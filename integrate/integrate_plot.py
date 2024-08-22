@@ -805,15 +805,19 @@ def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
         #i_use.sort()
         # flatten i_use
         i_use = i_use.flatten()
-
+        print(i_use[0])
         nr=len(i_use)
         ns,ndata = f_data['/%s' % Dkey]['d_obs'].shape
         d_post = np.zeros((nr,ndata))
         d_prior = np.zeros((nr,ndata))
-
+        
+        N = f_prior[Dkey].shape[0]
+        print(N)
+        # set id_plot to be nr random locagtions in 1:ndata
+        i_prior_plot = np.random.randint(0,N,nr)
         for i in range(nr):
             d_post[i]=f_prior[Dkey][i_use[i]-1,:]
-            d_prior[i]=f_prior[Dkey][i,:]    
+            d_prior[i]=f_prior[Dkey][i_prior_plot[i],:]    
 
         #i_plot=[]
         fig, ax = plt.subplots(1,1,figsize=(7,7))

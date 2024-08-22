@@ -1445,12 +1445,11 @@ def integrate_rejection_range(f_prior_h5,
         N_use = N
 
     if N_use<N:  
-        np.random.seed(0)
+    #    #np.random.seed(0)
         idx = np.sort(np.random.choice(N, N_use, replace=False))
-        #idx = np.sort(np.arange(N_use))
+    #    #idx = np.sort(np.arange(N_use))
     else:
         idx = np.arange(N)
-
     
 
     i=0
@@ -1498,7 +1497,7 @@ def integrate_rejection_range(f_prior_h5,
             #print(D[-1].shape)
 
     # THIS IS THE ACTUAL INVERSION!!!!
-    for j in tqdm(range(len(ip_range))):
+    for j in tqdm(range(len(ip_range)), miniters=10):
         ip = ip_range[j]
         t=[]
         N = D[0].shape[0]
@@ -1512,7 +1511,7 @@ def integrate_rejection_range(f_prior_h5,
             if noise_model[i]=='gaussian':
                 with h5py.File(f_data_h5, 'r') as f_data:
                     d_obs = f_data['%s/d_obs' % DS][ip]
-                    d_std = f_data['%s/d_std' % DS][ip] * (1+i*0.1)
+                    d_std = f_data['%s/d_std' % DS][ip] 
 
                 L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std)
                 #L.append(L_single)
@@ -1581,12 +1580,19 @@ def integrate_rejection_range(f_prior_h5,
         except:
             print('Error in np.random.choice for ip=%d' % ip)   
             i_use = np.random.choice(N, nr)
+        
         if useRandomData:
             # get the correct index of the subset used
             i_use = idx[i_use]
             
-        t.append(time.time()-t0)
-        
+
+        # Unfortunately this code originally used matlab style codeing for i_use, 
+        # this we need to add 1 to the index
+        i_use = i_use+1            
+
+        t.append(time.time()-t0)        
+
+    
         # find the number of unique indexes
         n_unique = len(np.unique(i_use))
 
@@ -1597,6 +1603,14 @@ def integrate_rejection_range(f_prior_h5,
         EV = maxlogL + np.log(np.nansum(exp_logL)/len(L))
 
         t.append(time.time()-t0)
+
+        pltDegug = 0
+        if pltDegug>0:
+            import matplotlib.pyplot as plt
+            plt.semilogy(d_obs, 'k', linewidth=4)
+            plt.semilogy(D[0][i_use].T, 'r', linewidth=1)
+            plt.show()
+            print(D[0][10])
 
         i_use_all[j] = i_use
         T_all[j] = T
@@ -1648,14 +1662,11 @@ def integrate_rejection_multi(f_post_h5='post.h5',
     # Get number of data points from, f_data_h5
     with h5py.File(f_data_h5, 'r') as f_data:
         Ndp = f_data['/D1/d_obs'].shape[0]
-        print('Number of data points: %d' % Ndp)    
     # if ip_range is empty then use all data points
     if len(ip_range)==0:
         ip_range = np.arange(Ndp)
     Ndp_invert = len(ip_range)
-    print('Number of data points to invert: %d' % Ndp_invert)
     
-
     # set i_use_all to be a 2d Matrie of size (nump,nr) of random integers in range(N)
     i_use_all = np.random.randint(0, N, (Ndp, nr))
     T_all = np.zeros(Ndp)*np.nan
@@ -1665,6 +1676,7 @@ def integrate_rejection_multi(f_post_h5='post.h5',
     t_start = datetime.now()
     
 
+    # Split the ip_range into Nchunks
     if Nchunks==0:
         if useParallel:
             Nchunks = Ncpu
@@ -1675,6 +1687,9 @@ def integrate_rejection_multi(f_post_h5='post.h5',
 
     ip_chunks = np.array_split(ip_range, Nchunks) 
 
+    if showInfo>0:
+        print('Number of data points: %d (available), %d (used). Nchunks=%s, Ncpu=%d' % (Ndp,Ndp_invert,Nchunks,Ncpu))    
+    
     # PERFORM INVERSION PERHAPS IN PARALLEL
 
     if useParallel:
@@ -1741,7 +1756,8 @@ def integrate_rejection_multi(f_post_h5='post.h5',
     if updatePostStat:
         ig.integrate_posterior_stats(f_post_h5, **kwargs)
 
-    return T_all, EV_all, i_use_all, 
+    #return f_post_h5 T_all, EV_all, i_use_all
+    return f_post_h5
 
 
 def integrate_posterior_chunk(args):
