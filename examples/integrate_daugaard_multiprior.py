@@ -33,11 +33,12 @@ f_prior_h5_out='prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20
 f_prior_h5='prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
 
 updatePostStat =False
-N_use = 2000000
+N_use = 4000000
+#N_use = 2000000
 #N_use = 1000000
 #N_use = 100000
-##N_use = 10000
-N_use = 1000
+#N_use = 10000
+#N_use = 1000
 f_data_h5='DAUGAARD_AVG_inout.h5'
 
 # get numer of cpu's
@@ -47,7 +48,7 @@ Ncpu = 8
 ip_range = []
 #ip_range=np.arange(0,11000,10)   
 f_post_h5 = 'post_inout_N%d.h5'% (N_use)
-
+hardcopy = True
 
 #%% TEST NEW
 t0=time.time()
@@ -63,6 +64,7 @@ f_post_h5 = ig.integrate_rejection_multi(f_post_h5=f_post_h5,
                             showInfo=1                                                        
                             )
 t1=time.time()-t0
+ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 
 #%% Plot probability of prior hypothesis
 ig.integrate_posterior_stats(f_post_h5)
@@ -110,6 +112,7 @@ for f_prior_h5 in [f_prior_h5_in, f_prior_h5_out]:
                                 )
     f_post_list.append(f_post_h5_out)
     t.append(time.time()-t0)
+    ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 
     with h5py.File(f_post_h5_out,'r') as f_post:
         EVs = f_post['EV'][:]
