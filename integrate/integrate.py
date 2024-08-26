@@ -1629,29 +1629,41 @@ def integrate_rejection_range(f_prior_h5,
 
 
 
-def integrate_rejection_multi(f_post_h5='post.h5',
-                              f_prior_h5='prior.h5', 
-                              f_data_h5='DAUGAARD_AVG_inout.h5', 
-                              N_use=1000, 
-                              id_use=[1,2], 
+def integrate_rejection_multi(f_prior_h5='prior.h5', 
+                              f_data_h5='DAUGAAD_AVG_inout.h5',
+                              f_post_h5='',                              
+                              N_use=100000000000, 
+                              id_use=[1], 
                               ip_range=[], 
                               nr=400,
                               autoT=1,
                               T_base = 1,
                               Nchunks=0,
-                              Ncpu=1,
-                              useParallel=True,
+                              Ncpu=0,
+                              useParallel=True,                              
                               **kwargs):
     from datetime import datetime   
     from multiprocessing import Pool
+    import multiprocessing
     import integrate as ig
     import numpy as np
     import h5py
 
     # get optional arguments
-    showInfo = kwargs.get('showInfo', 0)
+    showInfo = kwargs.get('showInfo', 1)
     updatePostStat = kwargs.get('updatePostStat', True)
 
+
+    # Set default f_post_h5 filename if not set    
+    if len(f_post_h5)==0:
+        f_post_h5 = "POST_%s_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_h5)[0],N_use,autoT)
+
+    # Check that f_post_h5 allready exists, and warn the user   
+    if os.path.isfile(f_post_h5):
+        print('File %s allready exists' % f_post_h5)
+        print('Overwriting...')    
+        
+    
     # Get sample size N from f_prior_h5
     with h5py.File(f_prior_h5, 'r') as f_prior:
         N = f_prior['/D1'].shape[0]
@@ -1666,16 +1678,10 @@ def integrate_rejection_multi(f_post_h5='post.h5',
     if len(ip_range)==0:
         ip_range = np.arange(Ndp)
     Ndp_invert = len(ip_range)
-    
-    # set i_use_all to be a 2d Matrie of size (nump,nr) of random integers in range(N)
-    i_use_all = np.random.randint(0, N, (Ndp, nr))
-    T_all = np.zeros(Ndp)*np.nan
-    EV_all = np.zeros(Ndp)*np.nan
-
-    date_start = str(datetime.now())
-    t_start = datetime.now()
-    
-
+        
+    if Ncpu < 1 :
+        Ncpu =  int(multiprocessing.cpu_count()/2)
+        
     # Split the ip_range into Nchunks
     if Nchunks==0:
         if useParallel:
@@ -1689,6 +1695,22 @@ def integrate_rejection_multi(f_post_h5='post.h5',
 
     if showInfo>0:
         print('Number of data points: %d (available), %d (used). Nchunks=%s, Ncpu=%d' % (Ndp,Ndp_invert,Nchunks,Ncpu))    
+    
+    if showInfo>2:
+        print('f_prior_h5=%s\nf_data_h5=%s\nf_post_h5=%s' % (f_prior_h5, f_data_h5, f_post_h5))
+        print('N_use = %d' % (N_use))
+        print('Ncpu = %d\nNchunks=%d' % (Ncpu, Nchunks))
+    
+        return 1
+    
+    
+    # set i_use_all to be a 2d Matrie of size (nump,nr) of random integers in range(N)
+    i_use_all = np.random.randint(0, N, (Ndp, nr))
+    T_all = np.zeros(Ndp)*np.nan
+    EV_all = np.zeros(Ndp)*np.nan
+
+    date_start = str(datetime.now())
+    t_start = datetime.now()
     
     # PERFORM INVERSION PERHAPS IN PARALLEL
 

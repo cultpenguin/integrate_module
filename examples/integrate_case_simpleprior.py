@@ -84,7 +84,7 @@ ig.plot_data(f_data_h5)
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=500000
+N=50000
 RHO_min = 10
 RHO_max = 2500
 RHO_max = 500
@@ -143,7 +143,9 @@ N_use = 10000000
 #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
 updatePostStat =True
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=updatePostStat, showInfo=1)
-
+#%% 
+f_post_h5 = ig.integrate_rejection_multi(f_prior_data_h5, f_data_h5, N_use = N_use))
+#f_post_h5 = ig.integrate_rejection_multi(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=updatePostStat, showInfo=1)
 
 
 # %% [markdown]
