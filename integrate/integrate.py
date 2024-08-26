@@ -90,7 +90,7 @@ def lu_post_sample_logl(logL, ns=1, T=1):
     for is_ in range(ns):
         r = np.random.rand()
         i_use = np.where(Cum_P > r)[0][0]
-        i_use_all[is_] = i_use+1
+        i_use_all[is_] = i_use
     
     return i_use_all, P_acc
 
@@ -237,7 +237,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                 M_all = dataset[:]
 
                 for iid in tqdm(range(nsounding), mininterval=1):
-                    ir = np.int64(i_use[iid,:]-1)
+                    ir = np.int64(i_use[iid,:])
                     m_post = M_all[ir,:]
 
                     m_mean = np.exp(np.mean(np.log(m_post), axis=0))
@@ -289,7 +289,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                 for iid in tqdm(range(nsounding), mininterval=1):
 
                     # Get the indices of the rows to use
-                    ir = np.int64(i_use[iid,:]-1)
+                    ir = np.int64(i_use[iid,:])
                     
                     m_post = M_all[ir,:]
                     
@@ -1588,7 +1588,7 @@ def integrate_rejection_range(f_prior_h5,
 
         # Unfortunately this code originally used matlab style codeing for i_use, 
         # this we need to add 1 to the index
-        i_use = i_use+1            
+        #i_use = i_use+1            
 
         t.append(time.time()-t0)        
 

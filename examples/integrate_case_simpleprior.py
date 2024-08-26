@@ -37,8 +37,8 @@ hardcopy=True
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
 #case = 'DAUGAARD'
-#case = 'FANGEL'
-case = 'HALD'
+case = 'FANGEL'
+#case = 'HALD'
 #case = 'GRUSGRAV' # NOT YET AVAILABLE
 
 files = ig.get_case_data(case=case)
@@ -68,6 +68,7 @@ fig = ig.plot_data_xy(f_data_h5)
 
 # %% Plot the observed data
 ig.plot_data(f_data_h5)
+ig.plot_data(f_data_h5, plType='plot', hardcopy=hardcopy)
 
 # %% [markdown]
 # ## Setup up the prior , $\rho(m,d)$
@@ -139,14 +140,11 @@ f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
 # %% READY FOR INVERSION
 
-N_use = 10000000
+N_use = 50000
 #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
 updatePostStat =True
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=updatePostStat, showInfo=1)
-#%% 
-f_post_h5 = ig.integrate_rejection_multi(f_prior_data_h5, f_data_h5, N_use = N_use))
-#f_post_h5 = ig.integrate_rejection_multi(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=updatePostStat, showInfo=1)
-
+#f_post_h5 = ig.integrate_rejection_multi(f_prior_data_h5, f_data_h5, N_use = N_use)
 
 # %% [markdown]
 # ## Plot some statistics from $\sigma(\mathbf{m})$

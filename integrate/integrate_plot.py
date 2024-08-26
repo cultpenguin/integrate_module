@@ -164,7 +164,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
     return 1
 
 
-def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='both', hardcopy=False, **kwargs):
+def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=False, **kwargs):
 
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -632,7 +632,7 @@ def plot_data_xy(f_data_h5, i_plot=[], Dkey=[], **kwargs):
     ax.set_ylabel('Y (km)')
     return fig
 
-def plot_data(f_data_h5, i_plot=[], Dkey=[], **kwargs):
+def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
     """
     Plot the data from an HDF5 file.
 
@@ -642,6 +642,8 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], **kwargs):
     :type i_plot: int or array-like, optional
     :param Dkey: The key(s) of the data set(s) to plot. Default is an empty list.
     :type Dkey: str or list, optional
+    :param plType: The type of plot to use ('imshow' or 'plot'). Default is 'imshow'.
+    :type plType: str, optional
     :param kwargs: Additional keyword arguments.
     :type kwargs: dict
 
@@ -706,33 +708,55 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], **kwargs):
         # plot figure with data
 
         fig, ax = plt.subplots(4,1,figsize=(10,12), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
-        im1 = ax[0].imshow(d_obs[i_plot,:].T, aspect='auto', cmap='jet_r', norm=matplotlib.colors.LogNorm(), extent=extent)
-        im2 = ax[1].imshow(d_std[i_plot,:].T, aspect='auto', cmap='hot_r', norm=matplotlib.colors.LogNorm(), extent=extent)
-        im3 = ax[2].imshow((d_std[i_plot,:]/d_obs[i_plot,:]).T, aspect='auto', vmin = 0.00, vmax = 0.10, extent=extent)
-        ax[0].set_title('d_obs: observed data')
-        ax[1].set_title('d_std: standard deviation')
-        ax[2].set_title('d_std/d_obs: relative standard deviation')
-        fig.colorbar(im1, ax=ax[0])
-        fig.colorbar(im2, ax=ax[1])
-        fig.colorbar(im3, ax=ax[2])
-        ax[0].set_ylabel('Data #')
-        ax[1].set_ylabel('Data #')
-        ax[2].set_ylabel('Data #')
 
+        if plType=='plot':
+            im1 = ax[0].semilogy(d_obs[i_plot,:], linewidth=.5)
+            im2 = ax[1].semilogy(d_std[i_plot,:], linewidth=.5)
+            im3 = ax[2].semilogy((d_obs[i_plot,:]/d_std[i_plot,:]), linewidth=.5)
+            ax[0].set_xlim(xlim)
+            ax[1].set_xlim(xlim)
+            ax[2].set_xlim(xlim)
+            ax[2].set_ylim([.5, 50])
+            ax[0].set_ylabel('d_obs')
+            ax[1].set_ylabel('d_std')
+            ax[2].set_ylabel('S/N (d_obs/d_std)')
+
+        elif plType=='imshow':            
+            im1 = ax[0].imshow(d_obs[i_plot,:].T, aspect='auto', cmap='jet_r', norm=matplotlib.colors.LogNorm(), extent=extent)
+            im2 = ax[1].imshow(d_std[i_plot,:].T, aspect='auto', cmap='hot_r', norm=matplotlib.colors.LogNorm(), extent=extent)
+            im3 = ax[2].imshow((d_obs[i_plot,:]/d_std[i_plot,:]).T, aspect='auto', vmin = 0.5, vmax = 50, extent=extent)
+
+            fig.colorbar(im1, ax=ax[0])
+            fig.colorbar(im2, ax=ax[1])
+            fig.colorbar(im3, ax=ax[2])
+        
+            ax[0].set_ylabel('gate number')
+            ax[1].set_ylabel('gate number')
+            ax[2].set_ylabel('gate number')
+            ax[0].set_title('d_obs: observed data')
+            ax[1].set_title('d_std: standard deviation')
+            #ax[2].set_title('d_std/d_obs: relative standard deviation')
+            
+        
         im4 = ax[3].plot(i_plot,non_nan[i_plot], 'k.', markersize=.5)
         ax[3].set_ylabel('Number of data')
-        ax[3].grid()
         ax[3].set_xlim(xlim)
 
-        # Create an invisible colorbar for the last subplot
-        cbar4 = fig.colorbar(im3, ax=ax[3])
-        cbar4.solids.set(alpha=0)
-        cbar4.outline.set_visible(False)
-        cbar4.ax.set_yticks([])  # Hide the colorbar ticks
-        cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
+        if plType=='imshow':            
+            # Create an invisible colorbar for the last subplot
+            cbar4 = fig.colorbar(im3, ax=ax[3])
+            cbar4.solids.set(alpha=0)
+            cbar4.outline.set_visible(False)
+            cbar4.ax.set_yticks([])  # Hide the colorbar ticks
+            cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
 
         ax[-1].set_xlabel('Index')
         
+        ax[0].grid()
+        ax[1].grid()
+        ax[2].grid()
+        ax[3].grid()
+
         plt.suptitle('Data set %s' % Dkey)
         plt.tight_layout()
     else:
@@ -743,7 +767,7 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], **kwargs):
         kwargs['hardcopy'] = True
     if kwargs['hardcopy']:
         # strip the filename from f_data_h5
-        plt.savefig('%s_%s.png' % (os.path.splitext(f_data_h5)[0],Dkey))
+        plt.savefig('%s_%s_%s.png' % (os.path.splitext(f_data_h5)[0],Dkey,plType))
 
 
 
@@ -816,7 +840,7 @@ def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
         # set id_plot to be nr random locagtions in 1:ndata
         i_prior_plot = np.random.randint(0,N,nr)
         for i in range(nr):
-            d_post[i]=f_prior[Dkey][i_use[i]-1,:]
+            d_post[i]=f_prior[Dkey][i_use[i],:]
             d_prior[i]=f_prior[Dkey][i_prior_plot[i],:]    
 
         #i_plot=[]
