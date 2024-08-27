@@ -707,6 +707,7 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[]):
             filelist.append('tTEM_20230829_AVG_export.h5')
             filelist.append('tTEM_20230913_AVG_export.h5')
             filelist.append('tTEM_20231109_AVG_export.h5')
+            filelist.append('DAUGAARD_AVG_inout.h5')
         
         if (loadAll or loadType=='prior'):            
             filelist.append('prior_detailed_invalleys_N2000000_dmax90.h5')
@@ -717,6 +718,7 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[]):
             filelist.append('prior_detailed_invalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
             filelist.append('prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
             filelist.append('prior_detailed_general_N2000000_dmax90.h5_TX07_20231016_2x4_RC20-33_Nh280_Nf12')
+            filelist.append('prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
             
         if (loadAll or loadType=='post'):
             filelist.append('POST_DAUGAARD_AVG_prior_detailed_general_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5')

@@ -268,6 +268,15 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
 
+    # Check if M1 exist in f_post_h5
+    updatePostStat = False
+    with h5py.File(f_post_h5,'r') as f_post:
+        if '/M1' not in f_post:
+            print('No posterior stats found in %s - computing them now' % f_post_h5)
+            updatePostStat = True
+    if updatePostStat:
+            ig.integrate_posterior_stats(f_post_h5)
+            
     print(im)
     if (im==0):
         print('Plot profile for all model parameters')
@@ -308,6 +317,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     from matplotlib.colors import LogNorm
 
     kwargs.setdefault('hardcopy', False)
+    txt = kwargs.get('txt','')
     
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -455,7 +465,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     # get filename without extension
     if kwargs['hardcopy']:
-        f_png = '%s_%d_%d_profile_%s.png' % (os.path.splitext(f_post_h5)[0],i1,i2,Mstr[1:])
+        f_png = '%s_%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],i1,i2,Mstr[1:],txt)
         plt.savefig(f_png)
     plt.show()
 
@@ -478,7 +488,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     kwargs.setdefault('hardcopy', False)
     kwargs.setdefault('cmap', 'jet')
-
+    txt = kwargs.get('txt','')
+    
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
@@ -611,7 +622,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     # get filename without extension
     if kwargs['hardcopy']:
-        f_png = '%s_%d_%d_profile_%s.png' % (os.path.splitext(f_post_h5)[0],i1,i2,Mstr[1:])
+        f_png = '%s_%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],i1,i2,Mstr[1:],txt)
         plt.savefig(f_png)
     plt.show()
 
@@ -872,6 +883,7 @@ def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
 
 
 def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
+    from matplotlib.colors import LogNorm
 
     f_prior = h5py.File(f_prior_h5,'r')
     f_prior['/%s'%Mkey].attrs.keys()
@@ -887,7 +899,38 @@ def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
     if not is_discrete:
 
         # setup a figure with two suplots in row ONE AND ONE SUBPLOT IN ROW 2
+        Mstr = '/%s' % Mkey
         
+        #"with h5py.File(f_prior_h5,'r') as f_prior:
+        try:
+            z = f_prior[Mstr].attrs['z'][:].flatten()
+        except:
+            z = f_prior[Mstr].attrs['x'][:].flatten()
+        is_discrete = f_prior[Mstr].attrs['is_discrete']
+        if 'clim' in f_prior[Mstr].attrs.keys():
+            clim = f_prior[Mstr].attrs['clim'][:].flatten()
+        else:
+            # if clim set in kwargs, use it, otherwise use default
+            if 'clim' in kwargs:
+                clim = kwargs['clim']
+            else:
+                clim = [.1, 2600]
+                clim = [10, 500]
+        print(clim)
+        if 'cmap' in f_prior[Mstr].attrs.keys():
+            cmap = f_prior[Mstr].attrs['cmap'][:]
+            from matplotlib.colors import ListedColormap
+            cmap = ListedColormap(cmap.T)
+        else:
+            cmap = kwargs['cmap']
+        if 'name' in f_prior[Mstr].attrs.keys():
+            name = f_prior[Mstr].attrs['name'][:]
+        else:
+            name = Mkey 
+        
+
+        print(cmap)
+        print(clim)
 
         M = f_prior[Mkey][:]
         fig, ax = plt.subplots(2,2,figsize=(10,10))
@@ -914,10 +957,22 @@ def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
         #m2 = ax[1,0].imshow(M[0:nr,:].T, aspect='auto', extent=extent)
         X,Y = np.meshgrid(np.arange(1,nr+1),z)
         ax[1,0].invert_yaxis()
-        m2 = ax[1,0].pcolor(X,Y,M[0:nr,:].T)
+        m2 = ax[1,0].pcolor(X,Y,M[0:nr,:].T, 
+                            cmap=cmap, 
+                            shading='auto',
+                            norm=LogNorm())
+        # set clim to clim
+        m2.set_clim(clim[0],clim[1])
+        #m2.set_clim(clim[0]-.5,clim[1]+.5)      
         fig.colorbar(m2, ax=ax[1,0], label=Mkey)
-        tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],Mkey) 
+        tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name) 
         plt.suptitle(tit)
+
+        #im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mode[:,i1:i2], 
+        #        cmap=cmap,            
+        #        shading='auto')
+        #im1.set_clim(clim[0]-.5,clim[1]+.5)      
+
     else:
         print("is_discrete=%d not yet implemented" % is_discrete)
 

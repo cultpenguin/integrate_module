@@ -179,6 +179,8 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
 
     :param f_post_h5: The path to the HDF5 file to process.
     :type f_post_h5: str
+    :param usePrior: Flag indicating whether to use the prior samples. Default is False.
+    :type usePrior: bool
     :param kwargs: Additional keyword arguments.
     :type kwargs: dict
     """
@@ -189,6 +191,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
     from tqdm import tqdm
 
     showInfo = kwargs.get('showInfo', 0)
+    usePrior = kwargs.get('usePrior', False)
 
     #f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_Nu50000_aT1.h5'
     # Check if f_prior_h5 attribute exists in the HDF5 file
@@ -208,6 +211,14 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
     except KeyError:
         print(f"Could not read 'i_use' from {f_post_h5}")
         #return
+    
+    if usePrior:
+        with h5py.File(f_prior_h5, 'r') as f_prior:
+            N = f_prior['/M1'].shape[0]
+            nr=i_use.shape[1]
+            nd=i_use.shape[0]
+            # compute i_use of  (nd,nr), with random integer numbers between 0 and N-1
+            i_use = np.random.randint(0, N, (nd,nr))
     
     # Process each dataset in f_prior_h5
     with h5py.File(f_prior_h5, 'r') as f_prior, h5py.File(f_post_h5, 'a') as f_post:
