@@ -96,7 +96,7 @@ z_max = 90
 
 f_prior_h5_geus =  'prior_detailed_general_N2000000_dmax90.h5'
 
-useP=3
+useP=1
 if useP==1:
     ## Layered model
     #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
