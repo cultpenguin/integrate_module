@@ -73,7 +73,7 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
 
     return fig
 
-def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, title_text='', **kwargs):
+def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, title_text='', hardcopy=False, cmap=[], clim=[], **kwargs):
     """
     Plot a 2D feature from a given HDF5 file.
 
@@ -96,14 +96,11 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
     :param kwargs: Additional keyword arguments to be passed to the scatter plot.
     :returns: int -- 1 if the plot is successful.
     """
+    from matplotlib.colors import LogNorm
 
+    #kwargs.setdefault('hardcopy', False)
     dstr = '/M%d' % im
     
-    kwargs.setdefault('hardcopy', False)
-    kwargs.setdefault('cmap', 'jet')
-    hardcopy=kwargs['hardcopy']
-    kwargs.pop('hardcopy', None)
-
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
@@ -117,6 +114,18 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
 
         
     X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    
+    print(f_prior_h5)
+    clim_ref, cmap_ref = ig.get_clim_cmap(f_prior_h5,dstr)
+    if len(cmap)==0:
+        cmap = cmap_ref
+    if len(clim)==0:
+        clim = clim_ref
+
+    print(clim) 
+    print(cmap)
+    
+
 
     nd = X.shape[0]
     if i1<1: 
@@ -140,19 +149,23 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
             if key in f_post[dstr].keys():
                 D = f_post[dstr][key][:,iz][:]
                 print(D.shape)
-                if uselog==1:
-                    D=np.log10(D)
                 # plot this KEY
                 plt.figure(1, figsize=(20, 10))
-                plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],**kwargs)            
-                #plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2], cmap=kwargs['cmap'])            
+                if uselog:
+                    plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],
+                                cmap = cmap,
+                                norm=LogNorm(),
+                                **kwargs)      
+                else:        
+                    plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],
+                                cmap = cmap,
+                                **kwargs)      
                 plt.grid()
                 plt.xlabel('X')                
                 plt.colorbar()
                 plt.title("%s/%s[%d,:] %s %s" %(dstr,key,iz,title_text,name))
                 plt.axis('equal')
-                if 'clim' in kwargs:
-                    plt.clim(kwargs['clim'])
+                plt.clim(clim)
                 
                 if hardcopy:
                     f_png = '%s_%d_%d_%d_%s%02d_feature.png' % (os.path.splitext(f_post_h5)[0],i1,i2,im,key,iz)
@@ -164,7 +177,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=0, titl
     return 1
 
 
-def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=False, **kwargs):
+def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardcopy=False, **kwargs):
 
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -197,7 +210,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=F
     
     if (pl=='all') or (pl=='T'):
         plt.figure(1, figsize=(20, 10))
-        plt.scatter(X[i1:i2],Y[i1:i2],c=np.log10(T[i1:i2]),cmap='jet',**kwargs)            
+        plt.scatter(X[i1:i2],Y[i1:i2],c=np.log10(T[i1:i2]),s=s,cmap='jet',**kwargs)            
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -225,12 +238,12 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=F
         #    kwargs['vmax'] = EV_max
         print('EV_min=%f, EV_max=%f' % (EV_min, EV_max))
         plt.figure(2, figsize=(20, 10))
-        plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],cmap='jet', vmin = EV_min, vmax=EV_max, **kwargs)            
+        plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],s=s,cmap='jet_r', vmin = EV_min, vmax=EV_max, **kwargs)            
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
         plt.colorbar()
-        plt.title('EV')
+        plt.title('log(EV)')
         plt.axis('equal')
         if hardcopy:
             # get filename without extension
@@ -246,7 +259,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=F
         print(non_nan)
 
         plt.figure(3, figsize=(20, 10))
-        plt.scatter(X[i1:i2],Y[i1:i2],c=non_nan[i1:i2],cmap='jet', **kwargs)            
+        plt.scatter(X[i1:i2],Y[i1:i2],c=non_nan[i1:i2],s=s,cmap='jet', **kwargs)            
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -400,7 +413,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     if i1<1: 
         i1=0
     if i2>nd-1:
-        i2=nd
+        i2=nd-1
 
     # ii is a numpy array from i1 to i2
     ii = np.arange(i1,i2)
@@ -448,7 +461,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     ax[2].set_xticks([])
     
     im4 = ax[3].semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
-    plt.semilogy(ID[0,i1:i2],-EV[i1:i2], 'r', label='-EV')
+    plt.semilogy(ID[0,i1:i2],-EV[i1:i2], 'r', label='-log(EV)')
     plt.tight_layout()
     ax[3].set_xlim(ID[0,i1], ID[0,i2])
     ax[3].set_ylim(0.99, 200)
@@ -564,7 +577,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     if i1<1: 
         i1=0
     if i2>nd-1:
-        i2=nd
+        i2=nd-1
 
     
 
@@ -605,7 +618,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     ax[2].set_xticks([])
     
     im4 = ax[3].semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
-    plt.semilogy(ID[0,i1:i2],-EV[i1:i2], 'r', label='-EV')
+    plt.semilogy(ID[0,i1:i2],-EV[i1:i2], 'r', label='-log(EV)')
     plt.tight_layout()
     ax[3].set_xlim(ID[0,i1], ID[0,i2])
     ax[3].set_ylim(0.99, 200)
@@ -626,21 +639,36 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         plt.savefig(f_png)
     plt.show()
 
-def plot_data_xy(f_data_h5, i_plot=[], Dkey=[], **kwargs):
+def plot_data_xy(f_data_h5, pl_type='all', **kwargs):
     import integrate as ig
     import matplotlib.pyplot as plt
+    
+    kwargs.setdefault('hardcopy', False)
     
     # Get 'f_prior' and 'f_data' from the selected file 
     # and display them in the sidebar
     X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-    fig, ax = plt.subplots(figsize=(15, 12))
+    # Get the ratio between the width   and the height of the plot from X and Y
+    ratio = (X.max()-X.min())/(Y.max()-Y.min())
+    fig, ax = plt.subplots(figsize=(12, 12/ratio))
     ax.set_title('GEOMETRY')
-    cbar1 = plt.colorbar(ax.scatter(X/1000, Y/1000, c=ELEVATION, s=20, cmap='gray'))
-    cbar1.set_label('Elevation (m)')
-    cbar2 = plt.colorbar(ax.scatter(X/1000, Y/1000, c=LINE, s=.1, cmap='jet'))
-    cbar2.set_label('LINE')
+    if (pl_type=='all')|(pl_type=='elevation'):
+        cbar1 = plt.colorbar(ax.scatter(X/1000, Y/1000, c=ELEVATION, s=20, cmap='gray'))
+        cbar1.set_label('Elevation (m)')
+    if (pl_type=='all')|(pl_type=='line'):
+        cbar2 = plt.colorbar(ax.scatter(X/1000, Y/1000, c=LINE, s=.1, cmap='jet'))
+        cbar2.set_label('LINE')
     ax.set_xlabel('X (km)')
     ax.set_ylabel('Y (km)')
+    # add equal axis
+    ax.axis('equal')
+    ax.grid()
+
+    if kwargs['hardcopy']:
+        f_png = '%s_xy_%s.png' % (os.path.splitext(f_data_h5)[0],pl_type)
+        plt.savefig(f_png)
+    
+
     return fig
 
 def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
@@ -782,7 +810,7 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
 
 
 
-def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
+def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     """
     Plot the prior and posterior data for a given dataset.
 
@@ -836,10 +864,13 @@ def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
         d_obs = f_data['/%s' % Dkey]['d_obs'][:]
         d_std = f_data['/%s' % Dkey]['d_std'][:]
 
-        i_use = f_post['/i_use'][i_plot,:]
-        #i_use.sort()
-        # flatten i_use
-        i_use = i_use.flatten()
+        if i_plot==-1:
+            # get 400 random unique index of d_obs
+            i_use = np.random.choice(d_obs.shape[0], nr, replace=False)
+        else:
+            i_use = f_post['/i_use'][i_plot,:]
+            i_use = i_use.flatten()
+        print("i_use[0]=%d" % i_use[0])
         print(i_use[0])
         nr=len(i_use)
         ns,ndata = f_data['/%s' % Dkey]['d_obs'].shape
@@ -851,26 +882,37 @@ def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
         # set id_plot to be nr random locagtions in 1:ndata
         i_prior_plot = np.random.randint(0,N,nr)
         for i in range(nr):
-            d_post[i]=f_prior[Dkey][i_use[i],:]
             d_prior[i]=f_prior[Dkey][i_prior_plot[i],:]    
-
+            if i_plot>-1:
+                d_post[i]=f_prior[Dkey][i_use[i],:]
+    
         #i_plot=[]
         fig, ax = plt.subplots(1,1,figsize=(7,7))
         ax.semilogy(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
-        ax.semilogy(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
         
-        ax.semilogy(d_obs[i_plot,:],'r.',markersize=6, label='d_obs')
-        ax.semilogy(d_obs[i_plot,:]-2*d_std[i_plot,:],'r.',markersize=3, label='d_obs')
-        ax.semilogy(d_obs[i_plot,:]+2*d_std[i_plot,:],'r.',markersize=3, label='d_obs')
+        if i_plot>-1:
+            ax.semilogy(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
         
-        #ax.text(0.1, 0.1, 'Data set %s, Observation # %d' % (Dkey, i_plot+1), transform=ax.transAxes)
-        ax.text(0.1, 0.1, 'T = %4.2f.' % (f_post['/T'][i_plot]), transform=ax.transAxes)
-        ax.text(0.1, 0.2, 'EV = %4.2f.' % (f_post['/EV'][i_plot]), transform=ax.transAxes)
-        print(f_post['/T'][i_plot])
-        plt.title('Data set %s, Observation # %d' % (Dkey, i_plot+1))
+            ax.semilogy(d_obs[i_plot,:],'r.',markersize=6, label='d_obs')
+            ax.semilogy(d_obs[i_plot,:]-2*d_std[i_plot,:],'r.',markersize=3, label='d_obs')
+            ax.semilogy(d_obs[i_plot,:]+2*d_std[i_plot,:],'r.',markersize=3, label='d_obs')
+
+            #ax.text(0.1, 0.1, 'Data set %s, Observation # %d' % (Dkey, i_plot+1), transform=ax.transAxes)
+            ax.text(0.1, 0.1, 'T = %4.2f.' % (f_post['/T'][i_plot]), transform=ax.transAxes)
+            ax.text(0.1, 0.2, 'log(EV) = %4.2f.' % (f_post['/EV'][i_plot]), transform=ax.transAxes)
+            print(f_post['/T'][i_plot])
+            plt.title('Data set %s, Observation # %d' % (Dkey, i_plot+1))
+        else:   
+            # select nr random unqiue index of d_obs
+            i_d = np.random.choice(d_obs.shape[0], nr, replace=False)
+            #for i in i_d:
+            #    ax.semilogy(d_obs[i,:],'r-',linewidth=.1, label='d_obs')
+            ax.semilogy(d_obs[i_d,:].T,'r-',linewidth=.1, label='d_obs')
+
         plt.xlabel('Data #')
         plt.ylabel('Data')
         plt.grid()
+        #plt.legend()
 
         # set plot in kwarg to True if not allready set
         if 'hardcopy' not in kwargs:
@@ -878,9 +920,11 @@ def plot_data_prior_post(f_post_h5, i_plot=0, Dkey=[], **kwargs):
         if kwargs['hardcopy']:
             # strip the filename from f_data_h5
             # get filename without extension of f_post_h5
-            plt.savefig('%s_%s_id%05d.png' % (os.path.splitext(f_post_h5)[0],Dkey,i_plot+1))
-
-
+            if i_plot==-1:
+                plt.savefig('%s_%s.png' % (os.path.splitext(f_post_h5)[0],Dkey))
+            else:
+                plt.savefig('%s_%s_id%05d.png' % (os.path.splitext(f_post_h5)[0],Dkey,i_plot))
+            
 
 def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
     from matplotlib.colors import LogNorm
@@ -907,7 +951,10 @@ def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
         except:
             z = f_prior[Mstr].attrs['x'][:].flatten()
         is_discrete = f_prior[Mstr].attrs['is_discrete']
-        if 'clim' in f_prior[Mstr].attrs.keys():
+
+
+        clim,cmap = ig.get_clim_cmap(f_prior_h5, Mstr=Mstr)
+        '''if 'clim' in f_prior[Mstr].attrs.keys():
             clim = f_prior[Mstr].attrs['clim'][:].flatten()
         else:
             # if clim set in kwargs, use it, otherwise use default
@@ -923,6 +970,7 @@ def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
             cmap = ListedColormap(cmap.T)
         else:
             cmap = kwargs['cmap']
+        '''
         if 'name' in f_prior[Mstr].attrs.keys():
             name = f_prior[Mstr].attrs['name'][:]
         else:
@@ -984,3 +1032,21 @@ def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
         # strip the filename from f_data_h5
         plt.savefig('%s_%s.png' % (os.path.splitext(f_prior_h5)[0],Mkey))
 
+
+# function that reads cmap and clim if they are set
+def get_clim_cmap(f_prior_h5, Mstr='/M1'):
+    with h5py.File(f_prior_h5,'r') as f_prior:
+        if 'clim' in f_prior[Mstr].attrs.keys():
+            clim = f_prior[Mstr].attrs['clim'][:].flatten()
+        else:
+            clim = [.1, 2600]
+            clim = [10, 500]
+        if 'cmap' in f_prior[Mstr].attrs.keys():
+            cmap = f_prior[Mstr].attrs['cmap'][:]
+            from matplotlib.colors import ListedColormap
+            cmap = ListedColormap(cmap.T)
+        else:
+            cmap = 'jet'
+
+        return clim, cmap
+    
