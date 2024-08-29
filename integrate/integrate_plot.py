@@ -937,6 +937,7 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
             if (key[0]=='M'):
                 plot_prior_stats(f_prior_h5, Mkey=key, nr=nr, **kwargs)
         
+        f_prior.close()
         return  
 
     if Mkey[0]!='/':

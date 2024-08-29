@@ -914,7 +914,12 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     method = 'ga-aem'
     showInfo = kwargs.get('showInfo', 0)
     Nproc = kwargs.get('Nproc', 0)
-    
+
+    # Force open/close of hdf5 file
+    with h5py.File(f_prior_h5, 'r') as f:
+        # open and close
+        pass
+
     with h5py.File(f_prior_h5, 'a') as f:
         N_in = f['M1'].shape[0]
     if N==0: 

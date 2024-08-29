@@ -96,7 +96,7 @@ z_max = 90
 
 f_prior_h5_geus =  'prior_detailed_general_N2000000_dmax90.h5'
 
-useP=1
+useP=2
 if useP==1:
     ## Layered model
     #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
@@ -110,14 +110,14 @@ if useP==1:
                                         RHO_max=RHO_max)
 elif useP==2:
     ## N layer model with increasing thickness
-    NLAY_max=31 
-    f_prior_h5 = ig.prior_model_workbench(N=N, 
-                                          RHO_mean=45, 
-                                          RHO_std=45, 
-                                          RHO_dist='log-normal', 
-                                          z_max = z_max,                                           
-                                          RHO_min = RHO_min, 
-                                          RHO_max = RHO_max)
+    NLAY_max=30 
+    #f_prior_h5 = ig.prior_model_workbench(N=N, 
+    #                                      RHO_mean=45, 
+    #                                      RHO_std=45, 
+    #                                      RHO_dist='log-normal', 
+    #                                      z_max = z_max,                                           
+    #                                      RHO_min = RHO_min, 
+    #                                      RHO_max = RHO_max)
     #f_prior_h5 = ig.prior_model_workbench(N=N, z_max= 30, nlayers=20, RHO_min = RHO_min, RHO_max = RHO_max)
     f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max, nlayers=NLAY_max, RHO_dist=RHO_dist, RHO_min = RHO_min, RHO_max = RHO_max)
     
