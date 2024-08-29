@@ -926,10 +926,35 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
                 plt.savefig('%s_%s_id%05d.png' % (os.path.splitext(f_post_h5)[0],Dkey,i_plot))
             
 
-def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
+def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
     from matplotlib.colors import LogNorm
-
+    
     f_prior = h5py.File(f_prior_h5,'r')
+
+    # If Mkey is not set, plot for all M* keys in prior and return 
+    if len(Mkey)==0:
+        for key in f_prior.keys():
+            if (key[0]=='M'):
+                plot_prior_stats(f_prior_h5, Mkey=key, nr=nr, **kwargs)
+        
+        return  
+
+    if Mkey[0]!='/':
+        Mkey = '/%s' % Mkey
+
+    # check if Mkey is in the keys of f_prior
+    if Mkey not in f_prior.keys():
+        print("Mkey=%s not found in %s" % (Mkey, f_prior_h5))
+        return
+
+    # check if name is in the attributes of key Mkey
+    if 'name' in f_prior['/%s'%Mkey].attrs.keys():
+        name = '%s:%s' %  (Mkey[1::],f_prior['/%s'%Mkey].attrs['name'][:])
+        #print(name)
+    else:
+        name = Mkey
+
+
     f_prior['/%s'%Mkey].attrs.keys()
     if 'x' in f_prior['/%s'%Mkey].attrs.keys():
         z = f_prior['/%s'%Mkey].attrs['x']
@@ -937,92 +962,137 @@ def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
         z = f_prior['/%s'%Mkey].attrs['z']
 
     
+    M = f_prior[Mkey][:]
+    N, Nm = M.shape
+    clim,cmap = ig.get_clim_cmap(f_prior_h5, Mstr=Mkey)
+
     is_discrete = f_prior['/%s'%Mkey].attrs['is_discrete']    
-
-
+    
     if not is_discrete:
-
-        # setup a figure with two suplots in row ONE AND ONE SUBPLOT IN ROW 2
-        Mstr = '/%s' % Mkey
+        # CONTINUOUS
         
-        #"with h5py.File(f_prior_h5,'r') as f_prior:
-        try:
-            z = f_prior[Mstr].attrs['z'][:].flatten()
-        except:
-            z = f_prior[Mstr].attrs['x'][:].flatten()
-        is_discrete = f_prior[Mstr].attrs['is_discrete']
-
-
-        clim,cmap = ig.get_clim_cmap(f_prior_h5, Mstr=Mstr)
-        '''if 'clim' in f_prior[Mstr].attrs.keys():
-            clim = f_prior[Mstr].attrs['clim'][:].flatten()
-        else:
-            # if clim set in kwargs, use it, otherwise use default
-            if 'clim' in kwargs:
-                clim = kwargs['clim']
-            else:
-                clim = [.1, 2600]
-                clim = [10, 500]
-        print(clim)
-        if 'cmap' in f_prior[Mstr].attrs.keys():
-            cmap = f_prior[Mstr].attrs['cmap'][:]
-            from matplotlib.colors import ListedColormap
-            cmap = ListedColormap(cmap.T)
-        else:
-            cmap = kwargs['cmap']
-        '''
-        if 'name' in f_prior[Mstr].attrs.keys():
-            name = f_prior[Mstr].attrs['name'][:]
-        else:
-            name = Mkey 
-        
-
-        print(cmap)
-        print(clim)
-
-        M = f_prior[Mkey][:]
+        # PLOT Mkey histrogram  and log10 histogram
         fig, ax = plt.subplots(2,2,figsize=(10,10))
         m0 = ax[0,0].hist(M.flatten(),101)
-        ax[0,0].set_xlabel(Mkey)
+        ax[0,0].set_xlabel(name)
         ax[0,0].set_ylabel('Distribution')
         m1 = ax[0,1].hist(np.log10(M.flatten()),101)
-        ax[0,1].set_xlabel(Mkey)
+        ax[0,1].set_xlabel(name)
 
         # set xtcik labels as 10^x where x i the xtick valye
         ax[0,1].set_xticklabels(['$10^{%3.1f}$'%i for i in ax[0,1].get_xticks()])
         ax[0,1].set_ylabel('Distribution')
 
-
-        # use the ax[1,0] and ax[1,1] for one ploit
-        nr=100
-        # set the extent from 1,nr and z[0],z[-1]
-        extent = [1,nr,z[0],z[-1]]
-
+        ax[0, 0].grid()
+        ax[0, 1].grid()
         ax[1, 0].axis('off')    
         ax[1, 1].axis('off')
-
+        
+        # Plot actual realizatrions
         ax[1, 0] = plt.subplot2grid((2, 2), (1, 0), colspan=2)
-        #m2 = ax[1,0].imshow(M[0:nr,:].T, aspect='auto', extent=extent)
         X,Y = np.meshgrid(np.arange(1,nr+1),z)
         ax[1,0].invert_yaxis()
-        m2 = ax[1,0].pcolor(X,Y,M[0:nr,:].T, 
+        if Nm>1:
+            m2 = ax[1,0].pcolor(X,Y,M[0:nr,:].T, 
                             cmap=cmap, 
                             shading='auto',
                             norm=LogNorm())
-        # set clim to clim
-        m2.set_clim(clim[0],clim[1])
-        #m2.set_clim(clim[0]-.5,clim[1]+.5)      
-        fig.colorbar(m2, ax=ax[1,0], label=Mkey)
+            # set clim to clim
+            m2.set_clim(clim[0],clim[1])
+            #m2.set_clim(clim[0]-.5,clim[1]+.5)      
+            fig.colorbar(m2, ax=ax[1,0], label=Mkey[1::])
+        else:
+            m2 = ax[1,0].plot(np.arange(1,101),M[0:nr,:].flatten()) 
+            ax[1,0].set_xlim(1,nr)
+
+        ax[1,0].set_xlabel('Realization #')
+        ax[1,0].set_ylabel(name)
+        
         tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name) 
         plt.suptitle(tit)
 
-        #im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mode[:,i1:i2], 
-        #        cmap=cmap,            
-        #        shading='auto')
-        #im1.set_clim(clim[0]-.5,clim[1]+.5)      
-
     else:
-        print("is_discrete=%d not yet implemented" % is_discrete)
+        # DISCRETE
+        
+        # get attribute class_name if it exist
+        
+        if 'class_id' in f_prior[Mkey].attrs.keys():
+            class_id = f_prior[Mkey].attrs['class_id'][:].flatten()
+        else:   
+            print('No class_id found')
+        if 'class_name' in f_prior[Mkey].attrs.keys():
+            class_name = f_prior[Mkey].attrs['class_name'][:].flatten()
+        else:
+            class_name = []
+        n_class = len(class_name)
+
+        
+        # PLOT Mkey histrogram  and log10 histogram
+        fig, ax = plt.subplots(2,2,figsize=(10,10))
+
+        m0 = ax[0,0].hist(M.flatten(),101)
+        ax[0,0].set_xlabel(name)
+        ax[0,0].set_ylabel('Distribution')
+        
+        m1 = ax[0,1].hist(np.log10(M.flatten()),101)
+        ax[0,1].set_xlabel(name)
+
+        # set xtcik labels as 10^x where x i the xtick valye
+        ax[0,1].set_xticklabels(['$10^{%3.1f}$'%i for i in ax[0,1].get_xticks()])
+        ax[0,1].set_ylabel('Distribution')
+
+        ax[0, 0].grid()
+        ax[0, 1].grid()
+        ax[1, 0].axis('off')    
+        ax[1, 1].axis('off')
+        
+       # Plot actual realizations
+        ax[1, 0] = plt.subplot2grid((2, 2), (1, 0), colspan=2)
+        X,Y = np.meshgrid(np.arange(1,nr+1),z)
+        ax[1,0].invert_yaxis()
+        if Nm>1:
+            m2 = ax[1,0].pcolor(X,Y,M[0:nr,:].T, 
+                            cmap=cmap, 
+                            shading='auto')
+            # set clim to clim
+            m2.set_clim(clim[0],clim[1])
+
+
+            #m2.set_clim(clim[0],clim[1])
+            #m2.set_clim(clim[0]-.5,clim[1]+.5)      
+            #fig.colorbar(m2, ax=ax[1,0], label=Mkey[1::])
+            m2.set_clim(clim[0]-.5,clim[1]+.5)      
+            #fig.colorbar(m2, ax=ax[1,0], label=Mkey)
+            cbar1 = fig.colorbar(m2, ax=ax[1,0], label='label')
+            cbar1.set_ticks(np.arange(n_class)+1)
+            cbar1.set_ticklabels(class_name)
+            cbar1.ax.invert_yaxis()
+            
+
+            '''
+            im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mode[:,i1:i2], 
+                cmap=cmap,            
+                shading='auto')
+            im1.set_clim(clim[0]-.5,clim[1]+.5)        
+
+            ax[0].set_title('Mode')
+            # /fix set the ticks to be 1 to n_class, and use class_name as tick labels
+            cbar1 = fig.colorbar(im1, ax=ax[0], label='label')
+            cbar1.set_ticks(np.arange(n_class)+1)
+            cbar1.set_ticklabels(class_name)
+            cbar1.ax.invert_yaxis()
+            '''
+
+
+        else:
+            m2 = ax[1,0].plot(np.arange(1,101),M[0:nr,:].flatten()) 
+            ax[1,0].set_xlim(1,nr)
+
+        ax[1,0].set_xlabel('Realization #')
+        ax[1,0].set_ylabel(name)
+        
+        tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name) 
+        plt.suptitle(tit)
 
     f_prior.close()
 
@@ -1030,7 +1100,7 @@ def plot_prior_stats(f_prior_h5, Mkey='M1', **kwargs):
         kwargs['hardcopy'] = True
     if kwargs['hardcopy']:
         # strip the filename from f_data_h5
-        plt.savefig('%s_%s.png' % (os.path.splitext(f_prior_h5)[0],Mkey))
+        plt.savefig('%s_%s.png' % (os.path.splitext(f_prior_h5)[0],Mkey[1::]))
 
 
 # function that reads cmap and clim if they are set
