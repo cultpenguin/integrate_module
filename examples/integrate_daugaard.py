@@ -40,7 +40,7 @@ if not os.path.isfile(file_gex):
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
-# A1. Compute prior data form existing prior model
+# A1. Compute prior data from existing prior model
 f_prior_h5='prior_detailed_general_N2000000_dmax90.h5'
 #% plot some 1D statistics of the prior
 ig.plot_prior_stats(f_prior_h5)
@@ -69,3 +69,5 @@ ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy)
 
 #% Export to CSV
 ig.post_to_csv(f_post_h5)
+
+# %%

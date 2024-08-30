@@ -23,6 +23,7 @@ import integrate as ig
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+import time
 hardcopy=True
 
 # %% [markdown]
@@ -83,6 +84,9 @@ ig.plot_data(f_data_h5, plType='plot', hardcopy=hardcopy)
 #
 #
 
+t = []
+t.append(time.time())
+
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
 N=2000000
@@ -96,11 +100,10 @@ z_max = 90
 
 f_prior_h5_geus =  'prior_detailed_general_N2000000_dmax90.h5'
 
-useP=2
-if useP==1:
+useP=0
+if useP==0:
     ## Layered model
-    #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-    #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=3, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+    NLAY_max=30 
     f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', 
                                         z_max = z_max, 
                                         NLAY_min=NLAY_min, 
@@ -108,17 +111,18 @@ if useP==1:
                                         RHO_dist=RHO_dist, 
                                         RHO_min=RHO_min, 
                                         RHO_max=RHO_max)
+elif useP==1:
+    f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', 
+                                        z_max = z_max, 
+                                        NLAY_min=NLAY_min, 
+                                        NLAY_max=NLAY_max, 
+                                        RHO_dist=RHO_dist, 
+                                        RHO_min=RHO_min, 
+                                        RHO_max=RHO_max)
+
 elif useP==2:
     ## N layer model with increasing thickness
     NLAY_max=30 
-    #f_prior_h5 = ig.prior_model_workbench(N=N, 
-    #                                      RHO_mean=45, 
-    #                                      RHO_std=45, 
-    #                                      RHO_dist='log-normal', 
-    #                                      z_max = z_max,                                           
-    #                                      RHO_min = RHO_min, 
-    #                                      RHO_max = RHO_max)
-    #f_prior_h5 = ig.prior_model_workbench(N=N, z_max= 30, nlayers=20, RHO_min = RHO_min, RHO_max = RHO_max)
     f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max, nlayers=NLAY_max, RHO_dist=RHO_dist, RHO_min = RHO_min, RHO_max = RHO_max)
     
 else:
@@ -130,6 +134,8 @@ if useP<3:
         f_prior['/M1'].attrs['clim'] = f_geus['/M1'].attrs['clim']
         f_prior['/M1'].attrs['cmap'] = f_geus['/M1'].attrs['cmap']
         
+t.append(time.time())
+
 
 # %% plot some 1D statistics of the prior
 ig.plot_prior_stats(f_prior_h5, hardcopy = hardcopy)
@@ -141,6 +147,7 @@ ig.plot_prior_stats(f_prior_h5, hardcopy = hardcopy)
 # %% Compute prior data
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, N=N)
 
+t.append(time.time())
 
 # %% [markdown]
 # ## Sample the posterior $\sigma(\mathbf{m})$
@@ -154,6 +161,31 @@ N_use = N
 updatePostStat =True
 #f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=updatePostStat, showInfo=1)
 f_post_h5 = ig.integrate_rejection_multi(f_prior_data_h5, f_data_h5, N_use = N_use)
+
+t.append(time.time())
+
+#%% SHOW CPU TIME USAGE
+
+
+print('1. Time elapsed sample prior models: %f' % (t[1]-t[0]))
+print('2. Time elapsed prior data : %f' % (t[2]-t[1]))
+print('3. Time elapsed sample posterior : %f' % (t[3]-t[2]))
+print('Time elapsed total : %f' % (t[-1]-t[0]))
+print('Time elapsed per sounding : %5.1f ms (N_use=%d)' % ( 1000*(t[-1]-t[0])/N , N_use) )
+
+t_total = t[-1]-t[0]
+# printe percentate of total time for each step
+print('Relative time used %3.2f%%, %3.2f%%, %3.2f%%' % ( 100*(t[1]-t[0])/t_total, 100*(t[2]-t[1])/t_total, 100*(t[3]-t[2])/t_total) )
+
+#wrote timimt til file
+fname = '%s_time.txt' % (os.path.splitext(f_post_h5)[0])
+with open(fname, 'w') as f:
+    f.write('1. Time elapsed sample prior models: %f\n' % (t[1]-t[0]))
+    f.write('2. Time elapsed prior data : %f\n' % (t[2]-t[1]))
+    f.write('3. Time elapsed sample posterior : %f\n' % (t[3]-t[2]))
+    f.write('Time elapsed total : %f\n' % (t[-1]-t[0]))
+    f.write('Time elapsed per sounding : %5.1f ms (N_use=%d)\n' % ( 1000*(t[-1]-t[0])/N , N_use) )
+    f.write('Realtive time used %3.2f%%, %3.2f%%, %3.2f%%\n' % ( 100*(t[1]-t[0])/t_total, 100*(t[2]-t[1])/t_total, 100*(t[3]-t[2])/t_total) )
 
 # %% [markdown]
 # ## Plot some statistics from $\sigma(\mathbf{m})$

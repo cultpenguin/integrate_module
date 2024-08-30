@@ -38,8 +38,9 @@ updatePostStat =False
 N_use = 4000000
 #N_use = 2000000
 #N_use = 1000000
+N_use = 500000
 #N_use = 100000
-N_use = 10000
+#N_use = 10000
 #N_use = 1000
 f_data_h5='DAUGAARD_AVG_inout.h5'
 
@@ -76,7 +77,15 @@ t1=time.time()-t0
 ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 
 #%% Plot probability of prior hypothesis
-ig.integrate_posterior_stats(f_post_h5)
+#ig.integrate_posterior_stats(f_post_h5)
+import geopandas as gpd
+
+# Read the shapefile and # Extract X and Y from gdf
+gdf = gpd.read_file('Begravet dal.shp')
+line_coords = gdf[gdf.geometry.type == 'LineString'].geometry.apply(lambda geom: list(geom.coords))
+line1=np.array(line_coords[0])
+line2=np.array(line_coords[1])
+
 X, Y, LINE, ELEVATION = ig.get_geometry(f_post_h5)
 with h5py.File(f_post_h5,'r') as f_post:
     M3_P = f_post['M3/P'][:]
@@ -98,6 +107,58 @@ plt.colorbar()
 plt.tight_layout()
 plt.savefig('P_hypothesis_N%d.png' % (N_use))
 
+
+plt.figure(figsize=(10,8))
+plt.subplot(2,2,1)
+plt.scatter(X,Y,c=M3_P[:,0], cmap='seismic_r',s=2, vmin=0, vmax=1)
+plt.axis('equal')
+plt.grid()
+plt.title('P(inside valley)')
+plt.colorbar()
+plt.plot(line1[:,0],line1[:,1],'y-',linewidth=6)
+plt.plot(line1[:,0],line1[:,1],'k-',linewidth=2)
+plt.plot(line2[:,0],line2[:,1],'y-',linewidth=6)
+plt.plot(line2[:,0],line2[:,1],'k-',linewidth=2)
+plt.subplot(2,2,2)
+plt.scatter(X,Y,c=M3_P[:,1], cmap='seismic_r',s=2, vmin=0, vmax=1)
+plt.grid()
+plt.title('P(outside valley)')
+plt.axis('equal')
+plt.colorbar()
+plt.plot(line1[:,0],line1[:,1],'y-',linewidth=6)
+plt.plot(line1[:,0],line1[:,1],'k-',linewidth=2)
+plt.plot(line2[:,0],line2[:,1],'y-',linewidth=6)
+plt.plot(line2[:,0],line2[:,1],'k-',linewidth=2)
+plt.tight_layout()
+plt.savefig('P_hypothesis_N%d_flemming.png' % (N_use))
+
+
+
+
+
+#%%
+try:
+    import geopandas as gpd
+
+    # Read the shapefile and # Extract X and Y from gdf
+    gdf = gpd.read_file('Begravet dal.shp')
+    line_coords = gdf[gdf.geometry.type == 'LineString'].geometry.apply(lambda geom: list(geom.coords))
+    line1=np.array(line_coords[0])
+    line2=np.array(line_coords[1])
+
+    plt.figure(figsize=(10,8))
+    plt.subplot(2,2,1)
+    plt.scatter(X,Y,c=M3_P[:,0], cmap='seismic_r',s=2, vmin=0, vmax=1)
+    plt.axis('equal')
+    plt.grid()
+    plt.title('P(inside valley)')
+    plt.colorbar()
+    # plot allthe locations in gdf as scatter poiints without removing the cirent fiogure
+    plt.plot(line1[:,0],line1[:,1],'y-',linewidth=6)
+    plt.plot(line2[:,0],line2[:,1],'y-',linewidth=6)
+    plt.show()
+except:
+    pass
 
 #%%
 ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
@@ -175,6 +236,41 @@ for T_EV in [1,2,4,8,16,32,256]:
 
     plt.savefig('P_hypothesis_mulrun_EV%d_N%d.png' % (T_EV,N_use))
 
+    try:
+
+        import geopandas as gpd
+
+        # Read the shapefile and # Extract X and Y from gdf
+        gdf = gpd.read_file('Begravet dal.shp')
+        line_coords = gdf[gdf.geometry.type == 'LineString'].geometry.apply(lambda geom: list(geom.coords))
+        line1=np.array(line_coords[0])
+        line2=np.array(line_coords[1])
+
+        plt.figure(figsize=(10,8))
+        plt.subplot(2,2,1)
+        plt.scatter(X, Y, c=EV_P[0], cmap='seismic_r', s=3, vmin=0, vmax=1)
+        plt.tight_layout()
+        plt.axis('equal')
+        plt.grid()
+        plt.colorbar()
+        plt.title('In Valleys')
+        plt.plot(line1[:,0],line1[:,1],'y-',linewidth=6)
+        plt.plot(line2[:,0],line2[:,1],'y-',linewidth=6)
+        plt.subplot(2,2,2)
+        plt.scatter(X, Y, c=EV_P[1], cmap='seismic_r', s=3, vmin=0, vmax=1)
+        plt.plot(line1[:,0],line1[:,1],'y-',linewidth=6)
+        plt.plot(line2[:,0],line2[:,1],'y-',linewidth=6)
+        plt.axis('equal')
+        plt.grid()
+        plt.colorbar()
+        plt.tight_layout()
+        plt.title('Out of valleys')
+
+        plt.show()
+        plt.savefig('P_hypothesis_mulrun_EV%d_N%d_flemming.png' % (T_EV,N_use))
+
+    except:
+        pass
 # %% Plot profiles
 for i in range(len(f_post_list)):
     ig.integrate_posterior_stats(f_post_list[i], usePrior=True)
