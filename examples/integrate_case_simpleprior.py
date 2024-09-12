@@ -36,8 +36,8 @@ hardcopy=True
 #
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
-#case = 'DAUGAARD'
-case = 'FANGEL'
+case = 'DAUGAARD'
+#case = 'FANGEL'
 #case = 'HALD'
 #case = 'GRUSGRAV' # NOT YET AVAILABLE
 
@@ -67,7 +67,7 @@ fig = ig.plot_data_xy(f_data_h5)
 # ### Plot the observed data
 
 # %% Plot the observed data
-ig.plot_data(f_data_h5)
+#ig.plot_data(f_data_h5)
 ig.plot_data(f_data_h5, plType='plot', hardcopy=hardcopy)
 
 # %% [markdown]
@@ -85,13 +85,12 @@ ig.plot_data(f_data_h5, plType='plot', hardcopy=hardcopy)
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=50000
-RHO_min = 10
+N=100000
+RHO_min = 1
 RHO_max = 2500
-RHO_max = 500
 RHO_dist='log-uniform'
-NLAY_min=4 
-NLAY_max=4 
+NLAY_min=1 
+NLAY_max=9 
 z_max = 90
 
 useP=1
@@ -99,7 +98,8 @@ if useP==1:
     ## Layered model
     #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
     #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=3, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-    f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', 
+    f_prior_h5 = ig.prior_model_layered(N=N,
+                                        lay_dist='uniform', 
                                         z_max = z_max, 
                                         NLAY_min=NLAY_min, 
                                         NLAY_max=NLAY_max, 
@@ -112,8 +112,7 @@ elif useP==2:
                                           RHO_mean=45, 
                                           RHO_std=45, 
                                           RHO_dist='log-normal', 
-                                          z_max = z_max, 
-                                          nlayers=1, 
+                                          z_max = z_max,                                           
                                           RHO_min = RHO_min, 
                                           RHO_max = RHO_max)
     #f_prior_h5 = ig.prior_model_workbench(N=N, z_max= 30, nlayers=20, RHO_min = RHO_min, RHO_max = RHO_max)
@@ -140,11 +139,12 @@ f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
 # %% READY FOR INVERSION
 
-N_use = 50000
+N_use = N
+nr=1000
 #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
-updatePostStat =True
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=updatePostStat, showInfo=1)
-#f_post_h5 = ig.integrate_rejection_multi(f_prior_data_h5, f_data_h5, N_use = N_use)
+updatePostStat =False
+#f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=updatePostStat, showInfo=1)
+f_post_h5 = ig.integrate_rejection_multi(f_prior_data_h5, f_data_h5, N_use = N_use, nr=nr, updatePostStat=updatePostStat )
 
 # %% [markdown]
 # ## Plot some statistics from $\sigma(\mathbf{m})$

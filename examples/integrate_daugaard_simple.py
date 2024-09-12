@@ -89,7 +89,7 @@ t.append(time.time())
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=2000000
+N=100000
 RHO_min = 10
 RHO_max = 2500
 RHO_max = 500
@@ -100,7 +100,8 @@ z_max = 90
 
 f_prior_h5_geus =  'prior_detailed_general_N2000000_dmax90.h5'
 
-useP=0
+NLAY_max=12 
+useP=2
 if useP==0:
     ## Layered model
     NLAY_max=30 

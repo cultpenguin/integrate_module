@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # %% [markdown]
-# # INTEGRATE Daugaard Case Study with three eology-resistivity prior models.
+# # INTEGRATE Daugaard Case Study with three geology-resistivity prior models.
 #
-# This notebook contains an example of inverison of the DAUGAARD tTEM data using three different geology-resistivity prior models
+# This notebook contains an example of inversion of the DAUGAARD tTEM data using three different geology-resistivity prior models
 
 # %% Imports
 try:
