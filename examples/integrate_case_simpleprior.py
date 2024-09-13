@@ -85,7 +85,7 @@ ig.plot_data(f_data_h5, plType='plot', hardcopy=hardcopy)
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=100000
+N=2000000
 RHO_min = 1
 RHO_max = 2500
 RHO_dist='log-uniform'
@@ -174,8 +174,11 @@ for i in i1:
 ig.plot_profile(f_post_h5, i1=0, i2=np.min([2000,nd]), cmap='jet', hardcopy=hardcopy);
 
 # %%
-for iz in range(0,z_max,5):
-    ig.plot_feature_2d(f_post_h5,im=1,iz=iz,key='Mean', title_text = 'XX', cmap='jet', s=12, vmin=10, vmax=100, hardcopy=hardcopy)
+try:
+    for iz in range(0,z_max,5):
+        ig.plot_feature_2d(f_post_h5,im=1,iz=iz,key='Mean', title_text = 'XX', cmap='jet', s=12, vmin=10, vmax=100, hardcopy=hardcopy)
+except:
+    pass
 
 # %% Export to CSV
 ig.post_to_csv(f_post_h5)
