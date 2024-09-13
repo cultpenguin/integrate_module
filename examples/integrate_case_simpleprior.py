@@ -171,7 +171,7 @@ for i in i1:
     #ig.plot_data_prior_post(f_post_h5, i_plot = 1199)
 
 # %% Plot Profiles
-ig.plot_profile(f_post_h5, i1=0, i2=np.min([2000,nd]), cmap='jet', hardcopy=hardcopy);
+ig.plot_profile(f_post_h5, i1=1000, i2=np.min([1400,nd]), cmap='jet', hardcopy=hardcopy);
 
 # %%
 try:
