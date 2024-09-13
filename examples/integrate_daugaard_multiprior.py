@@ -58,6 +58,7 @@ hardcopy = True
 ig.plot_data_xy(f_data_h5, hardcopy=hardcopy)
 ig.plot_data(f_data_h5, hardcopy=hardcopy, plType='plot')
 ig.plot_data(f_data_h5, hardcopy=hardcopy, plType='imshow')
+ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 
 #%% TEST NEW
 t0=time.time()
@@ -74,10 +75,12 @@ f_post_h5 = ig.integrate_rejection_multi(f_prior_h5,
 
 
 t1=time.time()-t0
-ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
+
+ig.integrate_posterior_stats(f_post_h5)
+t1=time.time()-t0
 
 #%% Plot probability of prior hypothesis
-#ig.integrate_posterior_stats(f_post_h5)
+#%%
 import geopandas as gpd
 
 # Read the shapefile and # Extract X and Y from gdf
