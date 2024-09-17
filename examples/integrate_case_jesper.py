@@ -70,15 +70,15 @@ ig.plot_data(f_data_h5, plType='plot', hardcopy=hardcopy)
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=2000000
+N=1000000
 RHO_min = 1
 RHO_max = 2500
 RHO_dist='log-uniform'
 NLAY_min=1 
-NLAY_max=9 
+NLAY_max=20
 z_max = 90
 
-useP=3
+useP=1
 if useP==1:
     ## Layered model
     #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
