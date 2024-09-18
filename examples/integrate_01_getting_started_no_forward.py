@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # %% [markdown]
-# # Getting started with INTEGRATE
+# # Getting started with INTEGRATE - with no forward code
 #
 # This notebook contains a simple example of geeting started with INTEGRATE
 
@@ -25,7 +25,7 @@ import integrate as ig
 # %% Get tTEM data from DAUGAARD
 case = 'DAUGAARD'
 
-files = ig.get_case_data(case=case)
+files = ig.get_case_data(case=case,  loadType='prior_data')
 f_data_h5 = files[0]
 f_data_h5 = 'DAUGAARD_AVG.h5'
 file_gex= ig.get_gex_file_from_data(f_data_h5)
@@ -34,31 +34,14 @@ print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
 
 
-# %%
-
 # %% [markdown]
-# ## 1. Setup the prior model ($\rho(\mathbf{m},\mathbf{d})$
+# ## 1. Setup the prior model, $\rho(\mathbf{m},\mathbf{d})$
 #
-# In this example a simple layered prior model will be considered
+# In this example we assume that realization of both 'm' and 'd' are avala simple layered prior model will be considered
 
-# %% [markdown]
-# ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
-
-# %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
-# Layered model
-f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
-# WorkBench type layered model
-#f_prior_h5 = ig.prior_model_workbench(N=N,RHO_dist='chi2', nlayers=5)
-
-# Plot some summary statistics of the prior model
+# %%
+f_prior_h5 = 'prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
 ig.plot_prior_stats(f_prior_h5)
-
-# %% [markdown]
-# ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
-
-# %% Compute prior DATA
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
 # %% [markdown]
 # ## Sample the posterior $\sigma(\mathbf{m})$
@@ -66,8 +49,8 @@ f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 # The posterior distribution is sampling using the extended rejection sampler.
 
 # %% READY FOR INVERSION
-N_use = N
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1)
+N_use = 1000
+f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1)
 
 # %% Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
 ig.integrate_posterior_stats(f_post_h5)
