@@ -37,3 +37,6 @@ cp $INSTALL_DIR/python/gatdaem1d/gatdaem1d.dylib $INSTALL_DIR/python/gatdaem1d/g
 ## Install the Python module
 cd $INSTALL_DIR/python
 pip install -e .
+
+## Test the installation
+python $INSTALL_DIR/python/examples/skytem_example.py
