@@ -33,8 +33,8 @@ cmake --install . --prefix $INSTALL_DIR
 
 ## 3. Install python module 
 echo  $INSTALL_DIR
-cp $INSTALL_DIR/gatdaem1d.dylib $INSTALL_DIR/gatdaem1d.so 
+cp $INSTALL_DIR/python/gatdaem1d.dylib $INSTALL_DIR/python/gatdaem1d.so 
 
 ## Install the Python module
-cd $INSTALL_DIR/ga-aem/install-ubuntu/python
+cd $INSTALL_DIR/python
 pip install -e .
