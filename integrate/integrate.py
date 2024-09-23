@@ -3,11 +3,13 @@ import numpy as np
 import os.path
 import subprocess
 from sys import exit
+import multiprocessing
+from multiprocessing import Pool
 from multiprocessing import Pool
 from multiprocessing import shared_memory
 from functools import partial
 import time
-
+    
 def is_notebook():
     """
     Check if the code is running in a Jupyter notebook or IPython shell.
@@ -662,10 +664,6 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     :rtype: str
     """
     import integrate as ig
-    import multiprocessing
-    from multiprocessing import Pool
-    import time
-    import integrate as ig
 
     type = 'TDEM'
     method = 'ga-aem'
@@ -750,6 +748,12 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         forward_gaaem_chunk_partial = partial(forward_gaaem_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
 
         # Create a multiprocessing pool and compute D for each chunk of C
+        
+        # Use spawn context for cross-platform compatibility
+        #ctx = multiprocessing.get_context("spawn")
+        #with ctx.Pool(processes=Nproc) as p:
+        #    D_chunks = p.map(forward_gaaem_chunk_partial, C_chunks)
+        
         with Pool() as p:
             D_chunks = p.map(forward_gaaem_chunk_partial, C_chunks)
         
