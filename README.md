@@ -49,9 +49,25 @@ GA-AEM
 In order to use GA-AEM for forward EM modeling, the 'gatdaem1d' Python module must be installed.
 
 Follow instructions at https://github.com/GeoscienceAustralia/ga-aem.
+
+-------------------------------------
+Compile Python module in Ubuntu/Linux
+-------------------------------------
+
 A script that downloads and install GA-AEM is located in 'scripts/cmake_build_script_ubuntu_gatdaem1d.sh'. Be sure to be usiong the appropriate Python environment and then run
 
     sh scripts/cmake_build_script_ubuntu_gatdaem1d.sh
     cd ga-aem/install-ubuntu/python
     pip install .
     
+-------------------------------------
+Compile Python module in OSX/Homebrew
+-------------------------------------
+First install homebrew, then run 
+
+    sh ./scripts/cmake_build_script_homebrew_gatdaem1d.sh
+    cd ga-aem/install-homebrew/python
+    pip install .
+
+
+
