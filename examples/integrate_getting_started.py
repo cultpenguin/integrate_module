@@ -20,6 +20,14 @@ except:
 # %%
 import integrate as ig
 
+# %% CHECK OS
+# If os is not UNIX then set paralell to True
+import os
+if os.name == 'nt':
+    parallel = False
+else:
+    parallel = True
+print("OS=%s, Parallel=%s " % (os.name,parallel))
 
 
 # %% Get tTEM data from DAUGAARD
@@ -45,7 +53,7 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
+N=10000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
 # WorkBench type layered model
@@ -58,7 +66,7 @@ ig.plot_prior_stats(f_prior_h5)
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
 
 # %% Compute prior DATA
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel)
 
 # %% [markdown]
 # ## Sample the posterior $\sigma(\mathbf{m})$
@@ -67,7 +75,12 @@ f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
 # %% READY FOR INVERSION
 N_use = N
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1)
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
+                                   f_data_h5, 
+                                   N_use = N_use, 
+                                   updatePostStat=False, 
+                                   showInfo=1, 
+                                   parallel=parallel)
 
 # %% Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
 ig.integrate_posterior_stats(f_post_h5)
