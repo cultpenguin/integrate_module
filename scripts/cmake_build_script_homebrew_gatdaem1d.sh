@@ -11,8 +11,7 @@ brew install open-mpi
 brew install cmake
 
 ## 1. Clone the ga-aem repository from Github
-git clone --recursive https://github.com/GeoscienceAustralia/ga-aem.git
-#git clone https://github.com/GeoscienceAustralia/ga-aem.git
+git clone --recursive --depth https://github.com/GeoscienceAustralia/ga-aem.git
 cd ga-aem
 
 ## 2. Compile GA-AEM
@@ -27,22 +26,15 @@ mkdir $BUILD_DIR
 cd $BUILD_DIR
 
 # compile gatdaem1d
-cmake -Wno-dev -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release -DWITH_MPI=OFF -DWITH_NETCDF=OFF -DWITH_GDAL=OFF -DWITH_PETSC=OFF ..
-#cmake --build . --target gatdaem1d-static
-#cmake --build . --target gatdaem1d-shared
-cmake --build . --target matlab-bindings --config=Release
+cmake -Wno-dev -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14 -DCMAKE_BUILD_TYPE=Release -DWITH_MPI=OFF -DWITH_NETCDF=OFF -DWITH_GDAL=OFF -DWITH_PETSC=OFF ..
+#cmake --build . --target matlab-bindings --config=Release
 cmake --build . --target python-bindings --config=Release
 cmake --install . --prefix $INSTALL_DIR
 
 ## 3. Install python module 
 echo  $INSTALL_DIR
-# cd  $INSTALL_DIR
-
-## CHECK FOR shared library dependencies
-cd ..
-readelf -d install-ubuntu/python/gatdaem1d/gatdaem1d.so  | grep 'Shared'
+cp $INSTALL_DIR/gatdaem1d.dylib $INSTALL_DIR/gatdaem1d.so 
 
 ## Install the Python module
-echo "# Finally, install the Python module using"
-echo "cd ga-aem/install-ubuntu/python"
-echo "pip install ."
+cd $INSTALL_DIR/ga-aem/install-ubuntu/python
+pip install -e .

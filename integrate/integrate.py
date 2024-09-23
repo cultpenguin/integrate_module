@@ -1667,6 +1667,12 @@ def integrate_rejection_multi(f_prior_h5='prior.h5',
 
     # get optional arguments
     showInfo = kwargs.get('showInfo', 1)
+    # If set, Nproc will be used as the number of processors
+    Nproc = kwargs.get('Nproc', -1)
+    if Nproc>-1:
+        Ncpu = Nproc
+
+
     updatePostStat = kwargs.get('updatePostStat', True)
 
 
@@ -1694,7 +1700,8 @@ def integrate_rejection_multi(f_prior_h5='prior.h5',
     if len(ip_range)==0:
         ip_range = np.arange(Ndp)
     Ndp_invert = len(ip_range)
-        
+            
+    print('Ncpu=%d' % Ncpu)        
     if Ncpu < 1 :
         Ncpu =  int(multiprocessing.cpu_count()/2)
         

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # %% [markdown]
 # # INTEGRATE timing
+# This notebook compares CPU time using for both forward mdoeling and inversion 
 
 
 # %%
@@ -12,43 +13,59 @@ import time
 # get name of CPU
 import os
 import socket
+# Get hostanme and number of processors
 hostname = socket.gethostname()
-# Get number of processors
 Ncpu = os.cpu_count()
 print("Hostname: %s" % hostname)
 print("Number of processors: %d" % Ncpu)
 
 
-# %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
+# %% [markdown]
+# ## Get the default data set
 
+# %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
 files = ig.get_case_data()
 f_data_h5 = files[0]
 file_gex= ig.get_gex_file_from_data(f_data_h5)
 
+print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
 
 
+# %% [markdown]
+# ## Setup the timing test
+
 # %% TIMING
-# N_arr = logspace form 100 to 1000000 in ns stesp
+# Set the size of the data sets to test
 N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000])
-#N_arr = np.logspace(2,6,25)
-#N_arr = np.array([100,1000,10000,50000])
-Nproc_arr=2**(np.double(np.arange(2+int(np.log2(Ncpu)))))
-Nproc_arr=2**(np.double(4+np.arange(int(np.log2(Ncpu)-2))));print(Nproc_arr)
-#Nproc_arr=(1+(np.arange(int(Ncpu**(0.5)))))**2
-# Commpute the opposite of Nproc=2**64, that is compute 64 as output
 
+# Set the number of cores to test
+Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu)))))
 
-print(N_arr)
-print(Nproc_arr)
+useSmallTest=True
+if useSmallTest:
+    N_arr = np.array([100,500,1000,5000])
+    Nproc_arr=2**(np.double(0+np.arange(int(np.log2(Ncpu)-1))));
+    # add 1 to N_Arr
+    #N_arr = np.append(N_arr, N_arr[-1])
 
 n1 = len(N_arr)
 n2 = len(Nproc_arr)
 
+
+print("Testing on %d data sets of sizes" % n1)
+print(N_arr)
+print("Testing on %d cores" % n2)
+print(Nproc_arr)
+
+
 file_out  = 'timing_%s-%d_Nproc%d_N%d' % (hostname,Ncpu,len(Nproc_arr), len(N_arr))
 print(file_out)
 
-#%%
+# %% [markdown]
+# ## Run INTEGRATE workflow using different data sizes and number of CPUS
+
+# %%
 
 T_prior = np.zeros((n1,n2))*np.nan
 T_forward = np.zeros((n1,n2))*np.nan
@@ -103,10 +120,11 @@ for j in np.arange(n2):
 
             #% Compute some generic statistic of the posterior distribution (Mean, Median, Std)
             t0_poststat = time.time()
-            ig.integrate_posterior_stats(f_post_h5)
+            #ig.integrate_posterior_stats(f_post_h5)
             T_poststat[i,j]=time.time()-t0_poststat
             
         np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr)
+
 
 
 # %% Load T_prior, N_arr, Nproc_arr in one file
@@ -124,7 +142,7 @@ if loadFromFile:
     Nproc_arr = data['Nproc_arr']
 
 
-#%%
+# %%
 ax, fig = plt.subplots(1,1, figsize=(8,8))
 plt.loglog(N_arr, T_prior, 'k-*',label='Prior model')
 plt.plot(N_arr, T_forward, 'r-*', label='Forward model')
@@ -306,5 +324,13 @@ plt.tight_layout()
 plt.savefig('%s_N_proc_sp_per_sounding' % file_out)
 plt.show()
 
+
+# %%
+
+# %%
+
+# %%
+
+# %%
 
 # %%
