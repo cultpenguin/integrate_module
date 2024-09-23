@@ -11,7 +11,7 @@ brew install open-mpi
 brew install cmake
 
 ## 1. Clone the ga-aem repository from Github
-git clone --recursive --depth https://github.com/GeoscienceAustralia/ga-aem.git
+git clone --recursive --depth 1 https://github.com/GeoscienceAustralia/ga-aem.git
 cd ga-aem
 
 ## 2. Compile GA-AEM
