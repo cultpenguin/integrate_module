@@ -50,6 +50,34 @@ In order to use GA-AEM for forward EM modeling, the 'gatdaem1d' Python module mu
 
 Follow instructions at https://github.com/GeoscienceAustralia/ga-aem.
 
+
+-------------------------------------
+Pre-Compiled Python module in Windows
+-------------------------------------
+
+Download pre-compiled version of GA-AEM for windows through the latest  release from https://github.com/GeoscienceAustralia/ga-aem/releases as GA-AEM.zip
+
+Download precompiled FFTW3 windows dlls from https://www.fftw.org/install/windows.html as fftw-3.3.5-dll64.zip 
+
+unzip GA-AEM.zip to get GA-AEM
+
+unzip fftw-3.3.5-dll64.zip to get fftw-3.3.5-dll64
+
+cp fftw-3.3.5-dll64/*.dll to GA-AEM/python/gatdaem1d/
+
+    cp fftw-3.3.5-dll64/*.dll GA-AEM/python/gatdaem1d/
+
+Install the python gatdaem1d module
+
+    cd GA-AEM/python/
+    pip install -e .
+
+    # test the installaion
+    cd examples
+    python skytem_example.py
+
+
+
 -------------------------------------
 Compile Python module in Ubuntu/Linux
 -------------------------------------
