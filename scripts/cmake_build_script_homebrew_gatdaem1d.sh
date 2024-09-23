@@ -1,7 +1,6 @@
 #!/bin/sh
 
-# This script is for compiling the forward code, gatdaem1d, from ga-aem, on Ubuntu (version >= 2.0.0)
-# See more detailed information on https://github.com/GeoscienceAustralia/ga-aem/blob/master/cmake_build_script_ubuntu.sh 
+# This script is for compiling the forward code, gatdaem1d, from ga-aem on OSX using Homebrew
 
 # # Install necessary packages in Homebrew (tested on macOS XXX)
 brew update
@@ -17,10 +16,10 @@ cd ga-aem
 ## 2. Compile GA-AEM
 
 # INSTALL_DIR is the directory for installing the build package
-export INSTALL_DIR=$PWD/install-ubuntu
+export INSTALL_DIR=$PWD/install-homebrew
 
 # BUILD_DIR is a temporary directory for building (compiling and linking)
-export BUILD_DIR=$PWD/build-ubuntu
+export BUILD_DIR=$PWD/build-homebrew
 
 mkdir $BUILD_DIR
 cd $BUILD_DIR
