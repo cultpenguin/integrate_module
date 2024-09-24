@@ -27,9 +27,11 @@ parallel = ig.use_parallel(showInfo=1)
 case = 'DAUGAARD'
 files = ig.get_case_data(case=case,  loadType='prior_data')
 f_data_h5 = files[0]
+f_prior_h5 = files[-1]
 file_gex= ig.get_gex_file_from_data(f_data_h5)
 
 print("Using data file: %s" % f_data_h5)
+print("Using prior/data file: %s" % f_prior_h5)
 print("Using GEX file: %s" % file_gex)
 
 
@@ -38,7 +40,6 @@ print("Using GEX file: %s" % file_gex)
 # In this example we assume that realization of both 'm' and 'd' are avala simple layered prior model will be considered
 
 # %%
-f_prior_h5 = 'prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
 ig.plot_prior_stats(f_prior_h5)
 
 # %% [markdown]
@@ -47,12 +48,11 @@ ig.plot_prior_stats(f_prior_h5)
 # The posterior distribution is sampling using the extended rejection sampler.
 
 # %% READY FOR INVERSION
-N_use = 10000
-f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = N_use, parallel=parallel, updatePostStat=False, showInfo=1)
-
-# %% Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
-ig.integrate_posterior_stats(f_post_h5)
-
+if parallel:
+    N_use = 1e+9 # Use all data in prior lookup table
+else:
+    N_use = 10000 # Use only a small subset, whn not using parallel
+f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = N_use, parallel=parallel, showInfo=1)
 
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$
