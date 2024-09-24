@@ -98,6 +98,8 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
     """
     from matplotlib.colors import LogNorm
 
+    showInfo = kwargs.get('showInfo', 0)
+
     #kwargs.setdefault('hardcopy', False)
     dstr = '/M%d' % im
     
@@ -115,18 +117,18 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
         
     X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
     
-    print(f_prior_h5)
+    if showInfo>1:
+        print("f_prior_h5 = %d" % f_prior_h5)
     clim_ref, cmap_ref = ig.get_clim_cmap(f_prior_h5,dstr)
     if len(cmap)==0:
         cmap = cmap_ref
     if len(clim)==0:
         clim = clim_ref
 
-    print(clim) 
-    print(cmap)
+    if showInfo>2:
+        print("clim=%s" % str(clim))
+        print("cmap=%s" % str(cmap))
     
-
-
     nd = X.shape[0]
     if i1<1: 
         i1=0
@@ -141,14 +143,14 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
             key = list(f_post[dstr].keys())[0]
         print("No key was given. Using the first key found: %s" % key)
 
-    print("Plotting Feature %d from %s/%s" % (iz, dstr,key))
+    if showInfo>0:
+        print("Plotting Feature %d from %s/%s" % (iz, dstr,key))
 
     with h5py.File(f_post_h5,'r') as f_post:
 
         if dstr in f_post:
             if key in f_post[dstr].keys():
                 D = f_post[dstr][key][:,iz][:]
-                print(D.shape)
                 # plot this KEY
                 plt.figure(1, figsize=(20, 10))
                 if uselog:
@@ -170,11 +172,11 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
                 if hardcopy:
                     f_png = '%s_%d_%d_%d_%s%02d_feature.png' % (os.path.splitext(f_post_h5)[0],i1,i2,im,key,iz)
                     plt.savefig(f_png)
-                plt.show()
+                #plt.show()
                 
             else:
                 print("Key %s not found in %s" % (key, dstr))
-    return 1
+    return
 
 
 def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardcopy=False, **kwargs):
@@ -214,8 +216,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
-        plt.clim(np.log10(clim))  
-        print(clim)
+        plt.clim(np.log10(clim))      
         plt.colorbar(label='log10(T)')
         plt.title('Temperature')
         plt.axis('equal')
@@ -223,7 +224,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             # get filename without extension        
             f_png = '%s_%d_%d_T.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
             plt.savefig(f_png)
-            plt.show()
+            #plt.show()
 
     if (pl=='all') or (pl=='EV'):
         # get the 99% percentile of EV values
@@ -236,7 +237,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         #    kwargs['vmin'] = EV_min
         #if 'vmax' not in kwargs:
         #    kwargs['vmax'] = EV_max
-        print('EV_min=%f, EV_max=%f' % (EV_min, EV_max))
+        #print('EV_min=%f, EV_max=%f' % (EV_min, EV_max))
         plt.figure(2, figsize=(20, 10))
         plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],s=s,cmap='jet_r', vmin = EV_min, vmax=EV_max, **kwargs)            
         plt.grid()
@@ -249,14 +250,14 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             # get filename without extension
             f_png = '%s_%d_%d_EV.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
             plt.savefig(f_png)
-            plt.show()
+            #plt.show()
     if (pl=='all') or (pl=='ND'):
         # 
         f_data = h5py.File(f_data_h5,'r')
         ndata,ns = f_data['/%s' % 'D1']['d_obs'].shape
         # find number of nan values on d_obs
         non_nan = np.sum(~np.isnan(f_data['/%s' % 'D1']['d_obs']), axis=1)
-        print(non_nan)
+        #print(non_nan)
 
         plt.figure(3, figsize=(20, 10))
         plt.scatter(X[i1:i2],Y[i1:i2],c=non_nan[i1:i2],s=s,cmap='jet', **kwargs)            
@@ -273,7 +274,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             plt.show()
             
 
-    return 1
+    return
 
 def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
 
@@ -290,7 +291,6 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
     if updatePostStat:
             ig.integrate_posterior_stats(f_post_h5)
             
-    print(im)
     if (im==0):
         print('Plot profile for all model parameters')
 
@@ -300,7 +300,7 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
                 if key[0]=='M':
                     plot_profile(f_post_h5, i1, i2, im=im, **kwargs)
                 
-        return 1
+        return 
     
     
     Mstr = '/M%d' % im
@@ -331,6 +331,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     kwargs.setdefault('hardcopy', False)
     txt = kwargs.get('txt','')
+    showInfo = kwargs.get('showInfo', 0)
     
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -340,7 +341,8 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     Mstr = '/M%d' % im
 
-    print("Plotting profile %s from %s" % (Mstr, f_post_h5))
+    if showInfo>0:
+        print("Plotting profile %s from %s" % (Mstr, f_post_h5))
 
     with h5py.File(f_prior_h5,'r') as f_prior:
         try:
@@ -372,10 +374,6 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
             cmap = plt.cm.hot(np.linspace(0, 1, n_class)).T
         from matplotlib.colors import ListedColormap
         cmap = ListedColormap(cmap.T)            
-        #print(cmap)
-        #print(cmap.shape)
-        #print('class_name = %s' % class_name)
-        #print('clim %f-%f' % (clim[0],clim[1]))
 
     if not is_discrete:
         print("%s refers to a continuous model. Use plot_profile_continuous instead" % Mstr)
@@ -415,14 +413,28 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     if i2>nd-1:
         i2=nd-1
 
+    # Get center of grid cells
+    IID = ID[:,i1:i2]
+    IIZ = ZZ[:,i1:i2]
+    # IID, IIZ is the center of the cell. Create new grids, DDc, ZZc, that hold the the cordńers if the grids. 
+    # DDc should have cells of size 1, while ZZc should be the same as ZZ but with a row added at the bottom that is the same as the last row of ZZ plus 100
+    DDc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
+    ZZc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
+    DDc[:-1,:-1] = IID - 0.5
+    DDc[:-1,-1] = IID[:,-1] + 0.5
+    DDc[-1,:] = DDc[-2,:] + 1
+
+    ZZc[:-1,:-1] = IIZ
+    ZZc[-1,:] = ZZc[-2,:] + 1
+  
     # ii is a numpy array from i1 to i2
-    ii = np.arange(i1,i2)
+    # ii = np.arange(i1,i2)
 
     # Create a figure with 3 subplots sharing the same Xaxis!
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
 
     # MODE
-    im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mode[:,i1:i2], 
+    im1 = ax[0].pcolormesh(DDc, ZZc, Mode[:,i1:i2], 
             cmap=cmap,            
             shading='auto')
     im1.set_clim(clim[0]-.5,clim[1]+.5)        
@@ -435,7 +447,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     cbar1.ax.invert_yaxis()
 
     # ENTROPY
-    im2 = ax[1].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Entropy[:,i1:i2],
+    im2 = ax[1].pcolormesh(DDc, ZZc, Entropy[:,i1:i2],
             cmap='hot_r', 
             shading='auto')
     im2.set_clim(0,1)
@@ -443,7 +455,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     fig.colorbar(im2, ax=ax[1], label='Entropy')
 
     # MODE with transparency set using entropy
-    im3 = ax[2].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mode[:,i1:i2],
+    im3 = ax[2].pcolormesh(DDc, ZZc, Mode[:,i1:i2],
             cmap=cmap, 
             shading='auto',
             alpha=1-Entropy[:,i1:i2])
@@ -482,7 +494,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         plt.savefig(f_png)
     plt.show()
 
-
+    return
 
 def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
@@ -501,7 +513,9 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     kwargs.setdefault('hardcopy', False)
     kwargs.setdefault('cmap', 'jet')
+    
     txt = kwargs.get('txt','')
+    showInfo = kwargs.get('showInfo', 0)
     
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -511,7 +525,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     Mstr = '/M%d' % im
 
-    print("Plotting profile %s from %s" % (Mstr, f_post_h5))
+    if showInfo>0:
+        print("Plotting profile %s from %s" % (Mstr, f_post_h5))
 
     with h5py.File(f_prior_h5,'r') as f_prior:
         try:
@@ -528,7 +543,6 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
             else:
                 clim = [.1, 2600]
                 clim = [10, 500]
-        print(clim)
         if 'cmap' in f_prior[Mstr].attrs.keys():
             cmap = f_prior[Mstr].attrs['cmap'][:]
             from matplotlib.colors import ListedColormap
@@ -536,8 +550,9 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         else:
             cmap = kwargs['cmap']
 
-        print(cmap)
-        print(clim)
+        if showInfo>1:
+            print(cmap)
+            print(clim)
 
     if is_discrete:
         print("%s refers to a discrete model. Use plot_profile_discrete instead" % Mstr)
@@ -574,18 +589,32 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         ZZ[:,i] = ELEVATION[i]-ZZ[:,i]
 
 
+    # Check for out of range
     if i1<1: 
         i1=0
     if i2>nd-1:
         i2=nd-1
 
-    
+    # Get center of grid cells
+    IID = ID[:,i1:i2]
+    IIZ = ZZ[:,i1:i2]
+    # IID, IIZ is the center of the cell. Create new grids, DDc, ZZc, that hold the the cordńers if the grids. 
+    # DDc should have cells of size 1, while ZZc should be the same as ZZ but with a row added at the bottom that is the same as the last row of ZZ plus 100
+    DDc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
+    ZZc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
+    DDc[:-1,:-1] = IID - 0.5
+    DDc[:-1,-1] = IID[:,-1] + 0.5
+    DDc[-1,:] = DDc[-2,:] + 1
 
+    ZZc[:-1,:-1] = IIZ
+    ZZc[-1,:] = ZZc[-2,:] + 1
+  
     # Create a figure with 3 subplots sharing the same Xaxis!
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
-
+    
     # MEAN
-    im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mean[:,i1:i2], 
+    #im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mean[:,i1:i2], 
+    im1 = ax[0].pcolormesh(DDc, ZZc, Mean[:,i1:i2], 
             cmap=cmap,            
             shading='auto',
             norm=LogNorm())
@@ -594,7 +623,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     fig.colorbar(im1, ax=ax[0], label='Resistivity (Ohm.m)')
     
     # MEDIAN
-    im2 = ax[1].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Median[:,i1:i2], 
+    im2 = ax[1].pcolormesh(DDc, ZZc, Median[:,i1:i2], 
             cmap=cmap,            
             shading='auto',
             norm=LogNorm())  # Set color scale to logarithmic
@@ -604,13 +633,12 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     # STD
     import matplotlib
-    im3 = ax[2].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Std[:,i1:i2], 
+    im3 = ax[2].pcolormesh(DDc, ZZc, Std[:,i1:i2], 
                 cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]), 
                 shading='auto')
     im3.set_clim(0,1)
     ax[2].set_title('std')
     fig.colorbar(im3, ax=ax[2], label='Standard deviation (Ohm.m)')
-
 
     ## T and V
     ax[0].set_xticks([])
@@ -638,6 +666,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         f_png = '%s_%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],i1,i2,Mstr[1:],txt)
         plt.savefig(f_png)
     plt.show()
+
+    return
 
 def plot_data_xy(f_data_h5, pl_type='all', **kwargs):
     import integrate as ig
@@ -834,6 +864,8 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     import h5py
     import os
     
+    showInfo = kwargs.get('showInfo', 0)
+
     ## Check if the data file f_data_h5 exists
     if not os.path.exists(f_post_h5):
         print("plot_data: File %s does not exist" % f_data_h5)
@@ -852,11 +884,13 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
         Dkeys = []
         for key in f_data.keys():
             if key[0]=='D':
-                #print("plot_data: Found data set %s" % key)
+                if showInfo>0:
+                    print("plot_data_prior_post: Found data set %s" % key)
                 Dkeys.append(key)
             nd += 1
         Dkey=Dkeys[0]
-        #print("plot_data: Using data set %s" % Dkey)
+        if showInfo>0:
+            print("plot_data_prior_post: Using data set %s" % Dkey)
 
     noise_model = f_data['/%s' % Dkey].attrs['noise_model']
     if noise_model == 'gaussian':
@@ -870,15 +904,12 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
         else:
             i_use = f_post['/i_use'][i_plot,:]
             i_use = i_use.flatten()
-        print("i_use[0]=%d" % i_use[0])
-        print(i_use[0])
         nr=len(i_use)
         ns,ndata = f_data['/%s' % Dkey]['d_obs'].shape
         d_post = np.zeros((nr,ndata))
         d_prior = np.zeros((nr,ndata))
         
         N = f_prior[Dkey].shape[0]
-        print(N)
         # set id_plot to be nr random locagtions in 1:ndata
         i_prior_plot = np.random.randint(0,N,nr)
         for i in range(nr):
@@ -900,7 +931,6 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
             #ax.text(0.1, 0.1, 'Data set %s, Observation # %d' % (Dkey, i_plot+1), transform=ax.transAxes)
             ax.text(0.1, 0.1, 'T = %4.2f.' % (f_post['/T'][i_plot]), transform=ax.transAxes)
             ax.text(0.1, 0.2, 'log(EV) = %4.2f.' % (f_post['/EV'][i_plot]), transform=ax.transAxes)
-            print(f_post['/T'][i_plot])
             plt.title('Data set %s, Observation # %d' % (Dkey, i_plot+1))
         else:   
             # select nr random unqiue index of d_obs
@@ -981,7 +1011,10 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
         ax[0,1].set_xlabel(name)
 
         # set xtcik labels as 10^x where x i the xtick valye
-        ax[0,1].set_xticklabels(['$10^{%3.1f}$'%i for i in ax[0,1].get_xticks()])
+        ax[0,1].set_xticks(ax[0,1].get_xticks())  # Ensure ticks are set
+        ticks = ax[0,1].get_xticks()
+        ax[0,1].set_xticks(ticks)
+        ax[0,1].set_xticklabels(['$10^{%3.1f}$'%i for i in ticks])
         ax[0,1].set_ylabel('Distribution')
 
         ax[0, 0].grid()
@@ -1039,6 +1072,7 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
         ax[0,1].set_xlabel(name)
 
         # set xtcik labels as 10^x where x i the xtick valye
+        ax[0,1].set_xticks(ax[0,1].get_xticks())  # Ensure ticks are set
         ax[0,1].set_xticklabels(['$10^{%3.1f}$'%i for i in ax[0,1].get_xticks()])
         ax[0,1].set_ylabel('Distribution')
 

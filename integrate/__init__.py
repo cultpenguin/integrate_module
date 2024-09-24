@@ -1,4 +1,3 @@
-from integrate.integrate_io import read_gex
 from integrate.integrate import integrate_rejection
 from integrate.integrate import integrate_update_prior_attributes   
 from integrate.integrate import integrate_posterior_stats
@@ -17,6 +16,7 @@ from integrate.integrate import integrate_posterior_chunk
 from integrate.integrate import integrate_posterior_main
 from integrate.integrate import likelihood_gaussian_diagonal
 from integrate.integrate import likelihood_gaussian_full
+from integrate.integrate import use_parallel
 
 from integrate.integrate_io import get_geometry 
 from integrate.integrate_io import read_gex

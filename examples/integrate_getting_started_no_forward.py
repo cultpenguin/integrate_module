@@ -19,15 +19,14 @@ except:
     pass
 # %%
 import integrate as ig
+parallel = ig.use_parallel(showInfo=1)
 
 
 
 # %% Get tTEM data from DAUGAARD
 case = 'DAUGAARD'
-
 files = ig.get_case_data(case=case,  loadType='prior_data')
 f_data_h5 = files[0]
-f_data_h5 = 'DAUGAARD_AVG.h5'
 file_gex= ig.get_gex_file_from_data(f_data_h5)
 
 print("Using data file: %s" % f_data_h5)
@@ -36,7 +35,6 @@ print("Using GEX file: %s" % file_gex)
 
 # %% [markdown]
 # ## 1. Setup the prior model, $\rho(\mathbf{m},\mathbf{d})$
-#
 # In this example we assume that realization of both 'm' and 'd' are avala simple layered prior model will be considered
 
 # %%
@@ -49,8 +47,8 @@ ig.plot_prior_stats(f_prior_h5)
 # The posterior distribution is sampling using the extended rejection sampler.
 
 # %% READY FOR INVERSION
-N_use = 1000
-f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1)
+N_use = 10000
+f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = N_use, parallel=parallel, updatePostStat=False, showInfo=1)
 
 # %% Compute some generic statistic of the posterior distribtiuon (Mean, Median, Std)
 ig.integrate_posterior_stats(f_post_h5)
@@ -65,21 +63,24 @@ ig.plot_data_prior_post(f_post_h5, i_plot=0)
 
 # %% Posterior analysis
 # Plot the Temperature used for inversion
-ig.plot_T_EV(f_post_h5, pl='T')
+ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=True)
 
 # %% Plot Profiles
+# Plot profile of model parameter type 1 (resistivity)
 ig.plot_profile(f_post_h5, i1=1000, i2=2000, im=1)
 # %%
+# Plot profile of model parameter type 2 (lithology)
+ig.plot_profile(f_post_h5, i1=1000, i2=2000, im=2)
 
-# Plot a 2D feature: Resistivity in layer 10
-ig.plot_feature_2d(f_post_h5,im=1,iz=12, key='Median', uselog=1, cmap='jet', s=10)
-#ig.plot_feature_2d(f_post_h5,im=1,iz=80,key='Median')
+# %%
+# Plot the Median  of the 1st type model parameter (resistivity) at at layer 10
+ig.plot_feature_2d(f_post_h5,im=1,iz=10, key='Median', uselog=1, cmap='jet', s=10)
 
-try:
-    # Plot a 2D feature: The number of layers
-    ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of layers', uselog=0, clim=[1,6], cmap='jet', s=12)
-except:
-    pass
+
+
+# %%
+# Plot the mode of the 2nd type model parameter (lithology) at at layer 10
+ig.plot_feature_2d(f_post_h5,im=2,iz=10,key='Mode', uselog=0, clim=[1,6], cmap='jet', s=12)
 
 
 # %%

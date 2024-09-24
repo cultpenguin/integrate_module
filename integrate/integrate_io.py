@@ -581,23 +581,27 @@ def file_checksum(file_path):
     return hasher.hexdigest()
 
 
-def download_file(url, download_dir, use_checksum=False):
+def download_file(url, download_dir, use_checksum=False, **kwargs):
     import requests
     import os
+    showInfo = kwargs.get('showInfo', 0)
     # Extract the file name from the URL
     file_name = os.path.basename(url)
     file_path = os.path.join(download_dir, file_name)
 
     # Check if the file already exists locally
     if os.path.exists(file_path):
-        print(f'File {file_name} already exists. Skipping download.')
+        if showInfo>0:
+            print(f'File {file_name} already exists. Skipping download.')
         return
 
     # Check if the remote file exists
-    print('Checking if file exists on the remote server...')
+    if showInfo>0:
+        print('Checking if file exists on the remote server...')
     head_response = requests.head(url)
     if head_response.status_code != 200:
-        print(f'File {file_name} does not exist on the remote server. Skipping download.')
+        if showInfo>-1:
+            print(f'File {file_name} does not exist on the remote server. Skipping download.')
         return
 
     # Download and save the file
@@ -627,9 +631,10 @@ def download_file(url, download_dir, use_checksum=False):
         pass
         # print(f'Checksum verification disabled for {file_name}.')
 
-def download_file_old(url, download_dir):
+def download_file_old(url, download_dir, **kwargs):
     import requests
     import os
+    showInfo = kwargs.get('showInfo', 0)
     # Extract the file name from the URL
     file_name = os.path.basename(url)
     file_path = os.path.join(download_dir, file_name)
@@ -676,7 +681,7 @@ def download_file_old(url, download_dir):
 
 
 
-def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[]):
+def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kwargs):
     """
     Get case data for a specific case.
 
@@ -687,8 +692,10 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[]):
     :return: A list of file names for the case.
     :rtype: list
     """
+    showInfo = kwargs.get('showInfo', 0)
 
-    print('Getting data for case: %s' % case)
+    if showInfo>-1:
+        print('Getting data for case: %s' % case)
 
     if case=='DAUGAARD':
 
@@ -710,21 +717,22 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[]):
             filelist.append('DAUGAARD_AVG_inout.h5')
         
         if (loadAll or loadType=='prior'):            
-            filelist.append('prior_detailed_invalleys_N2000000_dmax90.h5')
-            filelist.append('prior_detailed_outvalleys_N2000000_dmax90.h5')
             filelist.append('prior_detailed_general_N2000000_dmax90.h5')
         
         if (loadAll or loadType=='prior_data' or loadType=='post'):            
-            filelist.append('prior_detailed_invalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
-            filelist.append('prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
-            filelist.append('prior_detailed_general_N2000000_dmax90.h5_TX07_20231016_2x4_RC20-33_Nh280_Nf12')
-            filelist.append('prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+            filelist.append('prior_detailed_general_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
             
         if (loadAll or loadType=='post'):
             filelist.append('POST_DAUGAARD_AVG_prior_detailed_general_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5')
+                    
+        if (loadAll or loadType=='inout'):
+            filelist.append('prior_detailed_invalleys_N2000000_dmax90.h5')
+            filelist.append('prior_detailed_outvalleys_N2000000_dmax90.h5')
+            filelist.append('prior_detailed_invalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+            filelist.append('prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
             filelist.append('POST_DAUGAARD_AVG_prior_detailed_invalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5')
             filelist.append('POST_DAUGAARD_AVG_prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5')    
-                    
+            filelist.append('prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 
     elif case=='GRUSGRAV':
 
@@ -777,6 +785,6 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[]):
         #print(remotefile)
         remoteurl = '%s/%s' % (urlErdaCase,remotefile)
         #remoteurl = 'https://anon.erda.au.dk/share_redirect/dxOLKDtoul/%s/%s' % (case,remotefile)
-        download_file(remoteurl,'.')
+        download_file(remoteurl,'.',showInfo=showInfo)
 
     return filelist

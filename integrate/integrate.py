@@ -28,7 +28,34 @@ def is_notebook():
     except NameError:
         return False      # Probably standard Python interpreter
 
-import numpy as np
+
+def use_parallel(**kwargs):
+    import os
+    showInfo = kwargs.get('showInfo', 0)
+    
+    parallel = True
+    if is_notebook():
+        # Then it is always OK to use parallel processing
+        if showInfo>0:
+            print('Notebook detected. Parallel processing is OK')
+        parallel = True
+    
+    else:
+        # if os is Linux, when default is spawn, then parallel processing is OK
+        if os.name == 'posix':
+            if showInfo>0:
+                print('Posix system detected. Parallel processing is OK')        
+            parallel = True
+        else:
+            if showInfo>0:
+                print('Non posix system detected. Parallel processing is not OK')        
+                print('If parallel processing is needed, make sure to embed you primary script in a :if __main__ == "__main__": block')        
+            parallel = False
+
+    return parallel
+
+    
+
 
 def logl_T_est(logL, N_above=10, P_acc_lev=0.2):
     """
@@ -121,7 +148,8 @@ def integrate_update_prior_attributes(f_prior_h5, **kwargs):
 
     with h5py.File(f_prior_h5, 'a') as f:  # open file in append mode
         for name, dataset in f.items():
-            print(name)
+            if showInfo>0:
+                print("integrate_update_prior_attributes: Checking %s" % (name))
             if name.upper().startswith('M'):
                 # Check if the attribute 'is_discrete' exists
                 if 'x' in dataset.attrs:
@@ -243,7 +271,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                     if stat not in f_post:
                         dset = '/%s/%s' % (name,stat)
                         if dset not in f_post:
-                            print('Creating %s' % dset)
+                            print('Creating %s in %s' % (dset,f_post_h5 ))
                             f_post.create_dataset(dset, (nsounding,nm))
 
                 #if dataset.size <= 1e6:  # arbitrary threshold for loading all data into memory
@@ -288,7 +316,7 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                     if stat not in f_post:
                         dset = '/%s/%s' % (name,stat)
                         if dset not in f_post:
-                            print('Creating %s' % dset)
+                            print('Creating %s in %s' % (dset,f_post_h5 ))
                             f_post.create_dataset(dset, (nsounding,nm))
                 for stat in ['Mode', 'P']:
                     if stat not in f_post:
@@ -1460,7 +1488,6 @@ def integrate_rejection(f_prior_h5='prior.h5',
         ip_range = np.arange(Ndp)
     Ndp_invert = len(ip_range)
             
-    print('Ncpu=%d' % Ncpu)        
     if Ncpu < 1 :
         Ncpu =  int(multiprocessing.cpu_count()/2)
         
