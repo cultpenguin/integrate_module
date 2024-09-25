@@ -14,19 +14,16 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # #%load_ext autoreload
-    # #%autoreload 2
+    # # #%load_ext autoreload
+    # # #%autoreload 2
     pass
 # %%
 import integrate as ig
-import integrate as ig
-import h5py
+# check if parallel computations can be performed
 parallel = ig.use_parallel(showInfo=1)
-
 
 # %% Get tTEM data from DAUGAARD
 case = 'DAUGAARD'
-
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
 f_data_h5 = 'DAUGAARD_AVG.h5'
@@ -34,9 +31,6 @@ file_gex= ig.get_gex_file_from_data(f_data_h5)
 
 print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
-
-
-# %%
 
 # %% [markdown]
 # ## 1. Setup the prior model ($\rho(\mathbf{m},\mathbf{d})$
@@ -47,15 +41,9 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-if parallel:
-    N=1000000
-else:   
-    # select a smaller number of samples for a quick run
-    N=10000
+N=1000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
-# WorkBench type layered model
-#f_prior_h5 = ig.prior_model_workbench(N=N,RHO_dist='chi2', nlayers=5)
 
 # Plot some summary statistics of the prior model
 ig.plot_prior_stats(f_prior_h5)
@@ -77,7 +65,10 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                    f_data_h5, 
                                    N_use = N_use, 
                                    showInfo=1, 
-                                   parallel=parallel, Ncpu=6)
+                                   parallel=parallel)
+
+# %% Compute some generic statistic of the posterior distribution (Mean, Median, Std)
+ig.integrate_posterior_stats(f_post_h5)
 
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$
@@ -89,6 +80,8 @@ ig.plot_data_prior_post(f_post_h5, i_plot=0)
 # %% Posterior analysis
 # Plot the Temperature used for inversion
 ig.plot_T_EV(f_post_h5, pl='T')
+# Plot the evidnence (prior likelihood) estimated as part of inversion
+ig.plot_T_EV(f_post_h5, pl='EV')
 
 # %% Plot Profiles
 ig.plot_profile(f_post_h5, i1=1000, i2=2000, im=1)
@@ -104,5 +97,5 @@ try:
 except:
     pass
 
-
-# %%
+# %% Export to CSV
+ig.post_to_csv(f_post_h5)

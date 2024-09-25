@@ -20,6 +20,9 @@ except:
     pass
 
 import integrate as ig
+# check if parallel computations can be performed
+parallel = ig.use_parallel(showInfo=1)
+
 import numpy as np
 import os
 import matplotlib.pyplot as plt
@@ -54,7 +57,6 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 # print all filename in files
 for f in files:
     print(f)
-
     
 
 # %% [markdown]
@@ -129,7 +131,7 @@ ig.plot_prior_stats(f_prior_h5)
 # The prior data, i.e. the forwward response of of the realizations of the prior needs to be computed. Here we use only tTEM data, so onæy on type (tTEM) of data is computed.
 
 # %% Compute prior data
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel)
 
 
 # %% [markdown]
@@ -143,8 +145,7 @@ N_use = N
 nr=1000
 #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
 updatePostStat =False
-#f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=updatePostStat, showInfo=1)
-f_post_h5 = ig.integrate_rejection_multi(f_prior_data_h5, f_data_h5, N_use = N_use, nr=nr, updatePostStat=updatePostStat )
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, nr=nr, updatePostStat=updatePostStat, parallel=parallel)
 
 # %% [markdown]
 # ## Plot some statistics from $\sigma(\mathbf{m})$

@@ -685,6 +685,8 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     :type Nfreq: int
     :param parallel: Flag indicating whether multiprocessing is used (default: True).
     :type parallel: bool
+    :param Ncpu: Number of cpus/threads used (default: 0 - all).
+    :type Ncpu: int
     :param kwargs: Additional keyword arguments.
     :type kwargs: dict
     :param Ncpu: Number of CPUs to use (default: 0->all).
@@ -698,6 +700,10 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     type = 'TDEM'
     method = 'ga-aem'
     showInfo = kwargs.get('showInfo', 0)
+    Ncpu = kwargs.get('Ncpu', 0)
+    # of 'Nproc' is set in kwargs use it 
+    if 'Nproc' in kwargs:
+        Ncpu = kwargs.get('Nproc', 0)
     Ncpu = kwargs.get('Ncpu', 0)
 
     # Force open/close of hdf5 file
@@ -774,6 +780,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         # 1: Define a function to compute a chunk
         ## OUTSIDE
         # 2: Create chunks
+        C_chunks = np.array_split(C, Ncpu)
         C_chunks = np.array_split(C, Ncpu)
 
         # 3: Compute the chunks in parallel

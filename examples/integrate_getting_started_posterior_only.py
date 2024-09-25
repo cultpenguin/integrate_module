@@ -25,25 +25,22 @@ parallel = ig.use_parallel(showInfo=1)
 
 # %% Get tTEM data from DAUGAARD
 case = 'DAUGAARD'
-files = ig.get_case_data(case=case,  loadType='post', showInfo=0)
+files = ig.get_case_data(case=case,  loadType='post')
 
 f_post_h5 = files[-1]
 with h5py.File(f_post_h5,'r') as f_post:
     f_prior_h5 = f_post['/'].attrs['f5_prior']
     f_data_h5 = f_post['/'].attrs['f5_data']
 
-print("Using post file: %s" % f_post_h5)
-print("Using prior file: %s" % f_prior_h5)
 print("Using data file: %s" % f_data_h5)
-
-
+print("Using prior file: %s" % f_prior_h5)
+print("Using post file: %s" % f_post_h5)
 
 # %% [markdown]
 # ## 1. Setup the prior model, $\rho(\mathbf{m},\mathbf{d})$
-# In this example we assume that realization of both 'm' and 'd' are avala simple layered prior model will be considered
+# In this example we assume that realization of both 'm' and 'd' are available
 
 # %%
-f_prior_h5 = 'prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
 ig.plot_prior_stats(f_prior_h5)
 
 # %% [markdown]
@@ -52,11 +49,11 @@ ig.plot_prior_stats(f_prior_h5)
 # The posterior distribution is sampling using the extended rejection sampler.
 
 # %% READY FOR INVERSION
-# The posterior distribtion has allready been sampled. To apply the rejection sampler again, uncomment below
+# The posterior distribution has already been sampled. To apply the rejection sampler again, uncomment below
 
 #
 # N_use = 10000
-# f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = N_use, parallel=parallel, updatePostStat=True, showInfo=1)
+# f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = N_use, parallel=parallel)
 
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$
@@ -82,10 +79,6 @@ ig.plot_profile(f_post_h5, i1=1000, i2=2000, im=2)
 ig.plot_feature_2d(f_post_h5,im=1,iz=10, key='Median', uselog=1, cmap='jet', s=10)
 
 
-
 # %%
 # Plot the mode of the 2nd type model parameter (lithology) at at layer 10
 ig.plot_feature_2d(f_post_h5,im=2,iz=10,key='Mode', uselog=0, clim=[1,6], cmap='jet', s=12)
-
-
-# %%

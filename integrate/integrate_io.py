@@ -504,6 +504,7 @@ def post_to_csv(f_post_h5='', Mstr='/M1'):
 HDF% related functions
 '''
 def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
+def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
     """
     Copy the contents of an HDF5 file to another HDF5 file.
 
@@ -516,6 +517,7 @@ def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
 
     :return: None
     """
+    showInfo = kwargs.get('showInfo', 0)
     showInfo = kwargs.get('showInfo', 0)
     # Open the input file
     if showInfo>0:
@@ -598,7 +600,7 @@ def download_file(url, download_dir, use_checksum=False, **kwargs):
         return
 
     # Check if the remote file exists
-    if showInfo>0:
+    if showInfo>1:
         print('Checking if file exists on the remote server...')
     head_response = requests.head(url)
     if head_response.status_code != 200:
@@ -689,11 +691,32 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
 
     :param case: The case name. Default is 'DAUGAARD'. Options are 'DAUGAARD' and 'FANGEL'.
     :type case: str
+    
     :param loadAll: Whether to load all files for the case. Default is False.
     :type loadAll: bool
+    
     :return: A list of file names for the case.
     :rtype: list
-    """
+    
+    :param case: The case name. Default is 'DAUGAARD'. Options are 'DAUGAARD', 'GRUSGRAV', 'FANGEL', and 'HALD'.
+    :type case: str
+    
+    :param loadType: The type of files to load. Options are '', 'prior', 'prior_data', 'post', and 'inout'.
+    :type loadType: str
+    
+    :param filelist: A list of files to load. Default is an empty list.
+    :type filelist: list
+
+    :example:
+    
+    >>> files = get_case_data()
+    Example: Daugaard data with prior:
+    >>> get_case_data(case='DAUGAARD', loadType='prior')
+    Example: Daugaard data with prior data:
+    >>> get_case_data(case='DAUGAARD', loadType='prior-data')
+    Example: Daugaard data with prior and posterior:
+    >>> get_case_data(case='DAUGAARD', loadType='post')
+    """  # noqa: DAUGAARD, FANGEL, GRUSGRAV, HALD, Daugaard
     showInfo = kwargs.get('showInfo', 0)
 
     if showInfo>-1:
@@ -788,5 +811,7 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
         remoteurl = '%s/%s' % (urlErdaCase,remotefile)
         #remoteurl = 'https://anon.erda.au.dk/share_redirect/dxOLKDtoul/%s/%s' % (case,remotefile)
         download_file(remoteurl,'.',showInfo=showInfo)
+    if showInfo>-1:
+        print('--> Got data for case: %s' % case)
 
     return filelist
