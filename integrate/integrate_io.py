@@ -503,7 +503,7 @@ def post_to_csv(f_post_h5='', Mstr='/M1'):
 '''
 HDF% related functions
 '''
-def copy_hdf5_file(input_filename, output_filename, N=None):
+def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
     """
     Copy the contents of an HDF5 file to another HDF5 file.
 
@@ -516,8 +516,10 @@ def copy_hdf5_file(input_filename, output_filename, N=None):
 
     :return: None
     """
+    showInfo = kwargs.get('showInfo', 0)
     # Open the input file
-    print('Trying to copy %s to %s' % (input_filename, output_filename))
+    if showInfo>0:
+        print('Trying to copy %s to %s' % (input_filename, output_filename))
     with h5py.File(input_filename, 'r') as input_file:
         # Create the output file
         with h5py.File(output_filename, 'w') as output_file:
