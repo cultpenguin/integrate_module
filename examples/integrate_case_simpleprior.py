@@ -140,7 +140,7 @@ f_prior_data_h5_arr=[]
 f_post_h5_arr=[]
 for f_prior_h5 in f_prior_h5_arr:
 
-    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=16, N=1000000)
+    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=16, N=10000)
     
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel)
 
@@ -152,69 +152,4 @@ for f_prior_h5 in f_prior_h5_arr:
     ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy)
 
 
-
-
-
-
-# %% plot some 1D statistics of the prior
-ig.plot_prior_stats(f_prior_h5)
-
-# %% [markdown]
-# ### Prior data, $\rho(d)$
-# The prior data, i.e. the forwward response of of the realizations of the prior needs to be computed. Here we use only tTEM data, so onæy on type (tTEM) of data is computed.
-
-# %% Compute prior data
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel)
-
-
-# %% [markdown]
-# ## Sample the posterior $\sigma(\mathbf{m})$
-#
-# The posterior distribution is sampling using the extended rejection sampler.
-
-# %% READY FOR INVERSION
-
-N_use = N
-nr=1000
-#f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
-updatePostStat =False
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, nr=nr, updatePostStat=updatePostStat, parallel=parallel)
-
-# %% [markdown]
-# ## Plot some statistics from $\sigma(\mathbf{m})$
-
-# %% [markdown]
-# ### The temperature refer to the annealing temperature used by the extended rejection sampler, in order to get 'enough' realizations.
-# T=1, implies no anealing has occurred. Higher values of T implies increasingly difficulty of fitting the data within the noise, suggesting either that the lookup table size is too small and/or that the prior is not consistent with the data.
-
-# %% Posterior analysis
-# Plot the Temperature used for inversion
-ig.plot_T_EV(f_post_h5, pl='T')
-ig.plot_T_EV(f_post_h5, pl='EV')
-ig.plot_T_EV(f_post_h5, pl='ND')
-#
-
-# %%
-import h5py
-with h5py.File(f_data_h5,'r') as f_prior:
-    nd=len(f_prior['UTMX'][:].flatten())
-
-i1 = np.linspace(0,nd-1,4).astype(int)
-for i in i1:
-    ig.plot_data_prior_post(f_post_h5, i_plot = i)
-    #ig.plot_data_prior_post(f_post_h5, i_plot = 1199)
-
-# %% Plot Profiles
-ig.plot_profile(f_post_h5, i1=1000, i2=np.min([1400,nd]), cmap='jet', hardcopy=hardcopy);
-
-# %%
-try:
-    for iz in range(0,z_max,5):
-        ig.plot_feature_2d(f_post_h5,im=1,iz=iz,key='Mean', title_text = 'XX', cmap='jet', s=12, vmin=10, vmax=100, hardcopy=hardcopy)
-except:
-    pass
-
-# %% Export to CSV
-ig.post_to_csv(f_post_h5)
-# %%
 
