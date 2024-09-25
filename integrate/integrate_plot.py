@@ -840,6 +840,79 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
 
 
 
+def plot_data_prior(f_prior_data_h5,
+                    f_data_h5, 
+                    nr=1000,
+                    id=1,
+                    d_str='d_obs', 
+                    alpha=0.5,
+                    ylim=None, 
+                    **kwargs):
+    """
+    Plot the prior data on top of prior data realizations. 
+    Usefull for checking the consistency between the choid of prior and observed before runnning an inversion.
+    """
+
+    import h5py
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    f_data = h5py.File(f_data_h5)
+    f_prior_data = h5py.File(f_prior_data_h5)
+    
+    plt.figure(figsize=(7,6))
+    # PLOT PRIOR REALIZATIONS
+    dh5_str = 'D%d' % (id)
+    if dh5_str in f_prior_data:
+        f_prior_data['D1']  
+        npr = f_prior_data['D1'].shape[0]
+        
+        nr = np.min([nr,npr])
+        # select nr random sample of d_obs
+        i_use = np.sort(np.random.choice(npr, nr, replace=False))
+        D = f_prior_data[dh5_str][i_use]
+        
+        plt.semilogy(D.T,'k-',alpha=alpha, linewidth=0.1)
+        
+    else:   
+        print('%s not in f_prior_data' % dh5_str)
+
+    # PLOT OBSERVED DATA
+    dh5_str = 'D%d/%s' % (id,d_str)
+
+    # check that dh5_str is in f_data
+    if dh5_str in f_data:
+        d_obs = f_data[dh5_str][:]
+        ns, nd = f_data[dh5_str].shape
+        nr = np.min([nr,ns])    
+        # select nr random sample of d_obs
+        i_use_d = np.sort(np.random.choice(ns, nr, replace=False))
+
+        plt.semilogy(d_obs[i_use_d,:].T,'r-',alpha=alpha, linewidth=0.1,label='d_obs')
+        
+    else:
+        print('%s not in f_data'% dh5_str)
+
+    if ylim is not None:
+        plt.ylim(ylim)
+
+    plt.grid()
+    plt.xlabel('Data #')
+    plt.ylabel('Data Value')
+    plt.tight_layout()
+    plt.title('Prior data (black) and observed data (red)\n%s (black)\n%s (red)' % (os.path.splitext(f_prior_data_h5)[0],os.path.splitext(f_data_h5)[0]) )
+    
+    f_data.close()
+    f_prior_data.close()
+
+    # set plot in kwarg to True if not allready set
+    if 'hardcopy' not in kwargs:
+        kwargs['hardcopy'] = True
+    if kwargs['hardcopy']:
+        # strip the filename from f_data_h5
+        plt.savefig('%s_%s_id%d_%s.png' % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_data_h5)[0],id,d_str))
+
+
 def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     """
     Plot the prior and posterior data for a given dataset.

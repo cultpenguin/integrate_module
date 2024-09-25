@@ -40,7 +40,7 @@ hardcopy=True
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
 case = 'DAUGAARD'
-#case = 'FANGEL'
+case = 'FANGEL'
 #case = 'HALD'
 #case = 'GRUSGRAV' # NOT YET AVAILABLE
 
@@ -54,23 +54,18 @@ if not os.path.isfile(file_gex):
 print('CASE: %s' % case)
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
-# print all filename in files
-for f in files:
-    print(f)
-    
-
 # %% [markdown]
 # ### Plot the geometry of the observed data
 
 # %% plot the data
-fig = ig.plot_data_xy(f_data_h5)
+#fig = ig.plot_data_xy(f_data_h5)
 
 # %% [markdown]
 # ### Plot the observed data
 
 # %% Plot the observed data
 #ig.plot_data(f_data_h5)
-ig.plot_data(f_data_h5, plType='plot', hardcopy=hardcopy)
+#ig.plot_data(f_data_h5, plType='plot', hardcopy=hardcopy)
 
 # %% [markdown]
 # ## Setup up the prior , $\rho(m,d)$
@@ -87,7 +82,7 @@ ig.plot_data(f_data_h5, plType='plot', hardcopy=hardcopy)
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=2000000
+N=100000
 RHO_min = 1
 RHO_max = 2500
 RHO_dist='log-uniform'
@@ -95,33 +90,71 @@ NLAY_min=1
 NLAY_max=9 
 z_max = 90
 
-useP=1
-if useP==1:
-    ## Layered model
-    #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-    #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=3, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-    f_prior_h5 = ig.prior_model_layered(N=N,
-                                        lay_dist='uniform', 
-                                        z_max = z_max, 
-                                        NLAY_min=NLAY_min, 
-                                        NLAY_max=NLAY_max, 
-                                        RHO_dist=RHO_dist, 
-                                        RHO_min=RHO_min, 
-                                        RHO_max=RHO_max)
-elif useP==2:
-    ## N layer model with increasing thickness
-    f_prior_h5 = ig.prior_model_workbench(N=N, 
-                                          RHO_mean=45, 
-                                          RHO_std=45, 
-                                          RHO_dist='log-normal', 
-                                          z_max = z_max,                                           
-                                          RHO_min = RHO_min, 
-                                          RHO_max = RHO_max)
-    #f_prior_h5 = ig.prior_model_workbench(N=N, z_max= 30, nlayers=20, RHO_min = RHO_min, RHO_max = RHO_max)
-    f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max, nlayers=NLAY_max, RHO_dist=RHO_dist, RHO_min = RHO_min, RHO_max = RHO_max)
+useP_arr  = [1,2,3,4]
+#useP_arr  = [4]
+f_prior_h5_arr = []
+for useP in useP_arr:
+
+    if useP==1:
+        ## Layered model
+        f_prior_h5 = ig.prior_model_layered(N=N,
+                                            lay_dist='uniform', z_max = z_max, 
+                                            NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
+                                            RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max)
+        f_prior_h5_arr.append(f_prior_h5)
+    elif useP==2:
+        ## 20 layer model with increasing thickness
+        f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max,
+                                            RHO_mean=45, RHO_std=45, RHO_dist='log-normal', 
+                                            RHO_min = RHO_min, RHO_max = RHO_max)
+        f_prior_h5_arr.append(f_prior_h5)
+    elif useP==3:
+        ## NLAY_max-layer model with increasing thickness
+        f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max, 
+                                              nlayers=NLAY_max, 
+                                              RHO_dist=RHO_dist, RHO_min = RHO_min, RHO_max = RHO_max)
+        f_prior_h5_arr.append(f_prior_h5)
+    elif useP==4:
+        ## 10 Layered model
+        nlay=4
+        f_prior_h5 = ig.prior_model_layered(N=N,
+                                            lay_dist='uniform', z_max = z_max, 
+                                            NLAY_min=1, NLAY_max=nlay, 
+                                            RHO_dist=RHO_dist, RHO_min=10, RHO_max=500)
+        f_prior_h5_arr.append(f_prior_h5)
     
-else:
-    f_prior_h5 = 'existing_prior.h5'
+    ig.plot_prior_stats(f_prior_h5)
+
+# %% Make a gew forward realizations
+
+for f_prior_h5 in f_prior_h5_arr:
+
+    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=16, N=1001)
+    ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy) 
+    plt.show()
+
+    #f_prior_data_h5_arr.append(f_prior_data_h5)
+    
+# %% Perform inversion and compare
+f_prior_data_h5_arr=[]
+f_post_h5_arr=[]
+for f_prior_h5 in f_prior_h5_arr:
+
+    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=16, N=1000000)
+    
+    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel)
+
+    f_post_h5_arr.append(f_post_h5)
+    f_post_data_h5_arr.append(f_post_data_h5)
+
+    ig.plot_T_EV(f_post_h5, pl='EV')
+    
+    ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy)
+
+
+
+
+
 
 # %% plot some 1D statistics of the prior
 ig.plot_prior_stats(f_prior_h5)
