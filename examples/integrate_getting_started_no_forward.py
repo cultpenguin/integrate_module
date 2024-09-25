@@ -21,8 +21,6 @@ except:
 import integrate as ig
 parallel = ig.use_parallel(showInfo=1)
 
-
-
 # %% Get tTEM data from DAUGAARD
 case = 'DAUGAARD'
 files = ig.get_case_data(case=case,  loadType='prior_data')
@@ -37,7 +35,7 @@ print("Using GEX file: %s" % file_gex)
 
 # %% [markdown]
 # ## 1. Setup the prior model, $\rho(\mathbf{m},\mathbf{d})$
-# In this example we assume that realization of both 'm' and 'd' are avala simple layered prior model will be considered
+# In this example we assume that realization of both 'm' and 'd' are available.
 
 # %%
 ig.plot_prior_stats(f_prior_h5)
@@ -49,7 +47,7 @@ ig.plot_prior_stats(f_prior_h5)
 
 # %% READY FOR INVERSION
 if parallel:
-    N_use = 1e+9 # Use all data in prior lookup table
+    N_use = 100000 # Use all data in prior lookup table
 else:
     N_use = 10000 # Use only a small subset, whn not using parallel
 f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = N_use, parallel=parallel, showInfo=1)
