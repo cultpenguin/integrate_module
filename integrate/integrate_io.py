@@ -504,7 +504,6 @@ def post_to_csv(f_post_h5='', Mstr='/M1'):
 HDF% related functions
 '''
 def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
-def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
     """
     Copy the contents of an HDF5 file to another HDF5 file.
 
