@@ -140,16 +140,19 @@ f_prior_data_h5_arr=[]
 f_post_h5_arr=[]
 for f_prior_h5 in f_prior_h5_arr:
 
-    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=16, N=10000)
+    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=16, N=100000)
     
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel)
 
     f_post_h5_arr.append(f_post_h5)
-    f_post_data_h5_arr.append(f_post_data_h5)
+    f_prior_data_h5_arr.append(f_prior_data_h5)
 
     ig.plot_T_EV(f_post_h5, pl='EV')
     
     ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy)
+
+    ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
+    ig.plot_data_prior_post(f_post_h5, i_plot=1000, hardcopy=hardcopy)
 
 
 
