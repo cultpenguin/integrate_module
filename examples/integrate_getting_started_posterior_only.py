@@ -38,7 +38,7 @@ print("Using post file: %s" % f_post_h5)
 
 # %% [markdown]
 # ## 1. Setup the prior model, $\rho(\mathbf{m},\mathbf{d})$
-# In this example we assume that realization of both 'm' and 'd' are avala simple layered prior model will be considered
+# In this example we assume that realization of both 'm' and 'd' are available
 
 # %%
 ig.plot_prior_stats(f_prior_h5)
