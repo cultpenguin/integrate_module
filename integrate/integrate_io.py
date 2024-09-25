@@ -517,7 +517,6 @@ def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
     :return: None
     """
     showInfo = kwargs.get('showInfo', 0)
-    showInfo = kwargs.get('showInfo', 0)
     # Open the input file
     if showInfo>0:
         print('Trying to copy %s to %s' % (input_filename, output_filename))
