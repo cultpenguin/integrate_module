@@ -49,7 +49,7 @@ Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu_total)))))
 useSmallTest=True
 if useSmallTest:
     N_arr = np.array([100,500,1000,5000])
-    N_arr = np.array([100,1000,2000,5000,10000])
+    N_arr = np.array([100,1000,2000,5000,10000,50000,100000,500000])
     skip_proc = 0
     Nproc_arr=2**(np.double(skip_proc+np.arange(1+int(np.log2(Ncpu_total)))));
     Nproc_arr=np.int8(np.ceil(np.linspace(1,Ncpu_total,5)))
