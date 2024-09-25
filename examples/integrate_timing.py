@@ -18,9 +18,9 @@ import os
 import socket
 # Get hostanme and number of processors
 hostname = socket.gethostname()
-Ncpu = os.cpu_count()
+Ncpu_total = os.cpu_count()
 print("Hostname: %s" % hostname)
-print("Number of processors: %d" % Ncpu)
+print("Number of processors: %d" % Ncpu_total)
 
 
 # %% [markdown]
@@ -38,17 +38,20 @@ print("Using GEX file: %s" % file_gex)
 # %% [markdown]
 # ## Setup the timing test
 
+
 # %% TIMING
 # Set the size of the data sets to test
 N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000])
 
 # Set the number of cores to test
-Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu)))))
+Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu_total)))))
 
 useSmallTest=True
 if useSmallTest:
     N_arr = np.array([100,500,1000,5000])
-    Nproc_arr=2**(np.double(0+np.arange(int(np.log2(Ncpu)-1))));
+    N_arr = np.array([1000,2000,5000,10000])
+    skip_proc = 0
+    Nproc_arr=2**(np.double(skip_proc+np.arange(int(np.log2(Ncpu_total-skip_proc)))));
     # add 1 to N_Arr
     #N_arr = np.append(N_arr, N_arr[-1])
 
@@ -58,11 +61,11 @@ n2 = len(Nproc_arr)
 
 print("Testing on %d data sets of sizes" % n1)
 print(N_arr)
-print("Testing on %d cores" % n2)
+print("Testing on %d sets of cores" % n2)
 print(Nproc_arr)
 
 
-file_out  = 'timing_%s-%d_Nproc%d_N%d' % (hostname,Ncpu,len(Nproc_arr), len(N_arr))
+file_out  = 'timing_%s-%d_Nproc%d_N%d' % (hostname,Ncpu_total,len(Nproc_arr), len(N_arr))
 print(file_out)
 
 # %% [markdown]
@@ -74,8 +77,11 @@ T_prior = np.zeros((n1,n2))*np.nan
 T_forward = np.zeros((n1,n2))*np.nan
 T_rejection = np.zeros((n1,n2))*np.nan
 T_poststat = np.zeros((n1,n2))*np.nan
+
+testRejection = False
+
 for j in np.arange(n2):
-    Nproc = int(Nproc_arr[j])
+    Ncpu = int(Nproc_arr[j])
     
     t_prior = []
     t_forward  = []
@@ -86,7 +92,7 @@ for j in np.arange(n2):
         N=int(N_arr[i])
 
         print('=====================================================')
-        print('N=%d, Nproc=%d'%(N,Nproc))
+        print('N=%d, Ncpu=%d'%(N,Ncpu))
 
         RHO_min = 1
         RHO_max = 800
@@ -105,20 +111,21 @@ for j in np.arange(n2):
         #t_prior.append(time.time()-t0_prior)
         T_prior[i,j] = time.time()-t0_prior
 
-        if (Nproc<3 and N>11000)| (Nproc<7 and N>151000):
+        if (Ncpu<3 and N>4000)| (Ncpu<7 and N>151000):
             pass
         else:   
 
             #ig.plot_prior_stats(f_prior_h5)
             #% A2. Compute prior DATA
             t0_forward = time.time()
-            f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Nproc=Nproc)
+            f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=Ncpu)
             T_forward[i,j]=time.time()-t0_forward
 
             #% READY FOR INVERSION
             N_use = 1000000
             t0_rejection = time.time()
-            f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1, Nproc=Nproc)
+            if testRejection:
+                f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1, Ncpu=Ncpu)
             T_rejection[i,j]=time.time()-t0_rejection
 
             #% Compute some generic statistic of the posterior distribution (Mean, Median, Std)
@@ -144,6 +151,35 @@ if loadFromFile:
     N_arr = data['N_arr']
     Nproc_arr = data['Nproc_arr']
 
+#%% Plot timing results for forward modeling - GAAEM
+
+# Average timer per sounding 
+T_forward_sounding = T_forward/N_arr[:,np.newaxis]
+T_forward_sounding_per_sec = N_arr[:,np.newaxis]/T_forward
+T_forward_sounding_per_sec_per_cpu = T_forward_sounding_per_sec/Nproc_arr[np.newaxis,:]
+
+#plt.figure()    
+#plt.plot(N_arr, T_forward_sounding_per_sec, 'o-')
+
+
+plt.figure()    
+plt.plot(Nproc_arr, T_forward_sounding_per_sec.T, 'o-')
+# plot line 
+plt.ylabel('Soundings per second')
+plt.xlabel('Number of processors')
+plt.grid()
+plt.legend(N_arr)
+plt.tight_layout()
+plt.savefig('%s_forward_sounding_per_sec' % file_out)
+
+plt.figure()    
+plt.plot(Nproc_arr, T_forward_sounding_per_sec_per_cpu.T, 'o-')
+plt.ylabel('Soundings per second per cpu')
+plt.xlabel('Number of processors')
+plt.grid()
+plt.legend(N_arr)
+plt.savefig('%s_forward_sounding_per_sec_per_cpu' % file_out)
+
 
 # %%
 ax, fig = plt.subplots(1,1, figsize=(8,8))
@@ -158,7 +194,6 @@ plt.grid()
 plt.savefig('%s_Narr' % file_out)
 plt.show()
 
-
 ax, fig = plt.subplots(1,1, figsize=(8,8))
 plt.loglog(Nproc_arr, T_prior.T, 'k-*',label='Prior model')
 plt.plot(Nproc_arr, T_forward.T, 'r-*', label='Forward model')
@@ -170,8 +205,6 @@ plt.legend()
 plt.grid()
 plt.savefig('%s_Nproc' % file_out)
 plt.show()
-
-
 
 # %%
 dlw = 0.1
