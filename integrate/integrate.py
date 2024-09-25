@@ -685,6 +685,8 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     :type Nfreq: int
     :param parallel: Flag indicating whether multiprocessing is used (default: True).
     :type parallel: bool
+    :param Ncpu: Number of cpus/threads used (default: 0 - all).
+    :type Ncpu: int
     :param kwargs: Additional keyword arguments.
     :type kwargs: dict
 
@@ -696,7 +698,10 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     type = 'TDEM'
     method = 'ga-aem'
     showInfo = kwargs.get('showInfo', 0)
-    Nproc = kwargs.get('Nproc', 0)
+    Ncpu = kwargs.get('Ncpu', 0)
+    # of 'Nproc' is set in kwargs use it 
+    if 'Nproc' in kwargs:
+        Ncpu = kwargs.get('Nproc', 0)
 
     # Force open/close of hdf5 file
     with h5py.File(f_prior_h5, 'r') as f:
@@ -713,20 +718,16 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     if not os.path.isfile(file_gex):
         print("ERRROR: file_gex=%s does not exist in the current folder." % file_gex)
 
-    print('N=%d, N_in=%d' % (N,N_in))
     if doMakePriorCopy:
         if N < N_in:
             f_prior_data_h5 = '%s_%s_N%d_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex)[0], N, Nhank, Nfreq)
         else:
             f_prior_data_h5 = '%s_%s_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex)[0], Nhank, Nfreq)
         if (showInfo>-1):
-            print("Creating a copy of %s as %s" % (f_prior_h5, f_prior_data_h5))
+            print("Creating a copy of %s as %s" % (f_prior_data_h5))
+            print("                as %s" % (f_prior_data_h5))
         # make a copy of the prior file
-        #copy_hdf5_file(input_filename, output_filename, N=None)
-        ig.copy_hdf5_file(f_prior_h5, f_prior_data_h5,N)
-        #if N < N_in:
-        #    # Truncate
-        #    truncate_and_repack_hdf5_file(f_prior_data_h5, N)
+        ig.copy_hdf5_file(f_prior_h5, f_prior_data_h5,N, showInfo=showInfo)
             
         
     else:
@@ -761,16 +762,16 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         stmfiles, GEX = ig.gex_to_stm(file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
 
         # Parallel
-        if Nproc < 1 :
-            Nproc =  int(multiprocessing.cpu_count()/2)
-            Nproc =  int(multiprocessing.cpu_count())
+        if Ncpu < 1 :
+            Ncpu =  int(multiprocessing.cpu_count()/2)
+            Ncpu =  int(multiprocessing.cpu_count())
         if (showInfo>0):
-            print("Using %d parallel threads." % (Nproc))
+            print("Using %d parallel threads." % (Ncpu))
 
         # 1: Define a function to compute a chunk
         ## OUTSIDE
         # 2: Create chunks
-        C_chunks = np.array_split(C, Nproc)
+        C_chunks = np.array_split(C, Ncpu)
 
         # 3: Compute the chunks in parallel
         forward_gaaem_chunk_partial = partial(forward_gaaem_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
