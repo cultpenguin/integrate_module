@@ -729,7 +729,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
             f_prior_data_h5 = '%s_%s_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex)[0], Nhank, Nfreq)
             
         
-        if (showInfo>-1):
+        if (showInfo>0):
             print("Creating a copy of %s" % (f_prior_h5))
             print("                as %s" % (f_prior_data_h5))
         if (showInfo>0):
@@ -762,6 +762,8 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     N = f_prior[Mname].shape[0]
     t1 = time.time()
     if not parallel:
+        if (showInfo>-1):
+            print("prior_data_gaaem: Using 1 thread /(sequential).")
         # Sequential
         D = ig.forward_gaaem(C=C, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)
     else:
@@ -774,8 +776,8 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         if Ncpu < 1 :
             Ncpu =  int(multiprocessing.cpu_count()/2)
             Ncpu =  int(multiprocessing.cpu_count())
-        if (showInfo>0):
-            print("Using %d parallel threads." % (Ncpu))
+        if (showInfo>-1):
+            print("prior_data_gaaem: Using %d parallel threads." % (Ncpu))
 
         # 1: Define a function to compute a chunk
         ## OUTSIDE

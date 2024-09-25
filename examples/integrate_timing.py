@@ -49,7 +49,7 @@ Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu_total)))))
 useSmallTest=True
 if useSmallTest:
     N_arr = np.array([100,500,1000,5000])
-    N_arr = np.array([1000,2000,5000,10000])
+    N_arr = np.array([100,1000,2000,5000,10000])
     skip_proc = 0
     Nproc_arr=2**(np.double(skip_proc+np.arange(int(np.log2(Ncpu_total-skip_proc)))));
     # add 1 to N_Arr
@@ -66,7 +66,7 @@ print(Nproc_arr)
 
 
 file_out  = 'timing_%s-%d_Nproc%d_N%d' % (hostname,Ncpu_total,len(Nproc_arr), len(N_arr))
-print(file_out)
+print("Wirting results to %s " % file_out)
 
 # %% [markdown]
 # ## Run INTEGRATE workflow using different data sizes and number of CPUS
@@ -78,8 +78,9 @@ T_forward = np.zeros((n1,n2))*np.nan
 T_rejection = np.zeros((n1,n2))*np.nan
 T_poststat = np.zeros((n1,n2))*np.nan
 
-testRejection = False
-
+testRejection = True
+testPostStat = True  
+            
 for j in np.arange(n2):
     Ncpu = int(Nproc_arr[j])
     
@@ -130,8 +131,9 @@ for j in np.arange(n2):
 
             #% Compute some generic statistic of the posterior distribution (Mean, Median, Std)
             t0_poststat = time.time()
-            #ig.integrate_posterior_stats(f_post_h5)
-            T_poststat[i,j]=time.time()-t0_poststat
+            if testPostStat and testRejection:
+                ig.integrate_posterior_stats(f_post_h5)
+                T_poststat[i,j]=time.time()-t0_poststat
             
         np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr)
 
@@ -139,10 +141,11 @@ for j in np.arange(n2):
 
 # %% Load T_prior, N_arr, Nproc_arr in one file
 # load T_prior, T_forward, N_arr, N_proc from timing_d52534-32_Nproc5_N9.npz
-loadFromFile=False
+loadFromFile=True
 if loadFromFile:
     file_out='timing_d52534-32_Nproc5_N9'
     file_out='timing_d52534-32_Nproc6_N9'
+    file_out='timing_d52534-32_Nproc5_N4'
     data = np.load('%s.npz' % file_out)
     T_prior = data['T_prior']
     T_forward = data['T_forward']
@@ -157,29 +160,107 @@ if loadFromFile:
 T_forward_sounding = T_forward/N_arr[:,np.newaxis]
 T_forward_sounding_per_sec = N_arr[:,np.newaxis]/T_forward
 T_forward_sounding_per_sec_per_cpu = T_forward_sounding_per_sec/Nproc_arr[np.newaxis,:]
+T_forward_sounding_speedup = T_forward_sounding_per_sec/T_forward_sounding_per_sec[0,0]
+
 
 #plt.figure()    
 #plt.plot(N_arr, T_forward_sounding_per_sec, 'o-')
 
 
-plt.figure()    
+plt.figure(figsize=(6,6))    
 plt.plot(Nproc_arr, T_forward_sounding_per_sec.T, 'o-')
 # plot line 
-plt.ylabel('Soundings per second')
+plt.ylabel(r'Soundings per second - $[s^{-1}]$')
 plt.xlabel('Number of processors')
 plt.grid()
 plt.legend(N_arr)
 plt.tight_layout()
 plt.savefig('%s_forward_sounding_per_sec' % file_out)
 
-plt.figure()    
+'''
+plt.figure(figsize=(6,6))    
 plt.plot(Nproc_arr, T_forward_sounding_per_sec_per_cpu.T, 'o-')
 plt.ylabel('Soundings per second per cpu')
 plt.xlabel('Number of processors')
 plt.grid()
 plt.legend(N_arr)
 plt.savefig('%s_forward_sounding_per_sec_per_cpu' % file_out)
+'''
 
+plt.figure(figsize=(6,6))    
+plt.plot(Nproc_arr, T_forward_sounding_speedup.T, 'o-')
+# plot a line from 0,0 tp Nproc_arr[-1], Nproc_arr[-1]
+plt.plot([0, Nproc_arr[-1]], [0, Nproc_arr[-1]], 'k--')
+# set xlim to 1, Nproc_arr[-1]
+plt.xlim(.8, Nproc_arr[-1])
+plt.ylim(.8, Nproc_arr[-1])
+plt.ylabel('gatdaem - speedup compared to 1 processor')
+plt.xlabel('Number of processors')
+plt.grid()
+plt.legend(N_arr)
+plt.savefig('%s_forward_speedup' % file_out)
+
+
+#%% STATS FOR REJECTION SAMPLING
+# Average timer per sounding
+T_rejection_sounding = T_rejection/N_arr[:,np.newaxis]
+T_rejection_sounding_per_sec = N_arr[:,np.newaxis]/T_rejection
+T_rejection_sounding_per_sec_per_cpu = T_rejection_sounding_per_sec/Nproc_arr[np.newaxis,:]
+T_rejection_sounding_speedup = T_rejection_sounding_per_sec/T_rejection_sounding_per_sec[0,0]
+
+plt.figure(figsize=(6,6))
+plt.plot(Nproc_arr, T_rejection_sounding_per_sec.T, 'o-')
+plt.ylabel('Soundings per second - $[s^{-1}]$')
+plt.xlabel('Number of processors')
+plt.grid()
+plt.legend(N_arr)
+plt.tight_layout()
+plt.savefig('%s_rejection_sounding_per_sec' % file_out)
+
+plt.figure(figsize=(6,6))
+plt.plot(Nproc_arr, T_rejection_sounding_speedup.T, 'o-')
+# plot a line from 0,0 tp Nproc_arr[-1], Nproc_arr[-1]
+plt.plot([0, Nproc_arr[-1]], [0, Nproc_arr[-1]], 'k--')
+# set xlim to 1, Nproc_arr[-1]
+plt.xlim(.8, Nproc_arr[-1])
+plt.ylim(.8, Nproc_arr[-1])
+plt.ylabel('Rejection sampling - speedup compared to 1 processor')
+plt.xlabel('Number of processors')
+plt.grid()
+plt.legend(N_arr)
+plt.savefig('%s_rejection_speedup' % file_out)
+
+#%% STATS FOR POSTERIOR STATISTICS
+# Average timer per sounding
+T_poststat_sounding = T_poststat/N_arr[:,np.newaxis]
+T_poststat_sounding_per_sec = N_arr[:,np.newaxis]/T_poststat
+T_poststat_sounding_per_sec_per_cpu = T_poststat_sounding_per_sec/Nproc_arr[np.newaxis,:]
+T_poststat_sounding_speedup = T_poststat_sounding_per_sec/T_poststat_sounding_per_sec[0,0]
+
+plt.figure(figsize=(6,6))
+plt.plot(Nproc_arr, T_poststat_sounding_per_sec.T, 'o-')
+plt.ylabel('Soundings per second - $[s^{-1}]$')
+plt.xlabel('Number of processors')
+plt.grid()
+plt.legend(N_arr)
+plt.tight_layout()
+plt.savefig('%s_poststat_sounding_per_sec' % file_out)
+
+plt.figure(figsize=(6,6))
+plt.plot(Nproc_arr, T_poststat_sounding_speedup.T, 'o-')
+# plot a line from 0,0 tp Nproc_arr[-1], Nproc_arr[-1]
+plt.plot([0, Nproc_arr[-1]], [0, Nproc_arr[-1]], 'k--')
+# set xlim to 1, Nproc_arr[-1]
+plt.xlim(.8, Nproc_arr[-1])
+plt.ylim(.8, Nproc_arr[-1])
+plt.ylabel('Posterior statistics - speedup compared to 1 processor')
+plt.xlabel('Number of processors')
+plt.grid()
+plt.legend(N_arr)
+plt.savefig('%s_poststat_speedup' % file_out)
+
+
+# %% OLD STATS
 
 # %%
 ax, fig = plt.subplots(1,1, figsize=(8,8))
