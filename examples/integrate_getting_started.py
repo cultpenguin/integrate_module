@@ -98,5 +98,5 @@ try:
 except:
     pass
 
-
-# %%
+# %% Export to CSV
+ig.post_to_csv(f_post_h5)
