@@ -51,7 +51,12 @@ if useSmallTest:
     N_arr = np.array([100,500,1000,5000])
     N_arr = np.array([100,1000,2000,5000,10000])
     skip_proc = 0
-    Nproc_arr=2**(np.double(skip_proc+np.arange(int(np.log2(Ncpu_total-skip_proc)))));
+    Nproc_arr=2**(np.double(skip_proc+np.arange(1+int(np.log2(Ncpu_total)))));
+    Nproc_arr=np.int8(np.ceil(np.linspace(1,Ncpu_total,5)))
+    Nproc_arr=1+np.arange(Ncpu_total)
+    #Nproc_arr ois 1:4:Ncpu_total
+    Nproc_arr=np.arange(1, Ncpu_total, 1)
+    
     # add 1 to N_Arr
     #N_arr = np.append(N_arr, N_arr[-1])
 
@@ -141,11 +146,12 @@ for j in np.arange(n2):
 
 # %% Load T_prior, N_arr, Nproc_arr in one file
 # load T_prior, T_forward, N_arr, N_proc from timing_d52534-32_Nproc5_N9.npz
-loadFromFile=True
+loadFromFile=False
 if loadFromFile:
     file_out='timing_d52534-32_Nproc5_N9'
     file_out='timing_d52534-32_Nproc6_N9'
     file_out='timing_d52534-32_Nproc5_N4'
+    file_out='timing_d52534-32_Nproc16_N5.npz'
     data = np.load('%s.npz' % file_out)
     T_prior = data['T_prior']
     T_forward = data['T_forward']
