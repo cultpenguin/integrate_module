@@ -154,7 +154,7 @@ if loadFromFile:
     N_arr = data['N_arr']
     Nproc_arr = data['Nproc_arr']
 
-#%% Plot timing results for forward modeling - GAAEM
+# %% Plot timing results for forward modeling - GAAEM
 
 # Average timer per sounding 
 T_forward_sounding = T_forward/N_arr[:,np.newaxis]
