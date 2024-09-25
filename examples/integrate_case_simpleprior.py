@@ -82,7 +82,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=100000
+N=500000
 RHO_min = 1
 RHO_max = 2500
 RHO_dist='log-uniform'
@@ -140,7 +140,7 @@ f_prior_data_h5_arr=[]
 f_post_h5_arr=[]
 for f_prior_h5 in f_prior_h5_arr:
 
-    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=16, N=100000)
+    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=16, N=N)
     
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel)
 
