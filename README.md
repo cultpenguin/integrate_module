@@ -98,4 +98,11 @@ First install homebrew, then run
     pip install .
 
 
+Development
+===========
+The main branch should be the most stable, and updates, less frequent, but with larger changes.
+
+The develop branch contains the current development code and can  updated frequently.
+
+
 
