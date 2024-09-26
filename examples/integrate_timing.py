@@ -171,7 +171,7 @@ if loadFromFile:
     T_poststat = data['T_poststat']
     N_arr = data['N_arr']
     Nproc_arr = data['Nproc_arr']
-    try
+    try:
         nobs=data['nobs']
     except:
         nobs=11693
