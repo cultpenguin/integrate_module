@@ -148,7 +148,7 @@ np.load('timing_d52534-32_Nproc31_N8.npz')
 
 # %% Load T_prior, N_arr, Nproc_arr in one file
 # load T_prior, T_forward, N_arr, N_proc from timing_d52534-32_Nproc5_N9.npz
-loadFromFile=True
+loadFromFile=False
 if loadFromFile:
     file_out = 'timing_d52534-32_Nproc5_N9'
     file_out = 'timing_d52534-32_Nproc6_N9'
