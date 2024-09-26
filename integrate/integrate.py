@@ -221,6 +221,10 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
     from tqdm import tqdm
 
     showInfo = kwargs.get('showInfo', 0)
+    if showInfo<0:
+        disableTqdm=True
+    else:
+        disableTqdm=False
     usePrior = kwargs.get('usePrior', False)
 
     #f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_Nu50000_aT1.h5'
@@ -271,13 +275,14 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                     if stat not in f_post:
                         dset = '/%s/%s' % (name,stat)
                         if dset not in f_post:
-                            print('Creating %s in %s' % (dset,f_post_h5 ))
+                            if (showInfo>0):
+                                print('Creating %s in %s' % (dset,f_post_h5 ))
                             f_post.create_dataset(dset, (nsounding,nm))
 
                 #if dataset.size <= 1e6:  # arbitrary threshold for loading all data into memory
                 M_all = dataset[:]
 
-                for iid in tqdm(range(nsounding), mininterval=1):
+                for iid in tqdm(range(nsounding), mininterval=1, disable=disableTqdm, desc='poststat'):
                     ir = np.int64(i_use[iid,:])
                     m_post = M_all[ir,:]
 
@@ -316,18 +321,20 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                     if stat not in f_post:
                         dset = '/%s/%s' % (name,stat)
                         if dset not in f_post:
-                            print('Creating %s in %s' % (dset,f_post_h5 ))
+                            if (showInfo>0):
+                                print('Creating %s in %s' % (dset,f_post_h5 ))
                             f_post.create_dataset(dset, (nsounding,nm))
                 for stat in ['Mode', 'P']:
                     if stat not in f_post:
                         dset = '/%s/%s' % (name,stat)
                         if dset not in f_post:
-                            print('Creating %s' % dset)
+                            if (showInfo>0):
+                                print('Creating %s' % dset)
                             f_post.create_dataset(dset, (nsounding,n_classes,nm))
 
                 M_all = dataset[:]
 
-                for iid in tqdm(range(nsounding), mininterval=1):
+                for iid in tqdm(range(nsounding), mininterval=1, disable=disableTqdm, desc='poststat'):
 
                     # Get the indices of the rows to use
                     ir = np.int64(i_use[iid,:])
@@ -486,6 +493,11 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
     from tqdm import tqdm
 
     showInfo = kwargs.get('showInfo', 0)
+    if (showInfo<0):
+        disableTqdm=True
+    else:
+        disableTqdm=False
+
     doCompress = kwargs.get('doCompress', True)
 
     if (len(stmfiles)>0) and (file_gex != '') and (len(GEX)==0):
@@ -584,7 +596,7 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
 
     # Compute forward data
     t1=time.time()
-    for i in tqdm(range(nd), mininterval=1):
+    for i in tqdm(range(nd), mininterval=1, disable=disableTqdm, desc='gatdaem1d'):
         if C.ndim==1:
             # Only one model
             conductivity = C
@@ -952,6 +964,8 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
     
     from tqdm import tqdm
 
+    showInfo = kwargs.get('showInfo', 0)
+ 
     if NLAY_max < NLAY_min:
         #raise ValueError('NLAY_max must be greater than or equal to NLAY_min.')
         NLAY_max = NLAY_min
@@ -980,7 +994,7 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
     # save to hdf5 file
     
     #% simulate the number of layers as in integer
-    for i in tqdm(range(N), mininterval=1):
+    for i in tqdm(range(N), mininterval=1, disable=(showInfo<0), desc='prior_layered'):
     
         i_boundaries = np.sort(np.random.choice(nz, NLAY[i]-1, replace=False))        
 
@@ -1000,8 +1014,9 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
 
         M_rho[i]=rho        
 
-
-    print("Saving prior model to %s" % f_prior_h5)
+    if (showInfo>0):
+        print("Saving prior model to %s" % f_prior_h5)
+    
     f_prior = h5py.File(f_prior_h5, 'w')
     f_prior.create_dataset('/M1', data=M_rho)
     f_prior['/M1'].attrs['is_discrete'] = 0
@@ -1046,6 +1061,8 @@ def prior_model_workbench(N=100000, RHO_dist='log-uniform', z1=0, z_max= 100, nl
     :rtype: str
     """
 
+    showInfo = kwargs.get('showInfo', 0)
+
     f_prior_h5 = 'PRIOR_WB%d_N%d_%s' % (nlayers,N,RHO_dist)
 
     z2=z_max
@@ -1071,7 +1088,9 @@ def prior_model_workbench(N=100000, RHO_dist='log-uniform', z1=0, z_max= 100, nl
 
     #f_prior_h5 = f_prior_h5 + '.h5'
 
-    print("Saving prior model to %s" % f_prior_h5)
+    if (showInfo>0):
+        print("Saving prior model to %s" % f_prior_h5)
+
     f_prior = h5py.File(f_prior_h5, 'w')
     f_prior.create_dataset('/M1', data=M_rho)
     f_prior['/M1'].attrs['is_discrete'] = 0
@@ -1238,6 +1257,11 @@ def integrate_rejection_range(f_prior_h5,
 
     # get optional arguments
     showInfo = kwargs.get('showInfo', 0)
+    if (showInfo<0):
+        disableTqdm=True
+    else:
+        disableTqdm=False
+    
     useRandomData = kwargs.get('useRandomData', True)
     #useRandomData = kwargs.get('useRandomData', False)
     
@@ -1316,7 +1340,7 @@ def integrate_rejection_range(f_prior_h5,
             #print(D[-1].shape)
 
     # THIS IS THE ACTUAL INVERSION!!!!
-    for j in tqdm(range(len(ip_range)), miniters=10):
+    for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection'):
         ip = ip_range[j]
         t=[]
         N = D[0].shape[0]
@@ -1462,11 +1486,11 @@ def integrate_rejection(f_prior_h5='prior.h5',
                               parallel=True,                              
                               **kwargs):
     from datetime import datetime   
-    from multiprocessing import Pool
-    import multiprocessing
-    import integrate as ig
-    import numpy as np
-    import h5py
+    #from multiprocessing import Pool
+    #import multiprocessing
+    #import integrate as ig
+    #import numpy as np
+    #import h5py
 
     # get optional arguments
     showInfo = kwargs.get('showInfo', 1)
@@ -1483,8 +1507,9 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
     # Check that f_post_h5 allready exists, and warn the user   
     if os.path.isfile(f_post_h5):
-        print('File %s allready exists' % f_post_h5)
-        print('Overwriting...')    
+        if (showInfo>0):    
+            print('File %s allready exists' % f_post_h5)
+            print('Overwriting...')    
         
     
     # Get sample size N from f_prior_h5
@@ -1547,7 +1572,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
             autoT=autoT,
             T_base=T_base,
             nr=nr,
-            Ncpu=Ncpu,
+            Ncpu=Ncpu,            
         )
 
 
@@ -1555,9 +1580,10 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
         for i_chunk in range(len(ip_chunks)):        
             ip_range = ip_chunks[i_chunk]
-            print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
+            if showInfo>0:
+                print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
 
-            i_use, T, EV, ip_range = ig.integrate_rejection_range(f_prior_h5=f_prior_h5, 
+            i_use, T, EV, ip_range = integrate_rejection_range(f_prior_h5=f_prior_h5, 
                                         f_data_h5=f_data_h5,
                                         N_use=N_use, 
                                         id_use=id_use,
@@ -1565,6 +1591,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
                                         autoT=autoT,
                                         T_base = T_base,
                                         nr=nr,
+                                        **kwargs
                                         )
         
             for i in range(len(ip_range)):
@@ -1599,14 +1626,14 @@ def integrate_rejection(f_prior_h5='prior.h5',
         f_post.attrs['N_use'] = N_use
 
     if updatePostStat:
-        ig.integrate_posterior_stats(f_post_h5, **kwargs)
+        integrate_posterior_stats(f_post_h5, **kwargs)
 
     #return f_post_h5 T_all, EV_all, i_use_all
     return f_post_h5
 
 
 def integrate_posterior_chunk(args):
-    import integrate as ig
+    #import integrate as ig
     
     i_chunk, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr = args
     ip_range = ip_chunks[i_chunk]
@@ -1620,15 +1647,14 @@ def integrate_posterior_chunk(args):
         ip_range=ip_range,
         autoT=autoT,
         T_base=T_base,
-        nr=nr,
+        nr=nr,        
     )
 
     return i_use, T, EV, ip_range
 
 def integrate_posterior_main(ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr, Ncpu):
-    import integrate as ig
-    
-    from multiprocessing import Pool
+    #import integrate as ig
+    #from multiprocessing import Pool
 
     with Pool(Ncpu) as p:
         results = p.map(integrate_posterior_chunk, [(i, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr) for i in range(len(ip_chunks))])

@@ -68,12 +68,14 @@ print(Nproc_arr)
 
 
 file_out  = 'timing_%s-%d_Nproc%d_N%d' % (hostname,Ncpu_total,len(Nproc_arr), len(N_arr))
-print("Wirting results to %s " % file_out)
+print("Writing results to %s " % file_out)
 
 # %% [markdown]
 # ## Run INTEGRATE workflow using different data sizes and number of CPUS
 
 # %%
+
+showInfo = -1
 
 T_prior = np.zeros((n1,n2))*np.nan
 T_forward = np.zeros((n1,n2))*np.nan
@@ -93,62 +95,66 @@ for j in np.arange(n2):
 
     for i in np.arange(len(N_arr)):
         N=int(N_arr[i])
-
-        print('=====================================================')
-        print('N=%d, Ncpu=%d'%(N,Ncpu))
+        Ncpu_min = int(np.floor(2**(np.log10(N)-3)))
+        
+        #print('=====================================================')
+        print('N=%d, Ncpu=%d, Ncpu_min=%d'%(N,Ncpu,Ncpu_min))
 
         RHO_min = 1
         RHO_max = 800
         z_max = 50 
         useP = 1
+        
+        if (Ncpu>=Ncpu_min):
+                
+            t0_prior = time.time()
+            if useP ==1:
+                ## Layered model    
+                f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max, showInfo=showInfo)
+                #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=3, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+                #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=8, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+            else: 
+                ## N layer model with increasing thickness
+                f_prior_h5 = ig.prior_model_workbench(N=N, z_max = 30, nlayers=20, rho_min = RHO_min, rho_max = RHO_max, showInfo=showInfo)
+            #t_prior.append(time.time()-t0_prior)
+            T_prior[i,j] = time.time()-t0_prior
 
-        t0_prior = time.time()
-        if useP ==1:
-            ## Layered model    
-            f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-            #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=3, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-            #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=8, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-        else: 
-            ## N layer model with increasing thickness
-            f_prior_h5 = ig.prior_model_workbench(N=N, z_max = 30, nlayers=20, rho_min = RHO_min, rho_max = RHO_max)
-        #t_prior.append(time.time()-t0_prior)
-        T_prior[i,j] = time.time()-t0_prior
-
-        if (Ncpu<3 and N>4000)| (Ncpu<7 and N>151000):
-            pass
-        else:   
-
+        
             #ig.plot_prior_stats(f_prior_h5)
             #% A2. Compute prior DATA
             t0_forward = time.time()
-            f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=Ncpu)
+            f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=Ncpu, showInfo=showInfo)
             T_forward[i,j]=time.time()-t0_forward
 
             #% READY FOR INVERSION
             N_use = 1000000
             t0_rejection = time.time()
             if testRejection:
-                f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1, Ncpu=Ncpu)
+                f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False,  Ncpu=Ncpu, showInfo=showInfo)
             T_rejection[i,j]=time.time()-t0_rejection
 
             #% Compute some generic statistic of the posterior distribution (Mean, Median, Std)
             t0_poststat = time.time()
             if testPostStat and testRejection:
-                ig.integrate_posterior_stats(f_post_h5)
+                ig.integrate_posterior_stats(f_post_h5,showInfo=showInfo)
                 T_poststat[i,j]=time.time()-t0_poststat
             
         np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr)
 
 
+# %% 
+np.load('timing_d52534-32_Nproc31_N8.npz')
+
 
 # %% Load T_prior, N_arr, Nproc_arr in one file
 # load T_prior, T_forward, N_arr, N_proc from timing_d52534-32_Nproc5_N9.npz
-loadFromFile=False
+loadFromFile=True
 if loadFromFile:
-    file_out='timing_d52534-32_Nproc5_N9'
-    file_out='timing_d52534-32_Nproc6_N9'
-    file_out='timing_d52534-32_Nproc5_N4'
-    file_out='timing_d52534-32_Nproc16_N5.npz'
+    file_out = 'timing_d52534-32_Nproc5_N9'
+    file_out = 'timing_d52534-32_Nproc6_N9'
+    file_out = 'timing_d52534-32_Nproc5_N4'
+    file_out = 'timing_d52534-32_Nproc16_N5'
+    file_out = 'timing_d52534-32_Nproc31_N8'
     data = np.load('%s.npz' % file_out)
     T_prior = data['T_prior']
     T_forward = data['T_forward']
@@ -210,6 +216,13 @@ T_rejection_sounding = T_rejection/N_arr[:,np.newaxis]
 T_rejection_sounding_per_sec = N_arr[:,np.newaxis]/T_rejection
 T_rejection_sounding_per_sec_per_cpu = T_rejection_sounding_per_sec/Nproc_arr[np.newaxis,:]
 T_rejection_sounding_speedup = T_rejection_sounding_per_sec/T_rejection_sounding_per_sec[0,0]
+T_rejection_sounding_speedup = T_rejection_sounding_per_sec*0
+for i in range(len(N_arr)):
+    # find index of first valiue in T_rejection_sounding_per_sec[i,:] that is not nan
+    idx = np.where(~np.isnan(T_rejection_sounding_per_sec[i,:]))[0][0]
+
+    T_rejection_sounding_speedup[i,:] = i*2+T_rejection_sounding_per_sec[i,:]/(T_rejection_sounding_per_sec[i,idx]/Nproc_arr[idx]) 
+
 
 plt.figure(figsize=(6,6))
 plt.plot(Nproc_arr, T_rejection_sounding_per_sec.T, 'o-')
