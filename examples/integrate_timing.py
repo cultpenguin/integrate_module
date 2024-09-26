@@ -151,10 +151,6 @@ for j in np.arange(n2):
         np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr, nobs=nobs)
 
 
-# %% 
-np.load('timing_d52534-32_Nproc31_N8.npz')
-
-
 # %% Load T_prior, N_arr, Nproc_arr in one file
 # load T_prior, T_forward, N_arr, N_proc from timing_d52534-32_Nproc5_N9.npz
 loadFromFile=False
@@ -164,6 +160,7 @@ if loadFromFile:
     file_out = 'timing_d52534-32_Nproc5_N4'
     file_out = 'timing_d52534-32_Nproc16_N5'
     file_out = 'timing_d52534-32_Nproc31_N8'
+    file_out = 'timing_Z13-16_Nproc5_N5'
     data = np.load('%s.npz' % file_out)
     T_prior = data['T_prior']
     T_forward = data['T_forward']
