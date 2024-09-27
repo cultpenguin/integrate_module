@@ -2,7 +2,12 @@
 # %% [markdown]
 # # INTEGRATE timing
 # This notebook compares CPU time using for both forward mdoeling and inversion 
-
+#
+# # Force use of single CPU with numpy
+# export OMP_NUM_THREADS=1
+# export MKL_NUM_THREADS=1
+# export OPENBLAS_NUM_THREADS=1
+#
 
 # %%
 import integrate as ig
@@ -12,10 +17,11 @@ parallel = ig.use_parallel(showInfo=1)
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-
+import h5py
 # get name of CPU
 import os
 import socket
+
 # Get hostanme and number of processors
 hostname = socket.gethostname()
 Ncpu_total = os.cpu_count()
@@ -34,6 +40,9 @@ file_gex= ig.get_gex_file_from_data(f_data_h5)
 print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
 
+with h5py.File(f_data_h5, 'r') as f:
+    nobs = f['D1/d_obs'].shape[0]
+
 
 # %% [markdown]
 # ## Setup the timing test
@@ -46,10 +55,10 @@ N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000])
 # Set the number of cores to test
 Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu_total)))))
 
-useSmallTest=True
-if useSmallTest:
+useAltTest=False
+if useAltTest:
     N_arr = np.array([100,500,1000,5000])
-    N_arr = np.array([100,1000,2000,5000,10000])
+    N_arr = np.array([100,1000,2000,5000,10000,50000,100000,500000])
     skip_proc = 0
     Nproc_arr=2**(np.double(skip_proc+np.arange(1+int(np.log2(Ncpu_total)))));
     Nproc_arr=np.int8(np.ceil(np.linspace(1,Ncpu_total,5)))
@@ -57,9 +66,6 @@ if useSmallTest:
     #Nproc_arr ois 1:4:Ncpu_total
     Nproc_arr=np.arange(1, Ncpu_total, 1)
     
-    # add 1 to N_Arr
-    #N_arr = np.append(N_arr, N_arr[-1])
-
 n1 = len(N_arr)
 n2 = len(Nproc_arr)
 
@@ -71,12 +77,14 @@ print(Nproc_arr)
 
 
 file_out  = 'timing_%s-%d_Nproc%d_N%d' % (hostname,Ncpu_total,len(Nproc_arr), len(N_arr))
-print("Wirting results to %s " % file_out)
+print("Writing results to %s " % file_out)
 
 # %% [markdown]
 # ## Run INTEGRATE workflow using different data sizes and number of CPUS
 
 # %%
+
+showInfo = 0
 
 T_prior = np.zeros((n1,n2))*np.nan
 T_forward = np.zeros((n1,n2))*np.nan
@@ -96,62 +104,63 @@ for j in np.arange(n2):
 
     for i in np.arange(len(N_arr)):
         N=int(N_arr[i])
-
-        print('=====================================================')
-        print('N=%d, Ncpu=%d'%(N,Ncpu))
+        Ncpu_min = int(np.floor(2**(np.log10(N)-3)))
+        
+        #print('=====================================================')
+        print('N=%d, Ncpu=%d, Ncpu_min=%d'%(N,Ncpu,Ncpu_min))
 
         RHO_min = 1
         RHO_max = 800
         z_max = 50 
         useP = 1
+        
+        if (Ncpu>=Ncpu_min):
+                
+            t0_prior = time.time()
+            if useP ==1:
+                ## Layered model    
+                f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max, showInfo=showInfo)
+                #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=3, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+                #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=8, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+            else: 
+                ## N layer model with increasing thickness
+                f_prior_h5 = ig.prior_model_workbench(N=N, z_max = 30, nlayers=20, rho_min = RHO_min, rho_max = RHO_max, showInfo=showInfo)
+            #t_prior.append(time.time()-t0_prior)
+            T_prior[i,j] = time.time()-t0_prior
 
-        t0_prior = time.time()
-        if useP ==1:
-            ## Layered model    
-            f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-            #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=3, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-            #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=8, rho_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
-        else: 
-            ## N layer model with increasing thickness
-            f_prior_h5 = ig.prior_model_workbench(N=N, z_max = 30, nlayers=20, rho_min = RHO_min, rho_max = RHO_max)
-        #t_prior.append(time.time()-t0_prior)
-        T_prior[i,j] = time.time()-t0_prior
-
-        if (Ncpu<3 and N>4000)| (Ncpu<7 and N>151000):
-            pass
-        else:   
-
+        
             #ig.plot_prior_stats(f_prior_h5)
             #% A2. Compute prior DATA
             t0_forward = time.time()
-            f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=Ncpu)
+            f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=Ncpu, showInfo=showInfo)
             T_forward[i,j]=time.time()-t0_forward
 
             #% READY FOR INVERSION
             N_use = 1000000
             t0_rejection = time.time()
             if testRejection:
-                f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False, showInfo=1, Ncpu=Ncpu)
+                f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=False,  Ncpu=Ncpu, showInfo=showInfo)
             T_rejection[i,j]=time.time()-t0_rejection
 
             #% Compute some generic statistic of the posterior distribution (Mean, Median, Std)
             t0_poststat = time.time()
             if testPostStat and testRejection:
-                ig.integrate_posterior_stats(f_post_h5)
+                ig.integrate_posterior_stats(f_post_h5,showInfo=showInfo)
                 T_poststat[i,j]=time.time()-t0_poststat
             
-        np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr)
-
+        np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr, nobs=nobs)
 
 
 # %% Load T_prior, N_arr, Nproc_arr in one file
 # load T_prior, T_forward, N_arr, N_proc from timing_d52534-32_Nproc5_N9.npz
 loadFromFile=False
 if loadFromFile:
-    file_out='timing_d52534-32_Nproc5_N9'
-    file_out='timing_d52534-32_Nproc6_N9'
-    file_out='timing_d52534-32_Nproc5_N4'
-    file_out='timing_d52534-32_Nproc16_N5.npz'
+    file_out = 'timing_d52534-32_Nproc5_N9'
+    file_out = 'timing_d52534-32_Nproc6_N9'
+    file_out = 'timing_d52534-32_Nproc5_N4'
+    file_out = 'timing_d52534-32_Nproc16_N5'
+    file_out = 'timing_d52534-32_Nproc31_N8'
+    file_out = 'timing_Z13-16_Nproc5_N5'
     data = np.load('%s.npz' % file_out)
     T_prior = data['T_prior']
     T_forward = data['T_forward']
@@ -159,6 +168,10 @@ if loadFromFile:
     T_poststat = data['T_poststat']
     N_arr = data['N_arr']
     Nproc_arr = data['Nproc_arr']
+    try:
+        nobs=data['nobs']
+    except:
+        nobs=11693
 
 # %% Plot timing results for forward modeling - GAAEM
 
@@ -169,29 +182,34 @@ T_forward_sounding_per_sec_per_cpu = T_forward_sounding_per_sec/Nproc_arr[np.new
 T_forward_sounding_speedup = T_forward_sounding_per_sec/T_forward_sounding_per_sec[0,0]
 
 
-#plt.figure()    
-#plt.plot(N_arr, T_forward_sounding_per_sec, 'o-')
-
+plt.figure(figsize=(6,6))    
+#plt.plot(Nproc_arr, T_forward_sounding.T, 'o-')
+plt.plot(Nproc_arr, T_forward.T, 'o-')
+# plot line 
+plt.ylabel(r'TIME - $[s]$')
+plt.xlabel('Number of processors')
+plt.grid()
+plt.legend(N_arr)
+plt.tight_layout()
+plt.savefig('%s_forward_sec' % file_out)
 
 plt.figure(figsize=(6,6))    
 plt.plot(Nproc_arr, T_forward_sounding_per_sec.T, 'o-')
 # plot line 
-plt.ylabel(r'Soundings per second - $[s^{-1}]$')
+plt.ylabel(r'Forward computations per second - $[s^{-1}]$')
 plt.xlabel('Number of processors')
 plt.grid()
 plt.legend(N_arr)
 plt.tight_layout()
 plt.savefig('%s_forward_sounding_per_sec' % file_out)
 
-'''
 plt.figure(figsize=(6,6))    
 plt.plot(Nproc_arr, T_forward_sounding_per_sec_per_cpu.T, 'o-')
-plt.ylabel('Soundings per second per cpu')
+plt.ylabel('Forward computations per second per cpu')
 plt.xlabel('Number of processors')
 plt.grid()
 plt.legend(N_arr)
 plt.savefig('%s_forward_sounding_per_sec_per_cpu' % file_out)
-'''
 
 plt.figure(figsize=(6,6))    
 plt.plot(Nproc_arr, T_forward_sounding_speedup.T, 'o-')
@@ -205,6 +223,7 @@ plt.xlabel('Number of processors')
 plt.grid()
 plt.legend(N_arr)
 plt.savefig('%s_forward_speedup' % file_out)
+plt.show()
 
 
 #%% STATS FOR REJECTION SAMPLING
@@ -213,15 +232,54 @@ T_rejection_sounding = T_rejection/N_arr[:,np.newaxis]
 T_rejection_sounding_per_sec = N_arr[:,np.newaxis]/T_rejection
 T_rejection_sounding_per_sec_per_cpu = T_rejection_sounding_per_sec/Nproc_arr[np.newaxis,:]
 T_rejection_sounding_speedup = T_rejection_sounding_per_sec/T_rejection_sounding_per_sec[0,0]
+T_rejection_sounding_speedup = T_rejection_sounding_per_sec*0
+
+T_rejection_per_data = nobs/T_rejection
+
+for i in range(len(N_arr)):
+    # find index of first valiue in T_rejection_sounding_per_sec[i,:] that is not nan
+    idx = np.where(~np.isnan(T_rejection_sounding_per_sec[i,:]))[0][0]
+    T_rejection_sounding_speedup[i,:] = T_rejection_sounding_per_sec[i,:]/(T_rejection_sounding_per_sec[i,idx]/Nproc_arr[idx]) 
+
+# LSQ
+t_lsq = 2.0
+# SAMPLING
+t_mcmc = 10.0*60.0 
 
 plt.figure(figsize=(6,6))
-plt.plot(Nproc_arr, T_rejection_sounding_per_sec.T, 'o-')
-plt.ylabel('Soundings per second - $[s^{-1}]$')
+plt.semilogy(Nproc_arr, T_rejection_per_data.T, 'o-', label=N_arr)
+plt.plot([Nproc_arr[0], Nproc_arr[-1]], [1./t_lsq, 1./t_lsq], 'k--', label='LSQ')
+plt.plot([Nproc_arr[0], Nproc_arr[-1]], [1./t_mcmc, 1./t_mcmc], 'r--', label='MCMC')
+plt.ylabel('Rejection sampling - number of soundings per second - $s^{-1}$')
+plt.xlabel('Number of processors')
+plt.grid()
+plt.legend(loc='upper right')
+plt.tight_layout()
+plt.savefig('%s_rejection_sound_per_sec' % file_out)
+
+plt.figure(figsize=(6,6))
+plt.semilogy(Nproc_arr, 1./T_rejection_per_data.T, 'o-', label=N_arr)
+#plt.plot(Nproc_arr, 1./T_rejection_per_data.T, 'o-', label=N_arr)
+plt.plot([Nproc_arr[0], Nproc_arr[-1]], [t_lsq, t_lsq], 'k--', label='LSQ')
+plt.plot([Nproc_arr[0], Nproc_arr[-1]], [t_mcmc, t_mcmc], 'r--', label='MCMC')
+plt.ylabel('Rejection sampling - seconds per sounding - $s$')
+plt.xlabel('Number of processors')
+plt.grid()
+plt.legend(loc='upper right')
+plt.tight_layout()
+plt.savefig('%s_rejection_sec_per_sound' % file_out)
+plt.show()
+
+
+plt.figure(figsize=(6,6))
+plt.semilogy(Nproc_arr, T_rejection.T, 'o-')
+plt.ylabel('Rejection sampling - total time - $[s]$')
 plt.xlabel('Number of processors')
 plt.grid()
 plt.legend(N_arr)
 plt.tight_layout()
-plt.savefig('%s_rejection_sounding_per_sec' % file_out)
+plt.savefig('%s_rejection_time' % file_out)
+plt.show()
 
 plt.figure(figsize=(6,6))
 plt.plot(Nproc_arr, T_rejection_sounding_speedup.T, 'o-')
@@ -235,6 +293,8 @@ plt.xlabel('Number of processors')
 plt.grid()
 plt.legend(N_arr)
 plt.savefig('%s_rejection_speedup' % file_out)
+plt.show()
+
 
 #%% STATS FOR POSTERIOR STATISTICS
 # Average timer per sounding

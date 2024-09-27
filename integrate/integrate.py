@@ -221,6 +221,10 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
     from tqdm import tqdm
 
     showInfo = kwargs.get('showInfo', 0)
+    if showInfo<0:
+        disableTqdm=True
+    else:
+        disableTqdm=False
     usePrior = kwargs.get('usePrior', False)
 
     #f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_Nu50000_aT1.h5'
@@ -271,13 +275,14 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                     if stat not in f_post:
                         dset = '/%s/%s' % (name,stat)
                         if dset not in f_post:
-                            print('Creating %s in %s' % (dset,f_post_h5 ))
+                            if (showInfo>0):
+                                print('Creating %s in %s' % (dset,f_post_h5 ))
                             f_post.create_dataset(dset, (nsounding,nm))
 
                 #if dataset.size <= 1e6:  # arbitrary threshold for loading all data into memory
                 M_all = dataset[:]
 
-                for iid in tqdm(range(nsounding), mininterval=1):
+                for iid in tqdm(range(nsounding), mininterval=1, disable=disableTqdm, desc='poststat'):
                     ir = np.int64(i_use[iid,:])
                     m_post = M_all[ir,:]
 
@@ -316,18 +321,20 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                     if stat not in f_post:
                         dset = '/%s/%s' % (name,stat)
                         if dset not in f_post:
-                            print('Creating %s in %s' % (dset,f_post_h5 ))
+                            if (showInfo>0):
+                                print('Creating %s in %s' % (dset,f_post_h5 ))
                             f_post.create_dataset(dset, (nsounding,nm))
                 for stat in ['Mode', 'P']:
                     if stat not in f_post:
                         dset = '/%s/%s' % (name,stat)
                         if dset not in f_post:
-                            print('Creating %s' % dset)
+                            if (showInfo>0):
+                                print('Creating %s' % dset)
                             f_post.create_dataset(dset, (nsounding,n_classes,nm))
 
                 M_all = dataset[:]
 
-                for iid in tqdm(range(nsounding), mininterval=1):
+                for iid in tqdm(range(nsounding), mininterval=1, disable=disableTqdm, desc='poststat'):
 
                     # Get the indices of the rows to use
                     ir = np.int64(i_use[iid,:])
@@ -486,6 +493,11 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
     from tqdm import tqdm
 
     showInfo = kwargs.get('showInfo', 0)
+    if (showInfo<0):
+        disableTqdm=True
+    else:
+        disableTqdm=False
+
     doCompress = kwargs.get('doCompress', True)
 
     if (len(stmfiles)>0) and (file_gex != '') and (len(GEX)==0):
@@ -584,7 +596,7 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
 
     # Compute forward data
     t1=time.time()
-    for i in tqdm(range(nd), mininterval=1):
+    for i in tqdm(range(nd), mininterval=1, disable=disableTqdm, desc='gatdaem1d'):
         if C.ndim==1:
             # Only one model
             conductivity = C
@@ -921,7 +933,10 @@ def prior_data_identity(f_prior_h5, id=0, im=1, N=0, doMakePriorCopy=False, **kw
     return f_prior_data_h5
 
 # %% PRIOR MODEL GENERATORS
-def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY_max=6, NLAY_deg=6, RHO_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80, N=100000, **kwargs):
+def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, 
+                        NLAY_min=3, NLAY_max=6, NLAY_deg=6, 
+                        RHO_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80, 
+                        N=100000, **kwargs):
     """
     Generate a prior model with layered structure.
 
@@ -952,6 +967,8 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
     
     from tqdm import tqdm
 
+    showInfo = kwargs.get('showInfo', 0)
+ 
     if NLAY_max < NLAY_min:
         #raise ValueError('NLAY_max must be greater than or equal to NLAY_min.')
         NLAY_max = NLAY_min
@@ -980,7 +997,7 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
     # save to hdf5 file
     
     #% simulate the number of layers as in integer
-    for i in tqdm(range(N), mininterval=1):
+    for i in tqdm(range(N), mininterval=1, disable=(showInfo<0), desc='prior_layered'):
     
         i_boundaries = np.sort(np.random.choice(nz, NLAY[i]-1, replace=False))        
 
@@ -1000,24 +1017,30 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, NLAY_min=3, NLAY
 
         M_rho[i]=rho        
 
-
-    print("Saving prior model to %s" % f_prior_h5)
-    f_prior = h5py.File(f_prior_h5, 'w')
-    f_prior.create_dataset('/M1', data=M_rho)
-    f_prior['/M1'].attrs['is_discrete'] = 0
-    f_prior['/M1'].attrs['z'] = z
-    f_prior['/M1'].attrs['x'] = z
-    f_prior.create_dataset('/M2', data=NLAY)
-    f_prior['/M2'].attrs['is_discrete'] = 0
-    f_prior['/M2'].attrs['z'] = z
-    f_prior['/M2'].attrs['x'] = z
-    f_prior.close()    
-
+    if (showInfo>0):
+        print("Saving prior model to %s" % f_prior_h5)
+    
+    with h5py.File(f_prior_h5, 'w') as f_prior:
+        f_prior.create_dataset('/M1', data=M_rho)
+        f_prior['/M1'].attrs['name']='Resistivity'
+        f_prior['/M1'].attrs['is_discrete'] = 0
+        f_prior['/M1'].attrs['z'] = z
+        f_prior['/M1'].attrs['x'] = z
+        f_prior.create_dataset('/M2', data=NLAY)
+        f_prior['/M2'].attrs['name'] = 'Number of layers'
+        f_prior['/M2'].attrs['is_discrete'] = 0
+        f_prior['/M2'].attrs['z'] = z
+        f_prior['/M2'].attrs['x'] = z
+    
     return f_prior_h5
 
-def prior_model_workbench(N=100000, RHO_dist='log-uniform', z1=0, z_max= 100, nlayers=30, p=2, RHO_min = 1, RHO_max= 300, RHO_mean=180, RHO_std=80, chi2_deg= 100):
+def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 100, 
+                          nlayers=0, p=2, NLAY_min=3, NLAY_max=6,
+                          RHO_min = 1, RHO_max= 300, RHO_mean=180, RHO_std=80, chi2_deg= 100, **kwargs):
     """
-    Generate a prior model with increasingly thick layers
+    Generate a prior model with increasingly thick layers.
+    ALl models have the same number of layers!
+    See also: prior_model_workbench
  
     :param N: Number of prior models to generate. Default is 100000.
     :type N: int
@@ -1046,7 +1069,15 @@ def prior_model_workbench(N=100000, RHO_dist='log-uniform', z1=0, z_max= 100, nl
     :rtype: str
     """
 
+    showInfo = kwargs.get('showInfo', 0)
+    if nlayers<1:
+        nlayers = 30
+    
+
     f_prior_h5 = 'PRIOR_WB%d_N%d_%s' % (nlayers,N,RHO_dist)
+    
+    print('nlayers=%d, N=%d' % (nlayers,N))
+    print('NLAY_min=%d, NLAY_max=%d' % (NLAY_min,NLAY_max))
 
     z2=z_max
     z= z1 + (z2 - z1) * np.linspace(0, 1, nlayers) ** p
@@ -1071,22 +1102,139 @@ def prior_model_workbench(N=100000, RHO_dist='log-uniform', z1=0, z_max= 100, nl
 
     #f_prior_h5 = f_prior_h5 + '.h5'
 
-    print("Saving prior model to %s" % f_prior_h5)
-    f_prior = h5py.File(f_prior_h5, 'w')
-    f_prior.create_dataset('/M1', data=M_rho)
-    f_prior['/M1'].attrs['is_discrete'] = 0
-    f_prior['/M1'].attrs['z'] = z
-    f_prior['/M1'].attrs['x'] = z
+    if (showInfo>0):
+        print("Saving prior model to %s" % f_prior_h5)
 
-    #plt.figure()
-    #plt.subplot(121)
-    #plt.hist(M_rho.flatten())
-    #plt.subplot(122)
-    #plt.hist(np.log10(M_rho.flatten()))
-
+    with h5py.File(f_prior_h5, 'w') as f_prior:
+        f_prior.create_dataset('/M1', data=M_rho)
+        f_prior['/M1'].attrs['name']='Resistivity'
+        f_prior['/M1'].attrs['is_discrete'] = 0
+        f_prior['/M1'].attrs['z'] = z
+        f_prior['/M1'].attrs['x'] = z
+        
     # return the full filepath to f_prior_h5
-    
     return f_prior_h5
+
+
+def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
+                          lay_dist='uniform', nlayers=0, NLAY_min=3, NLAY_max=6, NLAY_deg=5,
+                          RHO_dist='log-uniform', 
+                          RHO_min = 1, RHO_max= 300, RHO_mean=180, RHO_std=80, chi2_deg= 100, **kwargs):
+    """
+    Generate a prior model with increasingly thick layers
+ 
+    :param lay_dist: Distribution of the number of layers. Options are 'chi2' and 'uniform'. Default is 'chi2'.
+    :type lay_dist: str:param N: Number of prior models to generate. Default is 100000.
+    :type N: int
+    :param RHO_dist: Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', 'lognormal', and 'chi2'. Default is 'log-uniform'.
+    :type RHO_dist: str
+    :param z1: Minimum depth value. Default is 0.
+    :type z1: float
+    :param z2: Maximum depth value. Default is 100.
+    :type z2: float
+    :param nlayers: Number of layers. Default is 30.
+    :type nlayers: int
+    :param NLAY_min: Minimum number of layers. Default is 3.
+    :type NLAY_min: int
+    :param NLAY_max: Maximum number of layers. Default is 6.
+    :type NLAY_max: int
+    :param NLAY_deg: Degrees of freedom for chi-square distribution. Only applicable if lay_dist is 'chi2'. Default is 6.
+    :type NLAY_deg: int
+    :param p: Power parameter for thickness increase. Default is 2.
+    :type p: int
+    :param RHO_min: Minimum resistivity value. Default is 1.
+    :type RHO_min: float
+    :param RHO_max: Maximum resistivity value. Default is 300.
+    :type RHO_max: float
+    :param RHO_mean: Mean resistivity value. Only applicable if RHO_dist is 'normal' or 'lognormal'. Default is 180.
+    :type RHO_mean: float
+    :param RHO_std: Standard deviation of resistivity value. Only applicable if RHO_dist is 'normal' or 'lognormal'. Default is 80.
+    :type RHO_std: float
+    :param chi2_deg: Degrees of freedom for chi2 distribution. Only applicable if RHO_dist is 'chi2'. Default is 100.
+    :type chi2_deg: int
+
+    :return: Filepath of the saved prior model.
+    :rtype: str
+    """
+    from tqdm import tqdm
+
+    showInfo = kwargs.get('showInfo', 0)
+    if nlayers>0:
+        NLAY_min = nlayers
+        NLAY_max = nlayers
+
+    if NLAY_max < NLAY_min:
+        #raise ValueError('NLAY_max must be greater than or equal to NLAY_min.')
+        NLAY_max = NLAY_min
+
+    if NLAY_min < 1:
+        #raise ValueError('NLAY_min must be greater than or equal to 1.')
+        NLAY_min = 1
+
+    
+    if lay_dist == 'chi2':
+        NLAY = np.random.chisquare(NLAY_deg, N)
+        NLAY = np.ceil(NLAY).astype(int)    
+        f_prior_h5 = 'PRIOR_WB_CHI2_NF_%d_%s_N%d.h5' % (NLAY_deg, RHO_dist, N)
+    elif lay_dist == 'uniform':
+        NLAY = np.random.randint(NLAY_min, NLAY_max+1, N)
+        if NLAY_min == NLAY_max:
+            nlayers = NLAY_min
+            f_prior_h5 = 'PRIOR_WB_UNIFORM_%d_N%d_%s' % (nlayers,N,RHO_dist)
+        else:   
+            f_prior_h5 = 'PROPR_WB_UNIFORM_%d-%d_N%d_%s' % (NLAY_min,NLAY_max,N,RHO_dist)
+        
+
+
+    # Force NLAY to be a 2 dimensional numpy array (for when exporting to HDF5)
+    NLAY = NLAY[:, np.newaxis]
+    
+    z_min = 0
+    z = np.arange(z_min, z_max, dz)
+    nz= len(z)
+    print('z_min, z_max, dz, nz = %g, %g, %g, %d' % (z_min, z_max, dz, nz))
+    M_rho = np.zeros((N, nz))
+
+    for i in tqdm(range(N), mininterval=1, disable=(showInfo<0), desc='prior_workbench'):
+        nlayers = NLAY[i][0]
+        #print(nlayers)
+        z2=z_max
+        z_single= z1 + (z2 - z1) * np.linspace(0, 1, nlayers) ** p
+
+        if RHO_dist=='uniform':
+            M_rho_single = np.random.uniform(low=RHO_min, high = RHO_max, size=(1, nz))
+        elif RHO_dist=='log-uniform':
+            M_rho_single = np.exp(np.random.uniform(low=np.log(RHO_min), high = np.log(RHO_max), size=(1, nz)))
+        elif RHO_dist=='normal':
+            M_rho_single = np.random.normal(loc=RHO_mean, scale = RHO_std, size=(1, nz))
+        elif RHO_dist=='log-normal':
+            M_rho_single = np.random.lognormal(mean=np.log(RHO_mean), sigma = RHO_std/RHO_mean, size=(1, nz))
+        elif RHO_dist=='chi2':
+            M_rho_single = np.random.chisquare(df = chi2_deg, size=(1, nz))
+
+        for j in range(nlayers):
+            ind = np.where(z>=z_single[j])[0]
+            M_rho[i,ind]= M_rho_single[0,j]
+
+    if (showInfo>0):
+        print("Saving prior model to %s" % f_prior_h5)
+
+    print(f_prior_h5)
+    with h5py.File(f_prior_h5, 'w') as f_prior:
+        f_prior.create_dataset('/M1', data=M_rho)
+        f_prior['/M1'].attrs['name'] = 'Resistivity'
+        f_prior['/M1'].attrs['is_discrete'] = 0
+        f_prior['/M1'].attrs['z'] = z
+        f_prior['/M1'].attrs['x'] = z
+        f_prior.create_dataset('/M2', data=NLAY)
+        f_prior['/M2'].attrs['name'] = 'Number of layers'
+        f_prior['/M2'].attrs['is_discrete'] = 0
+        f_prior['/M2'].attrs['z'] = np.array([0])
+        f_prior['/M2'].attrs['x'] = np.array([0])
+    
+    # return the full filepath to f_prior_h5
+    return f_prior_h5
+
 
 
 def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **kwargs):
@@ -1238,6 +1386,11 @@ def integrate_rejection_range(f_prior_h5,
 
     # get optional arguments
     showInfo = kwargs.get('showInfo', 0)
+    if (showInfo<0):
+        disableTqdm=True
+    else:
+        disableTqdm=False
+    
     useRandomData = kwargs.get('useRandomData', True)
     #useRandomData = kwargs.get('useRandomData', False)
     
@@ -1316,7 +1469,7 @@ def integrate_rejection_range(f_prior_h5,
             #print(D[-1].shape)
 
     # THIS IS THE ACTUAL INVERSION!!!!
-    for j in tqdm(range(len(ip_range)), miniters=10):
+    for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection'):
         ip = ip_range[j]
         t=[]
         N = D[0].shape[0]
@@ -1462,11 +1615,11 @@ def integrate_rejection(f_prior_h5='prior.h5',
                               parallel=True,                              
                               **kwargs):
     from datetime import datetime   
-    from multiprocessing import Pool
-    import multiprocessing
-    import integrate as ig
-    import numpy as np
-    import h5py
+    #from multiprocessing import Pool
+    #import multiprocessing
+    #import integrate as ig
+    #import numpy as np
+    #import h5py
 
     # get optional arguments
     showInfo = kwargs.get('showInfo', 1)
@@ -1483,8 +1636,9 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
     # Check that f_post_h5 allready exists, and warn the user   
     if os.path.isfile(f_post_h5):
-        print('File %s allready exists' % f_post_h5)
-        print('Overwriting...')    
+        if (showInfo>0):    
+            print('File %s allready exists' % f_post_h5)
+            print('Overwriting...')    
         
     
     # Get sample size N from f_prior_h5
@@ -1547,7 +1701,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
             autoT=autoT,
             T_base=T_base,
             nr=nr,
-            Ncpu=Ncpu,
+            Ncpu=Ncpu,            
         )
 
 
@@ -1555,9 +1709,10 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
         for i_chunk in range(len(ip_chunks)):        
             ip_range = ip_chunks[i_chunk]
-            print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
+            if showInfo>0:
+                print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
 
-            i_use, T, EV, ip_range = ig.integrate_rejection_range(f_prior_h5=f_prior_h5, 
+            i_use, T, EV, ip_range = integrate_rejection_range(f_prior_h5=f_prior_h5, 
                                         f_data_h5=f_data_h5,
                                         N_use=N_use, 
                                         id_use=id_use,
@@ -1565,6 +1720,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
                                         autoT=autoT,
                                         T_base = T_base,
                                         nr=nr,
+                                        **kwargs
                                         )
         
             for i in range(len(ip_range)):
@@ -1599,14 +1755,14 @@ def integrate_rejection(f_prior_h5='prior.h5',
         f_post.attrs['N_use'] = N_use
 
     if updatePostStat:
-        ig.integrate_posterior_stats(f_post_h5, **kwargs)
+        integrate_posterior_stats(f_post_h5, **kwargs)
 
     #return f_post_h5 T_all, EV_all, i_use_all
     return f_post_h5
 
 
 def integrate_posterior_chunk(args):
-    import integrate as ig
+    #import integrate as ig
     
     i_chunk, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr = args
     ip_range = ip_chunks[i_chunk]
@@ -1620,15 +1776,14 @@ def integrate_posterior_chunk(args):
         ip_range=ip_range,
         autoT=autoT,
         T_base=T_base,
-        nr=nr,
+        nr=nr,        
     )
 
     return i_use, T, EV, ip_range
 
 def integrate_posterior_main(ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr, Ncpu):
-    import integrate as ig
-    
-    from multiprocessing import Pool
+    #import integrate as ig
+    #from multiprocessing import Pool
 
     with Pool(Ncpu) as p:
         results = p.map(integrate_posterior_chunk, [(i, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr) for i in range(len(ip_chunks))])
