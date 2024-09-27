@@ -90,8 +90,8 @@ NLAY_min=1
 NLAY_max=9 
 z_max = 90
 
-useP_arr  = [1,2,3,4]
-#useP_arr  = [4]
+useP_arr  = [1,2,3,4,5]
+#useP_arr  = [5]
 f_prior_h5_arr = []
 for useP in useP_arr:
 
@@ -122,6 +122,16 @@ for useP in useP_arr:
                                             NLAY_min=1, NLAY_max=nlay, 
                                             RHO_dist=RHO_dist, RHO_min=10, RHO_max=500)
         f_prior_h5_arr.append(f_prior_h5)
+    elif useP==5:
+        ## 10 Layered model
+        ## 1-9 layer model with increasing thickness
+        RHO_dist = 'log-uniform'
+        LAY_dist='chi2'
+        f_prior_h5 = ig.prior_model_workbench(N=N, dz = 1,
+                                            lay_dist='chi2', z_max = z_max, 
+                                            NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
+                                            RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max)        
+        f_prior_h5_arr.append(f_prior_h5)
     
     ig.plot_prior_stats(f_prior_h5)
 
@@ -129,7 +139,7 @@ for useP in useP_arr:
 
 for f_prior_h5 in f_prior_h5_arr:
 
-    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=16, N=1001)
+    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=0, N=1001)
     ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy) 
     plt.show()
 
@@ -140,9 +150,9 @@ f_prior_data_h5_arr=[]
 f_post_h5_arr=[]
 for f_prior_h5 in f_prior_h5_arr:
 
-    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=16, N=N)
+    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=0, N=N)
     
-    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel)
+    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
 
     f_post_h5_arr.append(f_post_h5)
     f_prior_data_h5_arr.append(f_prior_data_h5)
