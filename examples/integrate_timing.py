@@ -31,6 +31,7 @@ parallel = ig.use_parallel(showInfo=1)
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import loglog
 import time
 import h5py
 # get name of CPU
@@ -104,12 +105,17 @@ print("Writing results to %s " % file_out)
 
 # %%
 
-loadFromFile=False
+loadFromFile=True
 if loadFromFile:
     file_out = 'timing_3990X-64_Nproc7_N9'  
+    file_out = 'timing_3990X-64_Nproc35_N8' 
+    
+    #file_out = 'timing_d52534-32_Nproc13_N9'
     #file_out = 'timing_d52534-32_Nproc6_N9'  
-    #file_out = 'timing_d52534-32_Nproc6_N9_old'  
+    file_out = 'timing_d52534-32_Nproc17_N9'
+    
     file_out = 'timing_Z13-16_Nproc8_N7'
+    
     data = np.load('%s.npz' % file_out)
     T_prior = data['T_prior']
     T_forward = data['T_forward']
@@ -194,6 +200,7 @@ else:
             np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr, nobs=nobs)
 
 
+
 #%% Plot 
 # LSQ
 t_lsq = 2.0
@@ -207,7 +214,7 @@ total_mcmc = np.array([nobs*t_mcmc, nobs*t_mcmc/Nproc_arr[-1]])
 # %% loglog(T_total.T)
 plt.figure(figsize=(6,6))    
 plt.loglog(Nproc_arr, T_total.T, 'o-',  label=N_arr)
-plt.ylabel(r'TIME - $[s]$')
+plt.ylabel(r'Total time - $[s]$')
 plt.xlabel('Number of processors')
 plt.grid()
 total_lsq = np.array([nobs*t_lsq, nobs*t_lsq/Nproc_arr[-1]])
@@ -219,15 +226,15 @@ plt.ylim(1,1e+8)
 plt.tight_layout()
 plt.savefig('%s_total_sec' % file_out)
 
-plt.figure(figsize=(6,6))    
-plt.loglog(N_arr,T_total, 'o-')
-plt.ylabel(r'TIME - $[s]$')
+plt.figure(figsize=(6,6)) 
+plt.loglog(N_arr, T_total, 'o-', label=[f'{int(x)}' for x in Nproc_arr])
+plt.ylabel(r'Total time - $[s]$')
 plt.xlabel('N-prior')
 plt.grid()
 plt.tight_layout()
 plt.plot([N_arr[0], N_arr[-1]], [nobs*t_lsq, nobs*t_lsq], 'k--', label='LSQ')
 plt.plot([N_arr[0], N_arr[-1]], [nobs*t_mcmc, nobs*t_mcmc], 'r--', label='MCMC')
-plt.legend(loc='upper right')
+plt.legend(loc='upper left')
 #plt.xticks(ticks=N_arr, labels=[str(int(x)) for x in Nproc_arr])
 plt.ylim(1,1e+8)
 plt.savefig('%s_total_sec' % file_out)
@@ -245,12 +252,14 @@ T_forward_sounding_speedup = T_forward_sounding_per_sec/T_forward_sounding_per_s
 
 plt.figure(figsize=(6,6))    
 #plt.plot(Nproc_arr, T_forward_sounding.T, 'o-')
-plt.plot(Nproc_arr, T_forward.T, 'o-')
+#plt.plot(Nproc_arr, T_forward.T, 'o-')
+plt.loglog(Nproc_arr, T_forward.T, 'o-')
 # plot line 
 plt.ylabel(r'TIME - $[s]$')
 plt.xlabel('Number of processors')
 plt.grid()
-plt.legend(N_arr)
+plt.legend(N_arr, loc='upper left')
+plt.ylim(1e-1, 1e+4)
 plt.tight_layout()
 plt.savefig('%s_forward_sec' % file_out)
 
@@ -302,13 +311,8 @@ for i in range(len(N_arr)):
     idx = np.where(~np.isnan(T_rejection_sounding_per_sec[i,:]))[0][0]
     T_rejection_sounding_speedup[i,:] = T_rejection_sounding_per_sec[i,:]/(T_rejection_sounding_per_sec[i,idx]/Nproc_arr[idx]) 
 
-# LSQ
-t_lsq = 2.0
-# SAMPLING
-t_mcmc = 10.0*60.0 
-
 plt.figure(figsize=(6,6))
-plt.semilogy(Nproc_arr, T_rejection_per_data.T, 'o-', label=N_arr)
+plt.loglog(Nproc_arr, T_rejection_per_data.T, 'o-', label=N_arr)
 plt.plot([Nproc_arr[0], Nproc_arr[-1]], [1./t_lsq, 1./t_lsq], 'k--', label='LSQ')
 plt.plot([Nproc_arr[0], Nproc_arr[-1]], [1./t_mcmc, 1./t_mcmc], 'r--', label='MCMC')
 plt.ylabel('Rejection sampling - number of soundings per second - $s^{-1}$')
@@ -316,7 +320,7 @@ plt.xlabel('Number of processors')
 plt.grid()
 plt.legend(loc='lower left')
 plt.tight_layout()
-plt.ylim(1e-3, 1e+4)
+plt.ylim(1e-3, 1e+5)
 plt.savefig('%s_rejection_sound_per_sec' % file_out)
 
 plt.figure(figsize=(6,6))
@@ -329,21 +333,25 @@ plt.xlabel('Number of processors')
 plt.grid()
 plt.legend(loc='upper right')
 plt.tight_layout()
-plt.ylim(1e-4, 1e+3)
+plt.ylim(1e-5, 1e+3)
 plt.savefig('%s_rejection_sec_per_sound' % file_out)
 plt.show()
 
 
+#%%
 plt.figure(figsize=(6,6))
+#plt.loglog(Nproc_arr, T_rejection.T, 'o-')
 plt.semilogy(Nproc_arr, T_rejection.T, 'o-')
 plt.ylabel('Rejection sampling - total time - $[s]$')
 plt.xlabel('Number of processors')
 plt.grid()
 plt.legend(N_arr)
 plt.tight_layout()
+plt.ylim(5e-1, 2e+3)
 plt.savefig('%s_rejection_time' % file_out)
 plt.show()
 
+#%%
 plt.figure(figsize=(6,6))
 plt.plot(Nproc_arr, T_rejection_sounding_speedup.T, 'o-')
 # plot a line from 0,0 tp Nproc_arr[-1], Nproc_arr[-1]
@@ -388,10 +396,9 @@ plt.grid()
 plt.legend(N_arr)
 plt.savefig('%s_poststat_speedup' % file_out)
 
+'''
+# OLD STATS
 
-# %% OLD STATS
-
-# %%
 ax, fig = plt.subplots(1,1, figsize=(8,8))
 plt.loglog(N_arr, T_prior, 'k-*',label='Prior model')
 plt.plot(N_arr, T_forward, 'r-*', label='Forward model')
@@ -404,7 +411,6 @@ plt.grid()
 plt.savefig('%s_Narr' % file_out)
 
 
-# %%
 dlw = 0.1
 ax, fig = plt.subplots(2,2, figsize=(8,8))
 plt.subplot(2,2,1)
@@ -450,8 +456,7 @@ plt.savefig('%s_N_arr_sp' % file_out)
 plt.show()
 
 
-
-# %%
+#
 dlw = 0.4
 ax, fig = plt.subplots(2,2, figsize=(8,8))
 plt.subplot(2,2,1)
@@ -509,7 +514,7 @@ plt.savefig('%s_N_proc_sp' % file_out)
 plt.show()
 
 
-# %% PER SOUNDING
+# PER SOUNDING
 dlw = 0.4
 ax, fig = plt.subplots(2,2, figsize=(8,8))
 plt.subplot(2,2,1)
@@ -568,3 +573,5 @@ plt.show()
 
 
 plt.show()
+'''
+# %%
