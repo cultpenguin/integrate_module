@@ -153,7 +153,7 @@ else:
 
         for i in np.arange(len(N_arr)):
             N=int(N_arr[i])
-            Ncpu_min = int(np.floor(2**(np.log10(N)-3)))
+            Ncpu_min = int(np.floor(2**(np.log10(N)-4)))
             
             #print('=====================================================')
             print('N=%d, Ncpu=%d, Ncpu_min=%d'%(N,Ncpu,Ncpu_min))
