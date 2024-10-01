@@ -67,7 +67,7 @@ with h5py.File(f_prior_h5, 'w') as f:
     f.create_dataset('M1', data=M1)
     f['M1/'].attrs['name'] = 'Resistivity'
     f['M1/'].attrs['is_discrete'] = 0
-    f['M1/'].attrs['clim'] = [1,250]
+    f['M1/'].attrs['clim'] = [10,250]
     f['M1/'].attrs['x'] = np.arange(M1.shape[1])
     
     print('Writing M2 to file: ', f_prior_h5)
@@ -81,11 +81,11 @@ with h5py.File(f_prior_h5, 'w') as f:
     print('Writing M3 to file: ', f_prior_h5)
     f.create_dataset('M3', data=M3)
     f['M3/'].attrs['name'] = '+-'
-    f['M3/'].attrs['is_discrete'] = 1
+    f['M3/'].attrs['is_discrete'] = 0
     f['M3/'].attrs['x'] = np.arange(M3.shape[1])
     f['M3/'].attrs['clim'] = [-.5, 1.5]
     f['M3/'].attrs['class_id'] = [0, 1]
-    f['M3/'].attrs['class_name'] = ['+', '-']
+    f['M3/'].attrs['class_name'] = ['-', '+']
 
 
     print('Writing M4 to file: ', f_prior_h5)
@@ -109,7 +109,7 @@ with h5py.File(file_in_post_h5, 'r') as f:
     d_obs = f['D_obs'][:]
     d_std = f['D_std'][:]
     d_std=d_std*2
-    d_std[:,-1]=d_std[:,-1]*1000
+    #d_std[:,-1]=d_std[:,-1]*1000
     #d_std[:,2:4]=d_std[:,2:4]*1000
     EL_est = f['EL_est'][:]
     EL_OBS = f['EL_obs'][:]
@@ -134,7 +134,7 @@ with h5py.File(f_data_h5, 'w') as f:
     f.create_dataset('UTMY', data=UTMY[:,np.newaxis])
 
 # %%
-f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = 1000000, showInfo=1, parallel=True, updatePostStat=False, Ncpu = 8)
+f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = 5000000, showInfo=1, parallel=True, updatePostStat=False, Ncpu = 8)
 ig.integrate_posterior_stats(f_post_h5, showInfo=1)
 
 # %%
