@@ -522,6 +522,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
+    with h5py.File(f_prior_h5,'r') as f_prior:
+        if 'name' in f_prior['/M%d' % im].attrs:
+            name = f_prior['/M%d' % im].attrs['name']
+        else:
+            name='M%d' % im
     
     X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
@@ -575,75 +580,99 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     nm = Mean.shape[0]
     if nm<=1:
-        print('Only nm=%d, model parameters. no profile will be plot' % (nm))
-        return 1
-
-    nd = LINE.shape[0]
-    id = np.arange(nd)
-    # Create a meshgrid from X and Y
-    XX, ZZ = np.meshgrid(X,z)
-    YY, ZZ = np.meshgrid(Y,z)
-    ID, ZZ = np.meshgrid(id,z)
-
-    ID = np.sort(ID, axis=0)
-    ZZ = np.sort(ZZ, axis=0)
-
-    # compute the depth from the surface plus the elevation
-    for i in range(nd):
-        ZZ[:,i] = ELEVATION[i]-ZZ[:,i]
-
+        pass
+        #print('Only nm=%d, model parameters. no profile will be plot' % (nm))
+        #return 1
 
     # Check for out of range
+    nd = LINE.shape[0]
     if i1<1: 
         i1=0
     if i2>nd-1:
         i2=nd-1
+    id = np.arange(nd)
+    
+    if nm>=1:
+        # Create a meshgrid from X and Y
+        XX, ZZ = np.meshgrid(X,z)
+        YY, ZZ = np.meshgrid(Y,z)
+        ID, ZZ = np.meshgrid(id,z)
 
-    # Get center of grid cells
-    IID = ID[:,i1:i2]
-    IIZ = ZZ[:,i1:i2]
-    # IID, IIZ is the center of the cell. Create new grids, DDc, ZZc, that hold the the cordńers if the grids. 
-    # DDc should have cells of size 1, while ZZc should be the same as ZZ but with a row added at the bottom that is the same as the last row of ZZ plus 100
-    DDc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
-    ZZc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
-    DDc[:-1,:-1] = IID - 0.5
-    DDc[:-1,-1] = IID[:,-1] + 0.5
-    DDc[-1,:] = DDc[-2,:] + 1
+        ID = np.sort(ID, axis=0)
+        ZZ = np.sort(ZZ, axis=0)
 
-    ZZc[:-1,:-1] = IIZ
-    ZZc[-1,:] = ZZc[-2,:] + 1
-  
+        # compute the depth from the surface plus the elevation
+        for i in range(nd):
+            ZZ[:,i] = ELEVATION[i]-ZZ[:,i]
+
+
+
+
+        # Get center of grid cells
+        IID = ID[:,i1:i2]
+        IIZ = ZZ[:,i1:i2]
+        # IID, IIZ is the center of the cell. Create new grids, DDc, ZZc, that hold the the cordńers if the grids. 
+        # DDc should have cells of size 1, while ZZc should be the same as ZZ but with a row added at the bottom that is the same as the last row of ZZ plus 100
+        DDc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
+        ZZc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
+        DDc[:-1,:-1] = IID - 0.5
+        DDc[:-1,-1] = IID[:,-1] + 0.5
+        DDc[-1,:] = DDc[-2,:] + 1
+
+        ZZc[:-1,:-1] = IIZ
+        ZZc[-1,:] = ZZc[-2,:] + 1
+    
     # Create a figure with 3 subplots sharing the same Xaxis!
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
     
-    # MEAN
-    #im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mean[:,i1:i2], 
-    im1 = ax[0].pcolormesh(DDc, ZZc, Mean[:,i1:i2], 
-            cmap=cmap,            
-            shading='auto',
-            norm=LogNorm())
-    im1.set_clim(clim[0],clim[1])        
-    ax[0].set_title('Mean')
-    fig.colorbar(im1, ax=ax[0], label='Resistivity (Ohm.m)')
+    if nm>1:
+        # MEAN
+        #im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mean[:,i1:i2], 
+        im1 = ax[0].pcolormesh(DDc, ZZc, Mean[:,i1:i2], 
+                cmap=cmap,            
+                shading='auto',
+                norm=LogNorm())
+        im1.set_clim(clim[0],clim[1])        
+        ax[0].set_title('Mean %s' % name)
+        fig.colorbar(im1, ax=ax[0], label='%s' % name)
     
-    # MEDIAN
-    im2 = ax[1].pcolormesh(DDc, ZZc, Median[:,i1:i2], 
-            cmap=cmap,            
-            shading='auto',
-            norm=LogNorm())  # Set color scale to logarithmic
-    im2.set_clim(clim[0],clim[1])        
-    ax[1].set_title('Median')
-    fig.colorbar(im2, ax=ax[1], label='Resistivity (Ohm.m)')
+    if nm>1:
+        # MEDIAN
+        im2 = ax[1].pcolormesh(DDc, ZZc, Median[:,i1:i2], 
+                cmap=cmap,            
+                shading='auto',
+                norm=LogNorm())  # Set color scale to logarithmic
+        im2.set_clim(clim[0],clim[1])        
+        ax[1].set_title('Median %s' % name)
+        fig.colorbar(im2, ax=ax[1], label='%s' % name) 
 
-    # STD
-    import matplotlib
-    im3 = ax[2].pcolormesh(DDc, ZZc, Std[:,i1:i2], 
-                cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]), 
-                shading='auto')
-    im3.set_clim(0,1)
-    ax[2].set_title('std')
-    fig.colorbar(im3, ax=ax[2], label='Standard deviation (Ohm.m)')
+    if nm>1:
+        # STD
+        import matplotlib
+        im3 = ax[2].pcolormesh(DDc, ZZc, Std[:,i1:i2], 
+                    cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]), 
+                    shading='auto')
+        im3.set_clim(0,1)
+        ax[2].set_title('Std %s' % name)
+        fig.colorbar(im3, ax=ax[2], label='Standard deviation (Ohm.m)')
+    else:
+        im3 = ax[2].plot(id[i1:i2],Mean[:,i1:i2].T, 'k', label='Mean')
+        ax[2].plot(id[i1:i2],Mean[:,i1:i2].T+2*Std[:,i1:i2].T, 'k:', label='P97.5')
+        ax[2].plot(id[i1:i2],Mean[:,i1:i2].T-2*Std[:,i1:i2].T, 'k:', label='P2.5')
+        
+        ax[2].plot(id[i1:i2],Median[:,i1:i2].T, 'r', label='Median')
+        # add legend
+        ax[2].legend(loc='upper right')
+        # add grd on
+        ax[2].grid(True)
+        # hide ax[0]
 
+        # set axis on ax[3] to be the same as on ax[4]
+        ax[2].set_xlim(i1,i2)
+        ax[2].set_title(name)
+        ax[0].axis('off')
+        ax[1].axis('off')
+        
     ## T and V
     ax[0].set_xticks([])
     ax[1].set_xticks([])
@@ -657,12 +686,13 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     ax[3].legend(loc='upper right')
     plt.grid(True)
 
-    # Create an invisible colorbar for the last subplot
-    cbar4 = fig.colorbar(im3, ax=ax[3])
-    cbar4.solids.set(alpha=0)
-    cbar4.outline.set_visible(False)
-    cbar4.ax.set_yticks([])  # Hide the colorbar ticks
-    cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
+    if nm>1:
+        # Create an invisible colorbar for the last subplot
+        cbar4 = fig.colorbar(im3, ax=ax[3])
+        cbar4.solids.set(alpha=0)
+        cbar4.outline.set_visible(False)
+        cbar4.ax.set_yticks([])  # Hide the colorbar ticks
+        cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
 
 
     # get filename without extension

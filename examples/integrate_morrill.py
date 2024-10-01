@@ -37,7 +37,7 @@ f_data_h5 = 'DATA_Morill.h5'
 #%% READ HDF5 TRAINING data from Morill AI paper 
 
 # Load D1, D2, M1, M2, M3, M4, M5, M6 from the HDF5 file
-N=10000000
+N=100000
 print('Reading data from file: ', file_in)
 with h5py.File(file_in, 'r') as f:
     N_in = f['D1'].shape[0]
@@ -87,7 +87,7 @@ with h5py.File(f_prior_h5, 'w') as f:
     f.create_dataset('M3', data=M3)
     f['M3/'].attrs['name'] = 'Boundary'
     f['M3/'].attrs['is_discrete'] = 1
-    #f['M3/'].attrs['x'] = np.arange(M3.shape[1])
+    f['M3/'].attrs['x'] = np.arange(M3.shape[1])
     #f['M3/'].attrs['clim'] = [-.1, 1.1]
     #f['M3/'].attrs['class_id'] = [0, 1]
     #f['M3/'].attrs['class_name'] = ['-', '+']
@@ -96,13 +96,13 @@ with h5py.File(f_prior_h5, 'w') as f:
     f.create_dataset('M4', data=M5)
     f['M4/'].attrs['name'] = 'Thickness'    
     f['M4/'].attrs['is_discrete'] = 0
-    f['M4/'].attrs['x'] = np.array(0)
+    f['M4/'].attrs['x'] = np.array([0])
     
     print('Writing M5 to file: ', f_prior_h5)
     f.create_dataset('M5', data=M6)
     f['M5/'].attrs['name'] = 'Elevation'    
     f['M5/'].attrs['is_discrete'] = 0
-    f['M5/'].attrs['x'] = np.array(0)
+    f['M5/'].attrs['x'] = np.array([0])
 
 print('DONE Writing data to file: ', f_prior_h5)
 ig.integrate_update_prior_attributes(f_prior_h5)
@@ -141,6 +141,11 @@ with h5py.File(f_data_h5, 'w') as f:
 f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = 5000000, showInfo=1, parallel=True, updatePostStat=False, Ncpu = 8)
 ig.integrate_posterior_stats(f_post_h5, showInfo=1)
 
+#%%
+ig.plot_profile(f_post_h5, im=3)
+
+
+
 # %%
 ig.plot_profile(f_post_h5)
 #ig.plot_data_prior_post(f_post_h5)
@@ -155,6 +160,15 @@ with h5py.File(f_post_h5, 'r') as f:
     i_use = f['i_use'][:]
     M1_mean = f['/M1/Mean'][:]
     M2_mode = f['/M2/Mode'][:]
-    M3_mean= f['/M3/Mean'][:]
-    plt.imshow(M3_mode.T, aspect='auto', cmap='jet')
+    M4_mean= f['/M4/Mean'][:]
+    M5_mean= f['/M5/Mean'][:]
+    plt.plot(M5_mean, 'r-')
+    plt.plot(d_obs[:,-1], 'k-')
+# %%
+
+plt.figure()
+plt.semilogy(d_obs,'k-', linewidth=1)
+plt.figure()
+plt.imshow(np.log10(d_obs.T))
+
 # %%
