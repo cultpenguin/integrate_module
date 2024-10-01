@@ -37,7 +37,7 @@ f_data_h5 = 'DATA_Morill.h5'
 #%% READ HDF5 TRAINING data from Morill AI paper 
 
 # Load D1, D2, M1, M2, M3, M4, M5, M6 from the HDF5 file
-N=100000
+N=10000000
 print('Reading data from file: ', file_in)
 with h5py.File(file_in, 'r') as f:
     N_in = f['D1'].shape[0]
@@ -112,7 +112,7 @@ print('Reading OBSERVED data from file: ', file_in_post_h5)
 with h5py.File(file_in_post_h5, 'r') as f:
     d_obs = f['D_obs'][:]
     d_std = f['D_std'][:]
-    d_std=d_std*2
+    #d_std=d_std*2
     #d_std[:,-1]=d_std[:,-1]*1000
     #d_std[:,2:4]=d_std[:,2:4]*1000
     EL_est = f['EL_est'][:]
@@ -142,7 +142,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = 5000000, showI
 ig.integrate_posterior_stats(f_post_h5, showInfo=1)
 
 #%%
-ig.plot_profile(f_post_h5, im=3)
+ig.plot_profile_continuous(f_post_h5, im=4)
 
 
 
@@ -162,8 +162,10 @@ with h5py.File(f_post_h5, 'r') as f:
     M2_mode = f['/M2/Mode'][:]
     M4_mean= f['/M4/Mean'][:]
     M5_mean= f['/M5/Mean'][:]
+    M5_median= f['/M5/Median'][:]
     plt.plot(M5_mean, 'r-')
-    plt.plot(d_obs[:,-1], 'k-')
+    plt.plot(M5_median, 'g.')
+    plt.plot(d_obs[:,-1], 'k.')
 # %%
 
 plt.figure()
