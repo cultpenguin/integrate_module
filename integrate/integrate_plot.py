@@ -297,9 +297,11 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
         with h5py.File(f_prior_h5,'r') as f_prior:
             for key in f_prior.keys():
                 im = int(key[1:])
-                if key[0]=='M':
-                    plot_profile(f_post_h5, i1, i2, im=im, **kwargs)
-                
+                try:
+                    if key[0]=='M':
+                        plot_profile(f_post_h5, i1, i2, im=im, **kwargs)
+                except:
+                    print('Error in plot_profile for key=%s' % key)
         return 
     
     
@@ -371,7 +373,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         if 'cmap' in f_prior[Mstr].attrs.keys():
             cmap = f_prior[Mstr].attrs['cmap'][:]
         else:
-            cmap = plt.cm.hot(np.linspace(0, 1, n_class)).T
+            cmap = plt.cm.jet(np.linspace(0, 1, n_class)).T
         from matplotlib.colors import ListedColormap
         cmap = ListedColormap(cmap.T)            
 
@@ -529,10 +531,12 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         print("Plotting profile %s from %s" % (Mstr, f_post_h5))
 
     with h5py.File(f_prior_h5,'r') as f_prior:
-        try:
+        if 'z' in f_prior[Mstr].attrs.keys():
             z = f_prior[Mstr].attrs['z'][:].flatten()
-        except:
+        elif 'x' in f_prior[Mstr].attrs.keys():
             z = f_prior[Mstr].attrs['x'][:].flatten()
+        else:
+            z=np.array(0)
         is_discrete = f_prior[Mstr].attrs['is_discrete']
         if 'clim' in f_prior[Mstr].attrs.keys():
             clim = f_prior[Mstr].attrs['clim'][:].flatten()

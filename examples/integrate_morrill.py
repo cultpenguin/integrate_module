@@ -37,23 +37,27 @@ f_data_h5 = 'DATA_Morill.h5'
 #%% READ HDF5 TRAINING data from Morill AI paper 
 
 # Load D1, D2, M1, M2, M3, M4, M5, M6 from the HDF5 file
+N=10000000
 print('Reading data from file: ', file_in)
 with h5py.File(file_in, 'r') as f:
+    N_in = f['D1'].shape[0]
+    if N>N_in:
+        N=N_in
     print('Reading D1 data from file: ', file_in)
-    D1 = f['D1'][:]
+    D1 = f['D1'][:N]
     #D2 = f['D2'][:]
     print('Reading M1 data from file: ', file_in)
-    M1 = 10**(f['M1'][:])
+    M1 = 10**(f['M1'][:N])
     print('Reading M2 data from file: ', file_in)
-    M2 = f['M2'][:]
+    M2 = f['M2'][:N]
     print('Reading M3 data from file: ', file_in)
-    M3 = f['M3'][:]
+    M3 = f['M3'][:N]
     #print('Reading M4 data from file: ', file_in)
-    #M4 = f['M4'][:]
+    #M4 = f['M4'][:N]
     print('Reading M5 data from file: ', file_in)
-    M5 = f['M5'][:]
+    M5 = f['M5'][:N]
     print('Reading M6 data from file: ', file_in)
-    M6 = f['M6'][:]
+    M6 = f['M6'][:N]
     print('DONE Read from file: %s' %(file_in) )
     
 #%% WRITE PRIOR TRAINING DATA IN INTEGRATE HDF5 format
@@ -75,18 +79,18 @@ with h5py.File(f_prior_h5, 'w') as f:
     f['M2/'].attrs['name'] = 'Lithology'
     f['M2/'].attrs['is_discrete'] = 1
     f['M2/'].attrs['x'] = np.arange(M2.shape[1])
+    f['M2/'].attrs['clim'] = [-.5, 2.5]
     f['M2/'].attrs['class_id'] = [0, 1, 2]
     f['M2/'].attrs['class_name'] = ['A', 'B', 'C']
 
     print('Writing M3 to file: ', f_prior_h5)
     f.create_dataset('M3', data=M3)
-    f['M3/'].attrs['name'] = '+-'
-    f['M3/'].attrs['is_discrete'] = 0
-    f['M3/'].attrs['x'] = np.arange(M3.shape[1])
-    f['M3/'].attrs['clim'] = [-.5, 1.5]
-    f['M3/'].attrs['class_id'] = [0, 1]
-    f['M3/'].attrs['class_name'] = ['-', '+']
-
+    f['M3/'].attrs['name'] = 'Boundary'
+    f['M3/'].attrs['is_discrete'] = 1
+    #f['M3/'].attrs['x'] = np.arange(M3.shape[1])
+    #f['M3/'].attrs['clim'] = [-.1, 1.1]
+    #f['M3/'].attrs['class_id'] = [0, 1]
+    #f['M3/'].attrs['class_name'] = ['-', '+']
 
     print('Writing M4 to file: ', f_prior_h5)
     f.create_dataset('M4', data=M5)
@@ -99,7 +103,7 @@ with h5py.File(f_prior_h5, 'w') as f:
     f['M5/'].attrs['name'] = 'Elevation'    
     f['M5/'].attrs['is_discrete'] = 0
     f['M5/'].attrs['x'] = np.array(0)
-    
+
 print('DONE Writing data to file: ', f_prior_h5)
 ig.integrate_update_prior_attributes(f_prior_h5)
 
@@ -149,5 +153,8 @@ with h5py.File(f_post_h5, 'r') as f:
     T = f['T'][:]
     EV = f['EV'][:]
     i_use = f['i_use'][:]
+    M1_mean = f['/M1/Mean'][:]
     M2_mode = f['/M2/Mode'][:]
+    M3_mean= f['/M3/Mean'][:]
+    plt.imshow(M3_mode.T, aspect='auto', cmap='jet')
 # %%
