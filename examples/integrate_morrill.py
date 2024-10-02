@@ -37,7 +37,7 @@ f_data_h5 = 'DATA_Morill.h5'
 #%% READ HDF5 TRAINING data from Morill AI paper 
 
 # Load D1, D2, M1, M2, M3, M4, M5, M6 from the HDF5 file
-N=10000000
+N=1000000
 print('Reading data from file: ', file_in)
 with h5py.File(file_in, 'r') as f:
     N_in = f['D1'].shape[0]
@@ -69,19 +69,19 @@ with h5py.File(f_prior_h5, 'w') as f:
     
     print('Writing M1 to file: ', f_prior_h5)
     f.create_dataset('M1', data=M1)
-    f['M1/'].attrs['name'] = 'Resistivity'
+    f['M1/'].attrs['name'] = 'Resistivity (Ohmm)'
     f['M1/'].attrs['is_discrete'] = 0
     f['M1/'].attrs['clim'] = [10,250]
     f['M1/'].attrs['x'] = np.arange(M1.shape[1])
     
     print('Writing M2 to file: ', f_prior_h5)
     f.create_dataset('M2', data=M2)
-    f['M2/'].attrs['name'] = 'Lithology'
+    f['M2/'].attrs['name'] = 'Lithology type'
     f['M2/'].attrs['is_discrete'] = 1
     f['M2/'].attrs['x'] = np.arange(M2.shape[1])
     f['M2/'].attrs['clim'] = [-.5, 2.5]
     f['M2/'].attrs['class_id'] = [0, 1, 2]
-    f['M2/'].attrs['class_name'] = ['A', 'B', 'C']
+    #f['M2/'].attrs['class_name'] = ['A', 'B', 'C']
 
     print('Writing M3 to file: ', f_prior_h5)
     f.create_dataset('M3', data=M3)
@@ -94,13 +94,13 @@ with h5py.File(f_prior_h5, 'w') as f:
 
     print('Writing M4 to file: ', f_prior_h5)
     f.create_dataset('M4', data=M5)
-    f['M4/'].attrs['name'] = 'Thickness'    
+    f['M4/'].attrs['name'] = 'Thickness (m)'    
     f['M4/'].attrs['is_discrete'] = 0
     f['M4/'].attrs['x'] = np.array([0])
     
     print('Writing M5 to file: ', f_prior_h5)
     f.create_dataset('M5', data=M6)
-    f['M5/'].attrs['name'] = 'Elevation'    
+    f['M5/'].attrs['name'] = 'Elevation (m)'    
     f['M5/'].attrs['is_discrete'] = 0
     f['M5/'].attrs['x'] = np.array([0])
 
@@ -112,7 +112,7 @@ print('Reading OBSERVED data from file: ', file_in_post_h5)
 with h5py.File(file_in_post_h5, 'r') as f:
     d_obs = f['D_obs'][:]
     d_std = f['D_std'][:]
-    #d_std=d_std*2
+    d_std=d_std*2
     #d_std[:,-1]=d_std[:,-1]*1000
     #d_std[:,2:4]=d_std[:,2:4]*1000
     EL_est = f['EL_est'][:]
@@ -141,9 +141,6 @@ with h5py.File(f_data_h5, 'w') as f:
 f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = 5000000, showInfo=1, parallel=True, updatePostStat=False, Ncpu = 8)
 ig.integrate_posterior_stats(f_post_h5, showInfo=1)
 
-#%%
-ig.plot_profile_continuous(f_post_h5, im=4)
-
 
 
 # %%
@@ -154,6 +151,7 @@ ig.plot_data_prior_post(f_post_h5, i_plot=10)
 
 # %%
 # Read '/T' from f_post_h5
+ig.integrate_posterior_stats(f_post_h5, showInfo=11)
 with h5py.File(f_post_h5, 'r') as f:
     T = f['T'][:]
     EV = f['EV'][:]
@@ -161,16 +159,12 @@ with h5py.File(f_post_h5, 'r') as f:
     M1_mean = f['/M1/Mean'][:]
     M2_mode = f['/M2/Mode'][:]
     M4_mean= f['/M4/Mean'][:]
-    M5_mean= f['/M5/Mean'][:]
-    M5_median= f['/M5/Median'][:]
-    plt.plot(M5_mean, 'r-')
-    plt.plot(M5_median, 'g.')
-    plt.plot(d_obs[:,-1], 'k.')
-# %%
+    M4_median= f['/M4/Median'][:]
 
-plt.figure()
-plt.semilogy(d_obs,'k-', linewidth=1)
-plt.figure()
-plt.imshow(np.log10(d_obs.T))
 
-# %%
+M4_mean2 = np.zeros(nd)
+M4_median2 = np.zeros(nd)
+for i in np.arange(nd):
+    M4_mean2[i] = np.mean(M5[i_use[i]])
+    M4_median2[i] = np.median(M5[i_use[i]])
+

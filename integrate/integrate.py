@@ -199,7 +199,7 @@ def integrate_update_prior_attributes(f_prior_h5, **kwargs):
                         dataset.attrs['class_name'] = [str(x) for x in class_id]
 
 
-def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_Nu1000_aT1.h5', **kwargs):
+def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
     """
     Compute posterior statistics for datasets in an HDF5 file.
 
@@ -266,12 +266,17 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                 nsounding, nr = i_use.shape
                 m_post = np.zeros((nm, nr))
 
+                M_logmean = np.zeros((nsounding,nm))
                 M_mean = np.zeros((nsounding,nm))
                 M_std = np.zeros((nsounding,nm))
                 M_median = np.zeros((nsounding,nm))
 
+                if showInfo>0:
+                    print('nm=%d, nsounding=%d, nr=%d' % (nm, nsounding, nr))
+                    print('M_mean.shape=%s' % str(M_mean.shape))
+
                 # Create datasets
-                for stat in ['Mean', 'Median', 'Std']:
+                for stat in ['Mean', 'Median', 'Std','LogMean']:
                     if stat not in f_post:
                         dset = '/%s/%s' % (name,stat)
                         if dset not in f_post:
@@ -286,15 +291,17 @@ def integrate_posterior_stats(f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_
                     ir = np.int64(i_use[iid,:])
                     m_post = M_all[ir,:]
 
-                    m_mean = np.exp(np.mean(np.log(m_post), axis=0))
+                    m_logmean = np.exp(np.mean(np.log(m_post), axis=0))
+                    m_mean = np.mean(m_post, axis=0)
                     m_median = np.median(m_post, axis=0)
                     m_std = np.std(np.log10(m_post), axis=0)
 
+                    M_logmean[iid,:] = m_logmean
                     M_mean[iid,:] = m_mean
                     M_median[iid,:] = m_median
                     M_std[iid,:] = m_std
 
-
+                f_post['/%s/%s' % (name,'LogMean')][:] = M_logmean
                 f_post['/%s/%s' % (name,'Mean')][:] = M_mean
                 f_post['/%s/%s' % (name,'Median')][:] = M_median
                 f_post['/%s/%s' % (name,'Std')][:] = M_std
