@@ -105,7 +105,7 @@ print("Writing results to %s " % file_out)
 
 # %%
 
-loadFromFile=True
+loadFromFile=False
 if loadFromFile:
     file_out = 'timing_3990X-64_Nproc7_N9'  
     file_out = 'timing_3990X-64_Nproc35_N8' 
@@ -335,7 +335,6 @@ plt.legend(loc='upper right')
 plt.tight_layout()
 plt.ylim(1e-5, 1e+3)
 plt.savefig('%s_rejection_sec_per_sound' % file_out)
-plt.show()
 
 
 #%%
@@ -349,7 +348,6 @@ plt.legend(N_arr)
 plt.tight_layout()
 plt.ylim(5e-1, 2e+3)
 plt.savefig('%s_rejection_time' % file_out)
-plt.show()
 
 #%%
 plt.figure(figsize=(6,6))
@@ -364,7 +362,6 @@ plt.xlabel('Number of processors')
 plt.grid()
 plt.legend(N_arr)
 plt.savefig('%s_rejection_speedup' % file_out)
-plt.show()
 
 
 #%% STATS FOR POSTERIOR STATISTICS
