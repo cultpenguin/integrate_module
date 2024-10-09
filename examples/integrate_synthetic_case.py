@@ -50,7 +50,8 @@ elif case.lower() == '3layer':
 # Create reference data
 f_data_h5 = '%s_%d' % (case,z_max)    
 thickness = np.diff(z_ref)
-file_gex = 'TX07_20231016_2x4_RC20-33.gex'
+# Get an exampele of a GEX file
+file_gex = ig.get_case_data(case='DAUGAARD', filelist=['TX07_20231016_2x4_RC20-33.gex'])[0]
 D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
 
 # Initialize random number generator to sample from noise model!
