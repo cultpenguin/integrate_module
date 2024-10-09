@@ -96,18 +96,17 @@ def integrate_syntetic_case(case='Wedge', **kwargs):
         nx = x.shape[0]
         nz = z.shape[0]
 
-        M = np.zeros((nx,nz))+rho1_1
-        iz = np.where(z>=z1)[0]
-        M[:,iz] = rho3
+        M = np.zeros((nx,nz))+rho3
+        iz1 = np.where(z<=z1)[0]
         for ix in range(nx):
             rho1 = rho1_1 + (rho1_2 - rho1_1) * x[ix]/x_max
             rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
-            M[ix,:] = rho1
+            M[ix,iz1] = rho1
             z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))
-            iz = np.where((z>=z1) & (z<=z2))[0]
             #print(z[iz[0]])
             rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
-            M[ix,iz] = rho2
+            iz2 = np.where((z>=z1) & (z<=z2))[0]
+            M[ix,iz2] = rho2
 
         return M, x, z
 
@@ -121,7 +120,7 @@ if case.lower() == 'wedge':
 elif case.lower() == '3layer':
     # Make 3 layer MODEL
     M_ref, x_ref, z_ref = integrate_syntetic_case(case='3layer', rho1_1 = rho[0], rho2_1 = rho[1], rho3=rho[2], x_max = 100, x_range = 10)
-    M_ref, x_ref, z_ref = integrate_syntetic_case(case='3layer', dx=.1, z1 = 20, z_thick=30, z_max = 60)
+    M_ref, x_ref, z_ref = integrate_syntetic_case(case='3layer', dx=1, z1 = 20, z_thick=30, z_max = 60)
 
 # Make DATA
 thickness = np.diff(z_ref)
@@ -175,7 +174,7 @@ with h5py.File(f_data_h5, 'w') as f:
 plt.semilogy(x_ref,D_obs);
 
 #%% make prior
-N=50*100000
+N=1000000
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=3, NLAY_max=3, 
