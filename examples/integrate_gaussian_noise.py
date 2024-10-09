@@ -75,10 +75,10 @@ def integrate_syntetic_case(case='Wedge', **kwargs):
         x_max = kwargs.get('x_max', 100)
         x_range = kwargs.get('x_range', x_max/4)
         dx = kwargs.get('dx', 1)
-        z_max = kwargs.get('z_max', 90)
+        z_max = kwargs.get('z_max', 60)
         dz = kwargs.get('dz', 1)
-        z1 = kwargs.get('z1', z_max/10)
-        z_thick = kwargs.get('z_thick', 20)
+        z1 = kwargs.get('z1', z_max/3)
+        z_thick = kwargs.get('z_thick', z_max/2)
         
 
         rho1_1 = kwargs.get('rho1_1', 100)
@@ -120,7 +120,7 @@ if case.lower() == 'wedge':
 elif case.lower() == '3layer':
     # Make 3 layer MODEL
     M_ref, x_ref, z_ref = integrate_syntetic_case(case='3layer', rho1_1 = rho[0], rho2_1 = rho[1], rho3=rho[2], x_max = 100, x_range = 10)
-    M_ref, x_ref, z_ref = integrate_syntetic_case(case='3layer', dx=1, z1 = 20, z_thick=30, z_max = 60)
+    M_ref, x_ref, z_ref = integrate_syntetic_case(case='3layer', dx=.1, z1 = 20, z_thick=30, z_max = 60)
 
 # Make DATA
 thickness = np.diff(z_ref)
