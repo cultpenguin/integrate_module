@@ -40,15 +40,16 @@ case = '3layer'
 
 z_max = 60
 rho = [120,10,120]
+dx=0.1
 if case.lower() == 'wedge':
     # Make Wedge MODEL
-    M_ref, x_ref, z_ref = ig.synthetic_case(case='Wedge', wedge_angle=10, z_max=z_max, dz=.5, x_max=100, dx=.1, z1=15, rho = rho)
+    M_ref, x_ref, z_ref = ig.synthetic_case(case='Wedge', wedge_angle=10, dx=dx, z_max=z_max, dz=.5, x_max=100, z1=15, rho = rho)
 elif case.lower() == '3layer':
     # Make 3 layer MODEL
-    M_ref, x_ref, z_ref = ig.synthetic_case(case='3layer', dx=1, rho1_1 = rho[0], rho1_2 = rho[1], x_max = 100, x_range = 10)
+    M_ref, x_ref, z_ref = ig.synthetic_case(case='3layer', dx=dx, rho1_1 = rho[0], rho1_2 = rho[1], rho3=rho[2], x_max = 100, x_range = 10)
 
 # Create reference data
-f_data_h5 = '%s_%d' % (case,z_max)    
+f_data_h5 = '%s_%d.h5' % (case,z_max)    
 thickness = np.diff(z_ref)
 # Get an exampele of a GEX file
 file_gex = ig.get_case_data(case='DAUGAARD', filelist=['TX07_20231016_2x4_RC20-33.gex'])[0]
@@ -56,13 +57,14 @@ D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
 
 # Initialize random number generator to sample from noise model!
 rng = np.random.default_rng()
-d_std = 0.01
+d_std = 0.05
 d_std_base = 1e-12
 D_std = d_std * D_ref + d_std_base
 D_noise = rng.normal(0, D_std, D_ref.shape)
 D_obs = D_ref + D_noise
 
 # Write to hdf5 file
+# Add option to reomve existing file before writing!
 f_data_h5 = ig.write_data_gaussian(D_obs, D_std = D_std, f_data_h5 = f_data_h5, id=1, showInfo=1)
 #check_data(f_data_h5)
 # %%
@@ -86,17 +88,21 @@ ig.plot_data(f_data_h5)
 # ## Create prior model and data
 
 # %% make prior
-N=50000 # sample size 
+N=500000 # sample size 
+RHO_dist='log-uniform'
+RHO_min=0.5*min(rho)
+RHO_max=2*max(rho)
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=3, NLAY_max=3, 
-                                    RHO_dist='uniform', RHO_min=0.5*min(rho), RHO_max=2*max(rho))
+                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max)
 
 ig.plot_prior_stats(f_prior_h5)
 
 # %% MAKE PRIOR DATA
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
+# plot prior and observed data to chech that the prior data span the same range as the observed data
 ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy) 
 
 # %% [markdown]
@@ -106,7 +112,8 @@ ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5],
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
 
 # %% Plot some stats
-ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = [5, 220])
+clim = [0.8*min(rho), 1.2*max(rho)]
+ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
 
 # %%
 ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
@@ -134,17 +141,26 @@ clim = [0.8*min(rho), 1.2*max(rho)]
 # Second subplot
 c1 = ax1.pcolor(xx_ref, zz_ref, M_ref.T, clim=clim, cmap='jet')
 ax1.invert_yaxis()
-ax1.axis('equal')
+#ax1.axis('equal')
 fig.colorbar(c1, ax=ax1)
 ax1.set_title('Prior Reference %s Model' % case)
 
 # First subplot
 c2 = ax2.pcolor(xx, zz, M_median.T, clim=clim, cmap='jet')
 ax2.invert_yaxis()
-ax2.axis('equal')
+#ax2.axis('equal')
 fig.colorbar(c2, ax=ax2)
 ax2.set_title('Posterior Median Model')
 
+# add a contour plot of xx_ref, zz_ref, M_ref.T on top of current figure
+ax2.contour(xx_ref, zz_ref, M_ref.T, colors='k', linewidths=1)
+# change aspect ratio of the figure to 2:1
+ax1.set_aspect(.5)
+ax2.set_aspect(.5)
+
+
 plt.tight_layout()
-plt.savefig('Synthetic%s' % (case.upper()))
+plt.savefig('Synthetic_%s_%s_z%d_N%d' % (case.upper(),,RHO_dist,z_max, N))
 plt.show()
+
+# %%
