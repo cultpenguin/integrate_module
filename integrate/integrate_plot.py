@@ -972,6 +972,7 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     import os
     
     showInfo = kwargs.get('showInfo', 0)
+    is_log = kwargs.get('is_log', False)
 
     ## Check if the data file f_data_h5 exists
     if not os.path.exists(f_post_h5):
@@ -1026,8 +1027,15 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     
         #i_plot=[]
         fig, ax = plt.subplots(1,1,figsize=(7,7))
-        ax.semilogy(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
+        if is_log:
+            ax.plot(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
+            ax.plot(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
         
+            print('plot_data_prior_post: Plotting log10(d_prior)')
+            return        
+        else:
+            ax.semilogy(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
+
         if i_plot>-1:
             ax.semilogy(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
         

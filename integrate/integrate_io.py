@@ -858,13 +858,12 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
     if len(D_std)==0:
         if len(d_std)==0:
             d_std = 0.01
-        D_std = d_std * D_obs
+        D_std = np.abs(d_std * D_obs)
 
     D_str = 'D%d' % id
 
     ns,nd=D_obs.shape
-    print(ns,nd)
-
+    
     with h5py.File(f_data_h5, 'a') as f:
         # check if '/UTMX' exists and create it if it does not
         if 'UTMX' not in f:
@@ -899,9 +898,10 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
             print('Adding group %s:%s ' % (f_data_h5,D_str))
 
         f.create_dataset('/%s/d_obs' % D_str, data=D_obs)
-        f.create_dataset('/%s/d_std' % D_str, data=D_std)
-        # If Cd is not empty do write Cd
-        if len(Cd) > 0:
+        # Write either Cd or d_std
+        if len(Cd) == 0:
+            f.create_dataset('/%s/d_std' % D_str, data=D_std)
+        else:
             f.create_dataset('/%s/Cd' % D_str, data=Cd)
 
         # wrote attribute noise_model

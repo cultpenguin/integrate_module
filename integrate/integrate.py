@@ -682,7 +682,7 @@ def forward_gaaem_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **
 
 # %% PRIOR DATA GENERATORS
 
-def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1, Nhank=280, Nfreq=12, parallel=True, **kwargs):
+def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1, Nhank=280, Nfreq=12, is_log=False, parallel=True, **kwargs):
     """
     Generate prior data for the ga-aem method.
 
@@ -785,6 +785,8 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
             print("prior_data_gaaem: Using 1 thread /(sequential).")
         # Sequential
         D = ig.forward_gaaem(C=C, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)
+        if is_log:
+            D = np.log10(D)
     else:
     
         # Make sure STM files are only written once!!! (need for multihreading)
@@ -828,6 +830,9 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         #print('Concatenating D_chunks')
         D = np.concatenate(D_chunks)
         #print("D.shape", D.shape)
+        if is_log:
+            D = np.log10(D)
+
 
         # D = ig.forward_gaaem(C=C, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)
 
@@ -1477,7 +1482,7 @@ def integrate_rejection_range(f_prior_h5,
 
     # THIS IS THE ACTUAL INVERSION!!!!
     for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection'):
-        ip = ip_range[j]
+        ip = ip_range[j] # This is the index of the data point to invert
         t=[]
         N = D[0].shape[0]
         NDsets = len(id_use)
@@ -1490,9 +1495,24 @@ def integrate_rejection_range(f_prior_h5,
             if noise_model[i]=='gaussian':
                 with h5py.File(f_data_h5, 'r') as f_data:
                     d_obs = f_data['%s/d_obs' % DS][ip]
-                    d_std = f_data['%s/d_std' % DS][ip] 
+                    if 'Cd' in f_data['%s' % DS].keys():
+                        Cd_h5 = f_data['/D1/Cd']    
+                        # if Cd is 3 dimensional, take the first slice
+                        if len(Cd_h5.shape) == 3:
+                            Cd = Cd_h5[ip]
+                        else:
+                            Cd = Cd_h5[:]
 
-                L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std)
+                        L_single = likelihood_gaussian_full(D[i], d_obs, Cd)
+                        
+                    elif 'd_std' in f_data['%s' % DS].keys():
+                        d_std = f_data['%s/d_std' % DS][ip]
+                        L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std)
+ 
+                    else:
+                        print('No d_std or Cd in %s' % DS)
+
+                #L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std)
                 #L.append(L_single)
                 L[i] = L_single
                 t.append(time.time()-t0)
@@ -1822,8 +1842,24 @@ def integrate_posterior_main(ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, au
 
 def likelihood_gaussian_diagonal(D, d_obs, d_std):
     """
-    Compute the likelihood for a single data point
+    Compute the Gaussian likelihood for a diagonal covariance matrix.
+    This function calculates the likelihood of observed data `d_obs` given 
+    a set of predicted data `D` and standard deviations `d_std` assuming 
+    a Gaussian distribution with a diagonal covariance matrix.
+    Parameters
+    ----------
+    D : numpy.ndarray
+        Predicted data array of shape (n_samples, n_features).
+    d_obs : numpy.ndarray
+        Observed data array of shape (n_features,).
+    d_std : numpy.ndarray
+        Standard deviation array of shape (n_features,).
+    Returns
+    -------
+    numpy.ndarray
+        Likelihood array of shape (n_samples,).
     """
+    
     # Compute the likelihood
     # Sequential
     #L = np.zeros(D.shape[0])
@@ -1832,13 +1868,55 @@ def likelihood_gaussian_diagonal(D, d_obs, d_std):
     # Vectorized
     dd = D - d_obs
     d_var = d_std**2
+    #L = -0.5 * np.nansum(dd**2 / d_var, axis=1)
     L = -0.5 * np.nansum(dd**2 / d_var, axis=1)
 
     return L
 
-def likelihood_gaussian_full(D, d_obs, Cd):
-    a = 1
-    return 1
+def likelihood_gaussian_full(D, d_obs, Cd, checkNaN=True, useVectorized=False):
+    """
+    Calculate the Gaussian likelihood for a given dataset.
+    Parameters
+    ----------
+    D : numpy.ndarray
+        The model predictions, with shape (n_samples, n_features).
+    d_obs : numpy.ndarray
+        The observed data, with shape (n_features,).
+    Cd : numpy.ndarray
+        The covariance matrix of the observed data, with shape (n_features, n_features).
+    checkNaN : bool, optional
+        If True, the function will handle NaN values in `d_obs` by ignoring them in the calculations. 
+        Default is True.
+    Returns
+    -------
+    numpy.ndarray
+        The Gaussian likelihood for each sample, with shape (n_samples,).
+    TODO
+        We need to check that this works when D has NAN value.. (and Why does it ever?)
+    """
+    
+    if checkNaN:
+        # find index of non-nan values in d_obs or non-nan values in np.sum(Cd, axis=0)
+        #ind = np.where(~np.isnan(d_obs))[0]
+        ind = np.where(~np.isnan(d_obs) & ~np.isnan(np.sum(Cd, axis=0)))[0]
+        # Exclude also all data for which one Nan Is available.. This is probably not ideal
+        ind = np.where(~np.isnan(d_obs) & ~np.isnan(np.sum(Cd, axis=0)) & ~np.isnan(np.sum(D, axis=0)) )[0]
+        dd = D[:,ind] - d_obs[ind]
+        iCd = np.linalg.inv(Cd[np.ix_(ind, ind)])
+    else:    
+        dd = D - d_obs
+        iCd = np.linalg.inv(Cd)
+        
+    if useVectorized:
+        # vectorized    
+        L = -.5 * np.einsum('ij,ij->i', dd @ iCd, dd)        
+    else:   
+        # non-vectorized
+        L = np.zeros(D.shape[0])
+        for i in range(D.shape[0]):
+            L[i] = -.5 * np.nansum(dd[i].T @ iCd @ dd[i])
+        
+    return L
 
 
 # %% Synthetic data

@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # %% [markdown]
 # # INTEGRATE Synthetic Case Study example
+# Demonsrates the use of different nosie models with tTEM data 
+# using an example using inverting data obtained from synthetic reference model
+#
 #
 # %% Imports
 try:
@@ -12,8 +15,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # # # # #%load_ext autoreload
-    # # # # # # # # # #%autoreload 2
+    # # # # # # # # # # # # #%load_ext autoreload
+    # # # # # # # # # # # # #%autoreload 2
     pass
 
 import integrate as ig
@@ -26,55 +29,18 @@ import matplotlib.pyplot as plt
 import h5py
 hardcopy=True
 
-# %% [markdown]
-
-# %% Generate Synthetic Case model and data
-
-# Create reference model
-
-#case = '3layer'
+case = 'wedge'
+case = '3layer'
 z_max = 60
 rho = [120,10,120]
-if case.lower() == 'wedge':
-    # Make Wedge MODEL
-    M_ref, x_ref, z_ref = ig.synthetic_case(case='Wedge', wedge_angle=10, z_max=z_max, dz=.5, x_max=100, dx=.1, z1=15, rho = rho)
-elif case.lower() == '3layer':
-    # Make 3 layer MODEL
-    M_ref, x_ref, z_ref = ig.synthetic_case(case='3layer', dx=1, rho1_1 = rho[0], rho1_2 = rho[1], x_max = 100, x_range = 10)
-
-# Create reference data
-f_data_h5 = '%s_%d' % (case,z_max)    
-thickness = np.diff(z_ref)
-file_gex = 'TX07_20231016_2x4_RC20-33.gex'
-D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
-
-d_std = 0.01
-d_std_base = 1e-12
-D_std = d_std * D_ref + d_std_base
-D_noise = rng.normal(0, D_std, D_ref.shape)
-D_obs = D_ref + D_noise
-
-f_data_h5 = ig.write_data_gaussian(D_obs, D_std = D_std, f_data_h5 = f_data_h5, id=1, showInfo=1)
-#check_data(f_data_h5)
-#%% 
-# Plot the model and data
-# Compute xx and zz meshgrids properly formatted for use with imshow
-
-plt.figure()
-plt.subplot(2,1,1)
-xx_ref, zz_ref = np.meshgrid(x_ref, z_ref)
-plt.pcolor(xx_ref,zz_ref,M_ref.T)
-plt.gca().invert_yaxis()
-plt.axis('equal')
-plt.colorbar()
-plt.subplot(2,1,2)
-plt.semilogy(D_ref.T);
-
-ig.plot_data(f_data_h5)
+file_gex = ig.get_case_data(case='DAUGAARD', filelist=['TX07_20231016_2x4_RC20-33.gex'])[0]
 
 
-#%% make prior
-N=5000
+# %% [markdown]
+# ## Create prior model and data
+
+# %% make prior
+N=5000 # sample size 
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=3, NLAY_max=3, 
@@ -82,56 +48,266 @@ f_prior_h5 = ig.prior_model_layered(N=N,
 
 ig.plot_prior_stats(f_prior_h5)
 
-#%% MAKE PRIOR DATA
+# %% MAKE PRIOR DATA
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
-ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy) 
+# %% [markdown]
+# # Create The reference model and data
 
-# %% INVERT 
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
+# %% Generate Synthetic Case model and data
+# Create reference model
 
-# %% Plot some stats
-ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = [5, 220])
+# select the type of referenc model
+dx=0.1
+if case.lower() == 'wedge':
+    # Make Wedge MODEL
+    M_ref, x_ref, z_ref = ig.synthetic_case(case='Wedge', wedge_angle=10, z_max=z_max, dz=.5, x_max=100, dx=dx, z1=15, rho = rho)
+elif case.lower() == '3layer':
+    # Make 3 layer MODEL
+    M_ref, x_ref, z_ref = ig.synthetic_case(case='3layer', dx=dx, rho1_1 = rho[0], rho1_2 = rho[1], x_max = 100, x_range = 10)
 
-#%% 
-ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
-ig.plot_data_prior_post(f_post_h5, i_plot=len(x_ref)-1, hardcopy=hardcopy)
+# Create reference data
+f_data_h5 = '%s_%d' % (case,z_max)    
+thickness = np.diff(z_ref)
+# Get an exampele of a GEX file
+D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
+
+# %% plot reference data
+plt.subplot(2,1,1)
+xx_ref, zz_ref = np.meshgrid(x_ref, z_ref)
+plt.pcolormesh(xx_ref, zz_ref, M_ref.T)
+plt.xlim([x_ref.min(), x_ref.max()])
+plt.xlabel('Distance (m)')
+plt.ylabel('Depth (m)')
+plt.axis('equal')
+plt.gca().invert_yaxis()
+plt.colorbar(label='Resistivity (Ohm-m)')
+
+plt.subplot(2,1,2)
+plt.semilogy(x_ref, D_ref)
+plt.xlim([x_ref.min(), x_ref.max()])
+plt.xlabel('Distance (m)')
+plt.ylabel('Amplitude')
+plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 
 
+# %% [markdown]
+# ## Different types of uncorrelated and correlated noise
+
+# %% Initialize random number generator to sample from noise model!
+rng = np.random.default_rng()
+d_std = 0.03 # standard deviation of the noise
+d_std_base = 1e-12 # base noise
+D_std = d_std * D_ref + d_std_base
+D_noise = rng.normal(0, D_std, D_ref.shape)
+D_obs = D_ref + D_noise
+# Cd is a diagnoal matrix with the standard deviation of the data
+
+# %% d_std repesents the standard deviation of the uncorrrelated Gausian noise
+
+# If a single correlated noise model is used, 
+# it can represented by be the mean of the standard deviation of the data.
+# This is though an approximation.
+Cd_single = np.diag(np.mean(D_std, axis=0)**2)
+
+# The full data covariance matrix is represented by a 3D array of shape (ns,nd,nd)
+# Using this type of noise should provide identical results to using d_std, only slower as 
+# the full covariance matrix is used.
+# This type of noise model is useful when the noise is not the same for all data points,
+# and the noise is correlated.
+ns,nd=D_std.shape
+Cd_mul = np.zeros((ns,nd,nd))
+for i in range(ns):
+    Cd_mul[i] = np.diag(D_std[i]**2)
+
+# Wrie the three differet types of noise models to hdf5 files
+f_data_h5_arr=[]
+name_arr = []
+
+f_out = ig.write_data_gaussian(D_obs, D_std = D_std, f_data_h5 = 'data_uncorr.h5', id=1, showInfo=0)
+f_data_h5_arr.append(f_out)
+name_arr.append('Uncorrelated noise')
+
+f_out  = ig.write_data_gaussian(D_obs, Cd=Cd_single, f_data_h5 = 'data_corr1.h5', id=1, showInfo=0)
+f_data_h5_arr.append(f_out)
+name_arr.append('Correlated noise - mean')
+
+f_out = ig.write_data_gaussian(D_obs, Cd=Cd_mul, f_data_h5 = 'data_corr2.h5', id=1, showInfo=0)
+f_data_h5_arr.append(f_out)
+name_arr.append('Correlated noise - individual')
+
+
+# %% Optionally run a test to compare likelihood of using different noise models.
+
+# test likelhood
+doTest = False
+if doTest:
+    id=0
+    d_obs = D_obs[id]
+    #d_obs[11]=np.nan
+    d_std = D_std[id]
+    with h5py.File(f_prior_data_h5, 'r') as f:
+        D = f['/D1'][:]
+        
+    #D = D_ref
+    L1 = ig.likelihood_gaussian_diagonal(D, d_obs, d_std)
+    L2 = ig.likelihood_gaussian_full(D, d_obs, Cd_single)
+    L3 = ig.likelihood_gaussian_full(D, d_obs, Cd_mul[id])
+
+    print("L1: %f, L2: %f, L3: %f" % (L1[0], L2[0], L3[0]))
+    print("T1=%3.f" % (np.mean(L1)))
+    print("T2=%3.f" % (np.mean(L2)))
+    print("T3=%3.f" % (np.mean(L3)))   
+
+    plt.semilogy(-L1, 'k.', label='L1', markersize=10)
+    plt.plot(-L2, '--', label='L2')
+    plt.plot(-L3, 'r.', label='L3', markersize=3)
+    plt.legend()
+    plt.ylabel('-log(L)')
+    plt.show()
+
+# %% INVERT
+f_post_h5_arr = []
+T_arr = []
+EV_arr = []
+clim   = [min(rho)*0.8, max(rho)*1.25]
+
+for f_data_h5 in f_data_h5_arr: 
+    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
+    with h5py.File(f_post_h5, 'r') as f_post:
+        T_arr.append(f_post['/T'][:])
+        EV_arr.append(f_post['/EV'][:])
+
+    f_post_h5_arr.append(f_post_h5)
+    ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
 
 
 # %%
-# Read 'M1/Median' from f_post_h5
-with h5py.File(f_post_h5, 'r') as f_post:
-    M_median = f_post['/M1/Median'][:]
+plt.figure()
+for i in range(len(T_arr)):
+    plt.semilogy(T_arr[i], '.', label=name_arr[i], markersize=15-5*i)
+plt.legend()
+plt.ylabel('Temperature')
 
-with h5py.File(f_prior_h5,'r') as f_prior:
-    # REad 'x' feature from f_prior
-    z =  f_prior['/M1'].attrs['x']
-
-xx, zz = np.meshgrid(x_ref, z)
-
-# Make a figure with two subplots, each with plt.pcolor(xx,zz,M_median.T) and, plt.pcolor(xx_ref,zz_ref,M_ref.T), and use the same colorbar and x.axis
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
-
-# First subplot
-clim = [0.8*min(rho), 1.2*max(rho)]
-c1 = ax1.pcolor(xx, zz, M_median.T, clim=clim)
-ax1.invert_yaxis()
-ax1.axis('equal')
-fig.colorbar(c1, ax=ax1)
-ax1.set_title('Posterior Median Model')
-
-# Second subplot
-c2 = ax2.pcolor(xx_ref, zz_ref, M_ref.T, clim=clim)
-ax2.invert_yaxis()
-ax2.axis('equal')
-fig.colorbar(c2, ax=ax2)
-ax2.set_title('Prior Reference %s Model' % case)
-
-plt.tight_layout()
-plt.show()
+plt.figure()
+for i in range(len(T_arr)):
+    plt.semilogy(-EV_arr[i], '.', label=name_arr[i], markersize=15-5*i)
+plt.legend()
+plt.ylabel('EV')
 
 
+
+# %% [markdown]
+# ## Data in the log-space
+# The data can be transformed to the log-space, and the noise model can be applied in the log-space.
+#
+#     TODO
+#        We need to check that this works when D has NAN value.. (and Why does it ever?)
+#
+# %%
+
+# %%
+
+lD_obs = np.log10(D_ref)
+
+lD_std_up = np.abs(np.log10(D_ref+D_std)-lD_obs)
+lD_std_down = np.abs(np.log10(D_ref-D_std)-lD_obs)
+lD_std = (lD_std_up+lD_std_down)/2
+
+lCd_single = np.diag(np.mean(lD_std, axis=0)**2)
+
+ns,nd=D_std.shape
+lCd_mul = np.zeros((ns,nd,nd))
+for i in range(ns):
+    lCd_mul[i] = np.diag(lD_std[i]**2)
+
+
+plt.semilogy(lD_std,'-')
+
+
+f_data_log_1_h5_f_out = ig.write_data_gaussian(lD_obs, D_std = lD_std, f_data_h5 = 'data_log_uncorr', id=1, showInfo=0, is_log=1)
+f_data_log_2_h5_f_out = ig.write_data_gaussian(lD_obs, Cd = lCd_mul, f_data_h5 = 'data_log_corr', id=1, showInfo=0, is_log=1)
+f_data_arr = [f_data_log_1_h5_f_out,f_data_log_2_h5_f_out]
+
+
+# %% MAKE PRIOR DATA
+f_prior_log_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, is_log=True)
+
+
+# %%
+f_post_log_h5_arr = []
+for i in range(len(f_data_arr)):
+    f_data_h5 = f_data_arr[i]
+    f_post_h5 = ig.integrate_rejection(f_prior_log_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
+    f_post_log_h5_arr.append(f_post_h5)
+    
+    ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
+
+# %% TEST CORRELATD NOISE!!!!
+
+# %%
+ig.plot_data_prior_post(f_post_log_h5_arr[0], i_plot=0, hardcopy=hardcopy, is_log=True)
+
+
+# %% Optionally run a test to compare likelihood of using different noise models.
+
+# test likelhood
+doTest = False
+if doTest:
+    id=0
+    with h5py.File(f_prior_log_data_h5, 'r') as f:
+        D = f['/D1'][:]
+
+    with h5py.File(f_data_log_2_h5_f_out, 'r') as f:
+        logD_obs = f['/D1/d_obs'][:]
+        if 'd_std' in f['/D1'].keys():
+            logD_std = f['/D1/d_std'][:]
+        else:
+            logCd_mul = f['/D1/Cd'][:]
+            logD_std = np.zeros((ns,nd))
+            for i in range(ns):
+                logD_std[i] = np.sqrt(np.diag(logCd_mul[i]))
+
+    logCd_single = np.diag(np.mean(logD_std, axis=0)**2)
+
+    d_obs = logD_obs[id]
+    d_std = logD_std[id]
+    
+
+    L1 = ig.likelihood_gaussian_diagonal(D, d_obs, d_std)
+    L2 = ig.likelihood_gaussian_full(D, d_obs, logCd_single)
+    L3 = ig.likelihood_gaussian_full(D, d_obs, logCd_mul[id])
+
+    print("L1: %f, L2: %f, L3: %f" % (L1[0], L2[0], L3[0]))
+    print("T1=%3.f" % (np.mean(L1)))
+    print("T2=%3.f" % (np.mean(L2)))
+    print("T3=%3.f" % (np.mean(L3)))   
+
+    # find inde of NaN values in L3
+
+    plt.semilogy(-L1[0:1000], 'k.', label='L1', markersize=10)
+    plt.plot(-L2[0:1000], '--', label='L2')
+    plt.plot(-L3[0:1000], 'r.', label='L3', markersize=3)
+    plt.legend()
+    plt.ylabel('-log(L)')
+    plt.show()
+
+    # i 
+    nan_idx3 = np.where(np.isnan(L3))[0]
+    j=nan_idx3[0]
+
+
+    Cd = logCd_mul[id]
+
+    ind = np.where( ~np.isnan(d_obs) & ~np.isnan(np.sum(Cd, axis=0))  &  ~np.isnan(np.sum(D, axis=0))  )[0]
+    print(len(ind))
+    #ind = np.where(~np.isnan(d_obs))[0]
+    dd = D[:,ind] - d_obs[ind]
+    iCd = np.linalg.inv(Cd[np.ix_(ind, ind)])
+    L = -.5 * np.einsum('ij,ij->i', dd @ iCd, dd)  
+
+
+
+    Lj =  -.5 * np.nansum(dd[j].T @ iCd @ dd[j])
 
 # %%
