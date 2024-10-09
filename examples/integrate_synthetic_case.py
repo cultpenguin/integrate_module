@@ -88,10 +88,10 @@ ig.plot_data(f_data_h5)
 # ## Create prior model and data
 
 # %% make prior
-N=5000000 # sample size 
+N=50000 # sample size 
 RHO_dist='log-uniform'
-RHO_min=0.5*min(rho)
-RHO_max=2*max(rho)
+RHO_min=0.8*min(rho)
+RHO_max=1.25*max(rho)
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=3, NLAY_max=3, 
@@ -135,7 +135,7 @@ with h5py.File(f_prior_h5,'r') as f_prior:
 xx, zz = np.meshgrid(x_ref, z)
 
 # Make a figure with two subplots, each with plt.pcolor(xx,zz,M_median.T) and, plt.pcolor(xx_ref,zz_ref,M_ref.T), and use the same colorbar and x.axis
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
 
 clim = [0.8*min(rho), 1.2*max(rho)]
 # Second subplot
