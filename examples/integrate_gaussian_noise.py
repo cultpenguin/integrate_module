@@ -34,18 +34,19 @@ def integrate_syntetic_case(case='Wedge', **kwargs):
     showInfo = kwargs.get('showInfo', 0)
 
     if case.lower() == 'wedge':
-        # Create synthetic 
+        # Create synthetic wedhge model
         
+        # variables
         x_max = kwargs.get('x_max', 1000)
+        dx = kwargs.get('dx', 1000./x_max)
+        z_max = kwargs.get('z_max', 90)
+        dz = kwargs.get('dz', 1)
+        z1 = kwargs.get('z1', z_max/10)
         rho = kwargs.get('rho', [100,200,120])
         wedge_angle = kwargs.get('wedge_angle', 1)
-        dx = kwargs.get('dx', 1000./x_max)
-        dz = kwargs.get('dz', 1)
-        z_max = kwargs.get('z_max', 90)
-        z1 = kwargs.get('z1', z_max/10)
 
         if showInfo>0:
-            print('Creating synthetic case with wedge angle=%f' % ẃedge_angle)
+            print('Creating synthetic %s case with wedge angle=%f' % (case,ẃedge_angle))
 
         z = np.arange(0,z_max,dz)
         x = np.arange(0,x_max,dx)
@@ -67,15 +68,63 @@ def integrate_syntetic_case(case='Wedge', **kwargs):
 
         return M, x, z
 
+    elif case.lower() == '3layer':
+        # Create synthetic 3 layer model
 
+        # variables
+        x_max = kwargs.get('x_max', 100)
+        x_range = kwargs.get('x_range', x_max/4)
+        dx = kwargs.get('dx', 1)
+        z_max = kwargs.get('z_max', 90)
+        dz = kwargs.get('dz', 1)
+        z1 = kwargs.get('z1', z_max/10)
+        z_thick = kwargs.get('z_thick', 20)
+        
 
-# Make Wedge MODEL
-rho = [120,10,120]
+        rho1_1 = kwargs.get('rho1_1', 100)
+        rho1_2 = kwargs.get('rho1_2', 2*rho1_1)
+        rho2_1 = kwargs.get('rho1_2', 200)
+        rho2_2 = kwargs.get('rho1_2', 0.5*rho2_1)
+        rho3 = kwargs.get('rho3', 120)
+
+        if showInfo>0:
+            print('Creating synthetic %s case with wedge angle=%f' % (case,ẃedge_angle))
+
+        z = np.arange(0,z_max,dz)
+        x = np.arange(0,x_max,dx)
+
+        nx = x.shape[0]
+        nz = z.shape[0]
+
+        M = np.zeros((nx,nz))+rho1_1
+        iz = np.where(z>=z1)[0]
+        M[:,iz] = rho3
+        for ix in range(nx):
+            rho1 = rho1_1 + (rho1_2 - rho1_1) * x[ix]/x_max
+            rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
+            M[ix,:] = rho1
+            z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))
+            iz = np.where((z>=z1) & (z<=z2))[0]
+            #print(z[iz[0]])
+            rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
+            M[ix,iz] = rho2
+
+        return M, x, z
+
+case = 'wedge'
+case = '3layer'
 z_max = 60
-M_ref, x_ref, z_ref = integrate_syntetic_case(case='Wedge', wedge_angle=10, z_max=z_max, dz=.5, x_max=100, dx=.1, z1=15, rho = rho)
-thickness = np.diff(z_ref)
+rho = [120,10,120]
+if case.lower() == 'wedge':
+    # Make Wedge MODEL
+    M_ref, x_ref, z_ref = integrate_syntetic_case(case='Wedge', wedge_angle=10, z_max=z_max, dz=.5, x_max=100, dx=.1, z1=15, rho = rho)
+elif case.lower() == '3layer':
+    # Make 3 layer MODEL
+    M_ref, x_ref, z_ref = integrate_syntetic_case(case='3layer', rho1_1 = rho[0], rho2_1 = rho[1], rho3=rho[2], x_max = 100, x_range = 10)
+    M_ref, x_ref, z_ref = integrate_syntetic_case(case='3layer', dx=.1, z1 = 20, z_thick=30, z_max = 60)
 
-# Make Weghe DATA
+# Make DATA
+thickness = np.diff(z_ref)
 file_gex = 'TX07_20231016_2x4_RC20-33.gex'
 D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
 
@@ -90,8 +139,8 @@ plt.axis('equal')
 plt.subplot(2,1,2)
 plt.semilogy(D_ref.T);
 
-#%% SAVE DATA
-d_std = 0.05
+#%% SAVE DATA --> Make function that saves data
+d_std = 0.01
 d_std_base = 1e-12
 D_std = d_std * D_ref + d_std_base
 rng = np.random.default_rng()
@@ -108,7 +157,7 @@ id = 1
 
 D_str = 'D%d' % id
 
-f_data_h5 = 'data_wedge_n%d.h5' % (d_std*100)
+f_data_h5 = 'data_%s_n%d.h5' % (case,d_std*100)
 with h5py.File(f_data_h5, 'w') as f:
     f.create_dataset('UTMX', data=UTMX) 
     f.create_dataset('UTMY', data=UTMY)
@@ -122,10 +171,11 @@ with h5py.File(f_data_h5, 'w') as f:
     f['/%s/' % D_str].attrs['noise_model'] = 'gaussian'
     f['/%s/' % D_str].attrs['is_log'] = 0
 
-ig.plot_data(f_data_h5)
+#ig.plot_data(f_data_h5)
+plt.semilogy(x_ref,D_obs);
 
 #%% make prior
-N=1000000
+N=50*100000
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=3, NLAY_max=3, 
