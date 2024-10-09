@@ -88,7 +88,7 @@ ig.plot_data(f_data_h5)
 # ## Create prior model and data
 
 # %% make prior
-N=500000 # sample size 
+N=5000000 # sample size 
 RHO_dist='log-uniform'
 RHO_min=0.5*min(rho)
 RHO_max=2*max(rho)
@@ -160,7 +160,7 @@ ax2.set_aspect(.5)
 
 
 plt.tight_layout()
-plt.savefig('Synthetic_%s_%s_z%d_N%d' % (case.upper(),,RHO_dist,z_max, N))
+plt.savefig('Synthetic_%s_%s_z%d_N%d' % (case.upper(),RHO_dist,z_max, N))
 plt.show()
 
 # %%
