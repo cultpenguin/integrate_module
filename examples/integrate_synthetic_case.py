@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # %% [markdown]
 # # INTEGRATE Synthetic Case Study example
+# An example using inverting data obtained from synthetic reference model
 #
 # %% Imports
 try:
@@ -12,8 +13,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # # # # #%load_ext autoreload
-    # # # # # # # # # #%autoreload 2
+    # # # # # # # # # # #%load_ext autoreload
+    # # # # # # # # # # #%autoreload 2
     pass
 
 import integrate as ig
@@ -28,11 +29,12 @@ hardcopy=True
 
 
 # %% [markdown]
+# # Create The reference model and data
 
 # %% Generate Synthetic Case model and data
-
 # Create reference model
 
+# select the type of referenc model
 case = 'wedge'
 case = '3layer'
 
@@ -59,12 +61,11 @@ D_std = d_std * D_ref + d_std_base
 D_noise = rng.normal(0, D_std, D_ref.shape)
 D_obs = D_ref + D_noise
 
+# Write to hdf5 file
 f_data_h5 = ig.write_data_gaussian(D_obs, D_std = D_std, f_data_h5 = f_data_h5, id=1, showInfo=1)
 #check_data(f_data_h5)
-#%% 
+# %%
 # Plot the model and data
-# Compute xx and zz meshgrids properly formatted for use with imshow
-
 plt.figure()
 plt.subplot(2,1,1)
 xx_ref, zz_ref = np.meshgrid(x_ref, z_ref)
@@ -72,13 +73,18 @@ plt.pcolor(xx_ref,zz_ref,M_ref.T)
 plt.gca().invert_yaxis()
 plt.axis('equal')
 plt.colorbar()
+plt.title('Reference model')
 plt.subplot(2,1,2)
-plt.semilogy(D_ref.T);
+plt.semilogy(x_ref,D_ref);
+plt.title('Reference data')
 
 ig.plot_data(f_data_h5)
 
 
-#%% make prior
+# %% [markdown]
+# ## Create prior model and data
+
+# %% make prior
 N=50000 # sample size 
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
@@ -87,21 +93,27 @@ f_prior_h5 = ig.prior_model_layered(N=N,
 
 ig.plot_prior_stats(f_prior_h5)
 
-#%% MAKE PRIOR DATA
+# %% MAKE PRIOR DATA
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
 ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy) 
 
-# %% INVERT 
+# %% [markdown]
+# ## Perform inversion
+
+# %% INVERT
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
 
 # %% Plot some stats
 ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = [5, 220])
 
-#%% 
+# %%
 ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
 ig.plot_data_prior_post(f_post_h5, i_plot=len(x_ref)-1, hardcopy=hardcopy)
 
+
+# %% [markdown]
+# ## Compare reference model to posterior median
 
 # %% Compare posterior median to reference model
 # Read 'M1/Median' from f_post_h5
@@ -135,5 +147,3 @@ ax2.set_title('Posterior Median Model')
 plt.tight_layout()
 plt.savefig('Synthetic%s' % (case.upper()))
 plt.show()
-
-# %%
