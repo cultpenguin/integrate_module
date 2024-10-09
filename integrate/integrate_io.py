@@ -813,3 +813,162 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
         print('--> Got data for case: %s' % case)
 
     return filelist
+
+
+
+def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_data_h5='data.h5', **kwargs):
+    """
+    Write Gaussian noise data to an HDF5 file.
+    This function writes observed data and its associated Gaussian noise standard deviations
+    to an HDF5 file. It also creates necessary datasets if they do not exist and handles
+    optional attributes.
+    Parameters
+    ----------
+    D_obs : numpy.ndarray
+        Observed data array.
+    D_std : list, optional
+        Standard deviation of the observed data. If not provided, it is calculated using `d_std`.
+    d_std : list, optional
+        Default standard deviation multiplier. Used if `D_std` is not provided. Default is 0.01.
+    Cd : list, optional
+        Covariance data. If provided, it is written to the file.
+    id : int, optional
+        Identifier for the dataset group. Default is 1.
+    is_log : int, optional
+        Flag indicating if the data is in logarithmic scale. Default is 0.
+    f_data_h5 : str, optional
+        Path to the HDF5 file. Default is 'data.h5'.
+    **kwargs : dict
+        Additional keyword arguments:
+        - showInfo (int): Level of verbosity for printing information. Default is 0.
+    Returns
+    -------
+    str
+        Path to the HDF5 file.
+    Notes
+    -----
+    - If `D_std` is not provided, it is calculated as `d_std * D_obs`.
+    - The function ensures that the datasets 'UTMX', 'UTMY', 'LINE', and 'ELEVATION' exist in the file.
+    - If a group with the name 'D{id}' exists, it is removed before adding the new data.
+    - The function writes attributes 'noise_model' and 'is_log' to the dataset group.
+    """
+    
+    showInfo = kwargs.get('showInfo', 0)
+
+    if len(D_std)==0:
+        if len(d_std)==0:
+            d_std = 0.01
+        D_std = d_std * D_obs
+
+    D_str = 'D%d' % id
+
+    ns,nd=D_obs.shape
+    print(ns,nd)
+
+    with h5py.File(f_data_h5, 'a') as f:
+        # check if '/UTMX' exists and create it if it does not
+        if 'UTMX' not in f:
+            if showInfo>0:
+                print('Creating %s:/UTMX' % f_data_h5) 
+            UTMX = np.atleast_2d(np.arange(ns)).T
+            f.create_dataset('UTMX' , data=UTMX) 
+        if 'UTMY' not in f:
+            if showInfo>0:
+                print('Creating %s:/UTMY' % f_data_h5)
+            UTMY = f['UTMX'][:]*0
+            f.create_dataset('UTMY', data=UTMY)
+        if 'LINE' not in f:
+            if showInfo>0:
+                print('Creating %s:/LINE' % f_data_h5)
+            LINE = f['UTMX'][:]*0+1
+            f.create_dataset('LINE', data=LINE)
+        if 'ELEVATION' not in f:
+            if showInfo>0:
+                print('Creating %s:/ELEVATION' % f_data_h5)
+            ELEVATION = f['UTMX'][:]*0
+            f.create_dataset('ELEVATION', data=ELEVATION)
+
+    # check if group 'D1/' exists and remove it if it does
+    with h5py.File(f_data_h5, 'a') as f:
+        if D_str in f:
+            if showInfo>-1:
+                print('Removing group %s:%s ' % (f_data_h5,D_str))
+            del f[D_str]
+
+        if showInfo>-1:
+            print('Adding group %s:%s ' % (f_data_h5,D_str))
+
+        f.create_dataset('/%s/d_obs' % D_str, data=D_obs)
+        f.create_dataset('/%s/d_std' % D_str, data=D_std)
+        # If Cd is not empty do write Cd
+        if len(Cd) > 0:
+            f.create_dataset('/%s/Cd' % D_str, data=Cd)
+
+        # wrote attribute noise_model
+        f['/%s/' % D_str].attrs['noise_model'] = 'gaussian'
+        f['/%s/' % D_str].attrs['is_log'] = is_log
+    
+    return f_data_h5
+
+def check_data(f_data_h5='data.h5', **kwargs):
+    """
+    Check and update INTEGRATE data in an HDF5 file.
+    This function checks for the presence of specific datasets ('UTMX', 'UTMY', 'LINE', 'ELEVATION') 
+    in the given HDF5 file. If any of these datasets are missing, it creates them using the provided 
+    keyword arguments or default values.
+    :param f_data_h5: Path to the HDF5 file to check and update. Default is 'data.h5'.
+    :type f_data_h5: str
+    :param kwargs: Additional keyword arguments to specify dataset values and control verbosity.
+    :keyword showInfo: Verbosity level. If greater than 0, prints information messages. Default is 0.
+    :type showInfo: int, optional
+    :keyword UTMX: Array of UTMX values. If not provided, attempts to read from the file or generates default values.
+    :type UTMX: array-like, optional
+    :keyword UTMY: Array of UTMY values. Default is an array of zeros with the same length as UTMX.
+    :type UTMY: array-like, optional
+    :keyword LINE: Array of LINE values. Default is an array of ones with the same length as UTMX.
+    :type LINE: array-like, optional
+    :keyword ELEVATION: Array of ELEVATION values. Default is an array of zeros with the same length as UTMX.
+    :type ELEVATION: array-like, optional
+    :raises KeyError: If the 'D1/d_obs' dataset is not found in the file and 'UTMX' is not provided.
+    """
+
+    showInfo = kwargs.get('showInfo', 0)
+
+    if showInfo>0:
+        print('Checking INTEGRATE data in %s' % f_data_h5)  
+
+    UTMX = kwargs.get('UTMX', [])
+    if len(UTMX)==0:
+        with h5py.File(f_data_h5, 'r') as f:
+            if 'UTMX' in f:
+                UTMX = f['UTMX'][:]
+            else:
+                ns = f['D1/d_obs'].shape[0] 
+                print('UTMX not found in %s' % f_data_h5)
+                UTMX = np.atleast_2d(np.arange(ns)).T    
+            f.close()
+
+    UTMY = kwargs.get('UTMY', UTMX*0)
+    LINE = kwargs.get('LINE', UTMX*0+1)
+    ELEVATION = kwargs.get('ELEVATION', UTMX*0)
+
+    with h5py.File(f_data_h5, 'a') as f:
+        # check if '/UTMX' exists and create it if it does not
+        if 'UTMX' not in f:
+            if showInfo>0:
+                print('Creating UTMX')            
+            f.create_dataset('UTMX', data=UTMX) 
+        if 'UTMY' not in f:
+            if showInfo>0:
+                print('Creating UTMY')            
+            f.create_dataset('UTMY', data=UTMY)
+        if 'LINE' not in f:
+            if showInfo>0:
+                print('Creating LINE')
+            f.create_dataset('LINE', data=LINE)
+        if 'ELEVATION' not in f:
+            if showInfo>0:
+                print('Creating ELEVATION')
+            f.create_dataset('ELEVATION', data=ELEVATION)
+
+            f.close()

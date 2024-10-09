@@ -26,13 +26,16 @@ import matplotlib.pyplot as plt
 import h5py
 hardcopy=True
 
+
 # %% [markdown]
 
 # %% Generate Synthetic Case model and data
 
 # Create reference model
 
-#case = '3layer'
+case = 'wedge'
+case = '3layer'
+
 z_max = 60
 rho = [120,10,120]
 if case.lower() == 'wedge':
@@ -48,6 +51,8 @@ thickness = np.diff(z_ref)
 file_gex = 'TX07_20231016_2x4_RC20-33.gex'
 D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
 
+# Initialize random number generator to sample from noise model!
+rng = np.random.default_rng()
 d_std = 0.01
 d_std_base = 1e-12
 D_std = d_std * D_ref + d_std_base
@@ -74,7 +79,7 @@ ig.plot_data(f_data_h5)
 
 
 #%% make prior
-N=5000
+N=50000 # sample size 
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=3, NLAY_max=3, 
@@ -98,9 +103,7 @@ ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
 ig.plot_data_prior_post(f_post_h5, i_plot=len(x_ref)-1, hardcopy=hardcopy)
 
 
-
-
-# %%
+# %% Compare posterior median to reference model
 # Read 'M1/Median' from f_post_h5
 with h5py.File(f_post_h5, 'r') as f_post:
     M_median = f_post['/M1/Median'][:]
@@ -112,26 +115,25 @@ with h5py.File(f_prior_h5,'r') as f_prior:
 xx, zz = np.meshgrid(x_ref, z)
 
 # Make a figure with two subplots, each with plt.pcolor(xx,zz,M_median.T) and, plt.pcolor(xx_ref,zz_ref,M_ref.T), and use the same colorbar and x.axis
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
 
-# First subplot
 clim = [0.8*min(rho), 1.2*max(rho)]
-c1 = ax1.pcolor(xx, zz, M_median.T, clim=clim)
+# Second subplot
+c1 = ax1.pcolor(xx_ref, zz_ref, M_ref.T, clim=clim, cmap='jet')
 ax1.invert_yaxis()
 ax1.axis('equal')
 fig.colorbar(c1, ax=ax1)
-ax1.set_title('Posterior Median Model')
+ax1.set_title('Prior Reference %s Model' % case)
 
-# Second subplot
-c2 = ax2.pcolor(xx_ref, zz_ref, M_ref.T, clim=clim)
+# First subplot
+c2 = ax2.pcolor(xx, zz, M_median.T, clim=clim, cmap='jet')
 ax2.invert_yaxis()
 ax2.axis('equal')
 fig.colorbar(c2, ax=ax2)
-ax2.set_title('Prior Reference %s Model' % case)
+ax2.set_title('Posterior Median Model')
 
 plt.tight_layout()
+plt.savefig('Synthetic%s' % (case.upper()))
 plt.show()
-
-
 
 # %%

@@ -1841,4 +1841,144 @@ def likelihood_gaussian_full(D, d_obs, Cd):
     return 1
 
 
-# %%
+# %% Synthetic data
+
+def synthetic_case(case='Wedge', **kwargs):
+    """
+    Generate synthetic geological models for different cases.
+    Parameters
+    ----------
+    case : str, optional
+        The type of synthetic case to generate. Options are 'Wedge' and '3Layer'. Default is 'Wedge'.
+    **kwargs : dict, optional
+        Additional parameters for the synthetic case generation.
+        Common parameters:
+        - showInfo : int, optional
+            If greater than 0, print information about the generated case. Default is 0.
+        Parameters for 'Wedge' case:
+        - x_max : int, optional
+            Maximum x-dimension size. Default is 1000.
+        - dx : float, optional
+            Step size in the x-dimension. Default is 1000./x_max.
+        - z_max : int, optional
+            Maximum z-dimension size. Default is 90.
+        - dz : float, optional
+            Step size in the z-dimension. Default is 1.
+        - z1 : float, optional
+            Depth at which the wedge starts. Default is z_max/10.
+        - rho : list of float, optional
+            Density values for different layers. Default is [100, 200, 120].
+        - wedge_angle : float, optional
+            Angle of the wedge in degrees. Default is 1.
+        Parameters for '3Layer' case:
+        - x_max : int, optional
+            Maximum x-dimension size. Default is 100.
+        - x_range : float, optional
+            Range in the x-dimension for the cosine function. Default is x_max/4.
+        - dx : float, optional
+            Step size in the x-dimension. Default is 1.
+        - z_max : int, optional
+            Maximum z-dimension size. Default is 60.
+        - dz : float, optional
+            Step size in the z-dimension. Default is 1.
+        - z1 : float, optional
+            Depth at which the first layer ends. Default is z_max/3.
+        - z_thick : float, optional
+            Thickness of the second layer. Default is z_max/2.
+        - rho1_1 : float, optional
+            Density at the start of the first layer. Default is 120.
+        - rho1_2 : float, optional
+            Density at the end of the first layer. Default is 10.
+        - rho2_1 : float, optional
+            Density at the start of the second layer. Default is rho1_2.
+        - rho2_2 : float, optional
+            Density at the end of the second layer. Default is rho1_1.
+        - rho3 : float, optional
+            Density of the third layer. Default is 120.
+    Returns
+    -------
+    M : numpy.ndarray
+        The generated synthetic model.
+    x : numpy.ndarray
+        The x-coordinates of the model.
+    z : numpy.ndarray
+        The z-coordinates of the model.
+    """
+    
+    showInfo = kwargs.get('showInfo', 0)
+
+    if case.lower() == 'wedge':
+        # Create synthetic wedhge model
+        
+        # variables
+        x_max = kwargs.get('x_max', 1000)
+        dx = kwargs.get('dx', 1000./x_max)
+        z_max = kwargs.get('z_max', 90)
+        dz = kwargs.get('dz', 1)
+        z1 = kwargs.get('z1', z_max/10)
+        rho = kwargs.get('rho', [100,200,120])
+        wedge_angle = kwargs.get('wedge_angle', 1)
+
+        if showInfo>0:
+            print('Creating synthetic %s case with wedge angle=%f' % (case,ẃedge_angle))
+
+        z = np.arange(0,z_max,dz)
+        x = np.arange(0,x_max,dx)
+
+        nx = x.shape[0]
+        nz = z.shape[0]
+
+        M = np.zeros((nx,nz))+rho[0]
+        # set M=rho[3] of all iz> (z==z1)
+        iz = np.where(z>=z1)[0]
+        M[:,iz] = rho[2]
+        for ix in range(nx):
+            wedge_angle_rad = np.deg2rad(wedge_angle)
+            z2 = z1 + x[ix]*np.tan(wedge_angle_rad)            
+            #find iz where  (z>=z1) and (z<=z2)
+            iz = np.where((z>=z1) & (z<=z2))[0]
+            #print(z[iz[0]])
+            M[ix,iz] = rho[1]
+
+        return M, x, z
+
+    elif case.lower() == '3layer':
+        # Create synthetic 3 layer model
+
+        # variables
+        x_max = kwargs.get('x_max', 100)
+        x_range = kwargs.get('x_range', x_max/4)
+        dx = kwargs.get('dx', 1)
+        z_max = kwargs.get('z_max', 60)
+        dz = kwargs.get('dz', 1)
+        z1 = kwargs.get('z1', z_max/3)
+        z_thick = kwargs.get('z_thick', z_max/2)
+        
+
+        rho1_1 = kwargs.get('rho1_1', 120)
+        rho1_2 = kwargs.get('rho1_2', 10)
+        rho2_1 = kwargs.get('rho1_2', rho1_2)
+        rho2_2 = kwargs.get('rho2_2', rho1_1)
+        rho3 = kwargs.get('rho3', 120)
+
+        if showInfo>0:
+            print('Creating synthetic %s case with wedge angle=%f' % (case,ẃedge_angle))
+
+        z = np.arange(0,z_max,dz)
+        x = np.arange(0,x_max,dx)
+
+        nx = x.shape[0]
+        nz = z.shape[0]
+
+        M = np.zeros((nx,nz))+rho3
+        iz1 = np.where(z<=z1)[0]
+        for ix in range(nx):
+            rho1 = rho1_1 + (rho1_2 - rho1_1) * x[ix]/x_max
+            rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
+            M[ix,iz1] = rho1
+            z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))            
+            rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
+            iz2 = np.where((z>=z1) & (z<=z2))[0]
+            M[ix,iz2] = rho2
+
+        return M, x, z

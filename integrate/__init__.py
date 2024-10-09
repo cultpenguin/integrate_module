@@ -7,6 +7,7 @@ from integrate.integrate import prior_data
 from integrate.integrate import prior_data_gaaem
 from integrate.integrate import prior_data_identity
 from integrate.integrate import forward_gaaem
+from integrate.integrate import synthetic_case
 from integrate.integrate import prior_model_layered
 from integrate.integrate import prior_model_workbench
 from integrate.integrate import prior_model_workbench_direct
@@ -19,6 +20,8 @@ from integrate.integrate import likelihood_gaussian_diagonal
 from integrate.integrate import likelihood_gaussian_full
 from integrate.integrate import use_parallel
 
+
+
 from integrate.integrate_io import get_geometry 
 from integrate.integrate_io import read_gex
 from integrate.integrate_io import gex_to_stm
@@ -28,6 +31,8 @@ from integrate.integrate_io import post_to_csv
 from integrate.integrate_io import copy_hdf5_file
 from integrate.integrate_io import hdf5_scan
 from integrate.integrate_io import get_case_data
+from integrate.integrate_io import write_data_gaussian
+from integrate.integrate_io import check_data
 
 from integrate.integrate_plot import plot_profile
 from integrate.integrate_plot import plot_profile_continuous
