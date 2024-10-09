@@ -71,7 +71,8 @@ def integrate_syntetic_case(case='Wedge', **kwargs):
 
 # Make Wedge MODEL
 rho = [120,10,120]
-M_ref, x_ref, z_ref = integrate_syntetic_case(case='Wedge', wedge_angle=10, z_max=60, dz=.5, x_max=100, dx=.1, z1=15, rho = rho)
+z_max = 60
+M_ref, x_ref, z_ref = integrate_syntetic_case(case='Wedge', wedge_angle=10, z_max=z_max, dz=.5, x_max=100, dx=.1, z1=15, rho = rho)
 thickness = np.diff(z_ref)
 
 # Make Weghe DATA
@@ -90,7 +91,7 @@ plt.subplot(2,1,2)
 plt.semilogy(D_ref.T);
 
 #%% SAVE DATA
-d_std = 0.03
+d_std = 0.05
 d_std_base = 1e-12
 D_std = d_std * D_ref + d_std_base
 rng = np.random.default_rng()
@@ -107,7 +108,7 @@ id = 1
 
 D_str = 'D%d' % id
 
-f_data_h5 = 'data_wedge.h5'
+f_data_h5 = 'data_wedge_n%d.h5' % (d_std*100)
 with h5py.File(f_data_h5, 'w') as f:
     f.create_dataset('UTMX', data=UTMX) 
     f.create_dataset('UTMY', data=UTMY)
@@ -124,16 +125,16 @@ with h5py.File(f_data_h5, 'w') as f:
 ig.plot_data(f_data_h5)
 
 #%% make prior
-N=100000
+N=1000000
 f_prior_h5 = ig.prior_model_layered(N=N,
-                                    lay_dist='uniform', z_max = 60, 
+                                    lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=3, NLAY_max=3, 
-                                    RHO_dist='log-uniform', RHO_min=5, RHO_max=150)
+                                    RHO_dist='uniform', RHO_min=0.5*min(rho), RHO_max=2*max(rho))
 
 ig.plot_prior_stats(f_prior_h5)
 
 #%% MAKE PRIOR DATA
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=0)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
 ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy) 
 
