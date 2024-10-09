@@ -238,7 +238,7 @@ f_prior_log_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, is_log=True)
 f_post_log_h5_arr = []
 for i in range(len(f_data_arr)):
     f_data_h5 = f_data_arr[i]
-    f_post_h5 = ig.integrate_rejection(f_prior_log_data_h5, f_data_h5, parallel=parallel, Ncpu=32)
+    f_post_h5 = ig.integrate_rejection(f_prior_log_data_h5, f_data_h5, parallel=parallel, Ncpu=10)
     f_post_log_h5_arr.append(f_post_h5)
     
     ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
