@@ -41,6 +41,7 @@ case = 'wedge'
 z_max = 60
 rho = [120,10,120]
 rho = [10,120,10]
+rho = [720,10,520]
 dx=0.1
 if case.lower() == 'wedge':
     # Make Wedge MODEL
@@ -89,8 +90,9 @@ ig.plot_data(f_data_h5)
 # ## Create prior model and data
 
 # %% make prior
-N=50000 # sample size 
+N=5000000 # sample size 
 RHO_dist='log-uniform'
+#RHO_dist='uniform'
 RHO_min=0.8*min(rho)
 RHO_max=1.25*max(rho)
 f_prior_h5 = ig.prior_model_layered(N=N,
@@ -172,7 +174,7 @@ ax2.set_aspect(.5)
 ax3.set_aspect(.5)
 
 plt.tight_layout()
-plt.savefig('Synthetic_%s_%s_z%d_N%d' % (case.upper(),RHO_dist,z_max, N))
+plt.savefig('Synthetic_%s_%s_z%d_rho%d_%d_N%d' % (case.upper(),RHO_dist,z_max, rho[0],rho[1],N))
 plt.show()
 
 # %%
