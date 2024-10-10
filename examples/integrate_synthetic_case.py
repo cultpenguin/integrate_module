@@ -90,7 +90,7 @@ ig.plot_data(f_data_h5)
 # ## Create prior model and data
 
 # %% make prior
-N=5000000 # sample size 
+N=50000 # sample size 
 RHO_dist='log-uniform'
 #RHO_dist='uniform'
 RHO_min=0.8*min(rho)
@@ -112,7 +112,12 @@ ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5],
 # ## Perform inversion
 
 # %% INVERT
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
+parallel = False
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
+                                    parallel=parallel, 
+                                    Ncpu=8,
+                                    use_N_best=0
+                                    )
 
 # %% Plot some stats
 clim = [0.8*min(rho), 1.2*max(rho)]
