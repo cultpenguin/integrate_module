@@ -887,13 +887,15 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
             ELEVATION = f['UTMX'][:]*0
             f.create_dataset('ELEVATION', data=ELEVATION)
 
-    # check if group 'D1/' exists and remove it if it does
+    # check if group 'D{id}/' exists and remove it if it does
     with h5py.File(f_data_h5, 'a') as f:
         if D_str in f:
             if showInfo>-1:
                 print('Removing group %s:%s ' % (f_data_h5,D_str))
             del f[D_str]
 
+    # Write DATA
+    with h5py.File(f_data_h5, 'a') as f:
         if showInfo>-1:
             print('Adding group %s:%s ' % (f_data_h5,D_str))
 

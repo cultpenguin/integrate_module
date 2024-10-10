@@ -36,10 +36,11 @@ hardcopy=True
 
 # select the type of referenc model
 case = 'wedge'
-case = '3layer'
+#case = '3layer'
 
 z_max = 60
 rho = [120,10,120]
+rho = [10,120,10]
 dx=0.1
 if case.lower() == 'wedge':
     # Make Wedge MODEL
@@ -127,6 +128,8 @@ ig.plot_data_prior_post(f_post_h5, i_plot=len(x_ref)-1, hardcopy=hardcopy)
 # Read 'M1/Median' from f_post_h5
 with h5py.File(f_post_h5, 'r') as f_post:
     M_median = f_post['/M1/Median'][:]
+    M_mean = f_post['/M1/Mean'][:]
+    M_std = f_post['/M1/Std'][:]
 
 with h5py.File(f_prior_h5,'r') as f_prior:
     # REad 'x' feature from f_prior
@@ -135,29 +138,38 @@ with h5py.File(f_prior_h5,'r') as f_prior:
 xx, zz = np.meshgrid(x_ref, z)
 
 # Make a figure with two subplots, each with plt.pcolor(xx,zz,M_median.T) and, plt.pcolor(xx_ref,zz_ref,M_ref.T), and use the same colorbar and x.axis
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 8))
 
 clim = [0.8*min(rho), 1.2*max(rho)]
-# Second subplot
+# Fisrt subplot - ref model
 c1 = ax1.pcolor(xx_ref, zz_ref, M_ref.T, clim=clim, cmap='jet')
 ax1.invert_yaxis()
 #ax1.axis('equal')
 fig.colorbar(c1, ax=ax1)
 ax1.set_title('Prior Reference %s Model' % case)
 
-# First subplot
-c2 = ax2.pcolor(xx, zz, M_median.T, clim=clim, cmap='jet')
+# Second subplot - Median
+c2 = ax2.pcolor(xx, zz, M_mean.T, clim=clim, cmap='jet')
 ax2.invert_yaxis()
 #ax2.axis('equal')
 fig.colorbar(c2, ax=ax2)
 ax2.set_title('Posterior Median Model')
-
 # add a contour plot of xx_ref, zz_ref, M_ref.T on top of current figure
 ax2.contour(xx_ref, zz_ref, M_ref.T, colors='k', linewidths=1)
+
+# Third subplot - Std
+c3 = ax3.pcolor(xx, zz, M_std.T, clim=[0,0.4], cmap='gray_r')
+ax3.invert_yaxis()
+#ax3.axis('equal')
+fig.colorbar(c3, ax=ax3)
+ax3.set_title('Posterior Std')
+# add a contour plot of xx_ref, zz_ref, M_ref.T on top of current figure
+ax3.contour(xx_ref, zz_ref, M_ref.T, colors='r', linewidths=.5)
+
 # change aspect ratio of the figure to 2:1
 ax1.set_aspect(.5)
 ax2.set_aspect(.5)
-
+ax3.set_aspect(.5)
 
 plt.tight_layout()
 plt.savefig('Synthetic_%s_%s_z%d_N%d' % (case.upper(),RHO_dist,z_max, N))
