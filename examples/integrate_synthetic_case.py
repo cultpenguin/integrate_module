@@ -40,8 +40,9 @@ case = '3layer'
 
 z_max = 60
 rho = [120,10,120]
-rho = [10,120,10]
-rho = [720,10,520]
+#rho = [10,120,10]
+#rho = [120,10,10]
+#rho = [720,10,520]
 dx=0.1
 if case.lower() == 'wedge':
     # Make Wedge MODEL
@@ -90,14 +91,16 @@ ig.plot_data(f_data_h5)
 # ## Create prior model and data
 
 # %% make prior
-N=50000 # sample size 
+N=500000 # sample size 
 RHO_dist='log-uniform'
 #RHO_dist='uniform'
 RHO_min=0.8*min(rho)
 RHO_max=1.25*max(rho)
+NLAY_min=1
+NLAY_max=4
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
-                                    NLAY_min=3, NLAY_max=3, 
+                                    NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max)
 
 ig.plot_prior_stats(f_prior_h5)
@@ -112,7 +115,6 @@ ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5],
 # ## Perform inversion
 
 # %% INVERT
-parallel = False
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
                                     parallel=parallel, 
                                     Ncpu=8,
@@ -121,11 +123,11 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5,
 
 # %% Plot some stats
 clim = [0.8*min(rho), 1.2*max(rho)]
-ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
+ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim)
+ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  im=2)
 
 # %%
 ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
-ig.plot_data_prior_post(f_post_h5, i_plot=len(x_ref)-1, hardcopy=hardcopy)
 
 
 # %% [markdown]
@@ -179,7 +181,7 @@ ax2.set_aspect(.5)
 ax3.set_aspect(.5)
 
 plt.tight_layout()
-plt.savefig('Synthetic_%s_%s_z%d_rho%d_%d_N%d' % (case.upper(),RHO_dist,z_max, rho[0],rho[1],N))
+plt.savefig('Synthetic_%s_%s_z%d_rho%d-%d-%d_N%d' % (case.upper(),RHO_dist,z_max, rho[0],rho[1],rho[2],N))
 plt.show()
 
 # %%
