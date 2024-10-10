@@ -58,7 +58,7 @@ f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 # Create reference model
 
 # select the type of referenc model
-dx=0.1
+dx=.1
 if case.lower() == 'wedge':
     # Make Wedge MODEL
     M_ref, x_ref, z_ref = ig.synthetic_case(case='Wedge', wedge_angle=10, z_max=z_max, dz=.5, x_max=100, dx=dx, z1=15, rho = rho)
@@ -174,6 +174,47 @@ if doTest:
     plt.ylabel('-log(L)')
     plt.show()
 
+#%%
+doProfile = False
+if doProfile:
+    import cProfile
+    import pstats
+    def profile_code():
+        f_data_h5 = f_data_h5_arr[2] 
+        f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
+                                        parallel=False, 
+                                        Ncpu=8, 
+                                        use_N_best=0)
+
+    cProfile.run('profile_code()', 'profile_output')
+
+    with open('profile_results.txt', 'w') as f:
+        p = pstats.Stats('profile_output', stream=f)
+        p.sort_stats('cumulative').print_stats(50)
+
+
+# %% SEQUENTIAL TEST
+testSeq = True
+if testSeq:
+    import time as time
+    t0 = time.time()
+    f_data_h5 = f_data_h5_arr[2] 
+    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
+                                        parallel=True,Ncpu=2,
+                                        #parallel=False,
+                                        autoT=True,
+                                        T_base = 10,
+                                        use_N_best=100,
+                                        updatePostStat = False
+                                        )
+    t1 = time.time()-t0
+    print("Time : %.2f s" % t1)
+
+    ig.integrate_posterior_stats(f_post_h5)
+
+    ig.plot_profile(f_post_h5, i1=0, i2=100, hardcopy=hardcopy,  im=1)
+
+
 # %% INVERT
 f_post_h5_arr = []
 T_arr = []
@@ -182,13 +223,13 @@ clim   = [min(rho)*0.8, max(rho)*1.25]
 
 for f_data_h5 in f_data_h5_arr: 
     #f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
-    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8, use_N_best = 1000)
+    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=False, use_N_best=0)
     with h5py.File(f_post_h5, 'r') as f_post:
         T_arr.append(f_post['/T'][:])
         EV_arr.append(f_post['/EV'][:])
 
     f_post_h5_arr.append(f_post_h5)
-    ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
+    #ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
 
 
 # %%

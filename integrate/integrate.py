@@ -1701,7 +1701,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
     ip_chunks = np.array_split(ip_range, Nchunks) 
 
     if showInfo>0:
-        print('Number of data points: %d (available), %d (used). Nchunks=%s, Ncpu=%d' % (Ndp,Ndp_invert,Nchunks,Ncpu))    
+        print('Number of data points: %d (available), %d (used). Nchunks=%s, Ncpu=%d,use_N_best=%d' % (Ndp,Ndp_invert,Nchunks,Ncpu,use_N_best))    
     
     if showInfo>2:
         print('f_prior_h5=%s\nf_data_h5=%s\nf_post_h5=%s' % (f_prior_h5, f_data_h5, f_post_h5))
