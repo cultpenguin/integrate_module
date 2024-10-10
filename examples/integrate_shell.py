@@ -12,6 +12,7 @@ def main():
     parser.add_argument("--f_post_h5", type=str, help="Path to output posterior H5 file")
     parser.add_argument("--showInfo", type=int, help="Show information during inversion")
     parser.add_argument("--parallel", type=int, help="Run in parallel")
+    parser.add_argument("--Ncpu", type=int, help="Number of CPUs to use")
 
     args = parser.parse_args()
 
@@ -22,7 +23,6 @@ def main():
     f_prior_h5 = args.f_prior_h5
     f_data_h5 = args.f_data_h5
     method = args.method
-
 
     if args.showInfo:
         #print(f"ShowInfo: {args.showInfo}")
@@ -58,8 +58,12 @@ def main():
     else:
         parallel = False
 
-
-
+    if args.Ncpu:
+        if showInfo>0:
+            print(f"Ncpu: {args.Ncpu}")
+        Ncpu = args.Ncpu
+    else:
+        Ncpu = 1
 
     # Here you would add the actual integration logic
     # For example:
@@ -70,10 +74,10 @@ def main():
         import integrate as ig
         import time as time
         t0 = time.time()
-        ig.integrate_rejection(args.f_prior_h5, args.f_data_h5, 
+        ig.integrate_rejection(f_prior_h5, f_data_h5, 
                             f_post_h5=f_post_h5,
                             parallel=parallel, 
-                            Ncpu=8,
+                            Ncpu=Ncpu,
                             N_use = N_use,
                             showInfo=showInfo
                             )

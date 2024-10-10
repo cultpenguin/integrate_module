@@ -36,7 +36,7 @@ hardcopy=True
 
 # select the type of referenc model
 case = 'wedge'
-#case = '3layer'
+case = '3layer'
 
 z_max = 60
 rho = [120,10,120]
