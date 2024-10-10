@@ -1397,6 +1397,8 @@ def integrate_rejection_range(f_prior_h5,
     import integrate as ig
 
     # get optional arguments
+    use_N_best = kwargs.get('use_N_best', 0)
+    #print("use_N_best=%d" % use_N_best)
     showInfo = kwargs.get('showInfo', 0)
     if (showInfo<0):
         disableTqdm=True
@@ -1503,17 +1505,15 @@ def integrate_rejection_range(f_prior_h5,
                         else:
                             Cd = Cd_h5[:]
 
-                        L_single = likelihood_gaussian_full(D[i], d_obs, Cd)
+                        L_single = likelihood_gaussian_full(D[i], d_obs, Cd, N_app = use_N_best)
                         
                     elif 'd_std' in f_data['%s' % DS].keys():
                         d_std = f_data['%s/d_std' % DS][ip]
-                        L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std)
+                        L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std, use_N_best)
  
                     else:
                         print('No d_std or Cd in %s' % DS)
 
-                #L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std)
-                #L.append(L_single)
                 L[i] = L_single
                 t.append(time.time()-t0)
             elif noise_model[i]=='multinomial':
@@ -1639,7 +1639,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
                               T_base = 1,
                               Nchunks=0,
                               Ncpu=0,
-                              parallel=True,                              
+                              parallel=True,  
                               **kwargs):
     from datetime import datetime   
     #from multiprocessing import Pool
@@ -1650,6 +1650,9 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
     # get optional arguments
     showInfo = kwargs.get('showInfo', 1)
+    use_N_best = kwargs.get('use_N_best', 0)
+    if showInfo>0:
+        print("use_N_best=%d" % use_N_best)
     # If set, Nproc will be used as the number of processors
     Nproc = kwargs.get('Nproc', -1)
     if Nproc>-1:
@@ -1728,7 +1731,8 @@ def integrate_rejection(f_prior_h5='prior.h5',
             autoT=autoT,
             T_base=T_base,
             nr=nr,
-            Ncpu=Ncpu,            
+            Ncpu=Ncpu,
+            use_N_best=use_N_best            
         )
 
 
@@ -1760,7 +1764,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
     # WHere T_all is Inf set it to Nan
     T_all[T_all==np.inf] = np.nan
     EV_all[EV_all==np.inf] = np.nan
-
+    print('All done')
     date_end = str(datetime.now())
     t_end = datetime.now()
     t_elapsed = (t_end - t_start).total_seconds()
@@ -1791,7 +1795,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
 def integrate_posterior_chunk(args):
     #import integrate as ig
     
-    i_chunk, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr = args
+    i_chunk, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr, use_N_best = args
     ip_range = ip_chunks[i_chunk]
     #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
 
@@ -1803,17 +1807,18 @@ def integrate_posterior_chunk(args):
         ip_range=ip_range,
         autoT=autoT,
         T_base=T_base,
-        nr=nr,        
+        nr=nr,     
+        use_N_best=use_N_best   
     )
 
     return i_use, T, EV, ip_range
 
-def integrate_posterior_main(ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr, Ncpu):
+def integrate_posterior_main(ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr, Ncpu, use_N_best):
     #import integrate as ig
     #from multiprocessing import Pool
 
     with Pool(Ncpu) as p:
-        results = p.map(integrate_posterior_chunk, [(i, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr) for i in range(len(ip_chunks))])
+        results = p.map(integrate_posterior_chunk, [(i, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr, use_N_best) for i in range(len(ip_chunks))])
 
     # Get sample size N from f_prior_h5
     with h5py.File(f_prior_h5, 'r') as f_prior:
@@ -1839,8 +1844,39 @@ def integrate_posterior_main(ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, au
 
 
 
+def select_subset_for_inversion(dd, N_app):
+    """
+    Select a subset of indices for inversion based on the sum of absolute values.
 
-def likelihood_gaussian_diagonal(D, d_obs, d_std):
+    This function calculates the sum of absolute values along the specified axis
+    for each row in the input array `dd`. It then selects the indices of the 
+    `N_app` smallest sums.
+
+    Parameters
+    ----------
+    dd : numpy.ndarray
+        A 2D array of data from which to select the subset.
+    N_app : int
+        The number of indices to select based on the smallest sums.
+
+    Returns
+    -------
+    idx : numpy.ndarray
+        An array of indices corresponding to the `N_app` smallest sums.
+    nsum : numpy.ndarray
+        An array containing the sum of absolute values for each row in `dd`.
+
+    Notes
+    -----
+    This function uses `np.nansum` to ignore NaNs in the summation and 
+    `np.argpartition` for efficient selection of the smallest sums.
+    """
+    nsum = np.nansum(np.abs(dd), axis=1)
+    idx = np.argpartition(nsum, N_app)[:N_app]
+    return idx, nsum
+
+
+def likelihood_gaussian_diagonal(D, d_obs, d_std, N_app=0):
     """
     Compute the Gaussian likelihood for a diagonal covariance matrix.
     This function calculates the likelihood of observed data `d_obs` given 
@@ -1867,13 +1903,20 @@ def likelihood_gaussian_diagonal(D, d_obs, d_std):
     #    L[i] = -0.5 * np.nansum(dd[i]**2 / d_std**2)
     # Vectorized
     dd = D - d_obs
-    d_var = d_std**2
-    #L = -0.5 * np.nansum(dd**2 / d_var, axis=1)
-    L = -0.5 * np.nansum(dd**2 / d_var, axis=1)
+    
+    if N_app > 0:
+       L = np.ones(D.shape[0])*-1e+15
+       idx = select_subset_for_inversion(dd, N_app)[0] 
+       #L_small = -0.5 * np.nansum(dd[idx]**2 / d_std**2, axis=1)
+       L_small = likelihood_gaussian_diagonal(D[idx], d_obs, d_std,0)
+       L[idx]=L_small
+       
+    else:
+        L = -0.5 * np.nansum(dd**2 / d_std**2, axis=1)
 
     return L
 
-def likelihood_gaussian_full(D, d_obs, Cd, checkNaN=True, useVectorized=False):
+def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized=False):
     """
     Calculate the Gaussian likelihood for a given dataset.
     Parameters
@@ -1907,6 +1950,20 @@ def likelihood_gaussian_full(D, d_obs, Cd, checkNaN=True, useVectorized=False):
         dd = D - d_obs
         iCd = np.linalg.inv(Cd)
         
+    if N_app > 0:
+        #print('N_app=%d' % N_app)
+        L = np.ones(D.shape[0])*-1e+15
+        idx = select_subset_for_inversion(dd, N_app)[0] 
+        if useVectorized:
+            L_small = -.5 * np.einsum('ij,ij->i', dd[idx] @ iCd, dd[idx])
+        else:
+            L_small = np.zeros(idx.shape[0])
+            for i in range(idx.shape[0]):
+                L_small[i] = -.5 * np.nansum(dd[idx[i]].T @ iCd @ dd[idx[i]])
+        L[idx] = L_small
+    
+        return L
+    
     if useVectorized:
         # vectorized    
         L = -.5 * np.einsum('ij,ij->i', dd @ iCd, dd)        
