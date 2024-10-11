@@ -1379,15 +1379,42 @@ def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **
 THIS IS THE NEW MULTI DATA IMPLEMENTATION
 '''
 
-def load_prior(f_prior_h5, id_use=[1], N_use=0):
+def load_prior(f_prior_h5, N_use=0):
+    D = load_prior_data(f_prior_h5, N_use=N_use)
+    M = load_prior_model(f_prior_h5, N_use=N_use)
+    return D, M
+
+def load_prior_model(f_prior_h5, im_use=[], N_use=0):
     import h5py
     import numpy as np
 
-    if len(id_use)==0:
-        id_use = np.arange(1,Ndt+1)
+    if len(im_use)==0:
+        Nmt=0
+        with h5py.File(f_prior_h5, 'r') as f_prior:
+            for key in f_prior.keys():
+                if key[0]=='M':
+                    Nmt = Nmt+1
+        if len(im_use)==0:
+            im_use = np.arange(1,Nmt+1) 
+
+    with h5py.File(f_prior_h5, 'r') as f_prior:
+        N = f_prior['/M1'].shape[0]
+        if N_use == 0:
+            N_use = N    
+        #idx = np.sort(np.random.choice(N, min(N_use, N), replace=False)) if N_use < N else np.arange(N)
+        idx = np.arange(N_use)
+        M = [f_prior[f'/M{id}'][:][idx] for id in im_use]
+    return M
+
+
+def load_prior_data(f_prior_h5, id_use=[], N_use=0):
+    import h5py
+    import numpy as np
+
+    if len(id_use)==0:        
         Ndt=0
-        with h5py.File(f_data_h5, 'r') as f_data:
-            for key in f_data.keys():
+        with h5py.File(f_prior_h5, 'r') as f_prior:
+            for key in f_prior.keys():
                 if key[0]=='D':
                     Ndt = Ndt+1
         if len(id_use)==0:
@@ -1409,7 +1436,16 @@ def load_data(f_data_h5, id_use=[1]):
         d_obs = [f_data[f'/D{id}/d_obs'][:] for id in id_use]
         d_std = [f_data[f'/D{id}/d_std'][:] if 'd_std' in f_data[f'/D{id}'] else None for id in id_use]
         Cd = [f_data[f'/D{id}/Cd'][:] if 'Cd' in f_data[f'/D{id}'] else None for id in id_use]
-    return noise_model, d_obs, d_std, Cd, id_use
+
+
+    DATA = {}
+    DATA['d_obs'] = d_obs
+    DATA['d_std'] = d_std
+    DATA['Cd'] = Cd
+    DATA['id_use'] = id_use
+        
+    # return noise_model, d_obs, d_std, Cd, id_use
+    return DATA
 
 
 # START OF REJECTION SAMPLING
@@ -1473,18 +1509,18 @@ def integrate_rejection(f_prior_h5='prior.h5',
     # Load the prior model and data from the h5 files
     if showInfo>0:
         print('Loading prior model and data types %d' % id_use)
-    D = load_prior(f_prior_h5, id_use = [1])
-    noise_model, d_obs, d_std, Cd, id_use = load_data(f_data_h5)
-
+    PRIOR_DATA = load_prior_data(f_prior_h5, id_use = id_use)
+    # READ OBSERVED DATA AS D DATA OBS_DATA = [noise_model, d_obs, d_std, Cd, id_use]
+    DATA = load_data(f_data_h5)
 
     # Get sample size N from f_prior_h5
-    N = D[0].shape[0]
+    N = PRIOR_DATA[0].shape[0]
     
     if N_use>N:
         N_use = N
 
     # Get number of data points from, f_data_h5
-    Ndp = d_obs[0].shape[0]
+    Ndp = DATA['d_obs'][0].shape[0]
 
     # if ip_range is empty then use all data points
     if len(ip_range)==0:
@@ -1520,6 +1556,8 @@ def integrate_rejection(f_prior_h5='prior.h5',
     i_use_all = np.random.randint(0, N, (Ndp, nr))
     T_all = np.zeros(Ndp)*np.nan
     EV_all = np.zeros(Ndp)*np.nan
+    # 'posterior' evience - mean posterior likelihood TODO
+    EV_post_all  = np.zeros(Ndp)*np.nan
 
     date_start = str(datetime.now())
     t_start = datetime.now()
@@ -1548,7 +1586,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
             if showInfo>0:
                 print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
 
-            i_use, T, EV, ip_range = integrate_rejection_range(f_prior_h5=f_prior_h5, 
+            i_use, T, EV, ip_range = integrate_rejection_range_new(f_prior_h5=f_prior_h5, 
                                         f_data_h5=f_data_h5,
                                         N_use=N_use, 
                                         id_use=id_use,
@@ -1595,6 +1633,257 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
     #return f_post_h5 T_all, EV_all, i_use_all
     return f_post_h5
+
+
+
+def integrate_rejection_range_new(f_prior_h5, 
+                              f_data_h5, 
+                              N_use=1000, 
+                              id_use=[1,2], 
+                              ip_range=[], 
+                              nr=400,
+                              autoT=1,
+                              T_base = 1,
+                              **kwargs):
+
+    from tqdm import tqdm
+    import numpy as np
+    import h5py
+    import time
+    import integrate as ig
+
+    # get optional arguments
+    use_N_best = kwargs.get('use_N_best', 0)
+    #print("use_N_best=%d" % use_N_best)
+    showInfo = kwargs.get('showInfo', 0)
+    if (showInfo<0):
+        disableTqdm=True
+    else:
+        disableTqdm=False
+    
+    useRandomData = kwargs.get('useRandomData', True)
+    #useRandomData = kwargs.get('useRandomData', False)
+    
+    # Get number of data points from, f_data_h5
+    with h5py.File(f_data_h5, 'r') as f_data:
+        Ndp = f_data['/D1/d_obs'].shape[0]
+    # if ip_range is empty then use all data points
+    if len(ip_range)==0:
+        ip_range = np.arange(Ndp)
+
+    nump=len(ip_range)
+    if showInfo>1:
+        print('Number of data points to invert: %d' % nump)
+    i_use_all = np.zeros((nump, nr), dtype=np.int32)
+    T_all = np.zeros(nump)*np.nan
+    EV_all = np.zeros(nump)*np.nan
+    
+    
+    with h5py.File(f_prior_h5, 'r') as f_prior:
+        N = f_prior['/D1'].shape[0]
+
+    
+    if N_use>N:
+        N_use = N
+
+    if N_use<N:  
+    #    #np.random.seed(0)
+        idx = np.sort(np.random.choice(N, N_use, replace=False))
+    #    #idx = np.sort(np.arange(N_use))
+    else:
+        idx = np.arange(N)
+    
+
+    i=0
+    # GET A LIST OF THE NOISE MODEL TYPE
+    noise_model=[]
+    with h5py.File(f_data_h5, 'r') as f_data:
+        for id in id_use:
+            DS = '/D%d' % id
+            # if f_data[DS] has noise_model attribute then use it
+            if 'noise_model' in f_data[DS].attrs:
+                noise_model.append(f_data[DS].attrs['noise_model'])
+                if showInfo>0:
+                    print('Noise model for %s is %s' % (DS, noise_model[-1]))
+            else:
+                print('No noise_model attribute in %s' % DS)
+                noise_model.append('none')
+                        
+    
+   
+    # load the 'mulitiple' fdata 
+    # consider making it available as shared data
+    D = []    
+    with h5py.File(f_prior_h5, 'r') as f_prior:
+        for id in id_use:
+            DS = '/D%d' % id
+            N = f_prior[DS].shape[0]
+            #print('Reading %s' % DS)
+            if N_use<N:
+                if useRandomData:
+                    #print('Start Reading random subset of %s ' % DS)
+                    # NEXT LINE IE EXTREMELY
+                    #Dsub = f_prior[DS][idx]
+                    # NEXT TWO LINES ARE MUCH FASTER!!!
+                    Dsub = f_prior[DS][:]
+                    Dsub = Dsub[idx]
+                    #print('End Reading random subset of %s ' % DS)
+                else:
+                    Dsub = f_prior[DS][0:N_use]
+                    # Read yje lasy N_use values from DS
+                    #Dsub = f_prior[DS][N-N_use:]
+                D.append(Dsub)
+            else:        
+                D.append(f_prior[DS][:])
+
+            #print(D[-1].shape)
+
+    # THIS IS THE ACTUAL INVERSION!!!!
+    for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection'):
+        ip = ip_range[j] # This is the index of the data point to invert
+        t=[]
+        N = D[0].shape[0]
+        NDsets = len(id_use)
+        L = np.zeros((NDsets, N))
+
+        for i in range(len(D)):
+            t0=time.time()
+            id = id_use[i]
+            DS = '/D%d' % id
+            if noise_model[i]=='gaussian':
+                with h5py.File(f_data_h5, 'r') as f_data:
+                    d_obs = f_data['%s/d_obs' % DS][ip]
+                    if 'Cd' in f_data['%s' % DS].keys():
+                        Cd_h5 = f_data['/D1/Cd']    
+                        # if Cd is 3 dimensional, take the first slice
+                        if len(Cd_h5.shape) == 3:
+                            Cd = Cd_h5[ip]
+                        else:
+                            Cd = Cd_h5[:]
+
+                        L_single = likelihood_gaussian_full(D[i], d_obs, Cd, N_app = use_N_best)
+                        
+                    elif 'd_std' in f_data['%s' % DS].keys():
+                        d_std = f_data['%s/d_std' % DS][ip]
+                        L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std, use_N_best)
+ 
+                    else:
+                        print('No d_std or Cd in %s' % DS)
+
+                L[i] = L_single
+                t.append(time.time()-t0)
+            elif noise_model[i]=='multinomial':
+                with h5py.File(f_data_h5, 'r') as f_data:
+                    d_obs = f_data['%s/d_obs' % DS][ip]
+                    class_id = [1,2]
+
+                    useVetorized = True
+                    if useVetorized:
+                        D_ind = np.zeros(D[i].shape[0], dtype=int)
+                        D_ind[:] = np.searchsorted(class_id, D[i].squeeze())
+                        L_single = np.log(d_obs[D_ind])
+                    else:
+                        D_ind = np.zeros(D[id].shape[0], dtype=int)
+                        for i in range(D_ind.shape[0]):
+                            for j in range(len(class_id)):
+                                if D[id][i]==class_id[j]:
+                                    D_ind[i]=j
+                                    break
+                        L_single = np.zeros(D[id].shape[0])
+
+                        for i in range(D_ind.shape[0]):
+                            L_single[i] = np.log(d_obs[D_ind[i]])
+
+                L[i] = L_single           
+                t.append(time.time()-t0)
+
+            else: 
+                # noise model not regcognized
+                # L_single = -1
+                pass
+
+        
+        t0=time.time()
+
+
+        # NOw we have all the likelihoods for all data types. Copmbine them into ooe
+        L_single = L
+        L = np.sum(L_single, axis=0)
+        #plt.plot(L.T)
+
+
+        # AUTO ANNEALE
+        t0=time.time()
+        #autoT=1
+        # Compute the annealing temperature
+        if autoT == 1:
+            T = ig.logl_T_est(L)
+        else:
+            T = T_base        
+        # maxlogL = np.nanmax(logL)
+        t.append(time.time()-t0)
+
+        # Find ns realizations of the posterior, using the log-likelihood values logL, and the annealing tempetrature T 
+        
+        P_acc = np.exp((1/T) * (L - np.nanmax(L)))
+        P_acc[np.isnan(P_acc)] = 0
+
+        # Select the index of P_acc propportion to the probabilituy given by P_acc
+        t0=time.time()
+        try:
+            i_use = np.random.choice(N, nr, p=P_acc/np.sum(P_acc))
+        except:
+            print('Error in np.random.choice for ip=%d' % ip)   
+            i_use = np.random.choice(N, nr)
+        
+        if useRandomData:
+            # get the correct index of the subset used
+            i_use = idx[i_use]
+            
+
+        # Unfortunately this code originally used matlab style codeing for i_use, 
+        # this we need to add 1 to the index
+        #i_use = i_use+1            
+
+        t.append(time.time()-t0)        
+
+    
+        # find the number of unique indexes
+        n_unique = len(np.unique(i_use))
+
+
+        # Compute the evidence
+        maxlogL = np.nanmax(L)
+        exp_logL = np.exp(L - maxlogL)
+        EV = maxlogL + np.log(np.nansum(exp_logL)/len(L))
+
+        t.append(time.time()-t0)
+
+        pltDegug = 0
+        if pltDegug>0:
+            import matplotlib.pyplot as plt
+            plt.semilogy(d_obs, 'k', linewidth=4)
+            plt.semilogy(D[0][i_use].T, 'r', linewidth=1)
+            plt.show()
+            print(D[0][10])
+
+        i_use_all[j] = i_use
+        T_all[j] = T
+        EV_all[j] = EV
+
+
+        if showInfo>1:
+            for i in range(len(t)):
+                if i<len(D):
+                    print(' Time id%d: %f - %s' % (i,t[i],noise_model[i]))
+                else:
+                    print(' Time id%d, sampling: %f' % (i,t[i]))
+            print('Time total: %f' % np.sum(t))
+        
+    return i_use_all, T_all, EV_all, ip_range
+
+
+
 
 
 
@@ -1843,6 +2132,7 @@ def integrate_rejection_range(f_prior_h5,
             print('Time total: %f' % np.sum(t))
         
     return i_use_all, T_all, EV_all, ip_range
+
 
 
 
