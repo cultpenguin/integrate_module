@@ -1379,12 +1379,15 @@ def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **
 THIS IS THE NEW MULTI DATA IMPLEMENTATION
 '''
 
-def load_prior(f_prior_h5, N_use=0):
-    D = load_prior_data(f_prior_h5, N_use=N_use)
-    M = load_prior_model(f_prior_h5, N_use=N_use)
-    return D, M
+def load_prior(f_prior_h5, N_use=0, idx = [], Randomize=False):
+    if len(idx)==0:
+        D, idx = load_prior_data(f_prior_h5, N_use=N_use, Randomize=Randomize)
+    else:
+        D, idx = load_prior_data(f_prior_h5, idx=idx, Randomize=Randomize)
+    M, idx = load_prior_model(f_prior_h5, idx=idx, Randomize=Randomize)
+    return D, M, idx
 
-def load_prior_model(f_prior_h5, im_use=[], N_use=0):
+def load_prior_model(f_prior_h5, im_use=[], idx=[], N_use=0, Randomize=False):
     import h5py
     import numpy as np
 
@@ -1396,18 +1399,31 @@ def load_prior_model(f_prior_h5, im_use=[], N_use=0):
                     Nmt = Nmt+1
         if len(im_use)==0:
             im_use = np.arange(1,Nmt+1) 
-
+    
     with h5py.File(f_prior_h5, 'r') as f_prior:
         N = f_prior['/M1'].shape[0]
         if N_use == 0:
             N_use = N    
-        #idx = np.sort(np.random.choice(N, min(N_use, N), replace=False)) if N_use < N else np.arange(N)
-        idx = np.arange(N_use)
+        
+        if len(idx)==0:
+            if Randomize:
+                idx = np.sort(np.random.choice(N, min(N_use, N), replace=False)) if N_use < N else np.arange(N)
+            else:
+                idx = np.arange(N_use)
+        else:
+            # check if length of idx is equal to N_use
+            if len(idx)!=N_use:
+                print('Length of idx (%d) must be equal to N_use)=%d' % (len(idx), N_use))
+                N_use = len(idx)      
+                print('using N_use=len(idx)=%d' % N_use)
+                
         M = [f_prior[f'/M{id}'][:][idx] for id in im_use]
-    return M
+    
+    
+    return M, idx
 
 
-def load_prior_data(f_prior_h5, id_use=[], N_use=0):
+def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
     import h5py
     import numpy as np
 
@@ -1424,10 +1440,24 @@ def load_prior_data(f_prior_h5, id_use=[], N_use=0):
         N = f_prior['/D1'].shape[0]
         if N_use == 0:
             N_use = N    
-        idx = np.sort(np.random.choice(N, min(N_use, N), replace=False)) if N_use < N else np.arange(N)
-        idx = np.arange(N_use)
+        if N_use>N:
+            N_use = N
+
+        if len(idx)==0:
+            if Randomize:
+                idx = np.sort(np.random.choice(N, min(N_use, N), replace=False)) if N_use < N else np.arange(N)
+            else:
+                idx = np.arange(N_use)
+        else:
+            # check if length of idx is equal to N_use
+            if len(idx)!=N_use:
+                print('Length of idx (%d) must be equal to N_use)=%d' % (len(idx), N_use))
+                N_use = len(idx)      
+                print('using N_use=len(idx)=%d' % N_use)
+
+
         D = [f_prior[f'/D{id}'][:][idx] for id in id_use]
-    return D
+    return D, idx
 
 def load_data(f_data_h5, id_use=[1]):
     import h5py
@@ -1437,13 +1467,12 @@ def load_data(f_data_h5, id_use=[1]):
         d_std = [f_data[f'/D{id}/d_std'][:] if 'd_std' in f_data[f'/D{id}'] else None for id in id_use]
         Cd = [f_data[f'/D{id}/Cd'][:] if 'Cd' in f_data[f'/D{id}'] else None for id in id_use]
 
-
     DATA = {}
+    DATA['noise_model'] = noise_model
     DATA['d_obs'] = d_obs
     DATA['d_std'] = d_std
     DATA['Cd'] = Cd
-    DATA['id_use'] = id_use
-        
+    DATA['id_use'] = id_use        
     # return noise_model, d_obs, d_std, Cd, id_use
     return DATA
 
@@ -1506,15 +1535,18 @@ def integrate_rejection(f_prior_h5='prior.h5',
         print('Number of data types: %d' % Ndt)
         print('Using these data types: %d' % id_use)
     
+
+
     # Load the prior model and data from the h5 files
     if showInfo>0:
         print('Loading prior model and data types %d' % id_use)
-    PRIOR_DATA = load_prior_data(f_prior_h5, id_use = id_use)
+    #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
+    D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
     # READ OBSERVED DATA AS D DATA OBS_DATA = [noise_model, d_obs, d_std, Cd, id_use]
     DATA = load_data(f_data_h5)
 
     # Get sample size N from f_prior_h5
-    N = PRIOR_DATA[0].shape[0]
+    N = D[0].shape[0]
     
     if N_use>N:
         N_use = N
@@ -1586,8 +1618,9 @@ def integrate_rejection(f_prior_h5='prior.h5',
             if showInfo>0:
                 print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
 
-            i_use, T, EV, ip_range = integrate_rejection_range_new(f_prior_h5=f_prior_h5, 
-                                        f_data_h5=f_data_h5,
+            i_use, T, EV, ip_range = integrate_rejection_range_new(D=D, 
+                                        DATA = DATA,
+                                        idx = idx,                                   
                                         N_use=N_use, 
                                         id_use=id_use,
                                         ip_range=ip_range,
@@ -1636,8 +1669,9 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
 
 
-def integrate_rejection_range_new(f_prior_h5, 
-                              f_data_h5, 
+def integrate_rejection_range_new(D, 
+                              DATA, 
+                              idx = [],
                               N_use=1000, 
                               id_use=[1,2], 
                               ip_range=[], 
@@ -1664,9 +1698,9 @@ def integrate_rejection_range_new(f_prior_h5,
     useRandomData = kwargs.get('useRandomData', True)
     #useRandomData = kwargs.get('useRandomData', False)
     
-    # Get number of data points from, f_data_h5
-    with h5py.File(f_data_h5, 'r') as f_data:
-        Ndp = f_data['/D1/d_obs'].shape[0]
+
+    # Get number of data points
+    Ndp = DATA['d_obs'][0].shape[0]
     # if ip_range is empty then use all data points
     if len(ip_range)==0:
         ip_range = np.arange(Ndp)
@@ -1679,64 +1713,67 @@ def integrate_rejection_range_new(f_prior_h5,
     EV_all = np.zeros(nump)*np.nan
     
     
-    with h5py.File(f_prior_h5, 'r') as f_prior:
-        N = f_prior['/D1'].shape[0]
-
+    # Get the lookup sample size
+    N = D[0].shape[0]
     
     if N_use>N:
         N_use = N
 
-    if N_use<N:  
-    #    #np.random.seed(0)
-        idx = np.sort(np.random.choice(N, N_use, replace=False))
-    #    #idx = np.sort(np.arange(N_use))
-    else:
-        idx = np.arange(N)
+    if len(idx)==0:
+        idx = np.arange(N_use)
+        
+        #if N_use<N:  
+        #    idx = np.sort(np.arange(N_use))
+        #else:
+        #    idx = np.arange(N)
+
+    print(idx)
     
 
     i=0
     # GET A LIST OF THE NOISE MODEL TYPE
-    noise_model=[]
-    with h5py.File(f_data_h5, 'r') as f_data:
-        for id in id_use:
-            DS = '/D%d' % id
-            # if f_data[DS] has noise_model attribute then use it
-            if 'noise_model' in f_data[DS].attrs:
-                noise_model.append(f_data[DS].attrs['noise_model'])
-                if showInfo>0:
-                    print('Noise model for %s is %s' % (DS, noise_model[-1]))
-            else:
-                print('No noise_model attribute in %s' % DS)
-                noise_model.append('none')
-                        
+    # noise_model=[]
+    # with h5py.File(f_data_h5, 'r') as f_data:
+    #     for id in id_use:
+    #         DS = '/D%d' % id
+    #         # if f_data[DS] has noise_model attribute then use it
+    #         if 'noise_model' in f_data[DS].attrs:
+    #             noise_model.append(f_data[DS].attrs['noise_model'])
+    #             if showInfo>0:
+    #                 print('Noise model for %s is %s' % (DS, noise_model[-1]))
+    #         else:
+    #             print('No noise_model attribute in %s' % DS)
+    #             noise_model.append('none')
+    noise_model = DATA['noise_model']
+    print(noise_model)
     
-   
     # load the 'mulitiple' fdata 
     # consider making it available as shared data
-    D = []    
-    with h5py.File(f_prior_h5, 'r') as f_prior:
-        for id in id_use:
-            DS = '/D%d' % id
-            N = f_prior[DS].shape[0]
-            #print('Reading %s' % DS)
-            if N_use<N:
-                if useRandomData:
-                    #print('Start Reading random subset of %s ' % DS)
-                    # NEXT LINE IE EXTREMELY
-                    #Dsub = f_prior[DS][idx]
-                    # NEXT TWO LINES ARE MUCH FASTER!!!
-                    Dsub = f_prior[DS][:]
-                    Dsub = Dsub[idx]
-                    #print('End Reading random subset of %s ' % DS)
-                else:
-                    Dsub = f_prior[DS][0:N_use]
-                    # Read yje lasy N_use values from DS
-                    #Dsub = f_prior[DS][N-N_use:]
-                D.append(Dsub)
-            else:        
-                D.append(f_prior[DS][:])
+    # D = []    
+    # with h5py.File(f_prior_h5, 'r') as f_prior:
+    #     for id in id_use:
+    #         DS = '/D%d' % id
+    #         N = f_prior[DS].shape[0]
+    #         #print('Reading %s' % DS)
+    #         if N_use<N:
+    #             if useRandomData:
+    #                 #print('Start Reading random subset of %s ' % DS)
+    #                 # NEXT LINE IE EXTREMELY
+    #                 #Dsub = f_prior[DS][idx]
+    #                 # NEXT TWO LINES ARE MUCH FASTER!!!
+    #                 Dsub = f_prior[DS][:]
+    #                 Dsub = Dsub[idx]
+    #                 #print('End Reading random subset of %s ' % DS)
+    #             else:
+    #                 Dsub = f_prior[DS][0:N_use]
+    #                 # Read yje lasy N_use values from DS
+    #                 #Dsub = f_prior[DS][N-N_use:]
+    #             D.append(Dsub)
+    #         else:        
+    #             D.append(f_prior[DS][:])
 
-            #print(D[-1].shape)
+    #         #print(D[-1].shape)
+    
 
     # THIS IS THE ACTUAL INVERSION!!!!
     for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection'):
@@ -1751,48 +1788,47 @@ def integrate_rejection_range_new(f_prior_h5,
             id = id_use[i]
             DS = '/D%d' % id
             if noise_model[i]=='gaussian':
-                with h5py.File(f_data_h5, 'r') as f_data:
-                    d_obs = f_data['%s/d_obs' % DS][ip]
-                    if 'Cd' in f_data['%s' % DS].keys():
-                        Cd_h5 = f_data['/D1/Cd']    
-                        # if Cd is 3 dimensional, take the first slice
-                        if len(Cd_h5.shape) == 3:
-                            Cd = Cd_h5[ip]
-                        else:
-                            Cd = Cd_h5[:]
-
-                        L_single = likelihood_gaussian_full(D[i], d_obs, Cd, N_app = use_N_best)
-                        
-                    elif 'd_std' in f_data['%s' % DS].keys():
-                        d_std = f_data['%s/d_std' % DS][ip]
-                        L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std, use_N_best)
- 
+                d_obs = DATA['d_obs'][i][ip]
+                
+                if DATA['Cd'][0] is not None:                    
+                    # if Cd is 3 dimensional, take the first slice
+                    if len(DATA['Cd'][0].shape) == 3:
+                        Cd = DATA['Cd'][0][ip]
                     else:
-                        print('No d_std or Cd in %s' % DS)
+                        Cd = DATA['Cd'][0][:]
+
+                    L_single = likelihood_gaussian_full(D[i], d_obs, Cd, N_app = use_N_best)
+                    
+                elif DATA['d_std'][0] is not None:
+                    d_std = DATA['d_std'][i][ip]
+                    L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std, use_N_best)
+
+                else:
+                    print('No d_std or Cd in %s' % DS)
 
                 L[i] = L_single
                 t.append(time.time()-t0)
             elif noise_model[i]=='multinomial':
-                with h5py.File(f_data_h5, 'r') as f_data:
-                    d_obs = f_data['%s/d_obs' % DS][ip]
-                    class_id = [1,2]
+                d_obs = DATA['d_obs'][i][ip]
+                
+                class_id = [1,2]
 
-                    useVetorized = True
-                    if useVetorized:
-                        D_ind = np.zeros(D[i].shape[0], dtype=int)
-                        D_ind[:] = np.searchsorted(class_id, D[i].squeeze())
-                        L_single = np.log(d_obs[D_ind])
-                    else:
-                        D_ind = np.zeros(D[id].shape[0], dtype=int)
-                        for i in range(D_ind.shape[0]):
-                            for j in range(len(class_id)):
-                                if D[id][i]==class_id[j]:
-                                    D_ind[i]=j
-                                    break
-                        L_single = np.zeros(D[id].shape[0])
+                useVetorized = True
+                if useVetorized:
+                    D_ind = np.zeros(D[i].shape[0], dtype=int)
+                    D_ind[:] = np.searchsorted(class_id, D[i].squeeze())
+                    L_single = np.log(d_obs[D_ind])
+                else:
+                    D_ind = np.zeros(D[id].shape[0], dtype=int)
+                    for i in range(D_ind.shape[0]):
+                        for j in range(len(class_id)):
+                            if D[id][i]==class_id[j]:
+                                D_ind[i]=j
+                                break
+                    L_single = np.zeros(D[id].shape[0])
 
-                        for i in range(D_ind.shape[0]):
-                            L_single[i] = np.log(d_obs[D_ind[i]])
+                    for i in range(D_ind.shape[0]):
+                        L_single[i] = np.log(d_obs[D_ind[i]])
 
                 L[i] = L_single           
                 t.append(time.time()-t0)
