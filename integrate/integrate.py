@@ -1532,9 +1532,11 @@ def integrate_rejection(f_prior_h5='prior.h5',
     if len(id_use)==0:
         id_use = np.arange(1,Ndt+1) 
     if showInfo>1:
-            print('Number of data types: %d' % Ndt)
+        print('Number of data types: %d' % Ndt)
         print('Using these data types: %d' % id_use)
     
+
+
     # Load the prior model and data from the h5 files
     if showInfo>0:
         print('Loading prior model and data types %d' % id_use)
@@ -1719,60 +1721,12 @@ def integrate_rejection_range_new(D,
 
     if len(idx)==0:
         idx = np.arange(N_use)
-        
-        #if N_use<N:  
-        #    idx = np.sort(np.arange(N_use))
-        #else:
-        #    idx = np.arange(N)
-
-    print(idx)
     
-
-    i=0
-    # GET A LIST OF THE NOISE MODEL TYPE
-    # noise_model=[]
-    # with h5py.File(f_data_h5, 'r') as f_data:
-    #     for id in id_use:
-    #         DS = '/D%d' % id
-    #         # if f_data[DS] has noise_model attribute then use it
-    #         if 'noise_model' in f_data[DS].attrs:
-    #             noise_model.append(f_data[DS].attrs['noise_model'])
-    #             if showInfo>0:
-    #                 print('Noise model for %s is %s' % (DS, noise_model[-1]))
-    #         else:
-    #             print('No noise_model attribute in %s' % DS)
-    #             noise_model.append('none')
+    #i=0
+    
     noise_model = DATA['noise_model']
     print(noise_model)
     
-    # load the 'mulitiple' fdata 
-    # consider making it available as shared data
-    # D = []    
-    # with h5py.File(f_prior_h5, 'r') as f_prior:
-    #     for id in id_use:
-    #         DS = '/D%d' % id
-    #         N = f_prior[DS].shape[0]
-    #         #print('Reading %s' % DS)
-    #         if N_use<N:
-    #             if useRandomData:
-    #                 #print('Start Reading random subset of %s ' % DS)
-    #                 # NEXT LINE IE EXTREMELY
-    #                 #Dsub = f_prior[DS][idx]
-    #                 # NEXT TWO LINES ARE MUCH FASTER!!!
-    #                 Dsub = f_prior[DS][:]
-    #                 Dsub = Dsub[idx]
-    #                 #print('End Reading random subset of %s ' % DS)
-    #             else:
-    #                 Dsub = f_prior[DS][0:N_use]
-    #                 # Read yje lasy N_use values from DS
-    #                 #Dsub = f_prior[DS][N-N_use:]
-    #             D.append(Dsub)
-    #         else:        
-    #             D.append(f_prior[DS][:])
-
-    #         #print(D[-1].shape)
-    
-
     # THIS IS THE ACTUAL INVERSION!!!!
     for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection'):
         ip = ip_range[j] # This is the index of the data point to invert

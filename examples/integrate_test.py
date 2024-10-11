@@ -83,7 +83,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                    Ncpu=1,
                                    updatePostStat=0,
                                    use_N_best=0,
-                                   N_use = 2000
+                                   N_use = 6000
                                    )
 
 #%% 
@@ -96,6 +96,7 @@ ig.integrate_posterior_stats(f_post_h5)
 #ig.plot_T_EV(f_post_h5, pl='T')
 #ig.plot_T_EV(f_post_h5, pl='EV')
 ig.plot_profile(f_post_h5, im=1, i1=0, i2=2800)
+ig.plot_profile(f_post_h5, im=2, i1=0, i2=2800)
 
 
 # %%
