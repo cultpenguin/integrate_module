@@ -75,15 +75,16 @@ M, idx = ig.load_prior_model(f_prior_data_h5, idx=idx)
 # 2.0 sec 8 CPUs 950-1000 ite/s
 #N_use = 10000
 #          1 CPU, 220 ite/s  --> NEW 292 ite/s: 33% faster
-# 13.1 sec 8 CPUs 116-131 ite/s
+# 13.1 sec 8 CPUs 116-131 ite/s --> NEW 10.9 sec, 133-200 ite/s
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                    f_data_h5, 
                                    showInfo=1, 
                                    parallel=parallel,
-                                   Ncpu=1,
+                                   Ncpu=8,
+                                   #Nchunks=64,
                                    updatePostStat=0,
                                    use_N_best=0,
-                                   N_use = 6000
+                                   N_use = 10000
                                    )
 
 #%% 

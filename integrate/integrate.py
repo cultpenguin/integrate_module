@@ -1423,6 +1423,23 @@ def load_prior_model(f_prior_h5, im_use=[], idx=[], N_use=0, Randomize=False):
     return M, idx
 
 
+def create_shared_arrays(D):
+    import numpy as np
+    from multiprocessing import Pool, Array
+    import multiprocessing as mp
+    import ctypes
+    shared_arrays = []
+    for arr in D:
+        shape = arr.shape
+        dtype = arr.dtype
+        shared_arr = Array(ctypes.c_double, int(np.prod(shape)))
+        np_arr = np.frombuffer(shared_arr.get_obj(), dtype=dtype).reshape(shape)
+        np.copyto(np_arr, arr)
+        shared_arrays.append((shared_arr, shape, dtype))
+    return shared_arrays
+
+
+
 def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
     import h5py
     import numpy as np
@@ -1537,13 +1554,17 @@ def integrate_rejection(f_prior_h5='prior.h5',
     
 
 
-    # Load the prior model and data from the h5 files
     if showInfo>0:
         print('Loading prior model and data types %d' % id_use)
-    #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
-    D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
+
     # READ OBSERVED DATA AS D DATA OBS_DATA = [noise_model, d_obs, d_std, Cd, id_use]
     DATA = load_data(f_data_h5)
+    # Load the prior model and data from the h5 files
+    #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
+    D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
+
+    # make D a shared variable 
+    shared_arrays = create_shared_arrays(D)
 
     # Get sample size N from f_prior_h5
     N = D[0].shape[0]
@@ -1553,6 +1574,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
     # Get number of data points from, f_data_h5
     Ndp = DATA['d_obs'][0].shape[0]
+    # TMH : MAKE THIS AVAILABLE AS PART IN INVERSION!!!!
 
     # if ip_range is empty then use all data points
     if len(ip_range)==0:
@@ -1597,10 +1619,12 @@ def integrate_rejection(f_prior_h5='prior.h5',
     # PERFORM INVERSION PERHAPS IN PARALLEL
 
     if parallel:
+        # TMH: UPDATE NEXT LINE TO MAKE USE OF integrate_posterior_main->chunk->range_new
         i_use_all, T_all, EV_all = integrate_posterior_main(
             ip_chunks=ip_chunks,
-            f_prior_h5=f_prior_h5,
-            f_data_h5=f_data_h5,
+            D=D, 
+            DATA = DATA,
+            idx = idx,  
             N_use=N_use,
             id_use=id_use,
             autoT=autoT,
@@ -1686,6 +1710,9 @@ def integrate_rejection_range_new(D,
     import time
     import integrate as ig
 
+    # TMH OPTIONALLY LOAD D and from shared MEMORY!!
+
+
     # get optional arguments
     use_N_best = kwargs.get('use_N_best', 0)
     #print("use_N_best=%d" % use_N_best)
@@ -1725,7 +1752,7 @@ def integrate_rejection_range_new(D,
     #i=0
     
     noise_model = DATA['noise_model']
-    print(noise_model)
+    #print(noise_model)
     
     # THIS IS THE ACTUAL INVERSION!!!!
     for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection'):
@@ -1874,7 +1901,7 @@ def integrate_rejection_range_new(D,
 
 
 
-
+# TMH: NEXT FUNCTION ISUSED ANYMORE!!!
 def integrate_rejection_range(f_prior_h5, 
                               f_data_h5, 
                               N_use=1000, 
@@ -2124,41 +2151,23 @@ def integrate_rejection_range(f_prior_h5,
 
 
 
-def integrate_posterior_chunk(args):
-    #import integrate as ig
-    
-    i_chunk, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr, use_N_best = args
-    ip_range = ip_chunks[i_chunk]
-    #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
-
-    i_use, T, EV, ip_range = integrate_rejection_range(
-        f_prior_h5=f_prior_h5,
-        f_data_h5=f_data_h5,
-        N_use=N_use,
-        id_use=id_use,
-        ip_range=ip_range,
-        autoT=autoT,
-        T_base=T_base,
-        nr=nr,     
-        use_N_best=use_N_best   
-    )
-
-    return i_use, T, EV, ip_range
-
-def integrate_posterior_main(ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr, Ncpu, use_N_best):
+def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_base, nr, Ncpu, use_N_best):
     #import integrate as ig
     #from multiprocessing import Pool
 
     with Pool(Ncpu) as p:
-        results = p.map(integrate_posterior_chunk, [(i, ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, autoT, T_base, nr, use_N_best) for i in range(len(ip_chunks))])
+        results = p.map(integrate_posterior_chunk, [(i, ip_chunks, D, DATA, idx,  N_use, id_use, autoT, T_base, nr, use_N_best) for i in range(len(ip_chunks))])
 
+    
     # Get sample size N from f_prior_h5
-    with h5py.File(f_prior_h5, 'r') as f_prior:
-        N = f_prior['/D1'].shape[0]
+    #with h5py.File(f_prior_h5, 'r') as f_prior:
+    #    N = f_prior['/D1'].shape[0]
+    N = D[0].shape[0]  
 
     # Get number of data points from, f_data_h5
-    with h5py.File(f_data_h5, 'r') as f_data:
-        Ndp = f_data['/D1/d_obs'].shape[0]
+    #with h5py.File(f_data_h5, 'r') as f_data:
+    #    Ndp = f_data['/D1/d_obs'].shape[0]
+    Ndp = DATA['d_obs'][0].shape[0]
 
     i_use_all = np.random.randint(0, N, (Ndp, nr))
     T_all = np.zeros(Ndp)*np.nan
@@ -2173,6 +2182,31 @@ def integrate_posterior_main(ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, au
                 EV_all[ip] = EV[i]
 
     return i_use_all, T_all, EV_all
+
+
+
+def integrate_posterior_chunk(args):
+    #import integrate as ig
+    
+    i_chunk, ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_base, nr, use_N_best = args
+    ip_range = ip_chunks[i_chunk]
+    #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
+
+    i_use, T, EV, ip_range = integrate_rejection_range_new(
+        D,
+        DATA,
+        idx,
+        N_use=N_use,
+        id_use=id_use,
+        ip_range=ip_range,
+        autoT=autoT,
+        T_base=T_base,
+        nr=nr,     
+        use_N_best=use_N_best   
+    )
+
+    return i_use, T, EV, ip_range
+
 
 # END OF REJECTION SAMPLING
 
