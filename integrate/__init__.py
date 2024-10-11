@@ -19,8 +19,8 @@ from integrate.integrate import integrate_posterior_main
 from integrate.integrate import likelihood_gaussian_diagonal
 from integrate.integrate import likelihood_gaussian_full
 from integrate.integrate import use_parallel
-
-
+from integrate.integrate import load_prior
+from integrate.integrate import load_data
 
 from integrate.integrate_io import get_geometry 
 from integrate.integrate_io import read_gex

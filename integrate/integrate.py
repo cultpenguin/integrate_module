@@ -1379,19 +1379,54 @@ def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **
 THIS IS THE NEW MULTI DATA IMPLEMENTATION
 '''
 
+def load_prior(f_prior_h5, id_use=[1], N_use=0):
+    import h5py
+    import numpy as np
+
+    if len(id_use)==0:
+        id_use = np.arange(1,Ndt+1)
+        Ndt=0
+        with h5py.File(f_data_h5, 'r') as f_data:
+            for key in f_data.keys():
+                if key[0]=='D':
+                    Ndt = Ndt+1
+        if len(id_use)==0:
+            id_use = np.arange(1,Ndt+1) 
+
+    with h5py.File(f_prior_h5, 'r') as f_prior:
+        N = f_prior['/D1'].shape[0]
+        if N_use == 0:
+            N_use = N    
+        idx = np.sort(np.random.choice(N, min(N_use, N), replace=False)) if N_use < N else np.arange(N)
+        idx = np.arange(N_use)
+        D = [f_prior[f'/D{id}'][:][idx] for id in id_use]
+    return D
+
+def load_data(f_data_h5, id_use=[1]):
+    import h5py
+    with h5py.File(f_data_h5, 'r') as f_data:
+        noise_model = [f_data[f'/D{id}'].attrs.get('noise_model', 'none') for id in id_use]
+        d_obs = [f_data[f'/D{id}/d_obs'][:] for id in id_use]
+        d_std = [f_data[f'/D{id}/d_std'][:] if 'd_std' in f_data[f'/D{id}'] else None for id in id_use]
+        Cd = [f_data[f'/D{id}/Cd'][:] if 'Cd' in f_data[f'/D{id}'] else None for id in id_use]
+    return noise_model, d_obs, d_std, Cd, id_use
+
+
+# START OF REJECTION SAMPLING
 
 def integrate_rejection(f_prior_h5='prior.h5', 
                               f_data_h5='DAUGAAD_AVG_inout.h5',
                               f_post_h5='',                              
                               N_use=100000000000, 
-                              id_use=[1], 
+                              id_use=[], 
                               ip_range=[], 
                               nr=400,
                               autoT=1,
                               T_base = 1,
                               Nchunks=0,
                               Ncpu=0,
-                              parallel=True,  
+                              parallel=True,
+                              use_N_best=0,  
                               **kwargs):
     from datetime import datetime   
     #from multiprocessing import Pool
@@ -1402,7 +1437,6 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
     # get optional arguments
     showInfo = kwargs.get('showInfo', 1)
-    use_N_best = kwargs.get('use_N_best', 0)
     if showInfo>0:
         print("use_N_best=%d" % use_N_best)
     # If set, Nproc will be used as the number of processors
@@ -1422,24 +1456,43 @@ def integrate_rejection(f_prior_h5='prior.h5',
             print('File %s allready exists' % f_post_h5)
             print('Overwriting...')    
         
+    # Get number of data types from f_data_h5. where
+    # each data type is a group in the h5 file called '/D1', '/D2', ...
+    # Count the number of groups in f_data_h5 staring with 'D'
+    Ndt=0
+    with h5py.File(f_data_h5, 'r') as f_data:
+        for key in f_data.keys():
+            if key[0]=='D':
+                Ndt = Ndt+1
+    if len(id_use)==0:
+        id_use = np.arange(1,Ndt+1) 
+    if showInfo>1:
+        print('Number of data types: %d' % Ndt)
+        print('Using these data types: %d' % id_use)
     
-    # Get sample size N from f_prior_h5
-    with h5py.File(f_prior_h5, 'r') as f_prior:
-        N = f_prior['/D1'].shape[0]
+    # Load the prior model and data from the h5 files
+    if showInfo>0:
+        print('Loading prior model and data types %d' % id_use)
+    D = load_prior(f_prior_h5, id_use = [1])
+    noise_model, d_obs, d_std, Cd, id_use = load_data(f_data_h5)
 
+
+    # Get sample size N from f_prior_h5
+    N = D[0].shape[0]
+    
     if N_use>N:
         N_use = N
 
     # Get number of data points from, f_data_h5
-    with h5py.File(f_data_h5, 'r') as f_data:
-        Ndp = f_data['/D1/d_obs'].shape[0]
+    Ndp = d_obs[0].shape[0]
+
     # if ip_range is empty then use all data points
     if len(ip_range)==0:
         ip_range = np.arange(Ndp)
     Ndp_invert = len(ip_range)
             
     if Ncpu < 1 :
-        Ncpu =  int(multiprocessing.cpu_count()/2)
+        Ncpu =  int(multiprocessing.cpu_count())
         
     # Split the ip_range into Nchunks
     if Nchunks==0:
@@ -1843,6 +1896,7 @@ def integrate_posterior_main(ip_chunks, f_prior_h5, f_data_h5, N_use, id_use, au
 
     return i_use_all, T_all, EV_all
 
+# END OF REJECTION SAMPLING
 
 
 def select_subset_for_inversion(dd, N_app):
