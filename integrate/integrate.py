@@ -1380,6 +1380,171 @@ THIS IS THE NEW MULTI DATA IMPLEMENTATION
 '''
 
 
+def integrate_rejection(f_prior_h5='prior.h5', 
+                              f_data_h5='DAUGAAD_AVG_inout.h5',
+                              f_post_h5='',                              
+                              N_use=100000000000, 
+                              id_use=[1], 
+                              ip_range=[], 
+                              nr=400,
+                              autoT=1,
+                              T_base = 1,
+                              Nchunks=0,
+                              Ncpu=0,
+                              parallel=True,  
+                              **kwargs):
+    from datetime import datetime   
+    #from multiprocessing import Pool
+    #import multiprocessing
+    #import integrate as ig
+    #import numpy as np
+    #import h5py
+
+    # get optional arguments
+    showInfo = kwargs.get('showInfo', 1)
+    use_N_best = kwargs.get('use_N_best', 0)
+    if showInfo>0:
+        print("use_N_best=%d" % use_N_best)
+    # If set, Nproc will be used as the number of processors
+    Nproc = kwargs.get('Nproc', -1)
+    if Nproc>-1:
+        Ncpu = Nproc
+
+    updatePostStat = kwargs.get('updatePostStat', True)
+
+    # Set default f_post_h5 filename if not set    
+    if len(f_post_h5)==0:
+        f_post_h5 = "POST_%s_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_h5)[0],N_use,autoT)
+
+    # Check that f_post_h5 allready exists, and warn the user   
+    if os.path.isfile(f_post_h5):
+        if (showInfo>0):    
+            print('File %s allready exists' % f_post_h5)
+            print('Overwriting...')    
+        
+    
+    # Get sample size N from f_prior_h5
+    with h5py.File(f_prior_h5, 'r') as f_prior:
+        N = f_prior['/D1'].shape[0]
+
+    if N_use>N:
+        N_use = N
+
+    # Get number of data points from, f_data_h5
+    with h5py.File(f_data_h5, 'r') as f_data:
+        Ndp = f_data['/D1/d_obs'].shape[0]
+    # if ip_range is empty then use all data points
+    if len(ip_range)==0:
+        ip_range = np.arange(Ndp)
+    Ndp_invert = len(ip_range)
+            
+    if Ncpu < 1 :
+        Ncpu =  int(multiprocessing.cpu_count()/2)
+        
+    # Split the ip_range into Nchunks
+    if Nchunks==0:
+        if parallel:
+            Nchunks = Ncpu
+        else:   
+            Nchunks = 1
+    if Ncpu ==1:
+        parallel = False
+
+    ip_chunks = np.array_split(ip_range, Nchunks) 
+
+    if showInfo>0:
+        print('Number of data points: %d (available), %d (used). Nchunks=%s, Ncpu=%d,use_N_best=%d' % (Ndp,Ndp_invert,Nchunks,Ncpu,use_N_best))    
+    
+    if showInfo>2:
+        print('f_prior_h5=%s\nf_data_h5=%s\nf_post_h5=%s' % (f_prior_h5, f_data_h5, f_post_h5))
+        print('N_use = %d' % (N_use))
+        print('Ncpu = %d\nNchunks=%d' % (Ncpu, Nchunks))
+    
+        return 1
+    
+    
+    # set i_use_all to be a 2d Matrie of size (nump,nr) of random integers in range(N)
+    i_use_all = np.random.randint(0, N, (Ndp, nr))
+    T_all = np.zeros(Ndp)*np.nan
+    EV_all = np.zeros(Ndp)*np.nan
+
+    date_start = str(datetime.now())
+    t_start = datetime.now()
+    
+    # PERFORM INVERSION PERHAPS IN PARALLEL
+
+    if parallel:
+        i_use_all, T_all, EV_all = integrate_posterior_main(
+            ip_chunks=ip_chunks,
+            f_prior_h5=f_prior_h5,
+            f_data_h5=f_data_h5,
+            N_use=N_use,
+            id_use=id_use,
+            autoT=autoT,
+            T_base=T_base,
+            nr=nr,
+            Ncpu=Ncpu,
+            use_N_best=use_N_best            
+        )
+
+
+    else:
+
+        for i_chunk in range(len(ip_chunks)):        
+            ip_range = ip_chunks[i_chunk]
+            if showInfo>0:
+                print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
+
+            i_use, T, EV, ip_range = integrate_rejection_range(f_prior_h5=f_prior_h5, 
+                                        f_data_h5=f_data_h5,
+                                        N_use=N_use, 
+                                        id_use=id_use,
+                                        ip_range=ip_range,
+                                        autoT=autoT,
+                                        T_base = T_base,
+                                        nr=nr,
+                                        **kwargs
+                                        )
+        
+            for i in range(len(ip_range)):
+                ip = ip_range[i]
+                #print('ip=%d, i=%d' % (ip,i))
+                i_use_all[ip] = i_use[i]
+                T_all[ip] = T[i]
+                EV_all[ip] = EV[i]
+
+    # WHere T_all is Inf set it to Nan
+    T_all[T_all==np.inf] = np.nan
+    EV_all[EV_all==np.inf] = np.nan
+    print('All done')
+    date_end = str(datetime.now())
+    t_end = datetime.now()
+    t_elapsed = (t_end - t_start).total_seconds()
+    t_per_sounding = t_elapsed / Ndp_invert
+    if (showInfo>-1):
+        print('T_av=%3.1f, Time=%5.1fs/%d soundings ,%4.1fms/sounding, %3.1fit/s' % (np.nanmean(T_all),t_elapsed,Ndp_invert,t_per_sounding*1000,Ndp_invert/t_elapsed))
+
+    # SAVE THE RESULTS to f_post_h5
+    with h5py.File(f_post_h5, 'w') as f_post:
+        f_post.create_dataset('i_use', data=i_use_all)
+        f_post.create_dataset('T', data=T_all)
+        f_post.create_dataset('EV', data=EV_all)
+        #f_post.create_dataset('ip_range', data=ip_range)
+        f_post.attrs['date_start'] = date_start
+        f_post.attrs['date_end'] = date_end
+        f_post.attrs['inv_time'] = t_elapsed
+        f_post.attrs['f5_prior'] = f_prior_h5
+        f_post.attrs['f5_data'] = f_data_h5
+        f_post.attrs['N_use'] = N_use
+
+    if updatePostStat:
+        integrate_posterior_stats(f_post_h5, **kwargs)
+
+    #return f_post_h5 T_all, EV_all, i_use_all
+    return f_post_h5
+
+
+
 def integrate_rejection_range(f_prior_h5, 
                               f_data_h5, 
                               N_use=1000, 
@@ -1626,170 +1791,6 @@ def integrate_rejection_range(f_prior_h5,
         
     return i_use_all, T_all, EV_all, ip_range
 
-
-
-def integrate_rejection(f_prior_h5='prior.h5', 
-                              f_data_h5='DAUGAAD_AVG_inout.h5',
-                              f_post_h5='',                              
-                              N_use=100000000000, 
-                              id_use=[1], 
-                              ip_range=[], 
-                              nr=400,
-                              autoT=1,
-                              T_base = 1,
-                              Nchunks=0,
-                              Ncpu=0,
-                              parallel=True,  
-                              **kwargs):
-    from datetime import datetime   
-    #from multiprocessing import Pool
-    #import multiprocessing
-    #import integrate as ig
-    #import numpy as np
-    #import h5py
-
-    # get optional arguments
-    showInfo = kwargs.get('showInfo', 1)
-    use_N_best = kwargs.get('use_N_best', 0)
-    if showInfo>0:
-        print("use_N_best=%d" % use_N_best)
-    # If set, Nproc will be used as the number of processors
-    Nproc = kwargs.get('Nproc', -1)
-    if Nproc>-1:
-        Ncpu = Nproc
-
-    updatePostStat = kwargs.get('updatePostStat', True)
-
-    # Set default f_post_h5 filename if not set    
-    if len(f_post_h5)==0:
-        f_post_h5 = "POST_%s_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_h5)[0],N_use,autoT)
-
-    # Check that f_post_h5 allready exists, and warn the user   
-    if os.path.isfile(f_post_h5):
-        if (showInfo>0):    
-            print('File %s allready exists' % f_post_h5)
-            print('Overwriting...')    
-        
-    
-    # Get sample size N from f_prior_h5
-    with h5py.File(f_prior_h5, 'r') as f_prior:
-        N = f_prior['/D1'].shape[0]
-
-    if N_use>N:
-        N_use = N
-
-    # Get number of data points from, f_data_h5
-    with h5py.File(f_data_h5, 'r') as f_data:
-        Ndp = f_data['/D1/d_obs'].shape[0]
-    # if ip_range is empty then use all data points
-    if len(ip_range)==0:
-        ip_range = np.arange(Ndp)
-    Ndp_invert = len(ip_range)
-            
-    if Ncpu < 1 :
-        Ncpu =  int(multiprocessing.cpu_count()/2)
-        
-    # Split the ip_range into Nchunks
-    if Nchunks==0:
-        if parallel:
-            Nchunks = Ncpu
-        else:   
-            Nchunks = 1
-    if Ncpu ==1:
-        parallel = False
-
-    ip_chunks = np.array_split(ip_range, Nchunks) 
-
-    if showInfo>0:
-        print('Number of data points: %d (available), %d (used). Nchunks=%s, Ncpu=%d,use_N_best=%d' % (Ndp,Ndp_invert,Nchunks,Ncpu,use_N_best))    
-    
-    if showInfo>2:
-        print('f_prior_h5=%s\nf_data_h5=%s\nf_post_h5=%s' % (f_prior_h5, f_data_h5, f_post_h5))
-        print('N_use = %d' % (N_use))
-        print('Ncpu = %d\nNchunks=%d' % (Ncpu, Nchunks))
-    
-        return 1
-    
-    
-    # set i_use_all to be a 2d Matrie of size (nump,nr) of random integers in range(N)
-    i_use_all = np.random.randint(0, N, (Ndp, nr))
-    T_all = np.zeros(Ndp)*np.nan
-    EV_all = np.zeros(Ndp)*np.nan
-
-    date_start = str(datetime.now())
-    t_start = datetime.now()
-    
-    # PERFORM INVERSION PERHAPS IN PARALLEL
-
-    if parallel:
-        i_use_all, T_all, EV_all = integrate_posterior_main(
-            ip_chunks=ip_chunks,
-            f_prior_h5=f_prior_h5,
-            f_data_h5=f_data_h5,
-            N_use=N_use,
-            id_use=id_use,
-            autoT=autoT,
-            T_base=T_base,
-            nr=nr,
-            Ncpu=Ncpu,
-            use_N_best=use_N_best            
-        )
-
-
-    else:
-
-        for i_chunk in range(len(ip_chunks)):        
-            ip_range = ip_chunks[i_chunk]
-            if showInfo>0:
-                print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
-
-            i_use, T, EV, ip_range = integrate_rejection_range(f_prior_h5=f_prior_h5, 
-                                        f_data_h5=f_data_h5,
-                                        N_use=N_use, 
-                                        id_use=id_use,
-                                        ip_range=ip_range,
-                                        autoT=autoT,
-                                        T_base = T_base,
-                                        nr=nr,
-                                        **kwargs
-                                        )
-        
-            for i in range(len(ip_range)):
-                ip = ip_range[i]
-                #print('ip=%d, i=%d' % (ip,i))
-                i_use_all[ip] = i_use[i]
-                T_all[ip] = T[i]
-                EV_all[ip] = EV[i]
-
-    # WHere T_all is Inf set it to Nan
-    T_all[T_all==np.inf] = np.nan
-    EV_all[EV_all==np.inf] = np.nan
-    print('All done')
-    date_end = str(datetime.now())
-    t_end = datetime.now()
-    t_elapsed = (t_end - t_start).total_seconds()
-    t_per_sounding = t_elapsed / Ndp_invert
-    if (showInfo>-1):
-        print('T_av=%3.1f, Time=%5.1fs/%d soundings ,%4.1fms/sounding, %3.1fit/s' % (np.nanmean(T_all),t_elapsed,Ndp_invert,t_per_sounding*1000,Ndp_invert/t_elapsed))
-
-    # SAVE THE RESULTS to f_post_h5
-    with h5py.File(f_post_h5, 'w') as f_post:
-        f_post.create_dataset('i_use', data=i_use_all)
-        f_post.create_dataset('T', data=T_all)
-        f_post.create_dataset('EV', data=EV_all)
-        #f_post.create_dataset('ip_range', data=ip_range)
-        f_post.attrs['date_start'] = date_start
-        f_post.attrs['date_end'] = date_end
-        f_post.attrs['inv_time'] = t_elapsed
-        f_post.attrs['f5_prior'] = f_prior_h5
-        f_post.attrs['f5_data'] = f_data_h5
-        f_post.attrs['N_use'] = N_use
-
-    if updatePostStat:
-        integrate_posterior_stats(f_post_h5, **kwargs)
-
-    #return f_post_h5 T_all, EV_all, i_use_all
-    return f_post_h5
 
 
 def integrate_posterior_chunk(args):

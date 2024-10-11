@@ -40,7 +40,7 @@ file_gex = ig.get_case_data(case='DAUGAARD', filelist=['TX07_20231016_2x4_RC20-3
 # ## Create prior model and data
 
 # make prior model realizations
-N=10000 # sample size 
+N=2000000 # sample size 
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=3, NLAY_max=3, 
@@ -223,13 +223,13 @@ clim   = [min(rho)*0.8, max(rho)*1.25]
 
 for f_data_h5 in f_data_h5_arr: 
     #f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
-    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=False, use_N_best=0)
+    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=False, use_N_best=1000)
     with h5py.File(f_post_h5, 'r') as f_post:
         T_arr.append(f_post['/T'][:])
         EV_arr.append(f_post['/EV'][:])
 
     f_post_h5_arr.append(f_post_h5)
-    #ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
+    ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
 
 
 # %%
