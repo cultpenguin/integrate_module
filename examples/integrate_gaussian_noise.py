@@ -39,8 +39,8 @@ file_gex = ig.get_case_data(case='DAUGAARD', filelist=['TX07_20231016_2x4_RC20-3
 # %% [markdown]
 # ## Create prior model and data
 
-# %% make prior
-N=1000000 # sample size 
+# make prior model realizations
+N=2000000 # sample size 
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=3, NLAY_max=3, 
@@ -48,7 +48,7 @@ f_prior_h5 = ig.prior_model_layered(N=N,
 
 ig.plot_prior_stats(f_prior_h5)
 
-# %% MAKE PRIOR DATA
+# make prior model realizations
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
 # %% [markdown]
@@ -58,7 +58,7 @@ f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 # Create reference model
 
 # select the type of referenc model
-dx=0.1
+dx=.1
 if case.lower() == 'wedge':
     # Make Wedge MODEL
     M_ref, x_ref, z_ref = ig.synthetic_case(case='Wedge', wedge_angle=10, z_max=z_max, dz=.5, x_max=100, dx=dx, z1=15, rho = rho)
@@ -138,7 +138,7 @@ name_arr.append('Correlated noise - individual')
 
 
 # %% Optionally run a test to compare likelihood of using different noise models.
-
+import time as time
 # test likelhood
 doTest = False
 if doTest:
@@ -150,14 +150,22 @@ if doTest:
         D = f['/D1'][:]
         
     #D = D_ref
+    t0=time.time()
     L1 = ig.likelihood_gaussian_diagonal(D, d_obs, d_std)
+    t1 = time.time()-t0
     L2 = ig.likelihood_gaussian_full(D, d_obs, Cd_single)
-    L3 = ig.likelihood_gaussian_full(D, d_obs, Cd_mul[id])
+    t2 = time.time()-t0-t1
+    L3 = ig.likelihood_gaussian_full(D, d_obs, Cd_mul[id], N_app = 1000)
+    t3 = time.time()-t2-t1-t0
 
     print("L1: %f, L2: %f, L3: %f" % (L1[0], L2[0], L3[0]))
     print("T1=%3.f" % (np.mean(L1)))
     print("T2=%3.f" % (np.mean(L2)))
     print("T3=%3.f" % (np.mean(L3)))   
+
+    print("t1, t2, t3 = %f, %f, %f" % (t1, t2, t3))
+    print("SLOWDOWN = %f, %f, %f" % (t1/t1, t2/t1, t3/t1))
+
 
     plt.semilogy(-L1, 'k.', label='L1', markersize=10)
     plt.plot(-L2, '--', label='L2')
@@ -166,6 +174,47 @@ if doTest:
     plt.ylabel('-log(L)')
     plt.show()
 
+#%%
+doProfile = False
+if doProfile:
+    import cProfile
+    import pstats
+    def profile_code():
+        f_data_h5 = f_data_h5_arr[2] 
+        f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
+                                        parallel=False, 
+                                        Ncpu=8, 
+                                        use_N_best=0)
+
+    cProfile.run('profile_code()', 'profile_output')
+
+    with open('profile_results.txt', 'w') as f:
+        p = pstats.Stats('profile_output', stream=f)
+        p.sort_stats('cumulative').print_stats(50)
+
+
+# %% SEQUENTIAL TEST
+testSeq = True
+if testSeq:
+    import time as time
+    t0 = time.time()
+    f_data_h5 = f_data_h5_arr[2] 
+    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
+                                        parallel=True,Ncpu=2,
+                                        #parallel=False,
+                                        autoT=True,
+                                        T_base = 10,
+                                        use_N_best=100,
+                                        updatePostStat = False
+                                        )
+    t1 = time.time()-t0
+    print("Time : %.2f s" % t1)
+
+    ig.integrate_posterior_stats(f_post_h5)
+
+    ig.plot_profile(f_post_h5, i1=0, i2=100, hardcopy=hardcopy,  im=1)
+
+
 # %% INVERT
 f_post_h5_arr = []
 T_arr = []
@@ -173,7 +222,8 @@ EV_arr = []
 clim   = [min(rho)*0.8, max(rho)*1.25]
 
 for f_data_h5 in f_data_h5_arr: 
-    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
+    #f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
+    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=False, use_N_best=1000)
     with h5py.File(f_post_h5, 'r') as f_post:
         T_arr.append(f_post['/T'][:])
         EV_arr.append(f_post['/EV'][:])
