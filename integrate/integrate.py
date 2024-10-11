@@ -1532,11 +1532,9 @@ def integrate_rejection(f_prior_h5='prior.h5',
     if len(id_use)==0:
         id_use = np.arange(1,Ndt+1) 
     if showInfo>1:
-        print('Number of data types: %d' % Ndt)
+            print('Number of data types: %d' % Ndt)
         print('Using these data types: %d' % id_use)
     
-
-
     # Load the prior model and data from the h5 files
     if showInfo>0:
         print('Loading prior model and data types %d' % id_use)
