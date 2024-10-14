@@ -41,7 +41,7 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=10000
+N=2000000
 f_prior_data_h5 = 'PRIOR_CHI2_NF_3_log-uniform_N%d_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5' % (N)
 
 # check if the file exists
@@ -66,6 +66,30 @@ D = ig.load_prior_data(f_prior_data_h5)[0]
 M = ig.load_prior_model(f_prior_data_h5)[0]
 D, idx = ig.load_prior_data(f_prior_data_h5, N_use = 998, Randomize=True)
 M, idx = ig.load_prior_model(f_prior_data_h5, idx=idx)
+
+#%%
+#D_shared = create_shared_memory(D)
+#D_reconstructed = reconstruct_shared_arrays(D_shared)
+shared_memory_refs = ig.create_shared_memory(D)
+process_args = [(i, shared_memory_refs) for i in range(len(D))]
+D_reconstructed=ig.reconstruct_shared_arrays(shared_memory_refs)
+ig.cleanup_shared_memory(shared_memory_refs)
+# Check that D and D_reconstructed are the same, and print the output/status to the screen, by comparing D[i] to D_reconstructed[i] for all i's
+import numpy as np
+
+for i in range(len(D)):
+    if np.array_equal(D[i], D_reconstructed[i]):
+        print("OK for data sets #%d" % i)
+    else:
+        print("Mismatch found")
+    
+
+
+
+# %%
+
+
+
 # %% [markdown]
 # ## Sample the posterior $\sigma(\mathbf{m})$
 #
@@ -84,7 +108,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                    Ncpu=8,
                                    updatePostStat=0,
                                    use_N_best=0,
-                                   N_use = 10000
+                                   N_use = 20000
                                    )
 
 #%% 

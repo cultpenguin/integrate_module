@@ -1478,27 +1478,34 @@ def load_data(f_data_h5, id_use=[1]):
     return DATA
 
 
+# Create shared memory arrays
+def create_shared_memory(arrays):
+    shared_memories = []
+    for array in arrays:
+        shm = shared_memory.SharedMemory(create=True, size=array.nbytes)
+        # Copy the data into shared memory
+        shared_array = np.ndarray(array.shape, dtype=array.dtype, buffer=shm.buf)
+        shared_array[:] = array[:]
+        # Store the shared memory name, array shape, and dtype
+        shared_memories.append((shm.name, array.shape, array.dtype))
+    return shared_memories
 
+# Function to reconstruct the list D from shared memory
+def reconstruct_shared_arrays(shared_memory_refs):
+    reconstructed_arrays = []
+    for shm_name, shape, dtype in shared_memory_refs:
+        shm = shared_memory.SharedMemory(name=shm_name)
+        array = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+        reconstructed_arrays.append(array.copy())  # Copy the data to avoid leaving a view
+        shm.close()
+    return reconstructed_arrays
 
-def create_shared_arrays(D):
-    import numpy as np
-    from multiprocessing import Pool, Array
-    import multiprocessing as mp
-    import ctypes
-    shared_arrays = []
-    for arr in D:
-        shape = arr.shape
-        dtype = arr.dtype
-        shared_arr = Array(ctypes.c_double, int(np.prod(shape)))
-        np_arr = np.frombuffer(shared_arr.get_obj(), dtype=dtype).reshape(shape)
-        np.copyto(np_arr, arr)
-        shared_arrays.append((shared_arr, shape, dtype))
-    return shared_arrays
-
-def reconstruct_arrays(shared_arrays):
-    return [np.frombuffer(arr.get_obj(), dtype=dtype).reshape(shape) 
-            for arr, shape, dtype in shared_arrays]
-
+# Cleanup function for shared memory
+def cleanup_shared_memory(shared_memory_refs):
+    for shm_name, _, _ in shared_memory_refs:
+        shm = shared_memory.SharedMemory(name=shm_name)
+        shm.close()
+        shm.unlink()
 
 # START OF REJECTION SAMPLING
 
@@ -1610,13 +1617,6 @@ def integrate_rejection(f_prior_h5='prior.h5',
         if showInfo>1:
             print('Ncpu = %d\nNchunks=%d' % (Ncpu, Nchunks))
 
-        # make as a shared variable 
-        D_shared_arrays = create_shared_arrays(D)
-        #D_recon = reconstruct_arrays(D_shared_arrays)
-        #print('D_recon[0].shape=%s' % str(D_recon[0].shape))
-
-
-        # TMH: UPDATE NEXT LINE TO MAKE USE OF integrate_posterior_main->chunk->range
         i_use_all, T_all, EV_all = integrate_posterior_main(
             ip_chunks=ip_chunks,
             D=D, 
@@ -1706,9 +1706,6 @@ def integrate_rejection_range(D,
     import h5py
     import time
     import integrate as ig
-
-    # TMH OPTIONALLY LOAD D and from shared MEMORY!!
-
 
     # get optional arguments
     use_N_best = kwargs.get('use_N_best', 0)
@@ -1897,26 +1894,24 @@ def integrate_rejection_range(D,
 
 def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_base, nr, Ncpu, use_N_best):
     #import integrate as ig
-    #from multiprocessing import Pool
+    from multiprocessing import Pool, shared_memory
 
-    with Pool(Ncpu) as p:
-        results = p.map(integrate_posterior_chunk, [(i, ip_chunks, D, DATA, idx,  N_use, id_use, autoT, T_base, nr, use_N_best) for i in range(len(ip_chunks))])
-
+    shared_memory_refs = create_shared_memory(D)
     
-    if isinstance(D, list):
-        print("do nothing")
-    else:
-        print('Reconstructing arrays')
-        D = reconstruct_arrays(D)
+    #with Pool(Ncpu) as p:
+    with Pool(Ncpu) as p:
+        # New implementation with shared memory
+        results = p.map(integrate_posterior_chunk, [(i, ip_chunks, DATA, idx,  N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best) for i in range(len(ip_chunks))])
+        # Old implementation where D was copied to each process
+        #results = p.map(integrate_posterior_chunk, [(i, ip_chunks, D, DATA, idx,  N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best) for i in range(len(ip_chunks))])
+
+    # Cleanup shared memory
+    cleanup_shared_memory(shared_memory_refs)
 
     # Get sample size N from f_prior_h5
-    #with h5py.File(f_prior_h5, 'r') as f_prior:
-    #    N = f_prior['/D1'].shape[0]
     N = D[0].shape[0]  
 
     # Get number of data points from, f_data_h5
-    #with h5py.File(f_data_h5, 'r') as f_data:
-    #    Ndp = f_data['/D1/d_obs'].shape[0]
     Ndp = DATA['d_obs'][0].shape[0]
 
     i_use_all = np.random.randint(0, N, (Ndp, nr))
@@ -1938,18 +1933,15 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
 def integrate_posterior_chunk(args):
     #import integrate as ig
     
-    i_chunk, ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_base, nr, use_N_best = args
-    ip_range = ip_chunks[i_chunk]
-    #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
-
+    # New implementation with shared memory
+    i_chunk, ip_chunks, DATA, idx, N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best = args
+    # Old implementation where D was copied to each process
+    #i_chunk, ip_chunks, D, DATA, idx, N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best = args
+    D=reconstruct_shared_arrays(shared_memory_refs)
     
-    # If shared object is passed    
-    if isinstance(D, list):
-        print("do ntohing")
-    else:
-        print('Reconstructing arrays')
-        D = reconstruct_arrays(D)
+    ip_range = ip_chunks[i_chunk]
 
+    #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
 
     i_use, T, EV, ip_range = integrate_rejection_range(
         D,
@@ -1961,7 +1953,7 @@ def integrate_posterior_chunk(args):
         autoT=autoT,
         T_base=T_base,
         nr=nr,     
-        use_N_best=use_N_best   
+        use_N_best=use_N_best, 
     )
 
     return i_use, T, EV, ip_range

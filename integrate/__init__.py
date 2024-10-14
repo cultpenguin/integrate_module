@@ -23,6 +23,9 @@ from integrate.integrate import load_prior
 from integrate.integrate import load_prior_data
 from integrate.integrate import load_prior_model
 from integrate.integrate import load_data
+from integrate.integrate import cleanup_shared_memory
+from integrate.integrate import reconstruct_shared_arrays
+from integrate.integrate import create_shared_memory
 
 from integrate.integrate_io import get_geometry 
 from integrate.integrate_io import read_gex
