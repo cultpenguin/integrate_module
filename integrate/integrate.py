@@ -1423,22 +1423,6 @@ def load_prior_model(f_prior_h5, im_use=[], idx=[], N_use=0, Randomize=False):
     return M, idx
 
 
-def create_shared_arrays(D):
-    import numpy as np
-    from multiprocessing import Pool, Array
-    import multiprocessing as mp
-    import ctypes
-    shared_arrays = []
-    for arr in D:
-        shape = arr.shape
-        dtype = arr.dtype
-        shared_arr = Array(ctypes.c_double, int(np.prod(shape)))
-        np_arr = np.frombuffer(shared_arr.get_obj(), dtype=dtype).reshape(shape)
-        np.copyto(np_arr, arr)
-        shared_arrays.append((shared_arr, shape, dtype))
-    return shared_arrays
-
-
 
 def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
     import h5py
@@ -1494,6 +1478,28 @@ def load_data(f_data_h5, id_use=[1]):
     return DATA
 
 
+
+
+def create_shared_arrays(D):
+    import numpy as np
+    from multiprocessing import Pool, Array
+    import multiprocessing as mp
+    import ctypes
+    shared_arrays = []
+    for arr in D:
+        shape = arr.shape
+        dtype = arr.dtype
+        shared_arr = Array(ctypes.c_double, int(np.prod(shape)))
+        np_arr = np.frombuffer(shared_arr.get_obj(), dtype=dtype).reshape(shape)
+        np.copyto(np_arr, arr)
+        shared_arrays.append((shared_arr, shape, dtype))
+    return shared_arrays
+
+def reconstruct_arrays(shared_arrays):
+    return [np.frombuffer(arr.get_obj(), dtype=dtype).reshape(shape) 
+            for arr, shape, dtype in shared_arrays]
+
+
 # START OF REJECTION SAMPLING
 
 def integrate_rejection(f_prior_h5='prior.h5', 
@@ -1519,15 +1525,12 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
     # get optional arguments
     showInfo = kwargs.get('showInfo', 1)
-    if showInfo>0:
-        print("use_N_best=%d" % use_N_best)
-    # If set, Nproc will be used as the number of processors
-    Nproc = kwargs.get('Nproc', -1)
-    if Nproc>-1:
-        Ncpu = Nproc
-
     updatePostStat = kwargs.get('updatePostStat', True)
-
+    # If set, Nproc will be used as the number of processors
+    Ncpu = kwargs.get('Nproc', Ncpu)
+    if Ncpu < 1 :
+        Ncpu =  int(multiprocessing.cpu_count())
+    
     # Set default f_post_h5 filename if not set    
     if len(f_post_h5)==0:
         f_post_h5 = "POST_%s_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_h5)[0],N_use,autoT)
@@ -1537,73 +1540,50 @@ def integrate_rejection(f_prior_h5='prior.h5',
         if (showInfo>0):    
             print('File %s allready exists' % f_post_h5)
             print('Overwriting...')    
-        
-    # Get number of data types from f_data_h5. where
-    # each data type is a group in the h5 file called '/D1', '/D2', ...
-    # Count the number of groups in f_data_h5 staring with 'D'
-    Ndt=0
-    with h5py.File(f_data_h5, 'r') as f_data:
-        for key in f_data.keys():
-            if key[0]=='D':
-                Ndt = Ndt+1
+
+    
+    # Load observed data from f_data_h5
+    DATA = load_data(f_data_h5)
+    Ndt = len(DATA['d_obs']) # Number of data types
     if len(id_use)==0:
         id_use = np.arange(1,Ndt+1) 
-    if showInfo>1:
-        print('Number of data types: %d' % Ndt)
-        print('Using these data types: %d' % id_use)
+    # Perhaps load only the data types that are used
+    DATA = load_data(f_data_h5, id_use=id_use)
     
-
-
-    if showInfo>0:
-        print('Loading prior model and data types %d' % id_use)
-
-    # READ OBSERVED DATA AS D DATA OBS_DATA = [noise_model, d_obs, d_std, Cd, id_use]
-    DATA = load_data(f_data_h5)
-    # Load the prior model and data from the h5 files
+     # Load the prior data from the h5 files
     #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
     D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
-
-    # make D a shared variable 
-    shared_arrays = create_shared_arrays(D)
+    # M, idx = load_prior_model(f_prior_h5, idx=idx, N_use=N_use, Randomize=True)
 
     # Get sample size N from f_prior_h5
     N = D[0].shape[0]
-    
     if N_use>N:
         N_use = N
 
     # Get number of data points from, f_data_h5
     Ndp = DATA['d_obs'][0].shape[0]
-    # TMH : MAKE THIS AVAILABLE AS PART IN INVERSION!!!!
-
+    
     # if ip_range is empty then use all data points
     if len(ip_range)==0:
         ip_range = np.arange(Ndp)
     Ndp_invert = len(ip_range)
             
-    if Ncpu < 1 :
-        Ncpu =  int(multiprocessing.cpu_count())
         
-    # Split the ip_range into Nchunks
-    if Nchunks==0:
-        if parallel:
-            Nchunks = Ncpu
-        else:   
-            Nchunks = 1
     if Ncpu ==1:
         parallel = False
 
-    ip_chunks = np.array_split(ip_range, Nchunks) 
-
+    
     if showInfo>0:
-        print('Number of data points: %d (available), %d (used). Nchunks=%s, Ncpu=%d,use_N_best=%d' % (Ndp,Ndp_invert,Nchunks,Ncpu,use_N_best))    
-    
-    if showInfo>2:
+        print('<--INTEGRATE_REJECTION-->')
         print('f_prior_h5=%s\nf_data_h5=%s\nf_post_h5=%s' % (f_prior_h5, f_data_h5, f_post_h5))
-        print('N_use = %d' % (N_use))
-        print('Ncpu = %d\nNchunks=%d' % (Ncpu, Nchunks))
     
-        return 1
+    if showInfo>1:
+        print('Number of data points: %d (available), %d (used). Nchunks=%s, Ncpu=%d,use_N_best=%d' % (Ndp,Ndp_invert,Nchunks,Ncpu,use_N_best))    
+        print('N_use = %d' % (N_use))
+        print('use_N_best=%d' % use_N_best)
+        print('Number of data types: %d' % Ndt)
+        print('Using these data types: %d' % id_use)
+    
     
     
     # set i_use_all to be a 2d Matrie of size (nump,nr) of random integers in range(N)
@@ -1619,6 +1599,23 @@ def integrate_rejection(f_prior_h5='prior.h5',
     # PERFORM INVERSION PERHAPS IN PARALLEL
 
     if parallel:
+        # Split the ip_range into Nchunks
+        if Nchunks==0:
+            if parallel:
+                Nchunks = Ncpu
+            else:   
+                Nchunks = 1
+        ip_chunks = np.array_split(ip_range, Nchunks) 
+
+        if showInfo>1:
+            print('Ncpu = %d\nNchunks=%d' % (Ncpu, Nchunks))
+
+        # make as a shared variable 
+        D_shared_arrays = create_shared_arrays(D)
+        #D_recon = reconstruct_arrays(D_shared_arrays)
+        #print('D_recon[0].shape=%s' % str(D_recon[0].shape))
+
+
         # TMH: UPDATE NEXT LINE TO MAKE USE OF integrate_posterior_main->chunk->range
         i_use_all, T_all, EV_all = integrate_posterior_main(
             ip_chunks=ip_chunks,
@@ -1637,10 +1634,10 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
     else:
 
-        for i_chunk in range(len(ip_chunks)):        
-            ip_range = ip_chunks[i_chunk]
-            if showInfo>0:
-                print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
+        #for i_chunk in range(len(ip_chunks)):        
+        #    ip_range = ip_chunks[i_chunk]
+        #    if showInfo>0:
+        #        print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
 
             i_use, T, EV, ip_range = integrate_rejection_range(D=D, 
                                         DATA = DATA,
@@ -1886,8 +1883,7 @@ def integrate_rejection_range(D,
         T_all[j] = T
         EV_all[j] = EV
 
-
-        if showInfo>1:
+        if showInfo>2:
             for i in range(len(t)):
                 if i<len(D):
                     print(' Time id%d: %f - %s' % (i,t[i],noise_model[i]))
@@ -1907,6 +1903,12 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
         results = p.map(integrate_posterior_chunk, [(i, ip_chunks, D, DATA, idx,  N_use, id_use, autoT, T_base, nr, use_N_best) for i in range(len(ip_chunks))])
 
     
+    if isinstance(D, list):
+        print("do nothing")
+    else:
+        print('Reconstructing arrays')
+        D = reconstruct_arrays(D)
+
     # Get sample size N from f_prior_h5
     #with h5py.File(f_prior_h5, 'r') as f_prior:
     #    N = f_prior['/D1'].shape[0]
@@ -1939,6 +1941,15 @@ def integrate_posterior_chunk(args):
     i_chunk, ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_base, nr, use_N_best = args
     ip_range = ip_chunks[i_chunk]
     #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
+
+    
+    # If shared object is passed    
+    if isinstance(D, list):
+        print("do ntohing")
+    else:
+        print('Reconstructing arrays')
+        D = reconstruct_arrays(D)
+
 
     i_use, T, EV, ip_range = integrate_rejection_range(
         D,
