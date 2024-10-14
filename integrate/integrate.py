@@ -721,10 +721,8 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     showInfo = kwargs.get('showInfo', 0)
     Ncpu = kwargs.get('Ncpu', 0)
     # of 'Nproc' is set in kwargs use it 
-    if 'Nproc' in kwargs:
-        Ncpu = kwargs.get('Nproc', 0)
-    Ncpu = kwargs.get('Ncpu', 0)
-
+    Ncpu = kwargs.get('Nproc', Ncpu)
+    
     # Force open/close of hdf5 file
     with h5py.File(f_prior_h5, 'r') as f:
         # open and close

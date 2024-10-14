@@ -91,7 +91,7 @@ ig.plot_data(f_data_h5)
 # ## Create prior model and data
 
 # %% make prior
-N=5000000 # sample size 
+N=500000 # sample size 
 RHO_dist='log-uniform'
 #RHO_dist='uniform'
 RHO_min=0.8*min(rho)
