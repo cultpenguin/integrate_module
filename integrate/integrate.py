@@ -2065,9 +2065,11 @@ def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized
     else:    
         dd = D - d_obs
         iCd = np.linalg.inv(Cd)
-        
+    
+    N_app = 500
+    print('N_app=%d' % N_app)
+            
     if N_app > 0:
-        #print('N_app=%d' % N_app)
         L = np.ones(D.shape[0])*-1e+15
         idx = select_subset_for_inversion(dd, N_app)[0] 
         if useVectorized:

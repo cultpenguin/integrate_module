@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # %% [markdown]
 # # INTEGRATE Synthetic Case Study example
-# Demonsrates the use of different nosie models with tTEM data 
+# Demonstrates the use of different noise models with tTEM data 
 # using an example using inverting data obtained from synthetic reference model
 #
 #
@@ -40,17 +40,22 @@ file_gex = ig.get_case_data(case='DAUGAARD', filelist=['TX07_20231016_2x4_RC20-3
 # ## Create prior model and data
 
 # make prior model realizations
-N=2000000 # sample size 
+N=50000 # sample size 
+NLAY_min=3
+NLAY_max=3
+f_prior_data_h5='PRIOR_UNIFORM_NL_%d-%d_uniform_N%d_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5' % (NLAY_min, NLAY_max, N)
+        
+
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
-                                    NLAY_min=3, NLAY_max=3, 
+                                    NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist='uniform', RHO_min=0.5*min(rho), RHO_max=2*max(rho))
 
 ig.plot_prior_stats(f_prior_h5)
 
 # make prior model realizations
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
-
+   
 # %% [markdown]
 # # Create The reference model and data
 
@@ -58,7 +63,7 @@ f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 # Create reference model
 
 # select the type of referenc model
-dx=.1
+dx=.5
 if case.lower() == 'wedge':
     # Make Wedge MODEL
     M_ref, x_ref, z_ref = ig.synthetic_case(case='Wedge', wedge_angle=10, z_max=z_max, dz=.5, x_max=100, dx=dx, z1=15, rho = rho)
@@ -198,39 +203,44 @@ testSeq = True
 if testSeq:
     import time as time
     t0 = time.time()
-    f_data_h5 = f_data_h5_arr[2] 
+    f_data_h5 = f_data_h5_arr[-1] 
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
                                         parallel=True,Ncpu=2,
                                         #parallel=False,
                                         autoT=True,
-                                        T_base = 10,
-                                        use_N_best=100,
+                                        T_base = 1,
+                                        use_N_best=1000,
                                         updatePostStat = False
                                         )
     t1 = time.time()-t0
     print("Time : %.2f s" % t1)
 
-    ig.integrate_posterior_stats(f_post_h5)
-
-    ig.plot_profile(f_post_h5, i1=0, i2=100, hardcopy=hardcopy,  im=1)
+    ig.plot_profile(f_post_h5, hardcopy=hardcopy,  im=1)
 
 
 # %% INVERT
+import time as time
 f_post_h5_arr = []
 T_arr = []
 EV_arr = []
 clim   = [min(rho)*0.8, max(rho)*1.25]
-
+t_elapsed = []
 for f_data_h5 in f_data_h5_arr: 
     #f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
-    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=False, use_N_best=1000)
+    t0 = time.time()
+    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
+                                       parallel=False, 
+                                       Ncpu = 1,
+                                       use_N_best=500)
+    t_elapsed.append(time.time()-t0)
     with h5py.File(f_post_h5, 'r') as f_post:
         T_arr.append(f_post['/T'][:])
         EV_arr.append(f_post['/EV'][:])
 
     f_post_h5_arr.append(f_post_h5)
-    ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
+    #ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
 
+print(t_elapsed)
 
 # %%
 plt.figure()
@@ -285,13 +295,18 @@ f_prior_log_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, is_log=True)
 
 
 # %%
+# BUG: use_N_best has no effect when using log data in the example below????
 f_post_log_h5_arr = []
 for i in range(len(f_data_arr)):
     f_data_h5 = f_data_arr[i]
-    f_post_h5 = ig.integrate_rejection(f_prior_log_data_h5, f_data_h5, parallel=parallel, Ncpu=10)
+    f_post_h5 = ig.integrate_rejection(f_prior_log_data_h5, f_data_h5, 
+                                       parallel=parallel, 
+                                       Ncpu=1,
+                                       use_N_best=500
+                                    )
     f_post_log_h5_arr.append(f_post_h5)
     
-    ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
+    #ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
 
 # %% TEST CORRELATD NOISE!!!!
 
