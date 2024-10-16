@@ -15,8 +15,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # # # # # # # #%load_ext autoreload
-    # # # # # # # # # # # # #%autoreload 2
+    # # # # # # # # # # # # # #%load_ext autoreload
+    # # # # # # # # # # # # # #%autoreload 2
     pass
 
 import integrate as ig
@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 import h5py
 hardcopy=True
 
-#%%
+# %%
 case = 'wedge'
 case = '3layer'
 z_max = 60
@@ -39,24 +39,29 @@ file_gex = ig.get_case_data(case='DAUGAARD', filelist=['TX07_20231016_2x4_RC20-3
 
 # %% [markdown]
 # ## Create prior model and data
-
+#
 # make prior model realizations
-N=500000 # sample size 
+#
+
+# %%
+N=200000 # sample size 
 NLAY_min=3
 NLAY_max=3
 f_prior_data_h5='PRIOR_UNIFORM_NL_%d-%d_uniform_N%d_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5' % (NLAY_min, NLAY_max, N)
         
 
+# make prior model realizations
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist='uniform', RHO_min=0.5*min(rho), RHO_max=2*max(rho))
 
+# make prior data realizations
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
+
 ig.plot_prior_stats(f_prior_h5)
 
-# make prior model realizations
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
-   
+
 # %% [markdown]
 # # Create The reference model and data
 
@@ -189,11 +194,10 @@ EV_post_arr = []
 clim   = [min(rho)*0.8, max(rho)*1.25]
 t_elapsed = []
 for f_data_h5 in f_data_h5_arr: 
-    #f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
     t0 = time.time()
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
-                                       parallel=True, 
-                                       Ncpu = 2,
+                                       parallel=parallel, 
+                                       Ncpu = 8,
                                        use_N_best=500
                                        )
     t_elapsed.append(time.time()-t0)
@@ -207,7 +211,7 @@ for f_data_h5 in f_data_h5_arr:
 
 print(t_elapsed)
 
-#%% 
+# %%
 # %% Post stats
 for i in range(len(f_post_h5_arr)):
     ig.plot_profile(f_post_h5_arr[i],hardcopy=hardcopy,  clim = clim, im=1)
@@ -283,12 +287,12 @@ for i in range(len(f_data_arr)):
     f_data_h5 = f_data_arr[i]
     f_post_h5 = ig.integrate_rejection(f_prior_log_data_h5, f_data_h5, 
                                        parallel=parallel, 
-                                       Ncpu=10,
+                                       Ncpu=8,
                                        updatePostStat = False,
                                        use_N_best=1000
                                     )
     f_post_log_h5_arr.append(f_post_h5)
-    
+
 
 # %% Post stats
 for i in range(len(f_post_log_h5_arr)):

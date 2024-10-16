@@ -287,7 +287,7 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
                 #if dataset.size <= 1e6:  # arbitrary threshold for loading all data into memory
                 M_all = dataset[:]
 
-                for iid in tqdm(range(nsounding), mininterval=1, disable=disableTqdm, desc='poststat'):
+                for iid in tqdm(range(nsounding), mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
                     ir = np.int64(i_use[iid,:])
                     m_post = M_all[ir,:]
 
@@ -341,7 +341,7 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
 
                 M_all = dataset[:]
 
-                for iid in tqdm(range(nsounding), mininterval=1, disable=disableTqdm, desc='poststat'):
+                for iid in tqdm(range(nsounding), mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
 
                     # Get the indices of the rows to use
                     ir = np.int64(i_use[iid,:])
@@ -603,7 +603,7 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
 
     # Compute forward data
     t1=time.time()
-    for i in tqdm(range(nd), mininterval=1, disable=disableTqdm, desc='gatdaem1d'):
+    for i in tqdm(range(nd), mininterval=1, disable=disableTqdm, desc='gatdaem1d', leave=False):
         if C.ndim==1:
             # Only one model
             conductivity = C
@@ -794,7 +794,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         # Parallel
         if Ncpu < 1 :
             Ncpu =  int(multiprocessing.cpu_count()/2)
-            Ncpu =  int(multiprocessing.cpu_count())
+            #Ncpu =  int(multiprocessing.cpu_count())
         if (showInfo>-1):
             print("prior_data_gaaem: Using %d parallel threads." % (Ncpu))
 
@@ -1007,7 +1007,7 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     # save to hdf5 file
     
     #% simulate the number of layers as in integer
-    for i in tqdm(range(N), mininterval=1, disable=(showInfo<0), desc='prior_layered'):
+    for i in tqdm(range(N), mininterval=1, disable=(showInfo<0), desc='prior_layered', leave=False):
     
         i_boundaries = np.sort(np.random.choice(nz, NLAY[i]-1, replace=False))        
 
@@ -1205,7 +1205,7 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
     print('z_min, z_max, dz, nz = %g, %g, %g, %d' % (z_min, z_max, dz, nz))
     M_rho = np.zeros((N, nz))
 
-    for i in tqdm(range(N), mininterval=1, disable=(showInfo<0), desc='prior_workbench'):
+    for i in tqdm(range(N), mininterval=1, disable=(showInfo<0), desc='prior_workbench', leave=False):
         nlayers = NLAY[i][0]
         #print(nlayers)
         z2=z_max
@@ -1751,7 +1751,7 @@ def integrate_rejection_range(D,
     #print(noise_model)
     
     # THIS IS THE ACTUAL INVERSION!!!!
-    for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection'):
+    for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection', leave=False):
         ip = ip_range[j] # This is the index of the data point to invert
         t=[]
         N = D[0].shape[0]
