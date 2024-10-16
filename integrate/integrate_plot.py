@@ -1042,11 +1042,12 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
             ax.plot(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
         
             print('plot_data_prior_post: Plotting log10(d_prior)')
+            print('This is not implemented yet')
             return        
         else:
             ax.semilogy(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
 
-        if i_plot>-1:
+        if i_plot>-1:            
             ax.semilogy(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
         
             ax.semilogy(d_obs[i_plot,:],'r.',markersize=6, label='d_obs')
@@ -1060,10 +1061,11 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
         else:   
             # select nr random unqiue index of d_obs
             i_d = np.random.choice(d_obs.shape[0], nr, replace=False)
-            #for i in i_d:
-            #    ax.semilogy(d_obs[i,:],'r-',linewidth=.1, label='d_obs')
-            ax.semilogy(d_obs[i_d,:].T,'r-',linewidth=.1, label='d_obs')
-
+            if is_log:
+                ax.plot(d_obs[i_d,:].T,'r-',linewidth=.1, label='d_obs')
+            else:
+                ax.semilogy(d_obs[i_d,:].T,'r-',linewidth=.1, label='d_obs')
+            
         plt.xlabel('Data #')
         plt.ylabel('Data')
         plt.grid()
