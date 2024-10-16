@@ -1004,7 +1004,17 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     if noise_model == 'gaussian':
         noise_model = 'Gaussian'
         d_obs = f_data['/%s' % Dkey]['d_obs'][:]
-        d_std = f_data['/%s' % Dkey]['d_std'][:]
+        try:
+            d_std = f_data['/%s' % Dkey]['d_std'][:]
+        except:
+            if 'Cd' in f_data['/%s' % Dkey].keys():
+                # if 'Cd' is 3 dim then take the diagonal
+                if len(f_data['/%s' % Dkey]['Cd'].shape)==3:
+                    d_std = np.sqrt(np.diag(f_data['/%s' % Dkey]['Cd'][i_plot]))
+                else:
+                    d_std = np.sqrt(f_data['/%s' % Dkey]['Cd'])
+            else:
+                d_std = np.zeros(d_obs.shape)
 
         if i_plot==-1:
             # get 400 random unique index of d_obs

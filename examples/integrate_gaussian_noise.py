@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 import h5py
 hardcopy=True
 
+#%%
 case = 'wedge'
 case = '3layer'
 z_max = 60
@@ -203,9 +204,9 @@ testSeq = True
 if testSeq:
     import time as time
     t0 = time.time()
-    f_data_h5 = f_data_h5_arr[-1] 
+    f_data_h5 = f_data_h5_arr[2] 
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
-                                        parallel=True,Ncpu=2,
+                                        parallel=True,Ncpu=1,
                                         #parallel=False,
                                         autoT=True,
                                         T_base = 1,
@@ -218,24 +219,34 @@ if testSeq:
     ig.plot_profile(f_post_h5, hardcopy=hardcopy,  im=1)
 
 
+#%%
+with h5py.File(f_post_h5, 'r') as f_post:
+    # Print all the keys
+    EV_post = f_post['/EV_post'][:]
+    EV = f_post['/EV'][:]
+    plt.plot(EV_post);plt.plot(EV)
+
 # %% INVERT
 import time as time
 f_post_h5_arr = []
 T_arr = []
 EV_arr = []
+EV_post_arr = []
 clim   = [min(rho)*0.8, max(rho)*1.25]
 t_elapsed = []
 for f_data_h5 in f_data_h5_arr: 
     #f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
     t0 = time.time()
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
-                                       parallel=False, 
-                                       Ncpu = 1,
-                                       use_N_best=500)
+                                       parallel=True, 
+                                       Ncpu = 2,
+                                       use_N_best=500
+                                       )
     t_elapsed.append(time.time()-t0)
     with h5py.File(f_post_h5, 'r') as f_post:
         T_arr.append(f_post['/T'][:])
         EV_arr.append(f_post['/EV'][:])
+        EV_post_arr.append(f_post['/EV_post'][:])
 
     f_post_h5_arr.append(f_post_h5)
     #ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
@@ -256,38 +267,53 @@ plt.legend()
 plt.ylabel('EV')
 
 
+plt.figure()
+for i in range(len(T_arr)):
+    plt.semilogy(-EV_post_arr[i], '.', label=name_arr[i], markersize=15-5*i)
+plt.legend()
+plt.ylabel('EV_post')
+
+
+
+
 
 # %% [markdown]
 # ## Data in the log-space
 # The data can be transformed to the log-space, and the noise model can be applied in the log-space.
 #
 #     TODO
-#        We need to check that this works when D has NAN value.. (and Why does it ever?)
+#        We need to check that this works when D has NAN value.. 
+# #      (and Why does it ever?)
 #
 # %%
 
 # %%
 
+corrlev = 0.01**2
+
 lD_obs = np.log10(D_ref)
 
 lD_std_up = np.abs(np.log10(D_ref+D_std)-lD_obs)
 lD_std_down = np.abs(np.log10(D_ref-D_std)-lD_obs)
-lD_std = (lD_std_up+lD_std_down)/2
+lD_std = np.abs((lD_std_up+lD_std_down)/2)
 
-lCd_single = np.diag(np.mean(lD_std, axis=0)**2)
+lCd_single = np.diag(np.mean(lD_std, axis=0)**2)+corrlev
 
 ns,nd=D_std.shape
 lCd_mul = np.zeros((ns,nd,nd))
 for i in range(ns):
-    lCd_mul[i] = np.diag(lD_std[i]**2)
+    lCd_mul[i] = np.diag(lD_std[i]**2)+corrlev
 
 
-plt.semilogy(lD_std,'-')
+plt.figure()
+plt.plot(lD_obs,'k-')
+plt.plot(lD_std,':')
 
 
 f_data_log_1_h5_f_out = ig.write_data_gaussian(lD_obs, D_std = lD_std, f_data_h5 = 'data_log_uncorr', id=1, showInfo=0, is_log=1)
-f_data_log_2_h5_f_out = ig.write_data_gaussian(lD_obs, Cd = lCd_mul, f_data_h5 = 'data_log_corr', id=1, showInfo=0, is_log=1)
-f_data_arr = [f_data_log_1_h5_f_out,f_data_log_2_h5_f_out]
+f_data_log_2_h5_f_out = ig.write_data_gaussian(lD_obs, Cd = lCd_single, f_data_h5 = 'data_log_corr', id=1, showInfo=0, is_log=1)
+f_data_log_3_h5_f_out = ig.write_data_gaussian(lD_obs, Cd = lCd_mul, f_data_h5 = 'data_log_corr2', id=1, showInfo=0, is_log=1)
+f_data_arr = [f_data_log_1_h5_f_out,f_data_log_2_h5_f_out,f_data_log_3_h5_f_out]
 
 
 # %% MAKE PRIOR DATA
@@ -301,78 +327,19 @@ for i in range(len(f_data_arr)):
     f_data_h5 = f_data_arr[i]
     f_post_h5 = ig.integrate_rejection(f_prior_log_data_h5, f_data_h5, 
                                        parallel=parallel, 
-                                       Ncpu=1,
-                                       use_N_best=500
+                                       Ncpu=10,
+                                       updatePostStat = False,
+                                       use_N_best=1000
                                     )
     f_post_log_h5_arr.append(f_post_h5)
     
-    #ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim, im=1)
 
-# %% TEST CORRELATD NOISE!!!!
-
-# %%
-ig.plot_data_prior_post(f_post_log_h5_arr[0], i_plot=0, hardcopy=hardcopy, is_log=True)
-
-
-# %% Optionally run a test to compare likelihood of using different noise models.
-
-# test likelhood
-doTest = False
-if doTest:
-    id=0
-    with h5py.File(f_prior_log_data_h5, 'r') as f:
-        D = f['/D1'][:]
-
-    with h5py.File(f_data_log_2_h5_f_out, 'r') as f:
-        logD_obs = f['/D1/d_obs'][:]
-        if 'd_std' in f['/D1'].keys():
-            logD_std = f['/D1/d_std'][:]
-        else:
-            logCd_mul = f['/D1/Cd'][:]
-            logD_std = np.zeros((ns,nd))
-            for i in range(ns):
-                logD_std[i] = np.sqrt(np.diag(logCd_mul[i]))
-
-    logCd_single = np.diag(np.mean(logD_std, axis=0)**2)
-
-    d_obs = logD_obs[id]
-    d_std = logD_std[id]
-    
-
-    L1 = ig.likelihood_gaussian_diagonal(D, d_obs, d_std)
-    L2 = ig.likelihood_gaussian_full(D, d_obs, logCd_single)
-    L3 = ig.likelihood_gaussian_full(D, d_obs, logCd_mul[id])
-
-    print("L1: %f, L2: %f, L3: %f" % (L1[0], L2[0], L3[0]))
-    print("T1=%3.f" % (np.mean(L1)))
-    print("T2=%3.f" % (np.mean(L2)))
-    print("T3=%3.f" % (np.mean(L3)))   
-
-    # find inde of NaN values in L3
-
-    plt.semilogy(-L1[0:1000], 'k.', label='L1', markersize=10)
-    plt.plot(-L2[0:1000], '--', label='L2')
-    plt.plot(-L3[0:1000], 'r.', label='L3', markersize=3)
-    plt.legend()
-    plt.ylabel('-log(L)')
-    plt.show()
-
-    # i 
-    nan_idx3 = np.where(np.isnan(L3))[0]
-    j=nan_idx3[0]
-
-
-    Cd = logCd_mul[id]
-
-    ind = np.where( ~np.isnan(d_obs) & ~np.isnan(np.sum(Cd, axis=0))  &  ~np.isnan(np.sum(D, axis=0))  )[0]
-    print(len(ind))
-    #ind = np.where(~np.isnan(d_obs))[0]
-    dd = D[:,ind] - d_obs[ind]
-    iCd = np.linalg.inv(Cd[np.ix_(ind, ind)])
-    L = -.5 * np.einsum('ij,ij->i', dd @ iCd, dd)  
-
-
-
-    Lj =  -.5 * np.nansum(dd[j].T @ iCd @ dd[j])
+# %% Post stats
+for i in range(len(f_post_log_h5_arr)):
+    ig.plot_profile(f_post_log_h5_arr[i],hardcopy=hardcopy,  clim = clim, im=1)
+for i in range(len(f_post_log_h5_arr)):
+    ig.plot_data_prior_post(f_post_log_h5_arr[0], i_plot=2, hardcopy=hardcopy, is_log=True)
 
 # %%
+
+

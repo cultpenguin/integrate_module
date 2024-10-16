@@ -1615,7 +1615,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         if showInfo>1:
             print('Ncpu = %d\nNchunks=%d' % (Ncpu, Nchunks))
 
-        i_use_all, T_all, EV_all = integrate_posterior_main(
+        i_use_all, T_all, EV_all, EV_post_all = integrate_posterior_main(
             ip_chunks=ip_chunks,
             D=D, 
             DATA = DATA,
@@ -1637,7 +1637,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         #    if showInfo>0:
         #        print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
 
-            i_use, T, EV, ip_range = integrate_rejection_range(D=D, 
+            i_use, T, EV, EV_post, ip_range = integrate_rejection_range(D=D, 
                                         DATA = DATA,
                                         idx = idx,                                   
                                         N_use=N_use, 
@@ -1646,6 +1646,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
                                         autoT=autoT,
                                         T_base = T_base,
                                         nr=nr,
+                                        use_N_best=use_N_best,
                                         **kwargs
                                         )
         
@@ -1655,6 +1656,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
                 i_use_all[ip] = i_use[i]
                 T_all[ip] = T[i]
                 EV_all[ip] = EV[i]
+                EV_post_all[ip] = EV_post[i]
 
     # WHere T_all is Inf set it to Nan
     T_all[T_all==np.inf] = np.nan
@@ -1672,6 +1674,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         f_post.create_dataset('i_use', data=i_use_all)
         f_post.create_dataset('T', data=T_all)
         f_post.create_dataset('EV', data=EV_all)
+        f_post.create_dataset('EV_post', data=EV_post_all)
         #f_post.create_dataset('ip_range', data=ip_range)
         f_post.attrs['date_start'] = date_start
         f_post.attrs['date_end'] = date_end
@@ -1730,6 +1733,7 @@ def integrate_rejection_range(D,
     i_use_all = np.zeros((nump, nr), dtype=np.int32)
     T_all = np.zeros(nump)*np.nan
     EV_all = np.zeros(nump)*np.nan
+    EV_post_all = np.zeros(nump)*np.nan
     
     
     # Get the lookup sample size
@@ -1846,11 +1850,6 @@ def integrate_rejection_range(D,
         if useRandomData:
             # get the correct index of the subset used
             i_use = idx[i_use]
-            
-
-        # Unfortunately this code originally used matlab style codeing for i_use, 
-        # this we need to add 1 to the index
-        #i_use = i_use+1            
 
         t.append(time.time()-t0)        
 
@@ -1864,6 +1863,11 @@ def integrate_rejection_range(D,
         exp_logL = np.exp(L - maxlogL)
         EV = maxlogL + np.log(np.nansum(exp_logL)/len(L))
 
+        # Compute 'posterior evidence' - mean posterior likelihood
+        EV_post = maxlogL + np.log(np.nanmean(exp_logL[i_use]))
+        #EV_post2 = np.nanmean(L[i_use])
+        #print('EV=%f, EV_post=%f, EV_post2=%f' % (EV, EV_post, EV_post2))
+        
         t.append(time.time()-t0)
 
         pltDegug = 0
@@ -1877,6 +1881,7 @@ def integrate_rejection_range(D,
         i_use_all[j] = i_use
         T_all[j] = T
         EV_all[j] = EV
+        EV_post_all[j] = EV_post
 
         if showInfo>2:
             for i in range(len(t)):
@@ -1886,7 +1891,7 @@ def integrate_rejection_range(D,
                     print(' Time id%d, sampling: %f' % (i,t[i]))
             print('Time total: %f' % np.sum(t))
         
-    return i_use_all, T_all, EV_all, ip_range
+    return i_use_all, T_all, EV_all, EV_post_all, ip_range
 
 
 
@@ -1915,16 +1920,18 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
     i_use_all = np.random.randint(0, N, (Ndp, nr))
     T_all = np.zeros(Ndp)*np.nan
     EV_all = np.zeros(Ndp)*np.nan
+    EV_post_all = np.zeros(Ndp)*np.nan
     
-    for i, (i_use, T, EV, ip_range) in enumerate(results):
+    for i, (i_use, T, EV, EV_post, ip_range) in enumerate(results):
         for i in range(len(ip_range)):
                 ip = ip_range[i]
                 #print('ip=%d, i=%d' % (ip,i))
                 i_use_all[ip] = i_use[i]
                 T_all[ip] = T[i]
                 EV_all[ip] = EV[i]
+                EV_post_all[ip] = EV_post[i]
 
-    return i_use_all, T_all, EV_all
+    return i_use_all, T_all, EV_all, EV_post_all
 
 
 
@@ -1941,7 +1948,7 @@ def integrate_posterior_chunk(args):
 
     #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
 
-    i_use, T, EV, ip_range = integrate_rejection_range(
+    i_use, T, EV, EV_post, ip_range = integrate_rejection_range(
         D,
         DATA,
         idx,
@@ -1954,7 +1961,7 @@ def integrate_posterior_chunk(args):
         use_N_best=use_N_best, 
     )
 
-    return i_use, T, EV, ip_range
+    return i_use, T, EV, EV_post, ip_range
 
 
 # END OF REJECTION SAMPLING
@@ -2065,9 +2072,6 @@ def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized
     else:    
         dd = D - d_obs
         iCd = np.linalg.inv(Cd)
-    
-    N_app = 500
-    print('N_app=%d' % N_app)
             
     if N_app > 0:
         L = np.ones(D.shape[0])*-1e+15
