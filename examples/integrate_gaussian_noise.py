@@ -44,7 +44,7 @@ file_gex = ig.get_case_data(case='DAUGAARD', filelist=['TX07_20231016_2x4_RC20-3
 #
 
 # %%
-N=200000 # sample size 
+N=50000 # sample size 
 NLAY_min=3
 NLAY_max=3
 f_prior_data_h5='PRIOR_UNIFORM_NL_%d-%d_uniform_N%d_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5' % (NLAY_min, NLAY_max, N)
