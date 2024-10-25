@@ -45,7 +45,7 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL AND DATA
-N=50000
+N=500000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
@@ -78,7 +78,7 @@ D_low = D[:,i_low]
 D_high = D[:,i_high]
 # Split observed data
 D_obs_low = D_obs[:,i_low]
-D_std_low = D_std[:,i_low]
+D_std_low = D_std[:,i_low]/5
 D_obs_high = D_obs[:,i_high]
 D_std_high = D_std[:,i_high]*10
 
@@ -130,7 +130,7 @@ with h5py.File(f_prior_data_dual_h5, 'a') as f:
 # The posterior distribution is sampling using the extended rejection sampler.
 
 # %% SAMPLE THE FULL POSTERIOR
-N_use = 10000 #%N
+N_use = 1000000 #%N
 N_cpu = 6
 f_post_arr = []
 updatePostStat=False
@@ -183,20 +183,20 @@ for f_post_h5 in f_post_arr:
 
 #%%
 for f_post_h5 in f_post_arr:
-
-
-    # % Plot prior, posterior, and observed  data
-    #ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
-    #ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
-
-    # %
-    #ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
-    #ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
-
     # % Plot Profiles
     ig.plot_profile(f_post_h5, i1=1000, i2=2000, im=1, hardcopy=hardcopy)
-    #
-    #plt.show()
+
+#%%
+for f_post_h5 in f_post_arr:
+    ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
+    plt.show()
+    #ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
+
+#%%
+for f_post_h5 in f_post_arr:
+    # % Plot prior, posterior, and observed  data
+    ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
+    #ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
 
 
 
