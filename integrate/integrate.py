@@ -235,7 +235,7 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
         else:
             raise ValueError(f"'f5_prior' attribute does not exist in {f_post_h5}")
 
-    integrate.integrate_update_prior_attributes(f_prior_h5, **kwargs)
+    #integrate.integrate_update_prior_attributes(f_prior_h5, **kwargs)
 
 
     # Load 'i_use' data from the HDF5 file
@@ -466,6 +466,9 @@ def prior_data(f_prior_in_h5, f_forward_h5, id=1, im=1, doMakePriorCopy=0, paral
     # update prior data with an attribute defining the prior
     with h5py.File(f_prior_h5, 'a') as f:
         f.attrs[f'/D{id}'] = 'f5_forward'
+
+
+    integrate_update_prior_attributes(f_prior_h5)
 
     return f_prior_h5
 
@@ -851,6 +854,8 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
 
     f_prior.close()
 
+    integrate_update_prior_attributes(f_prior_data_h5)
+    
     return f_prior_data_h5
 
 
@@ -1558,6 +1563,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
      # Load the prior data from the h5 files
     #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
     D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
+    
     # M, idx = load_prior_model(f_prior_h5, idx=idx, N_use=N_use, Randomize=True)
 
     # Get sample size N from f_prior_h5
@@ -1593,6 +1599,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
     
     # set i_use_all to be a 2d Matrie of size (nump,nr) of random integers in range(N)
     i_use_all = np.random.randint(0, N, (Ndp, nr))
+    N_UNIQUE_all = np.zeros(Ndp)*np.nan
     T_all = np.zeros(Ndp)*np.nan
     EV_all = np.zeros(Ndp)*np.nan
     # 'posterior' evience - mean posterior likelihood TODO
@@ -1615,7 +1622,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         if showInfo>1:
             print('Ncpu = %d\nNchunks=%d' % (Ncpu, Nchunks))
 
-        i_use_all, T_all, EV_all, EV_post_all = integrate_posterior_main(
+        i_use_all, T_all, EV_all, EV_post_all, N_UNIQUE_all = integrate_posterior_main(
             ip_chunks=ip_chunks,
             D=D, 
             DATA = DATA,
@@ -1637,7 +1644,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         #    if showInfo>0:
         #        print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
 
-            i_use, T, EV, EV_post, ip_range = integrate_rejection_range(D=D, 
+            i_use, T, EV, EV_post, N_UNIQUE, ip_range = integrate_rejection_range(D=D, 
                                         DATA = DATA,
                                         idx = idx,                                   
                                         N_use=N_use, 
@@ -1657,6 +1664,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
                 T_all[ip] = T[i]
                 EV_all[ip] = EV[i]
                 EV_post_all[ip] = EV_post[i]
+                N_UNIQUE_all[ip] = N_UNIQUE[i]
 
     # WHere T_all is Inf set it to Nan
     T_all[T_all==np.inf] = np.nan
@@ -1675,6 +1683,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         f_post.create_dataset('T', data=T_all)
         f_post.create_dataset('EV', data=EV_all)
         f_post.create_dataset('EV_post', data=EV_post_all)
+        f_post.create_dataset('N_UNIQUE', data=N_UNIQUE_all)
         #f_post.create_dataset('ip_range', data=ip_range)
         f_post.attrs['date_start'] = date_start
         f_post.attrs['date_end'] = date_end
@@ -1734,6 +1743,7 @@ def integrate_rejection_range(D,
     T_all = np.zeros(nump)*np.nan
     EV_all = np.zeros(nump)*np.nan
     EV_post_all = np.zeros(nump)*np.nan
+    N_UNIQUE_all = np.zeros(nump)*np.nan
     
     
     # Get the lookup sample size
@@ -1816,12 +1826,10 @@ def integrate_rejection_range(D,
         
         t0=time.time()
 
-
         # NOw we have all the likelihoods for all data types. Copmbine them into ooe
         L_single = L
         L = np.sum(L_single, axis=0)
-        #plt.plot(L.T)
-
+        
 
         # AUTO ANNEALE
         t0=time.time()
@@ -1838,11 +1846,12 @@ def integrate_rejection_range(D,
         
         P_acc = np.exp((1/T) * (L - np.nanmax(L)))
         P_acc[np.isnan(P_acc)] = 0
-
+       
         # Select the index of P_acc propportion to the probabilituy given by P_acc
         t0=time.time()
         try:
-            i_use = np.random.choice(N, nr, p=P_acc/np.sum(P_acc))
+            p=P_acc/np.sum(P_acc)
+            i_use = np.random.choice(N, nr, p=p)
         except:
             print('Error in np.random.choice for ip=%d' % ip)   
             i_use = np.random.choice(N, nr)
@@ -1854,9 +1863,6 @@ def integrate_rejection_range(D,
         t.append(time.time()-t0)        
 
     
-        # find the number of unique indexes
-        n_unique = len(np.unique(i_use))
-
 
         # Compute the evidence
         maxlogL = np.nanmax(L)
@@ -1864,7 +1870,7 @@ def integrate_rejection_range(D,
         EV = maxlogL + np.log(np.nansum(exp_logL)/len(L))
 
         # Compute 'posterior evidence' - mean posterior likelihood
-        EV_post = maxlogL + np.log(np.nanmean(exp_logL[i_use]))
+        EV_post = np.nanmean(exp_logL)
         #EV_post2 = np.nanmean(L[i_use])
         #print('EV=%f, EV_post=%f, EV_post2=%f' % (EV, EV_post, EV_post2))
         
@@ -1882,6 +1888,8 @@ def integrate_rejection_range(D,
         T_all[j] = T
         EV_all[j] = EV
         EV_post_all[j] = EV_post
+        # find the number of unique indexes
+        N_UNIQUE_all[j] = len(np.unique(i_use))
 
         if showInfo>2:
             for i in range(len(t)):
@@ -1891,7 +1899,7 @@ def integrate_rejection_range(D,
                     print(' Time id%d, sampling: %f' % (i,t[i]))
             print('Time total: %f' % np.sum(t))
         
-    return i_use_all, T_all, EV_all, EV_post_all, ip_range
+    return i_use_all, T_all, EV_all, EV_post_all, N_UNIQUE_all, ip_range
 
 
 
@@ -1912,8 +1920,8 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
     cleanup_shared_memory(shared_memory_refs)
 
     # Get sample size N from f_prior_h5
-    N = D[0].shape[0]  
-
+    N=D[0].shape[0]
+    
     # Get number of data points from, f_data_h5
     Ndp = DATA['d_obs'][0].shape[0]
 
@@ -1921,8 +1929,9 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
     T_all = np.zeros(Ndp)*np.nan
     EV_all = np.zeros(Ndp)*np.nan
     EV_post_all = np.zeros(Ndp)*np.nan
+    N_UNIQUE_all = np.zeros(Ndp)*np.nan
     
-    for i, (i_use, T, EV, EV_post, ip_range) in enumerate(results):
+    for i, (i_use, T, EV, EV_post, N_UNIQUE, ip_range) in enumerate(results):
         for i in range(len(ip_range)):
                 ip = ip_range[i]
                 #print('ip=%d, i=%d' % (ip,i))
@@ -1930,8 +1939,9 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
                 T_all[ip] = T[i]
                 EV_all[ip] = EV[i]
                 EV_post_all[ip] = EV_post[i]
+                N_UNIQUE_all[ip] = N_UNIQUE[i]
 
-    return i_use_all, T_all, EV_all, EV_post_all
+    return i_use_all, T_all, EV_all, EV_post_all, N_UNIQUE_all
 
 
 
@@ -1942,13 +1952,18 @@ def integrate_posterior_chunk(args):
     i_chunk, ip_chunks, DATA, idx, N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best = args
     # Old implementation where D was copied to each process
     #i_chunk, ip_chunks, D, DATA, idx, N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best = args
+    #D=reconstruct_shared_arrays(shared_memory_refs)
     D=reconstruct_shared_arrays(shared_memory_refs)
-    
+
+    # Perhaps truncat according to N_use
+    #for i in len(D)
+    #    D[i] = D[i][:N_use]
+
     ip_range = ip_chunks[i_chunk]
 
     #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
 
-    i_use, T, EV, EV_post, ip_range = integrate_rejection_range(
+    i_use, T, EV, EV_post, N_UNIQUE, ip_range = integrate_rejection_range(
         D,
         DATA,
         idx,
@@ -1961,7 +1976,7 @@ def integrate_posterior_chunk(args):
         use_N_best=use_N_best, 
     )
 
-    return i_use, T, EV, EV_post, ip_range
+    return i_use, T, EV, EV_post, N_UNIQUE, ip_range
 
 
 # END OF REJECTION SAMPLING
