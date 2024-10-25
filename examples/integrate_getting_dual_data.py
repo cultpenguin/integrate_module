@@ -14,8 +14,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # #%load_ext autoreload
-    # # #%autoreload 2
+    # # # #%load_ext autoreload
+    # # # #%autoreload 2
     pass
 # %%
 import integrate as ig
@@ -45,7 +45,7 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL AND DATA
-N=500000
+N=1000000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
@@ -56,7 +56,7 @@ ig.integrate_update_prior_attributes(f_prior_data_h5)
 
 ig.plot_data_prior(f_prior_data_h5, f_data_h5)
 
-#%%
+# %%
 # Read D_obs from f_data_h5
 with h5py.File(f_data_h5, 'r') as f:
     D_obs = f['D1/d_obs'][:]
@@ -67,7 +67,7 @@ with h5py.File(f_prior_data_h5, 'r') as f:
     
 
 nd = D_obs.shape[1]
-n_low = 13
+n_low = 14
 n_high = nd - n_low
 # set i low to 0:n_low-1
 i_low = range(n_low)
@@ -78,9 +78,9 @@ D_low = D[:,i_low]
 D_high = D[:,i_high]
 # Split observed data
 D_obs_low = D_obs[:,i_low]
-D_std_low = D_std[:,i_low]/5
+D_std_low = D_std[:,i_low]*2
 D_obs_high = D_obs[:,i_high]
-D_std_high = D_std[:,i_high]*10
+D_std_high = D_std[:,i_high]*2
 
 
 plt.semilogy(D_obs[0],'k-');
@@ -91,9 +91,9 @@ plt.semilogy(D[0],'k:');
 plt.semilogy(D_low[0],'r:');
 plt.semilogy(D_high[0],'g:');
 
-#%% WRITE THE DUAL PRIOR AND OBSERVED DATA TO HDF5 FILES
+# %% WRITE THE DUAL PRIOR AND OBSERVED DATA TO HDF5 FILES
 
-#%% WRITE DUAL OBSERVED DATA
+# %% WRITE DUAL OBSERVED DATA
 f_data_dual_h5 = 'DAUGAARD_AVG_dual.h5'
 ig.copy_hdf5_file(f_data_h5,f_data_dual_h5)
 # Delete D1
@@ -112,7 +112,7 @@ with h5py.File(f_data_dual_h5, 'a') as f:
     f.create_dataset('D2/d_std', data=D_std_high)
     f['D2'].attrs['noise_model'] = 'gaussian'
 
-#%% WRITE DUAL PRIOR DATA
+# %% WRITE DUAL PRIOR DATA
 f_prior_data_dual_h5 = 'PRIOR_dual.h5'
 ig.copy_hdf5_file(f_prior_data_h5,f_prior_data_dual_h5)
 
@@ -122,6 +122,11 @@ with h5py.File(f_prior_data_dual_h5, 'a') as f:
         del(f['D1'])
     f.create_dataset('D1', data=D_low)
     f.create_dataset('D2', data=D_high)
+
+
+# %% WRITE DUAL PRIOR DATA
+ig.plot_data_prior(f_prior_data_dual_h5, f_data_dual_h5, id=1)
+ig.plot_data_prior(f_prior_data_dual_h5, f_data_dual_h5, id=2)
 
 
 # %% [markdown]
@@ -176,23 +181,23 @@ for itype in [0,1,2,3]:
 
 
 
-#%% Update posterior stats
+# %% Update posterior stats
 for f_post_h5 in f_post_arr:
     ig.integrate_posterior_stats(f_post_h5)
 
 
-#%%
+# %%
 for f_post_h5 in f_post_arr:
     # % Plot Profiles
     ig.plot_profile(f_post_h5, i1=1000, i2=2000, im=1, hardcopy=hardcopy)
 
-#%%
+# %%
 for f_post_h5 in f_post_arr:
     ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
     plt.show()
     #ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
 
-#%%
+# %%
 for f_post_h5 in f_post_arr:
     # % Plot prior, posterior, and observed  data
     ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
@@ -201,7 +206,7 @@ for f_post_h5 in f_post_arr:
 
 
 
-#%% 
+# %%
 with h5py.File(f_data_h5, 'r') as f:    
     nobs = f['D1/d_obs'].shape[0]
     
