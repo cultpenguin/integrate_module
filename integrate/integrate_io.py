@@ -524,10 +524,23 @@ def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
         # Create the output file
         with h5py.File(output_filename, 'w') as output_file:
             # Copy each group/dataset from the input file to the output file
+            #i_use = np.sort(np.random.choice(400000,10,replace=False))
+            i_use = []
             for name in input_file:
                 if isinstance(input_file[name], h5py.Dataset):                    
                     # If N is specified, only copy the first N elements
-                    data = input_file[name][:N]
+
+                    if len(i_use)==0:
+                        N_in = input_file[name].shape[0]
+                        if N>N_in:
+                            N=N_in
+                        if N==N_in:                            
+                            i_use = np.arange(N)
+                        else:
+                            i_use = np.sort(np.random.choice(N_in,N,replace=False))
+                        
+                    data = input_file[name][i_use]
+
                     # Create new dataset in output file
                     output_dataset = output_file.create_dataset(name, data=data)
                     # Copy the attributes of the dataset
@@ -911,6 +924,72 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
         f['/%s/' % D_str].attrs['is_log'] = is_log
     
     return f_data_h5
+
+def write_data_multinomial(D_obs, id=[], f_data_h5='data.h5', **kwargs):
+    """
+    Writes observed data to an HDF5 file in a specified group with a multinomial noise model.
+    Parameters
+    ----------
+    D_obs : numpy.ndarray
+        The observed data array to be written to the file.
+    id : list, optional
+        The ID of the group to write the data to. If not provided, the function will find the next available ID.
+    f_data_h5 : str, optional
+        The path to the HDF5 file where the data will be written. Default is 'data.h5'.
+    **kwargs : dict, optional
+        Additional keyword arguments:
+        - showInfo (int): Level of verbosity for printing information. Default is 0.
+    Returns
+    -------
+    str
+        The path to the HDF5 file where the data was written.
+    Notes
+    -----
+    The function writes the observed data to a group in the HDF5 file named 'D{id}/'. If the group already exists, it is removed before writing the new data. The noise model attribute for the group is set to 'multinomial'.
+    """
+
+    showInfo = kwargs.get('showInfo', 0)
+
+
+    # f_data_h5 is a HDF% file grousp "/D1/", "/D2". 
+    # FInd the is with for the maximum '/D*' group
+    if not id:
+        with h5py.File(f_data_h5, 'a') as f:
+            for id in range(1, 100):
+                D_str = 'D%d' % id
+                if D_str not in f:
+                    break
+        if showInfo>0:
+            print('Using id=%d' % id)
+
+    D_str = 'D%d' % id
+
+    if showInfo>0:
+        print("Trying to write %s to %s" % (D_str,f_data_h5))
+
+    ns,nd=D_obs.shape
+
+    # check if group 'D{id}/' exists and remove it if it does
+    with h5py.File(f_data_h5, 'a') as f:
+        if D_str in f:
+            if showInfo>-1:
+                print('Removing group %s:%s ' % (f_data_h5,D_str))
+                del f[D_str]
+
+
+    # Write DATA
+    with h5py.File(f_data_h5, 'a') as f:
+        if showInfo>-1:
+            print('Adding group %s:%s ' % (f_data_h5,D_str))
+
+        f.create_dataset('/%s/d_obs' % D_str, data=D_obs)
+        # Write either Cd or d_std
+        
+        # write attribute noise_model as 'multinomial'
+        f['/%s/' % D_str].attrs['noise_model'] = 'multinomial'
+        
+    return f_data_h5
+
 
 def check_data(f_data_h5='data.h5', **kwargs):
     """

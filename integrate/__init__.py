@@ -38,6 +38,7 @@ from integrate.integrate_io import copy_hdf5_file
 from integrate.integrate_io import hdf5_scan
 from integrate.integrate_io import get_case_data
 from integrate.integrate_io import write_data_gaussian
+from integrate.integrate_io import write_data_multinomial
 from integrate.integrate_io import check_data
 
 from integrate.integrate_plot import plot_profile
