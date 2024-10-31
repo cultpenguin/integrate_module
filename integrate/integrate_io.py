@@ -527,6 +527,8 @@ def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
             #i_use = np.sort(np.random.choice(400000,10,replace=False))
             i_use = []
             for name in input_file:
+                if showInfo>0:
+                    print('Copying %s' % name)
                 if isinstance(input_file[name], h5py.Dataset):                    
                     # If N is specified, only copy the first N elements
 

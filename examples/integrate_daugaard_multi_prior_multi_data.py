@@ -48,6 +48,14 @@ if not os.path.isfile(file_gex):
 f_data_h5 = 'DAUGAARD_AVG_test.h5'
 os.system('cp DAUGAARD_AVG.h5 %s' % (f_data_h5))
 
+# Update and increase noise assumption
+# Read 'D1/d_std' from f_data_h5, increase it by 100% and write it back to f_data_h5
+with h5py.File(f_data_h5, 'a') as f:
+    print(f['D1'].keys())
+    d_std = f['D1/d_std'][:]
+    d_std = d_std*10
+    f['D1/d_std'][:] = d_std
+
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 fig=ig.plot_data_xy(f_data_h5)
@@ -55,7 +63,7 @@ fig=ig.plot_data_xy(f_data_h5)
 # %%
 # Lets first make a small copy of the large data set available
 f_prior_org_h5 = 'prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
-N_small = 50000
+N_small = 50000000000
 f_prior_h5 = ig.copy_hdf5_file(f_prior_org_h5, 'prior_test.h5',N=N_small,showInfo=3)
 
 print("Keys in DATA")
@@ -97,7 +105,7 @@ Xmax = np.max(X)
 Xl = Xmin + 0.2*(Xmax-Xmin)
 Xr = Xmin + 0.8*(Xmax-Xmin)
 
-P0 = .9999 # Probability of category 0
+P0 = 1# .9999 # Probability of category 0
 Pcat0 = np.zeros(len(X))-1
 for i in range(len(X)):
     if X[i] < Xl:
@@ -116,7 +124,7 @@ D_obs[:,1] = 1-Pcat0
 plt.figure()
 for ic in range(nclasses):
     plt.subplot(2,1,ic+1)
-    sc = plt.scatter(X, Y, c=D_obs[:,ic], cmap='jet', vmin=0, vmax=1, s=20)
+    sc = plt.scatter(X, Y, c=D_obs[:,ic], cmap='jet', vmin=0, vmax=1, s=1)
     plt.colorbar(sc)
     plt.title('P(D2==%d)'%(ic))
     plt.axis('equal')
@@ -125,9 +133,9 @@ plt.show()
 # ig.write_data_gaussian(f_data_h5, D_obs, 'D2', 'Scenario    )
 # Now write the 'observed data as a new data type
 # If the 'id' is not set, it will be set to the next available id
-ig.write_data_multinomial(D_obs, f_data_h5 = f_data_h5, showInfo=2)
+#ig.write_data_multinomial(D_obs, f_data_h5 = f_data_h5, showInfo=2)
 # If the if is set, the data will be written to the given id, even if it allready exists
-#ig.write_data_multinomial(D_obs, id=2, f_data_h5 = f_data_h5, showInfo=2)
+ig.write_data_multinomial(D_obs, id=2, f_data_h5 = f_data_h5, showInfo=2)
 
 
 
@@ -150,21 +158,25 @@ with h5py.File(f_data_h5, 'r') as f:
 # %%
 id_use_arr = []
 id_use_arr.append([2]) # Dicrete data
-id_use_arr.append([1]) # tTEM data
-id_use_arr.append([1,2]) # Both discrete and tTEM data
+#id_use_arr.append([1]) # tTEM data
+#id_use_arr.append([1,2]) # Both discrete and tTEM data
+
+f_post_h5_arr = []
+P0_mul = []
 
 for i in range(len(id_use_arr)):
 
     id_use = id_use_arr[i]
-    N_use = 10000000
+    N_use = 100000
     updatePostStat =True
     f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, 
                                     N_use = N_use, 
                                     parallel=parallel, 
                                     updatePostStat=updatePostStat, 
                                     showInfo=1,
-                                    Nproc=8,
+                                    Ncpu=8,
                                     id_use = id_use)
+    f_post_h5_arr.append(f_post_h5)
 
     #% 
     im=3 # Scenario Category
@@ -175,6 +187,8 @@ for i in range(len(id_use_arr)):
         post_P = f['M3/P'][:]
     
     P = post_P[:,:,0]
+    P0_mul.append(P)
+
 
     plt.figure()
     for ic in range(nclasses):
@@ -190,6 +204,22 @@ for i in range(len(id_use_arr)):
     # ig.plot_profile(f_post_h5, im=2, i1=0, i2=1000)
 
 # %%
-  
+n=len(f_post_h5_arr)
+plt.figure(figsize=(8,1.5*n))
+for i in range(n):
+    plt.subplot(2,2,i+1)
+    sc = plt.scatter(X/1000, Y/1000, c=P0_mul[i][:,0], cmap='jet', vmin=0, vmax=1, s=2)
+    plt.colorbar(sc)
+    plt.grid()
+    plt.title('P(D2==%d)'%(ic))
+    plt.axis('equal')
+    # TIght axes
+    plt.xlim([X.min()/1000,X.max()/1000])
+    plt.ylim([Y.min()/1000,Y.max()/1000])
+    plt.title('P(Inside Valley  | %s)' % (id_use_arr[i]))
+
+    
 
 
+
+# %%

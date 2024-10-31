@@ -1798,11 +1798,12 @@ def integrate_rejection_range(D,
                 
                 class_id = [1,2]
 
-                useVetorized = True
-                if useVetorized:
+                useVectorized = True
+                if useVectorized:
                     D_ind = np.zeros(D[i].shape[0], dtype=int)
                     D_ind[:] = np.searchsorted(class_id, D[i].squeeze())
-                    L_single = np.log(d_obs[D_ind])
+                    epsilon = 1e-10  # Small value to avoid log(0)
+                    L_single = np.log(d_obs[D_ind] + epsilon)
                 else:
                     D_ind = np.zeros(D[id].shape[0], dtype=int)
                     for i in range(D_ind.shape[0]):
