@@ -33,7 +33,7 @@ parallel = ig.use_parallel(showInfo=1)
 # ## Download the data DAUGAARD data including non-trivial prior data
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
-# For this case, we use a raedy to use prior model and data set form DAUGAARD
+# For this case, we use a ready to use prior model and data set form DAUGAARD
 files = ig.get_case_data(case='DAUGAARD', loadType='inout') # Load data and prior+data realizations
 #files = ig.get_case_data(case='DAUGAARD', loadType='post') # # Load data and posterior realizations
 #files = ig.get_case_data(case='DAUGAARD', loadAll=True) # All of the above
@@ -50,12 +50,13 @@ os.system('cp DAUGAARD_AVG.h5 %s' % (f_data_h5))
 
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
+ig.plot_data_xy(f_data_h5)
 
 # %%
 # Lets first make a small copy of the large data set available
 f_prior_org_h5 = 'prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
-N_small = 10000
-f_prior_h5 = ig.copy_hdf5_file(f_prior_org_h5, 'prior_test.h5',N=N_small,showInfo=True)
+N_small = 50000
+f_prior_h5 = ig.copy_hdf5_file(f_prior_org_h5, 'prior_test.h5',N=N_small,showInfo=2)
 
 print("Keys in DATA")
 with h5py.File(f_data_h5, 'r') as f:
@@ -95,7 +96,7 @@ Xmax = np.max(X)
 Xl = Xmin + 0.2*(Xmax-Xmin)
 Xr = Xmin + 0.8*(Xmax-Xmin)
 
-P0 = .99 # Probability of category 0
+P0 = .9999 # Probability of category 0
 Pcat0 = np.zeros(len(X))-1
 for i in range(len(X)):
     if X[i] < Xl:
@@ -143,69 +144,46 @@ with h5py.File(f_data_h5, 'r') as f:
 # %% [markdown]
 # Lets first add information directly about the scenario. 
 
+id_use_arr = []
+id_use_arr.append([2])
+#id_use_arr.append([1])
+#id_use_arr.append([1,2])
 
+for i in range(len(id_use_arr)):
 
-N_use = 10000000
-updatePostStat =True
-f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, 
-                                N_use = N_use, 
-                                parallel=parallel, 
-                                updatePostStat=updatePostStat, 
-                                showInfo=1,
-                                Nproc=8,
-                                id_use = [2])
-
-
-#%% 
-im=3 # Scenario Category
-with h5py.File(f_post_h5, 'r') as f:
-    print("Keys in POSTERIOR")
-    print(f['M3'].keys()) 
-    post_MODE = f['M3/Mode'][:]
-    post_P = f['M3/P'][:]
-   
-P = post_P[:,:,0]
-
-plt.figure()
-for ic in range(nclasses):
-    plt.subplot(2,1,ic+1)
-    #sc = plt.scatter(X, Y, c=D_obs[:,ic], cmap='jet', vmin=0, vmax=1, s=20)
-    sc = plt.scatter(X, Y, c=P[:,ic], cmap='jet', vmin=0, vmax=1, s=2)
-    plt.colorbar(sc)
-    plt.title('P(D2==%d)'%(ic))
-    plt.axis('equal')
-plt.show()
-
-
-
-
-
-
-
-
-# %%
-#f_data_h5 = 'DAUGAARD_AVG.h5'
-
-f_prior_data_h5_list = []
-#f_prior_data_h5_list.append('prior_detailed_invalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
-#f_prior_data_h5_list.append('prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
-#f_prior_h5_list.append('prior_detailed_general_N2000000_dmax90.h5_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
-#f_post_h5_list = []
-
-N_use = 20000
-
-for f_prior_data_h5 in f_prior_data_h5_list:
-    print('Using prior model file %s' % f_prior_data_h5)
-
-    #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
+    id_use = id_use_arr[i]
+    N_use = 10000000
     updatePostStat =True
-    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
-                                       N_use = N_use, 
-                                       parallel=1, 
-                                       updatePostStat=updatePostStat, 
-                                       showInfo=1,
-                                       Nproc=32)
-    f_post_h5_list.append(f_post_h5)
+    f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, 
+                                    N_use = N_use, 
+                                    parallel=parallel, 
+                                    updatePostStat=updatePostStat, 
+                                    showInfo=1,
+                                    Nproc=8,
+                                    id_use = id_use)
 
+    #% 
+    im=3 # Scenario Category
+    with h5py.File(f_post_h5, 'r') as f:
+        print("Keys in POSTERIOR")
+        print(f['M3'].keys()) 
+        post_MODE = f['M3/Mode'][:]
+        post_P = f['M3/P'][:]
+    
+    P = post_P[:,:,0]
 
-# %%
+    plt.figure()
+    for ic in range(nclasses):
+        plt.subplot(2,1,ic+1)
+        #sc = plt.scatter(X, Y, c=D_obs[:,ic], cmap='jet', vmin=0, vmax=1, s=20)
+        sc = plt.scatter(X, Y, c=P[:,ic], cmap='jet', vmin=0, vmax=1, s=2)
+        plt.colorbar(sc)
+        plt.title('P(D2==%d)'%(ic))
+        plt.axis('equal')
+    plt.suptitle(' id_use=%s' % (id_use))
+    plt.show()
+
+    # %%
+    ig.plot_profile(f_post_h5, im=2, i1=0, i2=1000)
+    
+
