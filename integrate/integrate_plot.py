@@ -947,7 +947,7 @@ def plot_data_prior(f_prior_data_h5,
         plt.savefig('%s_%s_id%d_%s.png' % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_data_h5)[0],id,d_str))
 
 
-def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
+def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
     """
     Plot the prior and posterior data for a given dataset.
 
@@ -955,6 +955,8 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     :type f_post_h5: str
     :param i_plot: The index of the observation to plot.
     :type i_plot: int
+    :param i_d: Data number to plot.
+    :type i_d: int
     :param Dkey: String of the hdf5 key for the data set.
     :type Dkey: str
     :param kwargs: Additional keyword arguments.
@@ -972,20 +974,51 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     import os
     
     showInfo = kwargs.get('showInfo', 0)
+    is_log = kwargs.get('is_log', False)
 
     ## Check if the data file f_data_h5 exists
     if not os.path.exists(f_post_h5):
         print("plot_data: File %s does not exist" % f_data_h5)
         return
 
+
     f_post = h5py.File(f_post_h5,'r')
 
     f_prior_h5 = f_post['/'].attrs['f5_prior']
     f_data_h5 = f_post['/'].attrs['f5_data']
 
+
+    # if id is a list of integers, then loop over them and call 
+    # plot_data_prior_post for each id
+    if isinstance(id, list):
+        for i in id:
+            plot_data_prior_post(f_post_h5, i_plot=i_plot, nr=nr, id=i, **kwargs)
+        return
+
+    if id==0:
+        # get number of data sets in f_post_h5
+        nd = 0
+        id_plot = []
+        with h5py.File(f_data_h5,'r') as f_data:
+            for key in f_data.keys():
+                if key[0]=='D':
+                    if showInfo>0:
+                        print("plot_data_prior_post: Found data set %s" % key)
+                    nd += 1
+                    id_plot.append(nd)  
+
+        #print(id_plot)
+        plot_data_prior_post(f_post_h5, i_plot=i_plot, nr=nr, id=id_plot, **kwargs)
+        return
+
+    if id>0:
+        Dkey = 'D%d' % id
+    
+
     f_data = h5py.File(f_data_h5,'r')
     f_prior = h5py.File(f_prior_h5,'r')
     
+
     if len(Dkey)==0:
         nd = 0
         Dkeys = []
@@ -1003,7 +1036,17 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     if noise_model == 'gaussian':
         noise_model = 'Gaussian'
         d_obs = f_data['/%s' % Dkey]['d_obs'][:]
-        d_std = f_data['/%s' % Dkey]['d_std'][:]
+        try:
+            d_std = f_data['/%s' % Dkey]['d_std'][:]
+        except:
+            if 'Cd' in f_data['/%s' % Dkey].keys():
+                # if 'Cd' is 3 dim then take the diagonal
+                if len(f_data['/%s' % Dkey]['Cd'].shape)==3:
+                    d_std = np.sqrt(np.diag(f_data['/%s' % Dkey]['Cd'][i_plot]))
+                else:
+                    d_std = np.sqrt(f_data['/%s' % Dkey]['Cd'])
+            else:
+                d_std = np.zeros(d_obs.shape)
 
         if i_plot==-1:
             # get 400 random unique index of d_obs
@@ -1026,9 +1069,17 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     
         #i_plot=[]
         fig, ax = plt.subplots(1,1,figsize=(7,7))
-        ax.semilogy(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
+        if is_log:
+            ax.plot(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
+            ax.plot(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
         
-        if i_plot>-1:
+            print('plot_data_prior_post: Plotting log10(d_prior)')
+            print('This is not implemented yet')
+            return        
+        else:
+            ax.semilogy(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
+
+        if i_plot>-1:            
             ax.semilogy(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
         
             ax.semilogy(d_obs[i_plot,:],'r.',markersize=6, label='d_obs')
@@ -1042,10 +1093,11 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
         else:   
             # select nr random unqiue index of d_obs
             i_d = np.random.choice(d_obs.shape[0], nr, replace=False)
-            #for i in i_d:
-            #    ax.semilogy(d_obs[i,:],'r-',linewidth=.1, label='d_obs')
-            ax.semilogy(d_obs[i_d,:].T,'r-',linewidth=.1, label='d_obs')
-
+            if is_log:
+                ax.plot(d_obs[i_d,:].T,'r-',linewidth=.1, label='d_obs')
+            else:
+                ax.semilogy(d_obs[i_d,:].T,'r-',linewidth=.1, label='d_obs')
+            
         plt.xlabel('Data #')
         plt.ylabel('Data')
         plt.grid()

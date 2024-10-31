@@ -18,9 +18,15 @@ from integrate.integrate import integrate_posterior_chunk
 from integrate.integrate import integrate_posterior_main
 from integrate.integrate import likelihood_gaussian_diagonal
 from integrate.integrate import likelihood_gaussian_full
+from integrate.integrate import select_subset_for_inversion
 from integrate.integrate import use_parallel
-
-
+from integrate.integrate import load_prior
+from integrate.integrate import load_prior_data
+from integrate.integrate import load_prior_model
+from integrate.integrate import load_data
+from integrate.integrate import cleanup_shared_memory
+from integrate.integrate import reconstruct_shared_arrays
+from integrate.integrate import create_shared_memory
 
 from integrate.integrate_io import get_geometry 
 from integrate.integrate_io import read_gex
@@ -32,6 +38,7 @@ from integrate.integrate_io import copy_hdf5_file
 from integrate.integrate_io import hdf5_scan
 from integrate.integrate_io import get_case_data
 from integrate.integrate_io import write_data_gaussian
+from integrate.integrate_io import write_data_multinomial
 from integrate.integrate_io import check_data
 
 from integrate.integrate_plot import plot_profile

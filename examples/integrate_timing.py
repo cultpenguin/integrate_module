@@ -105,7 +105,7 @@ print("Writing results to %s " % file_out)
 
 # %%
 
-loadFromFile=False
+loadFromFile=True
 if loadFromFile:
     file_out = 'timing_3990X-64_Nproc7_N9'  
     file_out = 'timing_3990X-64_Nproc35_N8' 
@@ -113,8 +113,9 @@ if loadFromFile:
     #file_out = 'timing_d52534-32_Nproc13_N9'
     #file_out = 'timing_d52534-32_Nproc6_N9'  
     file_out = 'timing_d52534-32_Nproc17_N9'
+    file_out = 'timing_d52534-32_Nproc13_N9-issue16'
     
-    file_out = 'timing_Z13-16_Nproc8_N7'
+    #file_out = 'timing_Z13-16_Nproc8_N7'
     
     data = np.load('%s.npz' % file_out)
     T_prior = data['T_prior']
