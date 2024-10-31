@@ -14,8 +14,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # # #%load_ext autoreload
-    # # # # # # # #%autoreload 2
+    # # # # # # # # #%load_ext autoreload
+    # # # # # # # # #%autoreload 2
     pass
 
 import integrate as ig
@@ -50,13 +50,13 @@ os.system('cp DAUGAARD_AVG.h5 %s' % (f_data_h5))
 
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
-ig.plot_data_xy(f_data_h5)
+fig=ig.plot_data_xy(f_data_h5)
 
 # %%
 # Lets first make a small copy of the large data set available
 f_prior_org_h5 = 'prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
 N_small = 50000
-f_prior_h5 = ig.copy_hdf5_file(f_prior_org_h5, 'prior_test.h5',N=N_small,showInfo=2)
+f_prior_h5 = ig.copy_hdf5_file(f_prior_org_h5, 'prior_test.h5',N=N_small,showInfo=3)
 
 print("Keys in DATA")
 with h5py.File(f_data_h5, 'r') as f:
@@ -69,7 +69,7 @@ with h5py.File(f_prior_h5, 'r') as f:
     print(f.keys()) 
 
 # %% [markdown]
-# Note how 2 types of prior data are available, but only on obvsered data!!
+# Note how 2 types of prior data are available, but only one observed data!!
 
 
 # %% [markdown]
@@ -82,14 +82,15 @@ with h5py.File(f_prior_h5, 'r') as f:
 # ## We have two types of corresponding data 
 # D1: tTEM data
 # D2: Scenario category [0,1]
-# 
+#
 # D2 is simply an exact copy of, as D3=I*M3, where I is the identity operator.
 #
 # This means, if som information is available about the Scenario type 
 # this can be provided as a new 'observation'
-# 
+#
 # Here is an example of how this can be done
 
+# %%
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 Xmin = np.min(X)
 Xmax = np.max(X)
@@ -132,22 +133,25 @@ ig.write_data_multinomial(D_obs, f_data_h5 = f_data_h5, showInfo=2)
 
 # %% [markdown]
 # # Ready for inversion !!
+
+# %%
 print("Keys in DATA")
 with h5py.File(f_data_h5, 'r') as f:
     print(f.keys()) 
 
 
-# %% Then, lets update the the prior data with an 
+# %% Then, lets update the the prior data with an
 # identity copy of the prior model type for "Scenario", M3
 
 
 # %% [markdown]
 # Lets first add information directly about the scenario. 
 
+# %%
 id_use_arr = []
-id_use_arr.append([2])
-#id_use_arr.append([1])
-#id_use_arr.append([1,2])
+id_use_arr.append([2]) # Dicrete data
+id_use_arr.append([1]) # tTEM data
+id_use_arr.append([1,2]) # Both discrete and tTEM data
 
 for i in range(len(id_use_arr)):
 
@@ -183,7 +187,9 @@ for i in range(len(id_use_arr)):
     plt.suptitle(' id_use=%s' % (id_use))
     plt.show()
 
-    # %%
-    ig.plot_profile(f_post_h5, im=2, i1=0, i2=1000)
-    
+    # ig.plot_profile(f_post_h5, im=2, i1=0, i2=1000)
+
+# %%
+  
+
 
