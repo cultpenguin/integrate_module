@@ -92,15 +92,12 @@ ig.plot_data(f_data_h5)
 
 # %% make prior
 N=500000 # sample size 
-<<<<<<< HEAD
-=======
 RHO_dist='log-uniform'
 #RHO_dist='uniform'
 RHO_min=0.8*min(rho)
 RHO_max=1.25*max(rho)
 NLAY_min=2
 NLAY_max=3
->>>>>>> af1aab284af1f4f52e6d5be85807acaeff48fb3c
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
@@ -125,13 +122,9 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5,
                                     )
 
 # %% Plot some stats
-<<<<<<< HEAD
-ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = [5, 220], im=0)
-=======
 clim = [0.8*min(rho), 1.2*max(rho)]
 ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim)
 ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  im=2)
->>>>>>> af1aab284af1f4f52e6d5be85807acaeff48fb3c
 
 # %%
 ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
