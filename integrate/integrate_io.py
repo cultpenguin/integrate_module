@@ -497,7 +497,7 @@ def post_to_csv(f_post_h5='', Mstr='/M1'):
     f_post.close()
     f_prior.close()
 
-    return f_post_csv
+    return f_post_csv, f_csv
 
 
 '''

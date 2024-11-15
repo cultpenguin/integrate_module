@@ -41,7 +41,7 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=10000
+N=100000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
 
@@ -52,7 +52,7 @@ ig.plot_prior_stats(f_prior_h5)
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
 
 # %% Compute prior DATA
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, Ncpu=64)
 
 # %% [markdown]
 # ## Sample the posterior $\sigma(\mathbf{m})$
@@ -68,7 +68,8 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                    parallel=parallel)
 
 # %% Compute some generic statistic of the posterior distribution (Mean, Median, Std)
-ig.integrate_posterior_stats(f_post_h5)
+# This is typically done after the inversion
+# ig.integrate_posterior_stats(f_post_h5)
 
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$
@@ -98,6 +99,33 @@ except:
     pass
 
 # %% Export to CSV
-ig.post_to_csv(f_post_h5)
+f_csv, f_point_csv = ig.post_to_csv(f_post_h5)
+
+# %%
+# Read the CSV file
+#f_point_csv = 'POST_DAUGAARD_AVG_PRIOR_CHI2_NF_3_log-uniform_N100000_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu100000_aT1_M1_point.csv'
+import pandas as pd
+df = pd.read_csv(f_point_csv)
+df.head()
+
+# %%
+# Use Pyvista to plot X,Y,Z,Median
+import pyvista as pv
+import numpy as np
+from pyvista import examples
+#pv.set_jupyter_backend('trame')
+#pv.set_plot_theme("document")
+#p = pv.Plotter(notebook=True)
+p = pv.Plotter()
+filtered_df = df[(df['Median'] < 50) | (df['Median'] > 200)]
+#filtered_df = df[(df['LINE'] > 1000) & (df['LINE'] < 1400) ]
+points = filtered_df[['X', 'Y', 'Z']].values[:]
+median = np.log10(filtered_df['Mean'].values[:])
+opacity = np.where(filtered_df['Median'].values[:] < 100, 0.5, 1.0)
+#p.add_points(points, render_points_as_spheres=True, point_size=3, scalars=median, cmap='jet', opacity=opacity)
+p.add_points(points, render_points_as_spheres=True, point_size=6, scalars=median, cmap='hsv')
+p.show_grid()
+p.show()
+
 
 # %%
