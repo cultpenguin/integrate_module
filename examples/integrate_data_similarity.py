@@ -13,8 +13,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # #%load_ext autoreload
-    # # # #%autoreload 2
+    # # # # #%load_ext autoreload
+    # # # # #%autoreload 2
     pass
 # %%
 import numpy as np
@@ -35,7 +35,7 @@ print("Using GEX file: %s" % file_gex)
 
 
 
-#%% 
+# %%
 # Load data and ploti
 DATA = ig.load_data(f_data_h5)
 d_obs = DATA['d_obs'][0]

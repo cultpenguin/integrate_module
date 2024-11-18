@@ -40,10 +40,10 @@ case = '3layer'
 
 z_max = 60
 rho = [120,10,120]
+#rho = [120,10,10]
 #rho = [10,120,10]
-rho = [120,10,10]
 #rho = [720,10,520]
-dx=0.1
+dx=.1
 if case.lower() == 'wedge':
     # Make Wedge MODEL
     M_ref, x_ref, z_ref = ig.synthetic_case(case='Wedge', wedge_angle=10, dx=dx, z_max=z_max, dz=.5, x_max=100, z1=15, rho = rho)
@@ -91,7 +91,7 @@ ig.plot_data(f_data_h5)
 # ## Create prior model and data
 
 # %% make prior
-N=500000 # sample size 
+N=5000000 # sample size 
 RHO_dist='log-uniform'
 #RHO_dist='uniform'
 RHO_min=0.8*min(rho)
@@ -124,7 +124,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5,
 # %% Plot some stats
 clim = [0.8*min(rho), 1.2*max(rho)]
 ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim)
-ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  im=2)
+#ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  im=2)
 
 # %%
 ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)

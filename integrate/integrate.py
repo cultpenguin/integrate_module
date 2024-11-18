@@ -477,7 +477,7 @@ def prior_data(f_prior_in_h5, f_forward_h5, id=1, im=1, doMakePriorCopy=0, paral
 Forward simulation
 '''
 
-def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', stmfiles=[], showtime=False, **kwargs):
+def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', tx_height=np.array(()), stmfiles=[], showtime=False, **kwargs):
     """
     Perform forward modeling using the **GAAEM** method.
 
@@ -509,6 +509,10 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
         disableTqdm=False
 
     doCompress = kwargs.get('doCompress', True)
+
+    # check if tx_height is an int or float. If so, convert it to a numpy array
+    if isinstance(tx_height, (int, float)):
+        tx_height = np.array([tx_height])
 
     if (len(stmfiles)>0) and (file_gex != '') and (len(GEX)==0):
         # GEX FILE and STM FILES
@@ -584,15 +588,39 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
 
     # Setting up geometry
     GEX = ig.read_gex(file_gex)
-    txrx_dx = float(GEX['General']['RxCoilPosition1'][0])-float(GEX['General']['TxCoilPosition1'][0])
-    txrx_dy = float(GEX['General']['RxCoilPosition1'][1])-float(GEX['General']['TxCoilPosition1'][1])
-    txrx_dz = float(GEX['General']['RxCoilPosition1'][2])-float(GEX['General']['TxCoilPosition1'][2])
-    tx_height = -float(GEX['General']['TxCoilPosition1'][2])
+    if 'TxCoilPosition1' in GEX['General']:
+        # Typical for tTEM system
+        txrx_dx = float(GEX['General']['RxCoilPosition1'][0])-float(GEX['General']['TxCoilPosition1'][0])
+        txrx_dy = float(GEX['General']['RxCoilPosition1'][1])-float(GEX['General']['TxCoilPosition1'][1])
+        txrx_dz = float(GEX['General']['RxCoilPosition1'][2])-float(GEX['General']['TxCoilPosition1'][2])
+        tx_height = -float(GEX['General']['TxCoilPosition1'][2])
+        tx_height=np.array([tx_height])
+
+    else:
+        # Typical for SkyTEM system
+        txrx_dx = float(GEX['General']['RxCoilPosition1'][0])
+        txrx_dy = float(GEX['General']['RxCoilPosition1'][1])
+        txrx_dz = float(GEX['General']['RxCoilPosition1'][2])
+
+
+    print(tx_height)
+    print("----------------")
+    # check if tx_height is a numpy array
+    if len(tx_height)==0:
+        tx_height = 0
+
+    if len(tx_height)==1:
+        # tx height is a np array of length nd of zeros
+        tx_height = np.zeros(nd)
+        
+    print('tx_height:', tx_height)
+    
+    #tx_height = -float(GEX['General']['TxCoilPosition1'][2])
     #G = Geometry(tx_height=tx_height, txrx_dx = -txrx_dx, txrx_dz = -txrx_dz)
     #G = Geometry(tx_height=.01, txrx_dx = -12.62, txrx_dz = +2.16)
-    G = Geometry(tx_height=tx_height, txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
+    G = Geometry(tx_height=tx_height[0], txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
     if (showInfo>0):
-        print('tx_height=%f, txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (tx_height, txrx_dx, txrx_dy, txrx_dz))
+        print('tx_height=%f, txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (tx_height[0], txrx_dx, txrx_dy, txrx_dz))
     
     ng0 = GEX['Channel1']['NoGates']-GEX['Channel1']['RemoveInitialGates'][0]
     if nstm>1:
@@ -600,7 +628,15 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
     else:
         ng1 = 0
 
-    
+
+    # check if tx_height has more than one unique value
+    useVaryingHeight=True
+    if len(np.unique(tx_height))>1:
+        print('Error: tx_height has more than one unique value')
+        useVaryingHeight=True
+    else:
+        useVaryingHeight=False
+        
     ng = int(ng0+ng1)
     D = np.zeros((nd,ng))
 
@@ -631,6 +667,11 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', s
             E = Earth(conductivity_compress,thickness_compress)
         else:   
             E = Earth(conductivity,thickness)
+
+        if useVaryingHeight:
+            print(tx_height[i])
+            G = Geometry(tx_height=tx_height[i], txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
+
 
         fm0 = S[0].forwardmodel(G,E)
         d = -fm0.SZ
