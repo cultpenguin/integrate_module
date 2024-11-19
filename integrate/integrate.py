@@ -491,6 +491,8 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
     :type file_gex: str, optional
     :param stmfiles: List of STM files, defaults to []
     :type stmfiles: list, optional
+    :param tx_height: Transmitter height array, defaults to np.array(())
+    :type tx_height: numpy.ndarray, optional
     :param showtime: Flag to display execution time, defaults to False
     """
     
@@ -509,10 +511,6 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
         disableTqdm=False
 
     doCompress = kwargs.get('doCompress', True)
-
-    # check if tx_height is an int or float. If so, convert it to a numpy array
-    if isinstance(tx_height, (int, float)):
-        tx_height = np.array([tx_height])
 
     if (len(stmfiles)>0) and (file_gex != '') and (len(GEX)==0):
         # GEX FILE and STM FILES
@@ -571,9 +569,6 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
 
     # SETTING UP t1=time.time()
     t1=time.time()
-    #S=[]
-    #for i in range(nstm):
-    #    S.append = TDAEMSystem(stmfiles[i])
     
     S_LM = TDAEMSystem(stmfiles[0])
     if nstm>1:
@@ -593,32 +588,24 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
         txrx_dx = float(GEX['General']['RxCoilPosition1'][0])-float(GEX['General']['TxCoilPosition1'][0])
         txrx_dy = float(GEX['General']['RxCoilPosition1'][1])-float(GEX['General']['TxCoilPosition1'][1])
         txrx_dz = float(GEX['General']['RxCoilPosition1'][2])-float(GEX['General']['TxCoilPosition1'][2])
-        tx_height = -float(GEX['General']['TxCoilPosition1'][2])
-        tx_height=np.array([tx_height])
+        if len(tx_height)==0:
+            tx_height = -float(GEX['General']['TxCoilPosition1'][2])
+            tx_height=np.array([tx_height])
 
     else:
         # Typical for SkyTEM system
         txrx_dx = float(GEX['General']['RxCoilPosition1'][0])
         txrx_dy = float(GEX['General']['RxCoilPosition1'][1])
         txrx_dz = float(GEX['General']['RxCoilPosition1'][2])
+        if len(tx_height)==0:
+            tx_height=np.array([40])
+ 
 
-
-    print(tx_height)
-    print("----------------")
-    # check if tx_height is a numpy array
-    if len(tx_height)==0:
-        tx_height = 0
-
+    # Set geometru once, if tx_height has one value
     if len(tx_height)==1:
-        # tx height is a np array of length nd of zeros
-        tx_height = np.zeros(nd)
-        
-    print('tx_height:', tx_height)
-    
-    #tx_height = -float(GEX['General']['TxCoilPosition1'][2])
-    #G = Geometry(tx_height=tx_height, txrx_dx = -txrx_dx, txrx_dz = -txrx_dz)
-    #G = Geometry(tx_height=.01, txrx_dx = -12.62, txrx_dz = +2.16)
-    G = Geometry(tx_height=tx_height[0], txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
+        if (showInfo>0):
+            print('Using tx_height=%f' % tx_height[0])
+        G = Geometry(tx_height=tx_height, txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
     if (showInfo>0):
         print('tx_height=%f, txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (tx_height[0], txrx_dx, txrx_dy, txrx_dz))
     
@@ -628,15 +615,7 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
     else:
         ng1 = 0
 
-
-    # check if tx_height has more than one unique value
-    useVaryingHeight=True
-    if len(np.unique(tx_height))>1:
-        print('Error: tx_height has more than one unique value')
-        useVaryingHeight=True
-    else:
-        useVaryingHeight=False
-        
+    #print(tx_height)
     ng = int(ng0+ng1)
     D = np.zeros((nd,ng))
 
@@ -649,6 +628,12 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
         else:
             conductivity = C[i]
 
+        # Update geomtery, tx_heigght is changing!
+        if len(tx_height)>1:
+            if (showInfo>1):
+                print('Using tx_height=%f' % tx_height[i])
+            G = Geometry(tx_height=tx_height[i], txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
+    
         #doCompress=True
         if doCompress:
             i_change=np.where(np.diff(conductivity) != 0 )[0]+1
@@ -667,11 +652,6 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
             E = Earth(conductivity_compress,thickness_compress)
         else:   
             E = Earth(conductivity,thickness)
-
-        if useVaryingHeight:
-            print(tx_height[i])
-            G = Geometry(tx_height=tx_height[i], txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
-
 
         fm0 = S[0].forwardmodel(G,E)
         d = -fm0.SZ
@@ -695,6 +675,8 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
         print("Time = %4.1fms per model and %d model tests" % (1000*(t2-t1)/nd, nd))
 
     return D
+
+
 
 
 def forward_gaaem_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **kwargs):
@@ -726,7 +708,7 @@ def forward_gaaem_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **
 
 # %% PRIOR DATA GENERATORS
 
-def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1, Nhank=280, Nfreq=12, is_log=False, parallel=True, **kwargs):
+def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1, im_height=0, Nhank=280, Nfreq=12, is_log=False, parallel=True, **kwargs):
     """
     Generate prior data for the ga-aem method.
 
@@ -750,6 +732,8 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     :type parallel: bool
     :param Ncpu: Number of cpus/threads used (default: 0 - all).
     :type Ncpu: int
+    :param im_height: Index of the model for height (default: 0).
+    :type im_height: int
     :param kwargs: Additional keyword arguments.
     :type kwargs: dict
     :param Ncpu: Number of CPUs to use (default: 0->all).
@@ -804,8 +788,16 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
 
     
     Mname = '/M%d' % im
+    Mheight = '/M%d' % im_height
     Dname = '/D%d' % id
+
+
     f_prior = h5py.File(f_prior_data_h5, 'a')
+
+    if im_height>0:    
+        if (showInfo>0):
+            print('Using M%d for height' % im_height)
+        tx_height = f_prior[Mheight][:]
 
     # Get thickness
     if 'x' in f_prior[Mname].attrs:
@@ -822,11 +814,16 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
 
     N = f_prior[Mname].shape[0]
     t1 = time.time()
+    print(parallel)
     if not parallel:
         if (showInfo>-1):
             print("prior_data_gaaem: Using 1 thread /(sequential).")
         # Sequential
-        D = ig.forward_gaaem(C=C, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)
+        if im_height>0:
+            print('Using tx_height')
+            D = ig.forward_gaaem(C=C, thickness=thickness, tx_height=tx_height, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)
+        else:
+            D = ig.forward_gaaem(C=C, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)
         if is_log:
             D = np.log10(D)
     else:
@@ -846,8 +843,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         ## OUTSIDE
         # 2: Create chunks
         C_chunks = np.array_split(C, Ncpu)
-        C_chunks = np.array_split(C, Ncpu)
-
+        
         # 3: Compute the chunks in parallel
         forward_gaaem_chunk_partial = partial(forward_gaaem_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
 

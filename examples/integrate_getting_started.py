@@ -14,8 +14,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # #%load_ext autoreload
-    # # # #%autoreload 2
+    # # # # #%load_ext autoreload
+    # # # # #%autoreload 2
     pass
 # %%
 import integrate as ig
@@ -41,7 +41,7 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=100000
+N=10000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
 
@@ -114,8 +114,8 @@ import pyvista as pv
 import numpy as np
 from pyvista import examples
 #pv.set_jupyter_backend('trame')
-#pv.set_plot_theme("document")
-#p = pv.Plotter(notebook=True)
+pv.set_plot_theme("document")
+p = pv.Plotter(notebook=True)
 p = pv.Plotter()
 filtered_df = df[(df['Median'] < 50) | (df['Median'] > 200)]
 #filtered_df = df[(df['LINE'] > 1000) & (df['LINE'] < 1400) ]
