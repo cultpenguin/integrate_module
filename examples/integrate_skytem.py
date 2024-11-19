@@ -164,18 +164,21 @@ D_ref = ig.forward_gaaem(C=1./M1, thickness=thickness, file_gex=file_gex, tx_hei
 
 # %% Compute prior DATA
 # Remember to set the id of the prior model parameters with ALTITUDE!!
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=False, im=1, id=1, im_height=3)
 #f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=False, im=1, id=1)
+#f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=True, im=1, id=1)
+#f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=False, im=1, id=1, im_height=3)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=True, im=1, id=1, im_height=3)
 with h5py.File(f_prior_data_h5, 'r') as f:
     D1 = f['D1'][:]
 
-# %%
-plt.semilogy(D1,'k-')
-plt.semilogy(D_ref,'r-')
+#%
+plt.semilogy(D1,'k-');
+plt.semilogy(D_ref,'r-');
 
 
 # %% COnstruct the OBSERVED data 
+# Use only the correct data columns, not alll 
 f_data_h5 = 'DATA_TNO.h5'
-ig.write_data_gaussian(D_obs, D_std = D_std, id=1, is_log = 0, f_data_h5=f_data_h5)
+ig.write_data_gaussian(D_obs, D_std = D_std, id=1, is_log = 0, f_data_h5=f_data_h5, UTMX=UTMX, UTMY=UTMY, LINE=LINE, ELEVATION=ELEV)
 
 # %%

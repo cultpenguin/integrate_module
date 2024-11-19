@@ -676,15 +676,14 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
 
     return D
 
-
-
-
-def forward_gaaem_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **kwargs):
+def forward_gaaem_chunk(C_chunk, tx_height_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **kwargs):
     """
     Perform forward modeling using the GAAEM method on a chunk of data.
 
     :param C_chunk: The chunk of data to be processed.
     :type C_chunk: numpy.ndarray
+    :param tx_height_chunk: The transmitter heights for this chunk.
+    :type tx_height_chunk: numpy.ndarray 
     :param thickness: The thickness of the model.
     :type thickness: float
     :param stmfiles: A list of STM files.
@@ -701,10 +700,15 @@ def forward_gaaem_chunk(C_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **
     :return: The result of the forward modeling.
     :rtype: numpy.ndarray
     """
-    # pause for random time
-    # time.sleep(np.random.rand()*10)
-    return forward_gaaem(C=C_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)
-
+    return forward_gaaem(C=C_chunk, 
+                        thickness=thickness, 
+                        tx_height=tx_height_chunk,
+                        stmfiles=stmfiles, 
+                        file_gex=file_gex, 
+                        Nhank=Nhank, 
+                        Nfreq=Nfreq, 
+                        parallel=False, 
+                        **kwargs)
 
 # %% PRIOR DATA GENERATORS
 
@@ -844,6 +848,18 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         # 2: Create chunks
         C_chunks = np.array_split(C, Ncpu)
         
+        if im_height>0:    
+            tx_height_chunks = np.array_split(tx_height, Ncpu)
+            
+        else:
+            # create tx_height_chunks as a list of length Ncpu, where each entry is tx_height=np.array(())
+            tx_height_chunks = [np.array(())]*Ncpu
+
+        print('len(C_chunks)', len(C_chunks))
+        print('len(tx_height_chunks)', len(tx_height_chunks))
+        print(tx_height_chunks[0])
+
+
         # 3: Compute the chunks in parallel
         forward_gaaem_chunk_partial = partial(forward_gaaem_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
 
@@ -855,7 +871,8 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         #    D_chunks = p.map(forward_gaaem_chunk_partial, C_chunks)
         
         with Pool() as p:
-            D_chunks = p.map(forward_gaaem_chunk_partial, C_chunks)
+            #D_chunks = p.map(forward_gaaem_chunk_partial, C_chunks)
+            D_chunks = p.starmap(forward_gaaem_chunk_partial, zip(C_chunks, tx_height_chunks))
         
         #useIterative=0
         #if useIterative==1:
