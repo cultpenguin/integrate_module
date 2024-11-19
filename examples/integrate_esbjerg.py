@@ -12,12 +12,13 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # #%load_ext autoreload
-    # # # # #%autoreload 2
+    # # # # # #%load_ext autoreload
+    # # # # # #%autoreload 2
     pass
 # %%
 import integrate as ig
 import numpy as np
+import matplotlib.pyplot as plt
 # check if parallel computations can be performed
 parallel = ig.use_parallel(showInfo=1)
 
@@ -41,7 +42,7 @@ X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=50000
+N=5000000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=500)
 
@@ -68,6 +69,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                    f_data_h5, 
                                    N_use = N_use, 
                                    showInfo=1, 
+                                   Ncpu = 10,
                                    parallel=parallel)
 
 # %% [markdown]
@@ -88,46 +90,26 @@ ig.plot_T_EV(f_post_h5, pl='EV')
 #i_plot= np.where( np.abs(LINE-1200)<1  )[0]
 #ig.plot_profile(f_post_h5, i1=i_plot[0], i2=i_plot[-1], im=1)
 ig.plot_profile(f_post_h5, i_plot=0, i2=2000, im=1)
+ig.plot_profile(f_post_h5, i_plot=0, i2=2000, im=2)
 # %%
 
 # Plot a 2D feature: Resistivity in layer 10
-ig.plot_feature_2d(f_post_h5,im=1,iz=12, key='Median', uselog=1, cmap='jet', s=10)
+ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, cmap='jet', s=2)
+plt.show()
+ig.plot_feature_2d(f_post_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=2)
+plt.show()
+ig.plot_feature_2d(f_post_h5,im=1,iz=40, key='Median', uselog=1, cmap='jet', s=2)
+plt.show()
+
 #ig.plot_feature_2d(f_post_h5,im=1,iz=80,key='Median')
 
 try:
     # Plot a 2D feature: The number of layers
-    ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of layers', uselog=0, clim=[1,6], cmap='jet', s=12)
+    ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Mean', title_text = 'Number of layers', uselog=0, clim=[1,6], cmap='jet', s=1)
+    plt.show()
 except:
     pass
 
 # %% Export to CSV
-f_csv, f_point_csv = ig.post_to_csv(f_post_h5)
+# f_csv, f_point_csv = ig.post_to_csv(f_post_h5)
 
-# %%
-# Read the CSV file
-#f_point_csv = 'POST_DAUGAARD_AVG_PRIOR_CHI2_NF_3_log-uniform_N100000_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu100000_aT1_M1_point.csv'
-import pandas as pd
-df = pd.read_csv(f_point_csv)
-df.head()
-
-# %%
-# Use Pyvista to plot X,Y,Z,Median
-import pyvista as pv
-import numpy as np
-from pyvista import examples
-#pv.set_jupyter_backend('trame')
-pv.set_plot_theme("document")
-p = pv.Plotter(notebook=True)
-p = pv.Plotter()
-filtered_df = df[(df['Median'] < 50) | (df['Median'] > 200)]
-#filtered_df = df[(df['LINE'] > 1000) & (df['LINE'] < 1400) ]
-points = filtered_df[['X', 'Y', 'Z']].values[:]
-median = np.log10(filtered_df['Mean'].values[:])
-opacity = np.where(filtered_df['Median'].values[:] < 100, 0.5, 1.0)
-#p.add_points(points, render_points_as_spheres=True, point_size=3, scalars=median, cmap='jet', opacity=opacity)
-p.add_points(points, render_points_as_spheres=True, point_size=6, scalars=median, cmap='hsv')
-p.show_grid()
-p.show()
-
-
-# %%
