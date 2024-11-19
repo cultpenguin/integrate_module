@@ -40,6 +40,8 @@ from integrate.integrate_io import get_case_data
 from integrate.integrate_io import write_data_gaussian
 from integrate.integrate_io import write_data_multinomial
 from integrate.integrate_io import check_data
+from integrate.integrate_io import merge_data
+
 
 from integrate.integrate_plot import plot_profile
 from integrate.integrate_plot import plot_profile_continuous

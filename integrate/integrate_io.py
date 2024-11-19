@@ -772,6 +772,12 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
             filelist.append('POST_DAUGAARD_AVG_prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5')    
             filelist.append('prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 
+    elif case=='ESBJERG':
+        if len(filelist)==0:
+            filelist.append('ESBJERG_ALL.h5')
+            filelist.append('TX07_20230906_2x4_RC20-33.gex')
+            filelist.append('README_ESBJERG')
+
     elif case=='GRUSGRAV':
 
         filelist = []
@@ -856,6 +862,7 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
     **kwargs : dict
         Additional keyword arguments:
         - showInfo (int): Level of verbosity for printing information. Default is 0.
+        - f_gex (str): Name of the GEX file associated with the data. Default is an empty string.
     Returns
     -------
     str
@@ -869,6 +876,7 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
     """
     
     showInfo = kwargs.get('showInfo', 0)
+    f_gex = kwargs.get('f_gex', '')
 
     if len(D_std)==0:
         if len(d_std)==0:
@@ -924,6 +932,8 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
         # wrote attribute noise_model
         f['/%s/' % D_str].attrs['noise_model'] = 'gaussian'
         f['/%s/' % D_str].attrs['is_log'] = is_log
+        if len(f_gex)>0:
+            f['/%s/' % D_str].attrs['gex'] = f_gex
     
     return f_data_h5
 
@@ -1055,3 +1065,95 @@ def check_data(f_data_h5='data.h5', **kwargs):
             f.create_dataset('ELEVATION', data=ELEVATION)
 
             f.close()
+
+
+
+
+def merge_data(f_data, f_gex='', delta_line=0, f_data_merged_h5='', **kwargs):
+    """Merge multiple data files into a single HDF5 file.
+
+    Parameters
+    ----------
+    f_data : list
+        List of input data files to merge
+    f_gex : str, optional
+        Path to geometry exchange file, by default ''
+    delta_line : int, optional
+        Line number increment for each merged file, by default 0
+    f_data_merged_h5 : str, optional
+        Output merged HDF5 file path, by default derived from f_gex
+    **kwargs
+        Additional keyword arguments:
+        - showInfo : int, verbosity level (0-2), by default 2
+
+    Returns
+    -------
+    str
+        Filename of the merged HDF5 file
+
+    Raises
+    ------
+    ValueError
+        If f_data is not a list
+    """
+    
+    import h5py
+    import numpy as np
+    import integrate as ig
+
+    showInfo = kwargs.get('showInfo', 2)
+
+    if len(f_data_merged_h5) == 0:
+        f_data_merged_h5 = f_gex.split('.')[0] + '_merged.h5'
+    
+
+    # CHeck the f_data is a list. If so return a error
+    if not isinstance(f_data, list):
+        raise ValueError('f_data must be a list of strings')
+
+    nd = len(f_data)
+    if showInfo:
+        print('Merging %d data sets to %s ' % (nd, f_data_merged_h5))
+    
+    f_data_h5 = f_data[0]
+    if showInfo>1:
+        print('.. Merging ', f_data_h5)    
+    Xc, Yc, LINEc, ELEVATIONc = ig.get_geometry(f_data_h5)
+    Dc = ig.load_data(f_data_h5)
+    d_obs_c = Dc['d_obs']
+    d_std_c = Dc['d_std']
+    noise_model = Dc['noise_model']
+
+    for i in range(1, len(f_data)):
+        f_data_h5 = f_data[i]                   
+        if showInfo>1:
+            print('.. Merging ', f_data_h5)    
+        X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+        D = ig.load_data(f_data_h5)
+
+        # append data
+        Xc = np.append(Xc, X)
+        Yc = np.append(Yc, Y)
+        LINEc = np.append(LINEc, LINE+i*delta_line)
+        ELEVATIONc = np.append(ELEVATIONc, ELEVATION)
+        
+        for id in range(len(d_obs_c)):
+            #print(id)
+            d_obs_c[id] = np.vstack((d_obs_c[id], np.atleast_2d(D['d_obs'][id])))        
+            d_std_c[id] = np.vstack((d_std_c[id], np.atleast_2d(D['d_std'][id])))
+
+    Xc = np.atleast_2d(Xc).T
+    Yc = np.atleast_2d(Yc).T
+    LINEc = np.atleast_2d(LINEc).T
+    ELEVATIONc = np.atleast_2d(ELEVATIONc).T
+
+    with h5py.File(f_data_merged_h5, 'w') as f:
+        f.create_dataset('UTMX', data=Xc)
+        f.create_dataset('UTMY', data=Yc)
+        f.create_dataset('LINE', data=LINEc)
+        f.create_dataset('ELEVATION', data=ELEVATIONc)
+
+    for id in range(len(d_obs_c)):
+        write_data_gaussian(d_obs_c[id], D_std = d_std_c[id], noise_model = noise_model, f_data_h5=f_data_merged_h5, id=id+1, f_gex = f_gex)
+
+    return f_data_merged_h5
