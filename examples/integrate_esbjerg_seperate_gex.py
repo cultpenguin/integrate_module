@@ -90,91 +90,17 @@ for i in range(nf):
     # %% Export to CSV
     # f_csv, f_point_csv = ig.post_to_csv(f_post_h5)
 
-#%% 
-def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5 = ''):
-    import h5py
-
-    nf = len(f_post_h5_files)
-    # Check that legth of f_data_h5_files is the same as f_post_h5_files
-    if len(f_data_h5_files) != nf:
-        raise ValueError('Length of f_data_h5_files must be the same as f_post_h5_files')
-
-    if len(f_post_merged_h5) == 0:
-        f_post_merged_h5 = 'POST_merged_N%d.h5' % nf
-
-    f_data_merged_h5 = 'DATA_merged_N%d.h5' % nf
-
-    f_data_merged_h5 = ig.merge_data(f_data_h5_files, f_data_merged_h5=f_data_merged_h5)
 
 
-    for i in range(len(f_post_h5_files)):
-        #  get 'i_sample' from the merged file
-        f_post_h5 = f_post_h5_files[i]
-        with h5py.File(f_post_h5, 'r') as f:
-            i_use_s = f['i_use'][:]
-            T_s = f['T'][:]
-            EV_s = f['EV'][:]
-            f_prior_h5 = f['/'].attrs['f5_prior']
-            f_data_h5 = f['/'].attrs['f5_data']
-            if i == 0:
-                i_use = i_use_s
-                T = T_s
-                EV = EV_s 
-            else:
-                i_use = np.concatenate((i_use,i_use_s))
-                T = np.concatenate((T,T_s))
-                EV = np.concatenate((EV,EV_s))
-
-    # Write the merged data to             
-    with h5py.File(f_post_merged_h5, 'w') as f:
-        f.create_dataset('i_use', data=i_use)
-        f.create_dataset('T', data=T)
-        f.create_dataset('EV', data=EV)
-        f.attrs['f5_prior'] = f_prior_h5
-        f.attrs['f5_data'] = f_data_merged_h5
-    return f_post_merged_h5
-
-
-#%% Combine posterior stats into one file plot data again
-#ig.merge_posterior(f_post_h5_files, f_post_h5 = 'POST_ESBJERG_ALL_merged.h5')
-import h5py
-
-f_data_merged_h5 = ig.merge_data(f_data_h5_files, f_data_merged_h5='ESBJERG_DATA_merged.h5')
-
-for i in range(len(f_post_h5_files)):
-    #  get 'i_sample' from the merged file
-    f_post_h5 = f_post_h5_files[i]
-    with h5py.File(f_post_h5, 'r') as f:
-        i_use_s = f['i_use'][:]
-        T_s = f['T'][:]
-        EV_s = f['EV'][:]
-        f_prior_h5 = f['/'].attrs['f5_prior']
-        f_data_h5 = f['/'].attrs['f5_data']
-        if i == 0:
-            i_use = i_use_s
-            T = T_s
-            EV = EV_s 
-        else:
-            i_use = np.concatenate((i_use,i_use_s))
-            T = np.concatenate((T,T_s))
-            EV = np.concatenate((EV,EV_s))
-
-f_post_merged_h5  = 'POST_ESBJERG_ALL_%d_merged.h5' % N
-# Write the merged data to             
-with h5py.File(f_post_merged_h5, 'w') as f:
-    f.create_dataset('i_use', data=i_use)
-    f.create_dataset('T', data=T)
-    f.create_dataset('EV', data=EV)
-    f.attrs['f5_prior'] = f_prior_h5
-    f.attrs['f5_data'] = f_data_merged_h5
-
-
-
+# %% Merge the posterior data and compute posterior basic statistics
+f_post_merged_h5 = ig.merge_posterior(f_post_h5_files, f_data_h5_files)
 ig.integrate_posterior_stats(f_post_merged_h5)
 
 #%% 
 ig.plot_geometry('ESBJERG_DATA_merged.h5')
 ig.plot_profile(f_post_merged_h5, im=1, i1=0, i2=1000, hardcopy=hardcopy)
 ig.plot_T_EV(f_post_merged_h5, pl='T', hardcopy=hardcopy)
-ig.plot_feature_2d(f_post_merged_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=2, hardcopy=hardcopy)
+ig.plot_feature_2d(f_post_merged_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
 
+
+# %%
