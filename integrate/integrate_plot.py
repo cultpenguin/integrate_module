@@ -224,7 +224,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             # get filename without extension        
             f_png = '%s_%d_%d_T.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
             plt.savefig(f_png)
-            #plt.show()
+            plt.show()
 
     if (pl=='all') or (pl=='EV'):
         # get the 99% percentile of EV values
@@ -250,7 +250,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             # get filename without extension
             f_png = '%s_%d_%d_EV.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
             plt.savefig(f_png)
-            #plt.show()
+            plt.show()
     if (pl=='all') or (pl=='ND'):
         # 
         f_data = h5py.File(f_data_h5,'r')
@@ -275,6 +275,109 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             
 
     return
+
+def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcopy=False, **kwargs):
+    """
+    Plots the geometry data from an INTEGRATE HDF5 file.
+    Parameters
+    ----------
+    f_data_h5 : str
+        Path to the HDF5 file containing the geometry data.
+    i1 : int, optional
+        Starting index for the data to be plotted (default is 0).
+    i2 : int, optional
+        Ending index for the data to be plotted (default is 0, which means the end of the data).
+    ii : numpy.ndarray, optional
+        Array of indices to be plotted (default is an empty array, which means all indices between i1 and i2).
+    s : int, optional
+        Size of the scatter plot points (default is 5).
+    pl : str, optional
+        Type of plot to generate. Options are 'all', 'LINE', 'ELEVATION', or 'id' (default is 'all').
+    hardcopy : bool, optional
+        If True, saves the plot as a PNG file (default is False).
+    **kwargs : dict, optional
+        Additional keyword arguments to pass to the scatter plot function.
+    Returns
+    -------
+    None
+    Notes
+    -----
+    This function generates scatter plots of the geometry data. If `hardcopy` is True, the plots are saved as PNG files.
+    """
+
+    import h5py
+    # Test if f_data_h5 is in fact f_post_h5 type file
+    with h5py.File(f_data_h5,'r') as f_data:
+        if 'f5_prior' in f_data['/'].attrs:
+            f_data_h5 = f_data['/'].attrs['f5_data']
+    print('f_data_h5=%s' % f_data_h5)        
+    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    
+    nd = X.shape[0]
+
+    if len(ii)==0:
+        if i1==0:
+            i1=0
+        if i2==0:
+            i2=nd
+        if i2<i1:
+            i2=i1+1
+        if i1<1: 
+            i1=0
+        if i2>nd-1:
+            i2=nd
+        ii = np.arange(i1,i2)
+
+
+    tit = f_png = '%s_%d_%d.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
+
+    if (pl=='all') or (pl=='LINE'):
+        plt.figure(1, figsize=(20, 10))
+        plt.scatter(X[ii],Y[ii],c=LINE[ii],s=s,cmap='jet',**kwargs)            
+        plt.grid()
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.colorbar(label='LINE')
+        plt.title('%s - LINE' % tit)
+        plt.axis('equal')
+        if hardcopy:
+            # get filename without extension        
+            f_png = '%s_%d_%d_LINE.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
+            plt.savefig(f_png)
+        plt.show()
+
+    if (pl=='all') or (pl=='ELEVATION'):
+        plt.figure(1, figsize=(20, 10))
+        plt.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap='jet',**kwargs)            
+        plt.grid()
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.colorbar(label='ELEVATION')
+        plt.title('ELEVATION')
+        plt.axis('equal')
+        if hardcopy:
+            # get filename without extension        
+            f_png = '%s_%d_%d_ELEVATION.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
+            plt.savefig(f_png)
+        plt.show()
+
+    if (pl=='all') or (pl=='id'):
+        plt.figure(1, figsize=(20, 10))
+        plt.scatter(X[ii],Y[ii],c=ii,s=s,cmap='jet',**kwargs)  
+        plt.grid()
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.colorbar(label='id')
+        plt.title('id')
+        plt.axis('equal')
+        if hardcopy:
+            # get filename without extension        
+            f_png = '%s_%d_%d_id.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
+            plt.savefig(f_png)
+
+    return
+
+
 
 def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
 
@@ -703,8 +806,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     return
 
-def plot_data_xy(f_data_h5, pl_type='all', **kwargs):
-    import integrate as ig
+def plot_data_xy(f_data_h5, pl_type='line', **kwargs):
+    #import integrate as ig
     import matplotlib.pyplot as plt
     
     kwargs.setdefault('hardcopy', False)
@@ -945,7 +1048,7 @@ def plot_data_prior(f_prior_data_h5,
     if kwargs['hardcopy']:
         # strip the filename from f_data_h5
         plt.savefig('%s_%s_id%d_%s.png' % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_data_h5)[0],id,d_str))
-
+    plt.show()
 
 def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
     """
@@ -1113,7 +1216,8 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
                 plt.savefig('%s_%s.png' % (os.path.splitext(f_post_h5)[0],Dkey))
             else:
                 plt.savefig('%s_%s_id%05d.png' % (os.path.splitext(f_post_h5)[0],Dkey,i_plot))
-            
+        plt.show()
+    
 
 def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
     from matplotlib.colors import LogNorm

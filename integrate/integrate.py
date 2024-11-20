@@ -606,7 +606,7 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
         if (showInfo>0):
             print('Using tx_height=%f' % tx_height[0])
         G = Geometry(tx_height=tx_height, txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
-    if (showInfo>0):
+    if (showInfo>1):
         print('tx_height=%f, txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (tx_height[0], txrx_dx, txrx_dy, txrx_dz))
     
     ng0 = GEX['Channel1']['NoGates']-GEX['Channel1']['RemoveInitialGates'][0]
@@ -855,11 +855,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
             # create tx_height_chunks as a list of length Ncpu, where each entry is tx_height=np.array(())
             tx_height_chunks = [np.array(())]*Ncpu
 
-        print('len(C_chunks)', len(C_chunks))
-        print('len(tx_height_chunks)', len(tx_height_chunks))
-        print(tx_height_chunks[0])
-
-
+        
         # 3: Compute the chunks in parallel
         forward_gaaem_chunk_partial = partial(forward_gaaem_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
 
@@ -1594,7 +1590,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
     Ncpu = kwargs.get('Nproc', Ncpu)
     if Ncpu < 1 :
         Ncpu =  int(multiprocessing.cpu_count())
-    
+
     # Set default f_post_h5 filename if not set    
     if len(f_post_h5)==0:
         f_post_h5 = "POST_%s_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_h5)[0],N_use,autoT)

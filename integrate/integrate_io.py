@@ -773,10 +773,22 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
             filelist.append('prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 
     elif case=='ESBJERG':
-        if len(filelist)==0:
+        
+        if (loadAll or loadType=='gex'):  
+            filelist.append('TX07_20230906_2x4_RC20-33_merged.h5')  
+            filelist.append('TX07_20231016_2x4_RC20-33_merged.h5')
+            filelist.append('TX07_20231127_2x4x1_RC20_33_merged.h5')
+            filelist.append('TX07_20240125_2x4_RC20-33_merged.h5')
+            filelist.append('TX07_20230906_2x4_RC20-33.gex')
+            filelist.append('TX07_20231016_2x4_RC20-33.gex')
+            filelist.append('TX07_20231127_2x4x1_RC20_33.gex')
+            filelist.append('TX07_20240125_2x4_RC20-33.gex')
+        
+        if (loadAll or loadType=='ESBJERG_ALL' or len(filelist)==0):
             filelist.append('ESBJERG_ALL.h5')
             filelist.append('TX07_20230906_2x4_RC20-33.gex')
             filelist.append('README_ESBJERG')
+   
 
     elif case=='GRUSGRAV':
 
@@ -1139,8 +1151,11 @@ def merge_data(f_data, f_gex='', delta_line=0, f_data_merged_h5='', **kwargs):
         
         for id in range(len(d_obs_c)):
             #print(id)
-            d_obs_c[id] = np.vstack((d_obs_c[id], np.atleast_2d(D['d_obs'][id])))        
-            d_std_c[id] = np.vstack((d_std_c[id], np.atleast_2d(D['d_std'][id])))
+            try:
+                d_obs_c[id] = np.vstack((d_obs_c[id], np.atleast_2d(D['d_obs'][id])))        
+                d_std_c[id] = np.vstack((d_std_c[id], np.atleast_2d(D['d_std'][id])))
+            except:
+                print("Could not merge %s" % f_data_h5)
 
     Xc = np.atleast_2d(Xc).T
     Yc = np.atleast_2d(Yc).T
@@ -1157,3 +1172,78 @@ def merge_data(f_data, f_gex='', delta_line=0, f_data_merged_h5='', **kwargs):
         write_data_gaussian(d_obs_c[id], D_std = d_std_c[id], noise_model = noise_model, f_data_h5=f_data_merged_h5, id=id+1, f_gex = f_gex)
 
     return f_data_merged_h5
+
+
+
+
+## 
+
+def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5=''):
+    """
+    Merge multiple posterior HDF5 files and their corresponding data HDF5 files into a single posterior HDF5 file.
+
+    Parameters
+    ----------
+    f_post_h5_files : list of str
+        List of file paths to the posterior HDF5 files to be merged.
+    f_data_h5_files : list of str
+        List of file paths to the data HDF5 files corresponding to the posterior files.
+    f_post_merged_h5 : str, optional
+        File path for the merged posterior HDF5 file. If not provided, a default name will be generated.
+
+    Returns
+    -------
+    str
+        File path of the merged posterior HDF5 file.
+
+    Raises
+    ------
+    ValueError
+        If the length of `f_data_h5_files` is not the same as `f_post_h5_files`.
+
+    Notes
+    -----
+    The function assumes that the `merge_data` function from the `ig` module is available for merging data files.
+    """
+    import h5py
+    import integrate as ig
+
+    nf = len(f_post_h5_files)
+    # Check that legth of f_data_h5_files is the same as f_post_h5_files
+    if len(f_data_h5_files) != nf:
+        raise ValueError('Length of f_data_h5_files must be the same as f_post_h5_files')
+
+    if len(f_post_merged_h5) == 0:
+        f_post_merged_h5 = 'POST_merged_N%d.h5' % nf
+
+    f_data_merged_h5 = 'DATA_merged_N%d.h5' % nf
+
+    f_data_merged_h5 = ig.merge_data(f_data_h5_files, f_data_merged_h5=f_data_merged_h5)
+
+
+    for i in range(len(f_post_h5_files)):
+        #  get 'i_sample' from the merged file
+        f_post_h5 = f_post_h5_files[i]
+        with h5py.File(f_post_h5, 'r') as f:
+            i_use_s = f['i_use'][:]
+            T_s = f['T'][:]
+            EV_s = f['EV'][:]
+            f_prior_h5 = f['/'].attrs['f5_prior']
+            f_data_h5 = f['/'].attrs['f5_data']
+            if i == 0:
+                i_use = i_use_s
+                T = T_s
+                EV = EV_s 
+            else:
+                i_use = np.concatenate((i_use,i_use_s))
+                T = np.concatenate((T,T_s))
+                EV = np.concatenate((EV,EV_s))
+
+    # Write the merged data to             
+    with h5py.File(f_post_merged_h5, 'w') as f:
+        f.create_dataset('i_use', data=i_use)
+        f.create_dataset('T', data=T)
+        f.create_dataset('EV', data=EV)
+        f.attrs['f5_prior'] = f_prior_h5
+        f.attrs['f5_data'] = f_data_merged_h5
+    return f_post_merged_h5
