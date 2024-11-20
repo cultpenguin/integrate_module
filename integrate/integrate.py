@@ -838,8 +838,8 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
 
         # Parallel
         if Ncpu < 1 :
-            Ncpu =  int(multiprocessing.cpu_count()/2)
-            #Ncpu =  int(multiprocessing.cpu_count())
+            #Ncpu =  int(multiprocessing.cpu_count()/2)
+            Ncpu =  int(multiprocessing.cpu_count())
         if (showInfo>-1):
             print("prior_data_gaaem: Using %d parallel threads." % (Ncpu))
 
