@@ -53,8 +53,12 @@ f_data_h5= f_data_new_h5
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
 
 # Layered model
-f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=500)
+#f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=500)
 #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', NLAY_min=1, NLAY_max=8, RHO_min=1, RHO_max=500)
+# From GEUS
+f_prior_h5 = 'prior_Esbjerg_claysand_N200000_dmax90.h5'
+#f_prior_h5 = 'prior_Esbjerg_piggy_N200000.h5'
+
 
 # Plot some summary statistics of the prior model
 #ig.plot_prior_stats(f_prior_h5)
@@ -63,7 +67,7 @@ f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, 
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
 
 # %% Compute prior DATA
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, N=10000)
 
 
 # %% [markdown]
@@ -158,7 +162,61 @@ x_new = np.atleast_2d(x_new).T
 write_prior_model(f_prior_data_h5, M_new, x_new, class_id=[], class_name=[], delIfExist = True)
 
 # Write prior data - NEEEDED
-#write_prior_data()
+#write_prior_data(f_prior_data_h5, M_new)
 
+
+# %% INVERT AND PLOT
+
+# %% READY FOR INVERSION
+N_use = N
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
+                                   f_data_h5, 
+                                   N_use = N_use, 
+                                   showInfo=1, 
+                                   Ncpu = 10,
+                                   parallel=parallel)
+
+# %% [markdown]
+# ### Plot some statistic from $\sigma(\mathbf{m})$
+
+# %% Plot prior, posterior, and observed  data
+ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
+ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
+
+# %% Posterior analysis
+# Plot the Temperature used for inversion
+ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
+# Plot the evidnence (prior likelihood) estimated as part of inversion
+ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
+
+# %% Plot Profiles
+# find index id of data points wher LINE==1000
+#i_plot= np.where( np.abs(LINE-1200)<1  )[0]
+#ig.plot_profile(f_post_h5, i1=i_plot[0], i2=i_plot[-1], im=1)
+ig.plot_profile(f_post_h5, i_plot=10000, i2=14000, im=1, hardcopy=hardcopy)
+ig.plot_profile(f_post_h5, i_plot=10000, i2=14000, im=2, hardcopy=hardcopy)
+#ig.plot_profile(f_post_h5, i_plot=0, i2=2000, im=2)h yg sa
+# %%
+
+# Plot a 2D feature: Resistivity in layer 10
+ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
+plt.show()
+ig.plot_feature_2d(f_post_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
+plt.show()
+ig.plot_feature_2d(f_post_h5,im=1,iz=40, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
+plt.show()
+
+ig.plot_feature_2d(f_post_h5,im=2,iz=20, key='Mode', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
+plt.show()
+
+
+#ig.plot_feature_2d(f_post_h5,im=1,iz=80,key='Median')
+
+try:
+    # Plot a 2D feature: The number of layers
+    ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Mean', title_text = 'Number of layers', uselog=0, clim=[1,6], cmap='jet', s=1, hardcopy=hardcopy)
+    plt.show()
+except:
+    pass
 
 # %%
