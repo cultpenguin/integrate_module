@@ -21,6 +21,7 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
     :type usePrior: bool
     :param kwargs: Additional keyword arguments.
     :returns: fig -- The matplotlib figure object.
+    :rtype: matplotlib.figure.Figure
     """
 
     if isinstance(icat, int):
@@ -93,8 +94,15 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
     :type uselog: int
     :param title_text: Additional text to include in the plot title.
     :type title_text: str
+    :param hardcopy: Whether to save the plot as a PNG file.
+    :type hardcopy: bool
+    :param cmap: Colormap to use for the plot.
+    :type cmap: list
+    :param clim: Color limits for the plot.
+    :type clim: list
     :param kwargs: Additional keyword arguments to be passed to the scatter plot.
     :returns: int -- 1 if the plot is successful.
+    :rtype: int
     """
     from matplotlib.colors import LogNorm
 
@@ -180,6 +188,28 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
 
 
 def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardcopy=False, **kwargs):
+    """
+    Plot temperature and evidence field values from a given HDF5 file.
+
+    :param f_post_h5: Path to the HDF5 file.
+    :type f_post_h5: str
+    :param i1: Start index for the data to plot.
+    :type i1: int
+    :param i2: End index for the data to plot.
+    :type i2: int
+    :param s: Size of the scatter plot points.
+    :type s: int
+    :param T_min: Minimum temperature value.
+    :type T_min: int
+    :param T_max: Maximum temperature value.
+    :type T_max: int
+    :param pl: Type of plot to generate ('all', 'T', 'EV', 'ND').
+    :type pl: str
+    :param hardcopy: Whether to save the plot as a PNG file.
+    :type hardcopy: bool
+    :param kwargs: Additional keyword arguments.
+    :returns: None
+    """
 
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -276,9 +306,11 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
 
     return
 
+
 def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcopy=False, **kwargs):
     """
     Plots the geometry data from an INTEGRATE HDF5 file.
+
     Parameters
     ----------
     f_data_h5 : str
@@ -297,9 +329,11 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         If True, saves the plot as a PNG file (default is False).
     **kwargs : dict, optional
         Additional keyword arguments to pass to the scatter plot function.
+
     Returns
     -------
     None
+
     Notes
     -----
     This function generates scatter plots of the geometry data. If `hardcopy` is True, the plots are saved as PNG files.
@@ -380,6 +414,20 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
 
 
 def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
+    """
+    Plot profile data from a given HDF5 file.
+
+    :param f_post_h5: Path to the HDF5 file.
+    :type f_post_h5: str
+    :param i1: Starting index for the profile.
+    :type i1: int
+    :param i2: Ending index for the profile.
+    :type i2: int
+    :param im: Index of the profile to plot.
+    :type im: int
+    :param kwargs: Additional keyword arguments.
+    :returns: None
+    """
 
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -423,14 +471,16 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
     Plot discrete profiles from a given HDF5 file.
 
-    Parameters: 
-    - f_post_h5 (str): Path to the HDF5 file.
-    - i1 (int, optional): Starting index for the profile. Defaults to 1.
-    - i2 (int, optional): Ending index for the profile. Defaults to 1e+9.
-    - im (int, optional): Index of the profile to plot. Defaults to 1.
-
-    Returns:
-    - None
+    :param f_post_h5: Path to the HDF5 file.
+    :type f_post_h5: str
+    :param i1: Starting index for the profile.
+    :type i1: int
+    :param i2: Ending index for the profile.
+    :type i2: int
+    :param im: Index of the profile to plot.
+    :type im: int
+    :param kwargs: Additional keyword arguments.
+    :returns: None
     """
     from matplotlib.colors import LogNorm
 
@@ -605,14 +655,16 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
     Plot continuous profiles from a given HDF5 file.
 
-    Parameters: 
-    - f_post_h5 (str): Path to the HDF5 file.
-    - i1 (int, optional): Starting index for the profile. Defaults to 1.
-    - i2 (int, optional): Ending index for the profile. Defaults to 1e+9.
-    - im (int, optional): Index of the profile to plot. Defaults to 1.
-
-    Returns:
-    - None
+    :param f_post_h5: Path to the HDF5 file.
+    :type f_post_h5: str
+    :param i1: Starting index for the profile.
+    :type i1: int
+    :param i2: Ending index for the profile.
+    :type i2: int
+    :param im: Index of the profile to plot.
+    :type im: int
+    :param kwargs: Additional keyword arguments.
+    :returns: None
     """
     from matplotlib.colors import LogNorm
 
@@ -807,6 +859,17 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     return
 
 def plot_data_xy(f_data_h5, pl_type='line', **kwargs):
+    """
+    Plot the XY geometry data from an HDF5 file.
+
+    :param f_data_h5: Path to the HDF5 file.
+    :type f_data_h5: str
+    :param pl_type: Type of plot to generate ('line', 'elevation', 'all').
+    :type pl_type: str
+    :param kwargs: Additional keyword arguments.
+    :returns: fig -- The matplotlib figure object.
+    :rtype: matplotlib.figure.Figure
+    """
     #import integrate as ig
     import matplotlib.pyplot as plt
     
@@ -986,10 +1049,25 @@ def plot_data_prior(f_prior_data_h5,
                     ylim=None, 
                     **kwargs):
     """
-    Plot the prior data on top of prior data realizations. 
-    Usefull for checking the consistency between the choid of prior and observed before runnning an inversion.
-    """
+    Plot the prior data on top of prior data realizations.
 
+    :param f_prior_data_h5: Path to the HDF5 file containing the prior data.
+    :type f_prior_data_h5: str
+    :param f_data_h5: Path to the HDF5 file containing the observed data.
+    :type f_data_h5: str
+    :param nr: Number of realizations to plot.
+    :type nr: int
+    :param id: Data set ID.
+    :type id: int
+    :param d_str: Data string key.
+    :type d_str: str
+    :param alpha: Transparency level for the plot.
+    :type alpha: float
+    :param ylim: Y-axis limits for the plot.
+    :type ylim: tuple or list
+    :param kwargs: Additional keyword arguments.
+    :returns: None
+    """
     import h5py
     import numpy as np
     import matplotlib.pyplot as plt
@@ -1058,18 +1136,15 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
     :type f_post_h5: str
     :param i_plot: The index of the observation to plot.
     :type i_plot: int
-    :param i_d: Data number to plot.
-    :type i_d: int
-    :param Dkey: String of the hdf5 key for the data set.
+    :param nr: Number of realizations to plot.
+    :type nr: int
+    :param id: Data set ID.
+    :type id: int
+    :param Dkey: String of the HDF5 key for the data set.
     :type Dkey: str
     :param kwargs: Additional keyword arguments.
-    :type kwargs: dict
-
     :returns: None
-    :rtype: None
     """
-
-
     import numpy as np
     import matplotlib.pyplot as plt
     import matplotlib
@@ -1220,6 +1295,18 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
     
 
 def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
+    """
+    Plot the prior statistics for a given dataset.
+
+    :param f_prior_h5: The path to the prior data file.
+    :type f_prior_h5: str
+    :param Mkey: Key of the model to plot.
+    :type Mkey: str or list
+    :param nr: Number of realizations to plot.
+    :type nr: int
+    :param kwargs: Additional keyword arguments.
+    :returns: None
+    """
     from matplotlib.colors import LogNorm
     
     f_prior = h5py.File(f_prior_h5,'r')
@@ -1403,6 +1490,16 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
 
 # function that reads cmap and clim if they are set
 def get_clim_cmap(f_prior_h5, Mstr='/M1'):
+    """
+    Get the color limits and colormap for a given model.
+
+    :param f_prior_h5: Path to the HDF5 file containing the prior data.
+    :type f_prior_h5: str
+    :param Mstr: Model string key.
+    :type Mstr: str
+    :returns: clim, cmap -- Color limits and colormap.
+    :rtype: tuple
+    """
     with h5py.File(f_prior_h5,'r') as f_prior:
         if 'clim' in f_prior[Mstr].attrs.keys():
             clim = f_prior[Mstr].attrs['clim'][:].flatten()
@@ -1417,4 +1514,3 @@ def get_clim_cmap(f_prior_h5, Mstr='/M1'):
             cmap = 'jet'
 
         return clim, cmap
-    

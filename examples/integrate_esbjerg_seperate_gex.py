@@ -16,8 +16,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # #%load_ext autoreload
-    # # # # # #%autoreload 2
+    # # # # # # #%load_ext autoreload
+    # # # # # # #%autoreload 2
     pass
 # %%
 import integrate as ig
@@ -34,7 +34,7 @@ f_data_h5_files = f_data_h5_files[:nf]
 
 
 
-N=50000
+N=10000
 # All surveys are inverted with the same prior model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=500)
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', NLAY_min=1, NLAY_max=8, RHO_min=1, RHO_max=500)
@@ -96,11 +96,24 @@ for i in range(nf):
 f_post_merged_h5 = ig.merge_posterior(f_post_h5_files, f_data_h5_files)
 ig.integrate_posterior_stats(f_post_merged_h5)
 
-#%% 
-ig.plot_geometry('ESBJERG_DATA_merged.h5')
-ig.plot_profile(f_post_merged_h5, im=1, i1=0, i2=1000, hardcopy=hardcopy)
-ig.plot_T_EV(f_post_merged_h5, pl='T', hardcopy=hardcopy)
-ig.plot_feature_2d(f_post_merged_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
+# %%
+f_post_merged_h5
 
+# %%
+ig.plot_geometry('ESBJERG_DATA_merged.h5')
+ig.plot_T_EV(f_post_merged_h5, pl='T', hardcopy=hardcopy)
+ig.plot_profile(f_post_merged_h5, im=1, i1=0, i2=1000, hardcopy=hardcopy)
+ig.plot_feature_2d(f_post_merged_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy);
+
+
+
+# %%
+ig.plot_feature_2d(f_post_merged_h5,im=2,iz=0, key='Mean', uselog=0, cmap='jet', s=1, clim=[1,8], hardcopy=hardcopy);
+
+# %%
+f_prior_h5
+
+# %%
+f_post_merged_h5
 
 # %%

@@ -30,6 +30,18 @@ def is_notebook():
 
 
 def use_parallel(**kwargs):
+    """
+    Determine if parallel processing can be used based on the environment.
+    This function checks if the code is running in a Jupyter notebook or on a 
+    POSIX system (e.g., Linux). If either condition is met, parallel processing 
+    is considered OK. Otherwise, it is not recommended unless the primary script 
+    is embedded in an `if __name__ == "__main__":` block.
+    :param kwargs: Additional keyword arguments.
+        - showInfo (int): If greater than 0, prints information about the 
+          environment and parallel processing status. Default is 0.
+    :return: 
+        bool: True if parallel processing is OK, False otherwise.
+    """
     import os
     showInfo = kwargs.get('showInfo', 0)
     
@@ -1433,6 +1445,20 @@ THIS IS THE NEW MULTI DATA IMPLEMENTATION
 '''
 
 def load_prior(f_prior_h5, N_use=0, idx = [], Randomize=False):
+    """
+    Load prior data from an HDF5 file.
+
+    :param f_prior_h5: Path to the prior HDF5 file.
+    :type f_prior_h5: str
+    :param N_use: Number of samples to use. Default is 0, which means all samples.
+    :type N_use: int, optional
+    :param idx: List of indices to use. If empty, all indices are used.
+    :type idx: list, optional
+    :param Randomize: Flag indicating whether to randomize the order of the samples. Default is False.
+    :type Randomize: bool, optional
+    :return: Dictionary containing the loaded prior data.
+    :rtype: dict
+    """
     if len(idx)==0:
         D, idx = load_prior_data(f_prior_h5, N_use=N_use, Randomize=Randomize)
     else:
@@ -1440,9 +1466,37 @@ def load_prior(f_prior_h5, N_use=0, idx = [], Randomize=False):
     M, idx = load_prior_model(f_prior_h5, idx=idx, Randomize=Randomize)
     return D, M, idx
 
+
+
 def load_prior_model(f_prior_h5, im_use=[], idx=[], N_use=0, Randomize=False):
+    """
+    Load prior model data from an HDF5 file.
+    Parameters
+    ----------
+    f_prior_h5 : str
+        Path to the HDF5 file containing the prior model data.
+    im_use : list, optional
+        List of model indices to use. If empty, all models are used. Default is an empty list.
+    idx : list, optional
+        List of indices to select from the data. If empty, indices are generated based on `N_use` and `Randomize`. Default is an empty list.
+    N_use : int, optional
+        Number of samples to use. If 0, all samples are used. Default is 0.
+    Randomize : bool, optional
+        If True, indices are randomized. If False, sequential indices are used. Default is False.
+    Returns
+    -------
+    M : list of numpy.ndarray
+        List of arrays containing the selected data for each model.
+    idx : numpy.ndarray
+        Array of indices used to select the data.
+    Raises
+    ------
+    ValueError
+        If the length of `idx` is not equal to `N_use`.
+    """
     import h5py
     import numpy as np
+    
 
     if len(im_use)==0:
         Nmt=0
@@ -1760,6 +1814,7 @@ def integrate_rejection_range(D,
                               autoT=1,
                               T_base = 1,
                               **kwargs):
+    
 
     from tqdm import tqdm
     import numpy as np
@@ -2300,8 +2355,3 @@ def synthetic_case(case='Wedge', **kwargs):
             rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
             M[ix,iz1] = rho1
             z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))            
-            rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
-            iz2 = np.where((z>=z1) & (z<=z2))[0]
-            M[ix,iz2] = rho2
-
-        return M, x, z

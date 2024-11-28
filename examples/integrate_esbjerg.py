@@ -12,8 +12,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # #%load_ext autoreload
-    # # # # # #%autoreload 2
+    # # # # # # #%load_ext autoreload
+    # # # # # # #%autoreload 2
     pass
 # %%
 import integrate as ig
@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True
 # %% Get tTEM data from DAUGAARD
+N=5000000
 case = 'ESBJERG'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -43,7 +44,7 @@ X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=50000
+
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=500)
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', NLAY_min=1, NLAY_max=8, RHO_min=1, RHO_max=500)
@@ -92,7 +93,7 @@ ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
 #i_plot= np.where( np.abs(LINE-1200)<1  )[0]
 #ig.plot_profile(f_post_h5, i1=i_plot[0], i2=i_plot[-1], im=1)
 ig.plot_profile(f_post_h5, i_plot=10000, i2=14000, im=1, hardcopy=hardcopy)
-#ig.plot_profile(f_post_h5, i_plot=0, i2=2000, im=2)
+#ig.plot_profile(f_post_h5, i_plot=0, i2=2000, im=2)h yg sa
 # %%
 
 # Plot a 2D feature: Resistivity in layer 10

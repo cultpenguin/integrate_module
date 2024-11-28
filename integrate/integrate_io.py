@@ -589,7 +589,14 @@ def hdf5_scan(file_path):
 
 
 def file_checksum(file_path):
-    """Calculate the MD5 checksum of a file."""
+    """
+    Calculate the MD5 checksum of a file.
+
+    :param file_path: The path to the file.
+    :type file_path: str
+    :return: The MD5 checksum of the file.
+    :rtype: str
+    """
     import hashlib
     hasher = hashlib.md5()
     with open(file_path, 'rb') as f:
@@ -599,6 +606,18 @@ def file_checksum(file_path):
 
 
 def download_file(url, download_dir, use_checksum=False, **kwargs):
+    """
+    Download a file from a URL to a specified directory.
+
+    :param url: The URL of the file to download.
+    :type url: str
+    :param download_dir: The directory to save the downloaded file.
+    :type download_dir: str
+    :param use_checksum: Whether to verify the file checksum after download.
+    :type use_checksum: bool
+    :param kwargs: Additional keyword arguments.
+    :return: None
+    """
     import requests
     import os
     showInfo = kwargs.get('showInfo', 0)
@@ -649,6 +668,16 @@ def download_file(url, download_dir, use_checksum=False, **kwargs):
         # print(f'Checksum verification disabled for {file_name}.')
 
 def download_file_old(url, download_dir, **kwargs):
+    """
+    Download a file from a URL to a specified directory (old version).
+
+    :param url: The URL of the file to download.
+    :type url: str
+    :param download_dir: The directory to save the downloaded file.
+    :type download_dir: str
+    :param kwargs: Additional keyword arguments.
+    :return: None
+    """
     import requests
     import os
     showInfo = kwargs.get('showInfo', 0)
@@ -697,39 +726,22 @@ def download_file_old(url, download_dir, **kwargs):
     print(f'Downloaded {file_name}')
 
 
-
 def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kwargs):
     """
     Get case data for a specific case.
 
-    :param case: The case name. Default is 'DAUGAARD'. Options are 'DAUGAARD' and 'FANGEL'.
-    :type case: str
-    
-    :param loadAll: Whether to load all files for the case. Default is False.
-    :type loadAll: bool
-    
-    :return: A list of file names for the case.
-    :rtype: list
-    
     :param case: The case name. Default is 'DAUGAARD'. Options are 'DAUGAARD', 'GRUSGRAV', 'FANGEL', and 'HALD'.
     :type case: str
-    
+    :param loadAll: Whether to load all files for the case. Default is False.
+    :type loadAll: bool
     :param loadType: The type of files to load. Options are '', 'prior', 'prior_data', 'post', and 'inout'.
     :type loadType: str
-    
     :param filelist: A list of files to load. Default is an empty list.
     :type filelist: list
-
-    :example:
-    
-    >>> files = get_case_data()
-    Example: Daugaard data with prior:
-    >>> get_case_data(case='DAUGAARD', loadType='prior')
-    Example: Daugaard data with prior data:
-    >>> get_case_data(case='DAUGAARD', loadType='prior-data')
-    Example: Daugaard data with prior and posterior:
-    >>> get_case_data(case='DAUGAARD', loadType='post')
-    """  # noqa: DAUGAARD, FANGEL, GRUSGRAV, HALD, Daugaard
+    :param kwargs: Additional keyword arguments.
+    :return: A list of file names for the case.
+    :rtype: list
+    """
     showInfo = kwargs.get('showInfo', 0)
 
     if showInfo>-1:
@@ -952,28 +964,21 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
 def write_data_multinomial(D_obs, id=[], f_data_h5='data.h5', **kwargs):
     """
     Writes observed data to an HDF5 file in a specified group with a multinomial noise model.
-    Parameters
-    ----------
-    D_obs : numpy.ndarray
-        The observed data array to be written to the file.
-    id : list, optional
-        The ID of the group to write the data to. If not provided, the function will find the next available ID.
-    f_data_h5 : str, optional
-        The path to the HDF5 file where the data will be written. Default is 'data.h5'.
-    **kwargs : dict, optional
-        Additional keyword arguments:
-        - showInfo (int): Level of verbosity for printing information. Default is 0.
-    Returns
-    -------
-    str
-        The path to the HDF5 file where the data was written.
-    Notes
-    -----
-    The function writes the observed data to a group in the HDF5 file named 'D{id}/'. If the group already exists, it is removed before writing the new data. The noise model attribute for the group is set to 'multinomial'.
-    """
 
+    :param D_obs: The observed data array to be written to the file.
+    :type D_obs: numpy.ndarray
+    :param id: The ID of the group to write the data to. If not provided, the function will find the next available ID.
+    :type id: list, optional
+    :param f_data_h5: The path to the HDF5 file where the data will be written. Default is 'data.h5'.
+    :type f_data_h5: str, optional
+    :param kwargs: Additional keyword arguments.
+    :return: The path to the HDF5 file where the data was written.
+    :rtype: str
+    """
     showInfo = kwargs.get('showInfo', 0)
 
+    if np.ndim(D_obs)==1:
+        D_obs = np.atleast_2d(D_obs).T
 
     # f_data_h5 is a HDF% file grousp "/D1/", "/D2". 
     # FInd the is with for the maximum '/D*' group
@@ -1082,31 +1087,21 @@ def check_data(f_data_h5='data.h5', **kwargs):
 
 
 def merge_data(f_data, f_gex='', delta_line=0, f_data_merged_h5='', **kwargs):
-    """Merge multiple data files into a single HDF5 file.
+    """
+    Merge multiple data files into a single HDF5 file.
 
-    Parameters
-    ----------
-    f_data : list
-        List of input data files to merge
-    f_gex : str, optional
-        Path to geometry exchange file, by default ''
-    delta_line : int, optional
-        Line number increment for each merged file, by default 0
-    f_data_merged_h5 : str, optional
-        Output merged HDF5 file path, by default derived from f_gex
-    **kwargs
-        Additional keyword arguments:
-        - showInfo : int, verbosity level (0-2), by default 2
-
-    Returns
-    -------
-    str
-        Filename of the merged HDF5 file
-
-    Raises
-    ------
-    ValueError
-        If f_data is not a list
+    :param f_data: List of input data files to merge.
+    :type f_data: list
+    :param f_gex: Path to geometry exchange file, by default ''.
+    :type f_gex: str, optional
+    :param delta_line: Line number increment for each merged file, by default 0.
+    :type delta_line: int, optional
+    :param f_data_merged_h5: Output merged HDF5 file path, by default derived from f_gex.
+    :type f_data_merged_h5: str, optional
+    :param kwargs: Additional keyword arguments.
+    :return: Filename of the merged HDF5 file.
+    :rtype: str
+    :raises ValueError: If f_data is not a list.
     """
     
     import h5py
