@@ -2355,3 +2355,150 @@ def synthetic_case(case='Wedge', **kwargs):
             rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
             M[ix,iz1] = rho1
             z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))            
+
+
+
+
+
+def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400, r_data=2, useLog=True, doPlot=False):
+    """Calculate weights based on distance and data similarity to a reference point.
+
+    This function computes three sets of weights:
+    1. Combined weights based on both spatial distance and data similarity
+    2. Distance-based weights
+    3. Data similarity weights
+
+    Parameters
+    ----------
+    f_data_h5 : str
+        Path to HDF5 file containing geometry and observed data
+    x_well : float, optional
+        X coordinate of reference point (well), by default 0
+    y_well : float, optional 
+        Y coordinate of reference point (well), by default 0
+    i_ref : int, optional
+        Index of reference point, by default -1 (auto-calculated as closest to x_well,y_well)
+    r_dis : float, optional
+        Distance range parameter for spatial weighting, by default 400
+    r_data : float, optional
+        Data similarity range parameter for data weighting, by default 2
+
+    Returns
+    -------
+    tuple
+        (w_combined, w_dis, w_data) where:
+        - w_combined: Combined weights from distance and data similarity
+        - w_dis: Distance-based weights
+        - w_data: Data similarity-based weights
+
+    Notes
+    -----
+    The weights are calculated using Gaussian functions:
+    - Distance weights use exp(-dis²/r_dis²)
+    - Data weights use exp(-sum_dd²/r_data²)
+    where dis is spatial distance and sum_dd is cumulative data difference
+    """
+    import integrate as ig
+    import numpy as np
+    import matplotlib.pyplot as plt
+    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    DATA = ig.load_data(f_data_h5)
+    id=0
+    d_obs = DATA['d_obs'][id]
+    d_std = DATA['d_std'][id]
+    # index if position in X and Y with smallets distance to well
+    if i_ref == -1:
+        i_ref = np.argmin((X-x_well)**2 + (Y-y_well)**2)
+
+    # select gates to use 
+    # find the number of data points for each gate that has non-nan values
+    n_not_nan = np.sum(~np.isnan(d_obs), axis=0)
+    n_not_nan_freq = n_not_nan/d_obs.shape[0]
+    # use the data for which n_not_nan_freq>0.8
+    i_use = np.where(n_not_nan_freq>0.8)[0]
+    # only use i_use values that are not nan
+    i_use = i_use[~np.isnan(d_obs[i_ref,i_use])]
+    # select gates to use, manually
+    if useLog:
+        d_ref = np.log10(d_obs[i_ref,i_use])
+        d_test = np.log10(d_obs[:,i_use])
+    else:
+        d_ref = d_obs[i_ref,i_use]
+        d_test =d_obs[:,i_use]
+    dd = np.abs(d_test - d_ref)
+    sum_dd = np.sum(dd, axis=1)
+
+    w_data = np.exp(-1*sum_dd**2/r_data**2)
+
+    # COmpute the distance from d_ref to all other points
+    dis = np.sqrt((X-X[i_ref])**2 + (Y-Y[i_ref])**2)
+    w_dis = np.exp(-1*dis**2/r_dis**2)
+
+    w_combined = w_data * w_dis
+
+    if doPlot:
+        plt.figure(figsize=(15,5))
+        for i in range(3):
+            plt.subplot(1,3,i+1)
+            if i==0:
+                plt.scatter(X,Y,c=w_combined, s=0.2, cmap='hot_r')  
+                plt.title('Combined weights')          
+            elif i==1:
+                plt.scatter(X,Y,c=w_dis, s=0.2, cmap='hot_r')
+                plt.title('XY distance weights')
+            elif i==2:
+                plt.scatter(X,Y,c=w_data, s=0.2, cmap='hot_r')
+                plt.title('Data distance weights')
+            plt.axis('equal')
+            plt.colorbar()
+            plt.grid()
+            plt.scatter(X[i_ref],Y[i_ref], c='k', s=100, marker='x')
+            plt.plot(x_well,y_well,'go', zorder=4)
+        plt.suptitle('Weights')
+        plt.xlabel('X')
+        plt.ylabel('Y')
+
+    return w_combined, w_dis, w_data, i_ref
+
+####################################
+## MISC 
+
+def comb_cprob(pA, pAgB, pAgC, tau=1.0):
+    """
+    Combine conditional probabilities based on permanence of updating ratios.
+
+    This function implements the probability combination method described in 
+    Journel's "An Alternative to Traditional Data Independence Hypotheses" 
+    (Math Geology, 2004).
+
+    Parameters:
+    -----------
+    pA : array_like
+        Probability of event A
+    pAgB : array_like
+        Conditional probability of A given B
+    pAgC : array_like
+        Conditional probability of A given C
+    tau : float, optional
+        Combination parameter controlling the ratio permanence (default=1.0)
+
+    Returns:
+    --------
+    ndarray
+        Combined conditional probability Prob(A|B,C)
+
+    References:
+    -----------
+    Journel, An Alternative to Traditional Data Independence Hypotheses, 
+    Mathematical Geology, 2002
+    """
+    # Compute odds ratios
+    a = (1 - pA) / pA
+    b = (1 - pAgB) / pAgB
+    c = (1 - pAgC) / pAgC
+    
+    # Compute combined probability
+    pAgBC = 1 / (1 + b * (c / a) ** tau)
+    
+    return pAgBC
+
