@@ -154,8 +154,8 @@ P_prior = np.ones((nclass,nm))/nclass
 for iw in range(3): #len(well_obs)):
     x_well = well_obs[iw]['UTMX']
     y_well = well_obs[iw]['UTMY']   
-    r_data = 10000
-    r_dis = 1
+    r_data = 1000
+    r_dis = 4
     w, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, -1, r_data, r_dis, doPlot=True)
 
     P_obs = P_prior.copy()
@@ -170,7 +170,7 @@ for iw in range(3): #len(well_obs)):
         lith = well_obs[iw]['lith'][i]
         # find index ic of class_id == lith
         ic = np.where(class_id == lith)[0][0]
-        P1 = 0.8
+        P1 = 0.9
         P_obs[:,j] = (1-P1)/(nclass-1)
         P_obs[ic,j] = P1
         
@@ -180,119 +180,31 @@ for iw in range(3): #len(well_obs)):
     for i in range(nd):
         if np.isnan(w[i]):
             w[i]=0
-        if w[i]>0.01:
+        if w[i]>0.2: #0.05:
             i_use[i]=1
         P_post = P_distance_weight(P_obs, P_prior, w[i])
         
         d_obs[i] = P_post
 
     print('Using %s of %d data' % (np.sum(i_use), nd))        
-    ig.write_data_multinomial(d_obs, f_data_h5=f_data_h5, i_use=i_use, id=iw+1+1)
+    #ig.write_data_multinomial(d_obs, f_data_h5=f_data_h5, i_use=i_use, id=iw+1+1)
     ig.write_data_multinomial(d_obs, f_data_h5=f_data_h5, i_use=i_use, id=iw+1+1, id_use=2)
 
 
-#%%  TEST Likelihoof estimation using the multinomial distribution
-"""
-M_all = ig.load_prior_model(f_prior_data_h5)[0]
-im=1
-M = M_all[im]
-
-D_all = ig.load_prior_data(f_prior_data_h5)[0]
-id=1
-
-D2 = D_all[id]
-
-"""
-
-# %% TEST THE MULTINOMIAL LIKELIHOOD
-"""
-def likelihood_multinomial_old(P_obs, D, class_id):
- 
-    # Test if i_test = m_test-1. This is the case when class_id = [1,2,3..class]
-    # make as fast as possible!!!
-
-    # COPY THIS INTO integrate module!!
-
-    N, nm=D.shape
-    logL = np.zeros((N,1))
-    class_id = class_id.astype(int)
-
-    for i in range(N):
-        d_test = D[i]
-
-        i_test = np.zeros(d_test.shape).astype(int)
-        p = np.zeros((nm))
-    
-        # convert m_test into class id
-        for j in range(len(class_id)):
-            # update i_test with i_test, ehere m_test==class_id[j]
-            i_test[np.where(d_test==class_id[j])[0]] = j
-            # Get the probability of P_obs at each index i_test
-        for k in range(P_obs.shape[1]):
-            p[k] = P_obs[i_test[k],k] 
-        p_max= np.max(P_obs, axis=0)
-        #logL[i]=np.log10(np.prod(p/p_max))
-        logL[i]=np.sum(np.log10(p/p_max))
-    return logL
-
-
-def likelihood_multinomial(D, P_obs, class_id):
-
-    Calculate log-likelihood of multinomial distribution for discrete data.
-    This function computes the log-likelihood of multinomial distribution for given 
-    discrete data using direct indexing and optimized array operations.
-    Parameters
-    ----------
-    D : numpy.ndarray
-        Matrix of observed discrete data with shape (N, n_features), where N is the
-        number of samples and each element represents a class ID.
-    P_obs : numpy.ndarray
-        Matrix of probabilities with shape (n_classes, n_features), where each column
-        represents probability distribution over classes for a feature.
-    class_id : numpy.ndarray
-        Array of unique class IDs corresponding to rows in P_obs.
-    Returns
-    -------
-    numpy.ndarray
-        Log-likelihood values for each sample, shape (N, 1).
-    Notes
-    -----
-    The function:
-        1. Creates a mapping from class IDs to indices
-        2. Converts test data to corresponding indices
-        3. Retrieves probabilities using advanced indexing
-        4. Calculates log likelihood using max normalization for numerical stability
-
-    D = np.atleast_2d(D)    
-    N, nm = D.shape
-    logL = np.zeros((N))
-    class_id = class_id.astype(int)
-    p_max = np.max(P_obs, axis=0)
-
-    # Create mapping from class_id to index
-    class_to_idx = {cid: idx for idx, cid in enumerate(class_id)}
-    
-    for i in range(N):
-        # Convert test data to indices using the mapping
-        i_test = np.array([class_to_idx[cls] for cls in D[i]])
-        # Get probabilities directly using advanced indexing
-        p = P_obs[i_test, np.arange(nm)]
-        # Calculate log likelihood
-        logL[i] = np.sum(np.log10(p/p_max))
-    
-    return logL
-"""
+plt.figure()
+plt.plot(w)
+plt.show()
 
 
 #%% TEST load data
 DATA = ig.load_data(f_data_h5, id_arr=[1,2,3,4])
 print(DATA['noise_model'])
-print(DATA['i_use'])
+#print(DATA['i_use'])
 print(DATA['id_use'])
 
 #%% COMPUTE LIKELIOOF for tTEM data
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-dis = (well_obs[0]['UTMX']-X)**2 + (well_obs[0]['UTMY']-Y)**2
+dis = (well_obs[1]['UTMX']-X)**2 + (well_obs[1]['UTMY']-Y)**2
 i_min_dis = np.argmin(dis)
 
 D_all = ig.load_prior_data(f_prior_data_h5)[0]
@@ -329,20 +241,20 @@ print(logL2[0])
 
 
 # %% INVERT AND PLOT
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[1,2], showInfo=3, updatePostStat=False, ip_range=[22], parallel=False)
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[2,3,4], showInfo=1, updatePostStat=False, ip_range=np.arange(100), parallel=False)
 
 #%% TEST INVERSION
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                 f_data_h5, 
-                                showInfo=3, 
+                                showInfo=1, 
                                 Ncpu=8,
-                                id_use=[1,2],
-                                updatePostStat=True, T_base = 10000)
+                                id_use=[2,3,4],
+                                updatePostStat=True)
 
 ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
 #ig.plot_profile(f_post_h5, i1=i_min_dis-400, i2=i_min_dis+400, im=2, hardcopy=hardcopy)
-#ig.plot_profile(f_post_h5, i1=i_min_dis-400, i2=i_min_dis+400, im=2, hardcopy=hardcopy)
-ig.plot_profile(f_post_h5, im=2, i1=1, i2=5000, hardcopy=hardcopy)
+ig.plot_profile(f_post_h5, i1=i_min_dis-400, i2=i_min_dis+400, im=2, hardcopy=hardcopy)
+#ig.plot_profile(f_post_h5, im=2, i1=1, i2=5000, hardcopy=hardcopy)
 
 #%% 
 with h5py.File(f_post_h5,'r') as f_post:

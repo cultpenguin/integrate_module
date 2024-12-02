@@ -1708,15 +1708,16 @@ def integrate_rejection(f_prior_h5='prior.h5',
     # Perhaps load only the data types that are used
     DATA = load_data(f_data_h5, id_arr=id_use)
 
+    if (showInfo>0):    
+        for i in range(Ndt):
+            print('Data type %d: %s, Using %d/%d data' % (id_use[i], DATA['noise_model'][i], np.sum(DATA['i_use'][i]), len(DATA['i_use'][i])))
+
     # Load the prior data from the h5 files
     #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
     id_data_use = 1+np.arange(np.max(DATA['id_use']))
-    print("______________________________")
-    print(id_data_use)
-    print(id_use)
     D, idx = load_prior_data(f_prior_h5, id_use = id_data_use, N_use = N_use, Randomize=True)
     #D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
-    
+
     # M, idx = load_prior_model(f_prior_h5, idx=idx, N_use=N_use, Randomize=True)
 
     # Get sample size N from f_prior_h5
@@ -1747,7 +1748,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         print('use_N_best=%d' % use_N_best)
         print('Number of data types: %d' % Ndt)
         print('Using these data types: %s' % str(id_use))
-    
+        print('Loading these prior data model types:', str(id_data_use))
     
     
     # set i_use_all to be a 2d Matrie of size (nump,nr) of random integers in range(N)
@@ -1904,7 +1905,8 @@ def integrate_rejection_range(D,
     N = D[0].shape[0]
 
     Ndt = len(id_use) # Number of data types used   
-    print('Ndt=%d' % Ndt)
+    if showInfo>2:
+        print('Numbe of data type used, Ndt=%d' % Ndt)
 
     if N_use>N:
         N_use = N
@@ -1922,6 +1924,7 @@ def integrate_rejection_range(D,
     #print(i_use_data)
 
     # THIS IS THE ACTUAL INVERSION!!!!
+    # Start looping over the data points
     for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection', leave=False):
         ip = ip_range[j] # This is the index of the data point to invert
         t=[]
@@ -1930,16 +1933,14 @@ def integrate_rejection_range(D,
         L = np.zeros((NDsets, N))
 
         
-        #for i in range(len(D)):
+        # Loop over the number of data types Ndt
         for i in range(Ndt):
-            print(i)
-            # UPDATE CODE TO USE THE SPECIFIC DATA IT GIVEN!!!            
-            # IF NOT SET, SIMPLY IS THE SAME AS THE DATA ID
-            #print(len(i_use_data[i]))
             use_data_point = i_use_data[i][ip]
-            #use_data_point = 1
-
-            print(use_data_point)
+            #use_data_point = 1 # FORCE USE OF DATA POINT
+            #use_data_point = 0 # FORCE NOT TO USE DATA POINT
+            if showInfo>3:    
+                print("-i=%d, Using data type %d" % (i,Ndt))
+                print("len(D)",len(D))
 
             if (use_data_point==1):
                 #if i_use_data[i]==1:
@@ -1948,13 +1949,16 @@ def integrate_rejection_range(D,
                 if showInfo>3:    
                     print('j=%4d Using data %d --> %d' % (j,i,use_data_point))
 
-
                 # ONLY PERFORM CALUCATION IF I_USE_DATA = 1.. UPDATE LOAD_DATA, TO ALWAY PROVIDE I_USE 
-                i_prior = i
-                i_prior = id_prior_use[i] 
+                # Select the proper data types. It is give, the integer in 'D1/', 'D2/' etc, so we need to subtract 1
+                # as D1 is the first data types D[0]
+                i_prior = id_prior_use[i]-1 
+                
+                if showInfo>3:    
+                    print("--Using id_prior_use",str(i_prior))
+                
                 t0=time.time()
-                id = id_use[i]
-                DS = '/D%d' % id
+                #id = id_use[i_prior]
                 if noise_model[i]=='gaussian':
                     d_obs = DATA['d_obs'][i][ip]
                     
@@ -1965,11 +1969,11 @@ def integrate_rejection_range(D,
                         else:
                             Cd = DATA['Cd'][0][:]
 
-                        L_single = likelihood_gaussian_full(D[i], d_obs, Cd, N_app = use_N_best)
+                        L_single = likelihood_gaussian_full(D[i_prior], d_obs, Cd, N_app = use_N_best)
                         
                     elif DATA['d_std'][0] is not None:
                         d_std = DATA['d_std'][i][ip]
-                        L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std, use_N_best)
+                        L_single = likelihood_gaussian_diagonal(D[i_prior], d_obs, d_std, use_N_best)
 
                     else:
                         print('No d_std or Cd in %s' % DS)
@@ -1979,37 +1983,14 @@ def integrate_rejection_range(D,
                 elif noise_model[i]=='multinomial':
                     d_obs = DATA['d_obs'][i][ip]
 
-                    #print(d_obs)
                     if showInfo>3:
                         print(D[i])
                     
                     class_id = [1,2]
 
                     useMultiNomal = True
-
-
                     if useMultiNomal:
-                        L_single = likelihood_multinomial(D[i],d_obs, np.array(class_id))
-                        
-                    else:
-
-                        useVectorized = True
-                        if useVectorized:
-                            D_ind = np.zeros(D[i].shape[0], dtype=int)
-                            D_ind[:] = np.searchsorted(class_id, D[i].squeeze())
-                            epsilon = 1e-10  # Small value to avoid log(0)
-                            L_single = np.log(d_obs[D_ind] + epsilon)
-                        else:
-                            D_ind = np.zeros(D[id].shape[0], dtype=int)
-                            for i in range(D_ind.shape[0]):
-                                for j in range(len(class_id)):
-                                    if D[id][i]==class_id[j]:
-                                        D_ind[i]=j
-                                        break
-                            L_single = np.zeros(D[id].shape[0])
-
-                            for i in range(D_ind.shape[0]):
-                                L_single[i] = np.log(d_obs[D_ind[i]])
+                        L_single = likelihood_multinomial(D[i_prior],d_obs, np.array(class_id))
 
                     L[i] = L_single           
                     t.append(time.time()-t0)
@@ -2021,7 +2002,6 @@ def integrate_rejection_range(D,
             else:
                 L[i] = np.zeros(N)
                     
-
         t0=time.time()
 
         # NOw we have all the likelihoods for all data types. Copmbine them into ooe
@@ -2091,7 +2071,7 @@ def integrate_rejection_range(D,
 
         if showInfo>2:
             for i in range(len(t)):
-                if i<len(D):
+                if i<Ndt:
                     print(' Time id%d: %f - %s' % (i,t[i],noise_model[i]))
                 else:
                     print(' Time id%d, sampling: %f' % (i,t[i]))
