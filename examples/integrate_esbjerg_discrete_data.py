@@ -29,7 +29,7 @@ plt.ion()
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True
 # %% Get tTEM data from DAUGAARD
-N=2000
+N=20000
 case = 'ESBJERG'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -154,7 +154,7 @@ P_prior = np.ones((nclass,nm))/nclass
 for iw in range(3): #len(well_obs)):
     x_well = well_obs[iw]['UTMX']
     y_well = well_obs[iw]['UTMY']   
-    r_data = 1000
+    r_data = 250
     r_dis = 4
     w, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, -1, r_data, r_dis, doPlot=True)
 
@@ -293,6 +293,8 @@ for i in range(len(id_use_arr)):
     ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
     ig.plot_feature_2d(f_post_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
     ig.plot_feature_2d(f_post_h5,im=1,iz=40, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
-    ig.plot_feature_2d(f_post_h5,im=2,iz=20, key='Mode', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
+    ig.plot_feature_2d(f_post_h5,im=2,iz=10, key='Mode', uselog=0, cmap='jet', s=1, hardcopy=hardcopy)
     plt.show()
  """
+#%%
+ig.copy_hdf5_file(f_prior_h5, 'test.h5', N=1000)

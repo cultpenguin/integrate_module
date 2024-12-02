@@ -534,6 +534,8 @@ def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
 
                     if len(i_use)==0:
                         N_in = input_file[name].shape[0]
+                        if N is None:
+                            N=N_in
                         if N>N_in:
                             N=N_in
                         if N==N_in:                            
