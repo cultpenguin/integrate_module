@@ -1496,7 +1496,7 @@ def load_prior_model(f_prior_h5, im_use=[], idx=[], N_use=0, Randomize=False):
     """
     import h5py
     import numpy as np
-    
+
 
     if len(im_use)==0:
         Nmt=0
@@ -1574,6 +1574,7 @@ def load_data(f_data_h5, id_use=[1]):
         d_obs = [f_data[f'/D{id}/d_obs'][:] for id in id_use]
         d_std = [f_data[f'/D{id}/d_std'][:] if 'd_std' in f_data[f'/D{id}'] else None for id in id_use]
         Cd = [f_data[f'/D{id}/Cd'][:] if 'Cd' in f_data[f'/D{id}'] else None for id in id_use]
+        i_use = [f_data[f'/D{id}/i_use'][:] if 'i_use' in f_data[f'/D{id}'] else None for id in id_use]
 
     DATA = {}
     DATA['noise_model'] = noise_model
@@ -1581,6 +1582,7 @@ def load_data(f_data_h5, id_use=[1]):
     DATA['d_std'] = d_std
     DATA['Cd'] = Cd
     DATA['id_use'] = id_use        
+    DATA['i_use'] = i_use        
     # return noise_model, d_obs, d_std, Cd, id_use
     return DATA
 
@@ -1661,10 +1663,11 @@ def integrate_rejection(f_prior_h5='prior.h5',
     Ndt = len(DATA['d_obs']) # Number of data types
     if len(id_use)==0:
         id_use = np.arange(1,Ndt+1) 
+    Ndt = len(id_use) # Number of data types used        
     # Perhaps load only the data types that are used
     DATA = load_data(f_data_h5, id_use=id_use)
-    
-     # Load the prior data from the h5 files
+
+    # Load the prior data from the h5 files
     #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
     D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
     
@@ -1697,7 +1700,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         print('N_use = %d' % (N_use))
         print('use_N_best=%d' % use_N_best)
         print('Number of data types: %d' % Ndt)
-        print('Using these data types: %d' % id_use)
+        print('Using these data types: %s' % str(id_use))
     
     
     
@@ -1903,23 +1906,31 @@ def integrate_rejection_range(D,
                 
                 class_id = [1,2]
 
-                useVectorized = True
-                if useVectorized:
-                    D_ind = np.zeros(D[i].shape[0], dtype=int)
-                    D_ind[:] = np.searchsorted(class_id, D[i].squeeze())
-                    epsilon = 1e-10  # Small value to avoid log(0)
-                    L_single = np.log(d_obs[D_ind] + epsilon)
-                else:
-                    D_ind = np.zeros(D[id].shape[0], dtype=int)
-                    for i in range(D_ind.shape[0]):
-                        for j in range(len(class_id)):
-                            if D[id][i]==class_id[j]:
-                                D_ind[i]=j
-                                break
-                    L_single = np.zeros(D[id].shape[0])
+                useMultiNomal = True
 
-                    for i in range(D_ind.shape[0]):
-                        L_single[i] = np.log(d_obs[D_ind[i]])
+
+                if useMultiNomal:
+                    L_single = likelihood_multinomial(D[i],d_obs, np.array(class_id))
+                    
+                else:
+
+                    useVectorized = True
+                    if useVectorized:
+                        D_ind = np.zeros(D[i].shape[0], dtype=int)
+                        D_ind[:] = np.searchsorted(class_id, D[i].squeeze())
+                        epsilon = 1e-10  # Small value to avoid log(0)
+                        L_single = np.log(d_obs[D_ind] + epsilon)
+                    else:
+                        D_ind = np.zeros(D[id].shape[0], dtype=int)
+                        for i in range(D_ind.shape[0]):
+                            for j in range(len(class_id)):
+                                if D[id][i]==class_id[j]:
+                                    D_ind[i]=j
+                                    break
+                        L_single = np.zeros(D[id].shape[0])
+
+                        for i in range(D_ind.shape[0]):
+                            L_single[i] = np.log(d_obs[D_ind[i]])
 
                 L[i] = L_single           
                 t.append(time.time()-t0)
@@ -2217,6 +2228,57 @@ def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized
             L[i] = -.5 * np.nansum(dd[i].T @ iCd @ dd[i])
         
     return L
+
+
+
+
+def likelihood_multinomial(D, P_obs,class_id):
+    """
+    Calculate log-likelihood of multinomial distribution for discrete data.
+    This function computes the log-likelihood of multinomial distribution for given 
+    discrete data using direct indexing and optimized array operations.
+    Parameters
+    ----------
+    D : numpy.ndarray
+        Matrix of observed discrete data with shape (N, n_features), where N is the
+        number of samples and each element represents a class ID.
+    P_obs : numpy.ndarray
+        Matrix of probabilities with shape (n_classes, n_features), where each column
+        represents probability distribution over classes for a feature.
+    class_id : numpy.ndarray
+        Array of unique class IDs corresponding to rows in P_obs.
+    Returns
+    -------
+    numpy.ndarray
+        Log-likelihood values for each sample, shape (N, 1).
+    Notes
+    -----
+    The function:
+        1. Creates a mapping from class IDs to indices
+        2. Converts test data to corresponding indices
+        3. Retrieves probabilities using advanced indexing
+        4. Calculates log likelihood using max normalization for numerical stability
+
+    """
+    D=np.atleast_2d(D)
+    N, nm = D.shape
+    logL = np.zeros((N))
+    class_id = class_id.astype(int)
+    p_max = np.max(P_obs, axis=0)
+
+    # Create mapping from class_id to index
+    class_to_idx = {cid: idx for idx, cid in enumerate(class_id)}
+    
+    for i in range(N):
+        # Convert test data to indices using the mapping
+        i_test = np.array([class_to_idx[cls] for cls in D[i]])
+        # Get probabilities directly using advanced indexing
+        p = P_obs[i_test, np.arange(nm)]
+        # Calculate log likelihood
+        logL[i] = np.sum(np.log10(p/p_max))
+    
+    return logL
+
 
 
 # %% Synthetic data

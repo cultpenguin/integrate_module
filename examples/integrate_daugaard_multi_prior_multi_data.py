@@ -63,7 +63,7 @@ fig=ig.plot_data_xy(f_data_h5)
 # %%
 # Lets first make a small copy of the large data set available
 f_prior_org_h5 = 'prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
-N_small = 50000000000
+N_small = 5000# 000000
 f_prior_h5 = ig.copy_hdf5_file(f_prior_org_h5, 'prior_test.h5',N=N_small,showInfo=3)
 
 print("Keys in DATA")

@@ -18,6 +18,7 @@ from integrate.integrate import integrate_posterior_chunk
 from integrate.integrate import integrate_posterior_main
 from integrate.integrate import likelihood_gaussian_diagonal
 from integrate.integrate import likelihood_gaussian_full
+from integrate.integrate import likelihood_multinomial
 from integrate.integrate import select_subset_for_inversion
 from integrate.integrate import use_parallel
 from integrate.integrate import load_prior

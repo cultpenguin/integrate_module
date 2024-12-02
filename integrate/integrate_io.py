@@ -999,10 +999,11 @@ def write_data_multinomial(D_obs, i_use=[], id=[], f_data_h5='data.h5', **kwargs
 
     ns,nclass,nm=D_obs.shape
 
-    if len(i_use):
+    if len(i_use)==0:
         i_use = np.ones((ns,1))
     if np.ndim(D_obs)==1:
         i_use = np.atleast_2d(i_use).T
+    print(i_use)
 
     # check if group 'D{id}/' exists and remove it if it does
     with h5py.File(f_data_h5, 'a') as f:

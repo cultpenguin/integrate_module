@@ -29,7 +29,7 @@ plt.ion()
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True
 # %% Get tTEM data from DAUGAARD
-N=20000
+N=2000
 case = 'ESBJERG'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -81,7 +81,8 @@ W1 = {'name': 'Roust01',
                'UTMY': 6156777,
                'z_top':[0,9.7,10.8],
                'z_bot':[9.7,10.8,15],
-               'lith':[1,2,1]}
+               'lith':[2,2,2]}
+#               'lith':[1,2,1]}
 
 W2 = {'name': 'Sakds01',
                 'UTMX': 474093, 
@@ -151,7 +152,7 @@ P_prior = np.ones((nclass,nm))/nclass
 for iw in range(3): #len(well_obs)):
     x_well = well_obs[iw]['UTMX']
     y_well = well_obs[iw]['UTMY']   
-    w, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, r_data=4, r_dis=400, doPlot=True)
+    w, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, r_data=1114, r_dis=400, doPlot=True)
 
     P_obs = P_prior.copy()
     # Get P_obs
@@ -165,7 +166,7 @@ for iw in range(3): #len(well_obs)):
         lith = well_obs[iw]['lith'][i]
         # find index ic of class_id == lith
         ic = np.where(class_id == lith)[0][0]
-        P1 = 0.8
+        P1 = 0.99
         P_obs[:,j] = (1-P1)/(nclass-1)
         P_obs[ic,j] = P1
         
@@ -182,21 +183,26 @@ for iw in range(3): #len(well_obs)):
         d_obs[i] = P_post
 
     print('Using %s of %d data' % (np.sum(i_use), nd))        
-    ig.write_data_multinomial(d_obs, f_data_h5=f_data_h5, id=iw+1+1)
+    ig.write_data_multinomial(d_obs, f_data_h5=f_data_h5, i_use=i_use, id=iw+1+1)
 
 
 #%%  TEST Likelihoof estimation using the multinomial distribution
+"""
 M_all = ig.load_prior_model(f_prior_data_h5)[0]
 im=1
 M = M_all[im]
 
-D_all = ig.load_prior_model(f_prior_data_h5)[0]
+D_all = ig.load_prior_data(f_prior_data_h5)[0]
 id=1
-D = D_all[id]
+
+D2 = D_all[id]
+
+"""
 
 # %% TEST THE MULTINOMIAL LIKELIHOOD
+"""
 def likelihood_multinomial_old(P_obs, D, class_id):
-
+ 
     # Test if i_test = m_test-1. This is the case when class_id = [1,2,3..class]
     # make as fast as possible!!!
 
@@ -225,19 +231,19 @@ def likelihood_multinomial_old(P_obs, D, class_id):
     return logL
 
 
-def likelihood_multinomial(P_obs, D, class_id):
-    """
+def likelihood_multinomial(D, P_obs, class_id):
+
     Calculate log-likelihood of multinomial distribution for discrete data.
     This function computes the log-likelihood of multinomial distribution for given 
     discrete data using direct indexing and optimized array operations.
     Parameters
     ----------
-    P_obs : numpy.ndarray
-        Matrix of probabilities with shape (n_classes, n_features), where each column
-        represents probability distribution over classes for a feature.
     D : numpy.ndarray
         Matrix of observed discrete data with shape (N, n_features), where N is the
         number of samples and each element represents a class ID.
+    P_obs : numpy.ndarray
+        Matrix of probabilities with shape (n_classes, n_features), where each column
+        represents probability distribution over classes for a feature.
     class_id : numpy.ndarray
         Array of unique class IDs corresponding to rows in P_obs.
     Returns
@@ -252,9 +258,9 @@ def likelihood_multinomial(P_obs, D, class_id):
         3. Retrieves probabilities using advanced indexing
         4. Calculates log likelihood using max normalization for numerical stability
 
-    """
+    D = np.atleast_2d(D)    
     N, nm = D.shape
-    logL = np.zeros((N,1))
+    logL = np.zeros((N))
     class_id = class_id.astype(int)
     p_max = np.max(P_obs, axis=0)
 
@@ -270,46 +276,65 @@ def likelihood_multinomial(P_obs, D, class_id):
         logL[i] = np.sum(np.log10(p/p_max))
     
     return logL
-
-# find index of i_use==1
-ii_use = np.where(i_use==1)[0]
-logL = likelihood_multinomial(P_obs, D, class_id)
-
-t0 = time.time()
-logL_old = likelihood_multinomial_old(d_obs[ii_use[0]], D, class_id)
-t1 = time.time()
-print("Time: %f" % (t1-t0))
-
-t0 = time.time()
-logL = likelihood_multinomial(d_obs[ii_use[0]], D, class_id)
-t1 = time.time()
-print("Time: %f" % (t1-t0))
+"""
 
 
-#logL = likelihood_multinomial(d_obs[0], D, class_id)
+#%% COMPUTE LIKELIOOF for tTEM data
+X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+dis = (well_obs[0]['UTMX']-X)**2 + (well_obs[0]['UTMY']-Y)**2
+i_min_dis = np.argmin(dis)
+
+D_all = ig.load_prior_data(f_prior_data_h5)[0]
+D1 = D_all[0]
+D2 = D_all[1]
+DOBS1 = ig.load_data(f_data_h5, id_use=[1])
+DOBS2 = ig.load_data(f_data_h5, id_use=[2])
+
+# read d_obs and d_std from f_data_h5
+i=0
+ip=ip_range = [23]
+ip=i_min_dis
 
 
-P_acc_full = 10**(logL)
-P_acc = 10**(logL-np.max(logL))
-plt.figure()
-plt.subplot(3,1,1)
-plt.hist(logL, bins=10)
-plt.subplot(3,1,2)
-#plt.plot(np.sort(P_acc_full, axis=0))
-plt.plot(P_acc_full)
-plt.ylim([-.1,1.1])
-#plt.plot(P_acc,'.', markersize=.1)
-plt.subplot(3,1,3)
-#plt.plot(np.sort(P_acc, axis=0))
-plt.plot(P_acc)
-plt.ylim([-.1,1.1])
-#plt.plot(P_acc_full,'.', markersize=.1)
+d_obs1 = DOBS1['d_obs'][0][ip]
+d_std1 = DOBS1['d_std'][0][ip]
+logL1 = ig.likelihood_gaussian_diagonal(D1, d_obs1, d_std1)
 
-    
+d_obs2 = DOBS2['d_obs'][0][ip]
+d_obs2 = np.squeeze(d_obs2)
+logL2 = ig.likelihood_multinomial(D2, d_obs2, class_id)
+
+print(logL1.shape)
+print(logL2.shape)
+
+X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+
 
 # %% INVERT AND PLOT
 
+#%% TEST INVERSION
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
+                                f_data_h5, 
+                                showInfo=1, 
+                                Ncpu=8,
+                                id_use=[2],
+                                updatePostStat=True)
+
+ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
+ig.plot_profile(f_post_h5, i1=i_min_dis-400, i2=i_min_dis+400, im=2, hardcopy=hardcopy)
+ig.plot_profile(f_post_h5, i1=i_min_dis-400, i2=i_min_dis+400, im=2, hardcopy=hardcopy)
+
+#%% 
+with h5py.File(f_post_h5,'r') as f_post:
+    T=f_post['/T'][:].T
+    EV=f_post['/EV'][:].T
+plt.figure()
+plt.scatter(X,Y,c=EV, s=.1)
+plt.axis('equal')
+plt.colorbar()
+plt.title('Evidence')
 # %% READY FOR INVERSION
+""" 
 id_use_arr = []
 id_use_arr.append([1])
 id_use_arr.append([2])
@@ -338,4 +363,4 @@ for i in range(len(id_use_arr)):
     ig.plot_feature_2d(f_post_h5,im=1,iz=40, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
     ig.plot_feature_2d(f_post_h5,im=2,iz=20, key='Mode', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
     plt.show()
-
+ """
