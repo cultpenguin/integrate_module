@@ -268,7 +268,6 @@ plt.colorbar()
 plt.title('Evidence')
 '''
 # %% READY FOR INVERSION
-""" 
 id_use_arr = []
 id_use_arr.append([1])
 id_use_arr.append([2])
@@ -293,9 +292,11 @@ for i in range(len(id_use_arr)):
     ig.plot_profile(f_post_h5, i_plot=10000, i2=14000, im=2, hardcopy=hardcopy)
 
     ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
+    plt.show()
     ig.plot_feature_2d(f_post_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
+    plt.show()
     ig.plot_feature_2d(f_post_h5,im=1,iz=40, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
+    plt.show()
     ig.plot_feature_2d(f_post_h5,im=2,iz=10, key='Mode', uselog=0, cmap='jet', s=1, hardcopy=hardcopy)
     plt.show()
- """
-#%%
+    
