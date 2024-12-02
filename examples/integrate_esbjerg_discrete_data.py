@@ -29,7 +29,7 @@ plt.ion()
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True
 # %% Get tTEM data from DAUGAARD
-N=20000
+N=200000
 case = 'ESBJERG'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -79,12 +79,12 @@ well_obs = []
 W1 = {'name': 'Roust01',
                'UTMX': 474659, 
                'UTMY': 6156777,
-#               'z_top':[0,9.7,10.8],
-#               'z_bot':[9.7,10.8,15],
-#               'lith':[1,2,1]}
-               'z_top':[0,9.7,15.8],
-               'z_bot':[9.7,15.8,25],
-               'lith':[2,1,2]}
+               'z_top':[0,9.7,10.8],
+               'z_bot':[9.7,10.8,15],
+               'lith':[1,2,1]}
+#               'z_top':[0,9.7,15.8],
+#               'z_bot':[9.7,15.8,25],
+#               'lith':[2,1,2]}
 
 W2 = {'name': 'Sakds01',
                 'UTMX': 474093, 
@@ -190,6 +190,7 @@ for iw in range(3): #len(well_obs)):
     #ig.write_data_multinomial(d_obs, f_data_h5=f_data_h5, i_use=i_use, id=iw+1+1)
     ig.write_data_multinomial(d_obs, f_data_h5=f_data_h5, i_use=i_use, id=iw+1+1, id_use=2)
 
+ig.write_data_gaussian
 
 plt.figure()
 plt.plot(w)
@@ -244,6 +245,7 @@ print(logL2[0])
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[2,3,4], showInfo=1, updatePostStat=False, ip_range=np.arange(100), parallel=False)
 
 #%% TEST INVERSION
+'''
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                 f_data_h5, 
                                 showInfo=1, 
@@ -256,7 +258,6 @@ ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
 ig.plot_profile(f_post_h5, i1=i_min_dis-400, i2=i_min_dis+400, im=2, hardcopy=hardcopy)
 #ig.plot_profile(f_post_h5, im=2, i1=1, i2=5000, hardcopy=hardcopy)
 
-#%% 
 with h5py.File(f_post_h5,'r') as f_post:
     T=f_post['/T'][:].T
     EV=f_post['/EV'][:].T
@@ -265,6 +266,7 @@ plt.scatter(X,Y,c=EV, s=.1)
 plt.axis('equal')
 plt.colorbar()
 plt.title('Evidence')
+'''
 # %% READY FOR INVERSION
 """ 
 id_use_arr = []
@@ -297,4 +299,3 @@ for i in range(len(id_use_arr)):
     plt.show()
  """
 #%%
-ig.copy_hdf5_file(f_prior_h5, 'test.h5', N=1000)
