@@ -329,15 +329,14 @@ print(logL2[0])
 
 
 # %% INVERT AND PLOT
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[1,2,3], showInfo=3, updatePostStat=False, ip_range=[22], parallel=False)
-
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[1,2], showInfo=3, updatePostStat=False, ip_range=[22], parallel=False)
 
 #%% TEST INVERSION
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                 f_data_h5, 
                                 showInfo=3, 
                                 Ncpu=8,
-                                id_use=[2],
+                                id_use=[1,2],
                                 updatePostStat=True, T_base = 10000)
 
 ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
