@@ -1567,23 +1567,64 @@ def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
         D = [f_prior[f'/D{id}'][:][idx] for id in id_use]
     return D, idx
 
-def load_data(f_data_h5, id_use=[1]):
+def load_data(f_data_h5, id_arr=[1]):
+    """
+    Load data from an HDF5 file.
+    Parameters
+    ----------
+    f_data_h5 : str
+        Path to the HDF5 file containing the data.
+    id_arr : list of int, optional
+        List of dataset IDs to load from the HDF5 file. Default is [1].
+    Returns
+    -------
+    dict
+        A dictionary containing the following keys:
+        - 'noise_model': list of str
+            Noise models for each dataset.
+        - 'd_obs': list of numpy.ndarray
+            Observed data for each dataset.
+        - 'd_std': list of numpy.ndarray or None
+            Standard deviation of the observed data for each dataset, if available.
+        - 'Cd': list of numpy.ndarray or None
+            Covariance matrix for each dataset, if available.
+        - 'id_arr': list of int
+            List of dataset IDs.
+        - 'i_use': list of numpy.ndarray
+            Indicator array for each dataset.
+        - 'id_use': list of int or numpy.ndarray
+            ID use array for each dataset.
+    Notes
+    -----
+    If 'd_std', 'Cd', 'i_use', or 'id_use' are not available in the HDF5 file for a given dataset,
+    they will be set to None. If 'id_use' is not available, it will be set to the dataset ID.
+    If 'i_use' is not available, it will be set to an array of ones with the same length as 'd_obs'.
+    """
     import h5py
     with h5py.File(f_data_h5, 'r') as f_data:
-        noise_model = [f_data[f'/D{id}'].attrs.get('noise_model', 'none') for id in id_use]
-        d_obs = [f_data[f'/D{id}/d_obs'][:] for id in id_use]
-        d_std = [f_data[f'/D{id}/d_std'][:] if 'd_std' in f_data[f'/D{id}'] else None for id in id_use]
-        Cd = [f_data[f'/D{id}/Cd'][:] if 'Cd' in f_data[f'/D{id}'] else None for id in id_use]
-        i_use = [f_data[f'/D{id}/i_use'][:] if 'i_use' in f_data[f'/D{id}'] else None for id in id_use]
+        noise_model = [f_data[f'/D{id}'].attrs.get('noise_model', 'none') for id in id_arr]
+        d_obs = [f_data[f'/D{id}/d_obs'][:] for id in id_arr]
+        d_std = [f_data[f'/D{id}/d_std'][:] if 'd_std' in f_data[f'/D{id}'] else None for id in id_arr]
+        Cd = [f_data[f'/D{id}/Cd'][:] if 'Cd' in f_data[f'/D{id}'] else None for id in id_arr]
+        i_use = [f_data[f'/D{id}/i_use'][:] if 'i_use' in f_data[f'/D{id}'] else None for id in id_arr]
+        id_use = [f_data[f'/D{id}/id_use'][()] if 'id_use' in f_data[f'/D{id}'] and f_data[f'/D{id}/id_use'].shape == () else f_data[f'/D{id}/id_use'][:] if 'id_use' in f_data[f'/D{id}'] else None for id in id_arr]
+        
+    for i in range(len(id_arr)):
+        if id_use[i] is None:
+            id_use[i] = i+1
+        if i_use[i] is None:
+            i_use[i] = np.ones((len(d_obs[i]),1))
 
+        
     DATA = {}
     DATA['noise_model'] = noise_model
     DATA['d_obs'] = d_obs
     DATA['d_std'] = d_std
     DATA['Cd'] = Cd
-    DATA['id_use'] = id_use        
+    DATA['id_arr'] = id_arr        
     DATA['i_use'] = i_use        
-    # return noise_model, d_obs, d_std, Cd, id_use
+    DATA['id_use'] = id_use        
+    # return noise_model, d_obs, d_std, Cd, id_arr
     return DATA
 
 
@@ -1665,11 +1706,16 @@ def integrate_rejection(f_prior_h5='prior.h5',
         id_use = np.arange(1,Ndt+1) 
     Ndt = len(id_use) # Number of data types used        
     # Perhaps load only the data types that are used
-    DATA = load_data(f_data_h5, id_use=id_use)
+    DATA = load_data(f_data_h5, id_arr=id_use)
 
     # Load the prior data from the h5 files
     #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
-    D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
+    id_data_use = 1+np.arange(np.max(DATA['id_use']))
+    print("______________________________")
+    print(id_data_use)
+    print(id_use)
+    D, idx = load_prior_data(f_prior_h5, id_use = id_data_use, N_use = N_use, Randomize=True)
+    #D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
     
     # M, idx = load_prior_model(f_prior_h5, idx=idx, N_use=N_use, Randomize=True)
 
@@ -1856,7 +1902,10 @@ def integrate_rejection_range(D,
     
     # Get the lookup sample size
     N = D[0].shape[0]
-    
+
+    Ndt = len(id_use) # Number of data types used   
+    print('Ndt=%d' % Ndt)
+
     if N_use>N:
         N_use = N
 
@@ -1866,8 +1915,12 @@ def integrate_rejection_range(D,
     #i=0
     
     noise_model = DATA['noise_model']
+    id_prior_use = DATA['id_use']
+    i_use_data = DATA['i_use']
     #print(noise_model)
-    
+    #print(id_prior_use)
+    #print(i_use_data)
+
     # THIS IS THE ACTUAL INVERSION!!!!
     for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection', leave=False):
         ip = ip_range[j] # This is the index of the data point to invert
@@ -1876,71 +1929,99 @@ def integrate_rejection_range(D,
         NDsets = len(id_use)
         L = np.zeros((NDsets, N))
 
-        for i in range(len(D)):
-            t0=time.time()
-            id = id_use[i]
-            DS = '/D%d' % id
-            if noise_model[i]=='gaussian':
-                d_obs = DATA['d_obs'][i][ip]
-                
-                if DATA['Cd'][0] is not None:                    
-                    # if Cd is 3 dimensional, take the first slice
-                    if len(DATA['Cd'][0].shape) == 3:
-                        Cd = DATA['Cd'][0][ip]
-                    else:
-                        Cd = DATA['Cd'][0][:]
-
-                    L_single = likelihood_gaussian_full(D[i], d_obs, Cd, N_app = use_N_best)
-                    
-                elif DATA['d_std'][0] is not None:
-                    d_std = DATA['d_std'][i][ip]
-                    L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std, use_N_best)
-
-                else:
-                    print('No d_std or Cd in %s' % DS)
-
-                L[i] = L_single
-                t.append(time.time()-t0)
-            elif noise_model[i]=='multinomial':
-                d_obs = DATA['d_obs'][i][ip]
-                
-                class_id = [1,2]
-
-                useMultiNomal = True
-
-
-                if useMultiNomal:
-                    L_single = likelihood_multinomial(D[i],d_obs, np.array(class_id))
-                    
-                else:
-
-                    useVectorized = True
-                    if useVectorized:
-                        D_ind = np.zeros(D[i].shape[0], dtype=int)
-                        D_ind[:] = np.searchsorted(class_id, D[i].squeeze())
-                        epsilon = 1e-10  # Small value to avoid log(0)
-                        L_single = np.log(d_obs[D_ind] + epsilon)
-                    else:
-                        D_ind = np.zeros(D[id].shape[0], dtype=int)
-                        for i in range(D_ind.shape[0]):
-                            for j in range(len(class_id)):
-                                if D[id][i]==class_id[j]:
-                                    D_ind[i]=j
-                                    break
-                        L_single = np.zeros(D[id].shape[0])
-
-                        for i in range(D_ind.shape[0]):
-                            L_single[i] = np.log(d_obs[D_ind[i]])
-
-                L[i] = L_single           
-                t.append(time.time()-t0)
-
-            else: 
-                # noise model not regcognized
-                # L_single = -1
-                pass
-
         
+        #for i in range(len(D)):
+        for i in range(Ndt):
+            print(i)
+            # UPDATE CODE TO USE THE SPECIFIC DATA IT GIVEN!!!            
+            # IF NOT SET, SIMPLY IS THE SAME AS THE DATA ID
+            #print(len(i_use_data[i]))
+            use_data_point = i_use_data[i][ip]
+            #use_data_point = 1
+
+            print(use_data_point)
+
+            if (use_data_point==1):
+                #if i_use_data[i]==1:
+                #    print('Using data %d' % i)
+                #
+                if showInfo>3:    
+                    print('j=%4d Using data %d --> %d' % (j,i,use_data_point))
+
+
+                # ONLY PERFORM CALUCATION IF I_USE_DATA = 1.. UPDATE LOAD_DATA, TO ALWAY PROVIDE I_USE 
+                i_prior = i
+                i_prior = id_prior_use[i] 
+                t0=time.time()
+                id = id_use[i]
+                DS = '/D%d' % id
+                if noise_model[i]=='gaussian':
+                    d_obs = DATA['d_obs'][i][ip]
+                    
+                    if DATA['Cd'][0] is not None:                    
+                        # if Cd is 3 dimensional, take the first slice
+                        if len(DATA['Cd'][0].shape) == 3:
+                            Cd = DATA['Cd'][0][ip]
+                        else:
+                            Cd = DATA['Cd'][0][:]
+
+                        L_single = likelihood_gaussian_full(D[i], d_obs, Cd, N_app = use_N_best)
+                        
+                    elif DATA['d_std'][0] is not None:
+                        d_std = DATA['d_std'][i][ip]
+                        L_single = likelihood_gaussian_diagonal(D[i], d_obs, d_std, use_N_best)
+
+                    else:
+                        print('No d_std or Cd in %s' % DS)
+
+                    L[i] = L_single
+                    t.append(time.time()-t0)
+                elif noise_model[i]=='multinomial':
+                    d_obs = DATA['d_obs'][i][ip]
+
+                    #print(d_obs)
+                    if showInfo>3:
+                        print(D[i])
+                    
+                    class_id = [1,2]
+
+                    useMultiNomal = True
+
+
+                    if useMultiNomal:
+                        L_single = likelihood_multinomial(D[i],d_obs, np.array(class_id))
+                        
+                    else:
+
+                        useVectorized = True
+                        if useVectorized:
+                            D_ind = np.zeros(D[i].shape[0], dtype=int)
+                            D_ind[:] = np.searchsorted(class_id, D[i].squeeze())
+                            epsilon = 1e-10  # Small value to avoid log(0)
+                            L_single = np.log(d_obs[D_ind] + epsilon)
+                        else:
+                            D_ind = np.zeros(D[id].shape[0], dtype=int)
+                            for i in range(D_ind.shape[0]):
+                                for j in range(len(class_id)):
+                                    if D[id][i]==class_id[j]:
+                                        D_ind[i]=j
+                                        break
+                            L_single = np.zeros(D[id].shape[0])
+
+                            for i in range(D_ind.shape[0]):
+                                L_single[i] = np.log(d_obs[D_ind[i]])
+
+                    L[i] = L_single           
+                    t.append(time.time()-t0)
+
+                else: 
+                    # noise model not regcognized
+                    # L_single = -1
+                    pass
+            else:
+                L[i] = np.zeros(N)
+                    
+
         t0=time.time()
 
         # NOw we have all the likelihoods for all data types. Copmbine them into ooe
@@ -2503,13 +2584,13 @@ def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400,
         for i in range(3):
             plt.subplot(1,3,i+1)
             if i==0:
-                plt.scatter(X,Y,c=w_combined, s=0.2, cmap='hot_r')  
+                plt.scatter(X,Y,c=w_combined, s=0.2, cmap='hot_r', vmin=0, vmax=1)  
                 plt.title('Combined weights')          
             elif i==1:
-                plt.scatter(X,Y,c=w_dis, s=0.2, cmap='hot_r')
+                plt.scatter(X,Y,c=w_dis, s=0.2, cmap='hot_r', vmin=0, vmax=1)
                 plt.title('XY distance weights')
             elif i==2:
-                plt.scatter(X,Y,c=w_data, s=0.2, cmap='hot_r')
+                plt.scatter(X,Y,c=w_data, s=0.2, cmap='hot_r', vmin=0, vmax=1)
                 plt.title('Data distance weights')
             plt.axis('equal')
             plt.colorbar()

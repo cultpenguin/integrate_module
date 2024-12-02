@@ -961,7 +961,7 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
     
     return f_data_h5
 
-def write_data_multinomial(D_obs, i_use=[], id=[], f_data_h5='data.h5', **kwargs):
+def write_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='data.h5', **kwargs):
     """
     Writes observed data to an HDF5 file in a specified group with a multinomial noise model.
 
@@ -969,6 +969,8 @@ def write_data_multinomial(D_obs, i_use=[], id=[], f_data_h5='data.h5', **kwargs
     :type D_obs: numpy.ndarray
     :param id: The ID of the group to write the data to. If not provided, the function will find the next available ID.
     :type id: list, optional
+    :param id_use: The ID of PRIOR data the refer to this data. If not set, id_use=id
+    :type id_use: list, optional
     :param f_data_h5: The path to the HDF5 file where the data will be written. Default is 'data.h5'.
     :type f_data_h5: str, optional
     :param kwargs: Additional keyword arguments.
@@ -999,12 +1001,14 @@ def write_data_multinomial(D_obs, i_use=[], id=[], f_data_h5='data.h5', **kwargs
 
     ns,nclass,nm=D_obs.shape
 
-    if len(i_use)==0:
+    if i_use is None:
         i_use = np.ones((ns,1))
     if np.ndim(D_obs)==1:
         i_use = np.atleast_2d(i_use).T
-    print(i_use)
-
+    
+    if id_use is None:
+        id_use = id
+        
     # check if group 'D{id}/' exists and remove it if it does
     with h5py.File(f_data_h5, 'a') as f:
         if D_str in f:
@@ -1021,6 +1025,9 @@ def write_data_multinomial(D_obs, i_use=[], id=[], f_data_h5='data.h5', **kwargs
         f.create_dataset('/%s/d_obs' % D_str, data=D_obs)
         f.create_dataset('/%s/i_use' % D_str, data=i_use)
         
+        f.create_dataset('/%s/id_use' % D_str, data=id_use)
+            
+
         # write attribute noise_model as 'multinomial'
         f['/%s/' % D_str].attrs['noise_model'] = 'multinomial'
         
