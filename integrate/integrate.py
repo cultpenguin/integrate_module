@@ -1567,7 +1567,7 @@ def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
         D = [f_prior[f'/D{id}'][:][idx] for id in id_use]
     return D, idx
 
-def load_data(f_data_h5, id_arr=[1]):
+def load_data(f_data_h5, id_arr=[1], **kwargs):
     """
     Load data from an HDF5 file.
     Parameters
@@ -1600,6 +1600,9 @@ def load_data(f_data_h5, id_arr=[1]):
     they will be set to None. If 'id_use' is not available, it will be set to the dataset ID.
     If 'i_use' is not available, it will be set to an array of ones with the same length as 'd_obs'.
     """
+
+    showInfo = kwargs.get('showInfo', 1)
+    
     import h5py
     with h5py.File(f_data_h5, 'r') as f_data:
         noise_model = [f_data[f'/D{id}'].attrs.get('noise_model', 'none') for id in id_arr]
@@ -1625,6 +1628,13 @@ def load_data(f_data_h5, id_arr=[1]):
     DATA['i_use'] = i_use        
     DATA['id_use'] = id_use        
     # return noise_model, d_obs, d_std, Cd, id_arr
+
+
+    if showInfo>0:
+        print('Loaded data from %s' % f_data_h5)
+        for i in range(len(id_arr)):
+            print('Data type %d: id_use=%d, %11s, Using %5d/%5d data' % (id_arr[i], id_use[i], noise_model[i], np.sum(i_use[i]), len(i_use[i])))
+
     return DATA
 
 
@@ -2293,7 +2303,7 @@ def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized
 
 
 
-def likelihood_multinomial(D, P_obs,class_id):
+def likelihood_multinomial(D, P_obs,class_id, entropyFilter=True, entropyThreshold=0.99):
     """
     Calculate log-likelihood of multinomial distribution for discrete data.
     This function computes the log-likelihood of multinomial distribution for given 
@@ -2308,6 +2318,12 @@ def likelihood_multinomial(D, P_obs,class_id):
         represents probability distribution over classes for a feature.
     class_id : numpy.ndarray
         Array of unique class IDs corresponding to rows in P_obs.
+    entropyFilter : bool, optional
+        If True, applies entropy filtering to select features. Default is False.
+    entropyThreshold : float, optional
+        Threshold value for entropy filtering, features with entropy below this value
+        are selected. Default is 0.99.
+        Log-likelihood values for each sample, shape (N,).        
     Returns
     -------
     numpy.ndarray
@@ -2321,8 +2337,19 @@ def likelihood_multinomial(D, P_obs,class_id):
         4. Calculates log likelihood using max normalization for numerical stability
 
     """
+
     D=np.atleast_2d(D)
+
+    if entropyFilter:
+        H=entropy(P_obs.T)
+        used = np.where(H<entropyThreshold)[0] 
+        if len(used)==0:
+            used = np.arange(1)
+        D = D[:,used]
+        P_obs = P_obs[:,used]
+
     N, nm = D.shape
+    print('N=%d, nm=%d' % (N,nm))
     logL = np.zeros((N))
     class_id = class_id.astype(int)
     p_max = np.max(P_obs, axis=0)
@@ -2625,3 +2652,46 @@ def comb_cprob(pA, pAgB, pAgC, tau=1.0):
     
     return pAgBC
 
+def entropy(P, base = None):
+    """
+    Calculate the entropy of a discrete probability distribution.
+
+    The entropy is calculated using the formula:
+    H(P) = -sum(P_i * log_b(P_i))
+
+    Parameters
+    ----------
+    P : numpy.ndarray
+        Probability distribution. Can be a 1D or 2D array.
+        If 2D, each row represents a different distribution.
+    base : int, optional
+        The logarithm base to use. If None, uses the number of elements
+        in the probability distribution (P.shape[1]). Default is None.
+
+    Returns
+    -------
+    numpy.ndarray
+        The entropy value(s). If input P is 2D, returns an array with
+        entropy for each row distribution.
+
+    Notes
+    -----
+    - Input probabilities are assumed to be normalized (sum to 1)
+    - Zero probabilities are handled by numpy's log function
+    - For 2D input, entropy is calculated row-wise
+
+    Examples
+    --------
+    >>> P = np.array([0.5, 0.5])
+    >>> entropy(P)
+    1.0
+
+    >>> P = np.array([[0.5, 0.5], [0.1, 0.9]])
+    >>> entropy(P)
+    array([1.0, 0.469])
+    """
+    P = np.atleast_2d(P)    
+    if base is None:
+        base = P.shape[1]
+    H = -np.sum(P*np.log(P)/np.log(base), axis=1)
+    return H

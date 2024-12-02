@@ -198,14 +198,35 @@ plt.show()
 
 
 #%% TEST load data
-DATA = ig.load_data(f_data_h5, id_arr=[1,2,3,4])
-print(DATA['noise_model'])
+DATA = ig.load_data(f_data_h5, id_arr=[1,2,3,4], showInfo=1)
+#print(DATA['noise_model'])
 #print(DATA['i_use'])
-print(DATA['id_use'])
+#print(DATA['id_use'])
+#for i in np.arange(len(DATA['i_use'])):
+#    print('%d: using %5d/%5d data' %(i,np.sum(DATA['i_use'][i]),DATA['i_use'][i].shape[0]))
+    
+# %% 
+
+iw=0
+X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+dis = (well_obs[iw]['UTMX']-X)**2 + (well_obs[iw]['UTMY']-Y)**2
+i_min_dis = np.argmin(dis)
+
+d_obs=DATA['d_obs'][iw+1][i_min_dis]
+
+# COpmute the entropy of each row in 2D matrix P
+H_obs=ig.entropy(d_obs.T)
+print(H_obs)
+# find index j, ig H_obs less than 0.99
+j = np.where(H_obs<0.99)[0]
+d_obs2=d_obs[:,j]
+
 
 #%% COMPUTE LIKELIOOF for tTEM data
+iw=len(well_obs)-1
+iw=0
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-dis = (well_obs[1]['UTMX']-X)**2 + (well_obs[1]['UTMY']-Y)**2
+dis = (well_obs[iw]['UTMX']-X)**2 + (well_obs[iw]['UTMY']-Y)**2
 i_min_dis = np.argmin(dis)
 
 D_all = ig.load_prior_data(f_prior_data_h5)[0]
@@ -223,7 +244,7 @@ DOBS2 = ig.load_data(f_data_h5, id_arr=[2])
 i=0
 ip=ip_range = [23]
 ip=i_min_dis
-
+id=len(D_all)
 
 d_obs1 = DOBS1['d_obs'][0][ip]
 d_std1 = DOBS1['d_std'][0][ip]
@@ -231,7 +252,10 @@ logL1 = ig.likelihood_gaussian_diagonal(D1, d_obs1, d_std1)
 
 d_obs2 = DOBS2['d_obs'][0][ip]
 d_obs2 = np.squeeze(d_obs2)
-logL2 = ig.likelihood_multinomial(D2, d_obs2, class_id)
+H_obs2=ig.entropy(d_obs2.T)
+used = np.where(H_obs2<0.99)[0]
+
+logL2 = ig.likelihood_multinomial(D2, d_obs2, class_id, used=used)
 
 print(logL1.shape)
 print(logL2.shape)

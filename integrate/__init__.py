@@ -29,6 +29,9 @@ from integrate.integrate import cleanup_shared_memory
 from integrate.integrate import reconstruct_shared_arrays
 from integrate.integrate import create_shared_memory
 from integrate.integrate import get_weight_from_position
+from integrate.integrate import entropy
+
+
 
 from integrate.integrate_io import get_geometry 
 from integrate.integrate_io import read_gex
