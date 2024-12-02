@@ -2349,7 +2349,7 @@ def likelihood_multinomial(D, P_obs,class_id, entropyFilter=True, entropyThresho
         P_obs = P_obs[:,used]
 
     N, nm = D.shape
-    print('N=%d, nm=%d' % (N,nm))
+    #print('N=%d, nm=%d' % (N,nm))
     logL = np.zeros((N))
     class_id = class_id.astype(int)
     p_max = np.max(P_obs, axis=0)

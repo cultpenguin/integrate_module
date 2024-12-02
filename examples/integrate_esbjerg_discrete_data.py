@@ -254,19 +254,25 @@ d_obs2 = DOBS2['d_obs'][0][ip]
 d_obs2 = np.squeeze(d_obs2)
 H_obs2=ig.entropy(d_obs2.T)
 used = np.where(H_obs2<0.99)[0]
+t0=time.time()
+logL2 = ig.likelihood_multinomial(D2, d_obs2, class_id)
+t1=time.time()
+logL2_alt = ig.likelihood_multinomial(D2[:,used], d_obs2[:,used], class_id)
+t2=time.time()
+logL2_alt2 = ig.likelihood_multinomial(D2, d_obs2, class_id, entropyFilter=True, entropyThreshold=0.45)
+t3=time.time()
 
-logL2 = ig.likelihood_multinomial(D2, d_obs2, class_id, used=used)
+print("t1=%f, t2=%f, t3=%f" % (t1-t0, t2-t1, t3-t2))
 
 print(logL1.shape)
-print(logL2.shape)
+#print(logL2.shape)
+#
+#X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
-X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-
-print(logL2[0])
 
 
 # %% INVERT AND PLOT
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[2,3,4], showInfo=1, updatePostStat=False, ip_range=np.arange(100), parallel=False)
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[2,3,4], showInfo=1, updatePostStat=False, ip_range=np.arange(1000), parallel=False)
 
 #%% TEST INVERSION
 '''
@@ -293,22 +299,28 @@ plt.title('Evidence')
 '''
 # %% READY FOR INVERSION
 id_use_arr = []
-id_use_arr.append([1])
+#id_use_arr.append([1])
 id_use_arr.append([2])
 id_use_arr.append([3])
 id_use_arr.append([4])
 id_use_arr.append([2,3,4])
 id_use_arr.append([1,2,3,4])
 
-N_use = N
+N_use = N   
+f_post_h5_arr = []
 for i in range(len(id_use_arr)):
-    
+    # convert id_use_arr[i] (and np.array) to a strong
+    id_use_str = ''.join(map(str, id_use_arr[i]))
+    f_post_h5 = 'post_mul_'+id_use_str+'.h5'
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
-                                    f_data_h5, 
+                                    f_data_h5,
+                                    f_post_h5=f_post_h5, 
                                     showInfo=1, 
                                     Ncpu=8,
                                     id_use=id_use_arr[i])
     
+    f_post_h5_arr.append(f_post_h5)    
+
     ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
     ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
     ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
@@ -324,3 +336,4 @@ for i in range(len(id_use_arr)):
     ig.plot_feature_2d(f_post_h5,im=2,iz=10, key='Mode', uselog=0, cmap='jet', s=1, hardcopy=hardcopy)
     plt.show()
     
+# %%
