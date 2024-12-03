@@ -57,7 +57,7 @@ plt.show()
 # From GEUS
 #f_prior_h5 = 'prior_Esbjerg_claysand_N200000_dmax90'
 #f_prior_h5 = 'prior_Esbjerg_piggy_N200000.h5'
-filelist = ['prior_Esbjerg_claysand_N200000_dmax90.h5','prior_Esbjerg_piggy_N200000.h5']
+filelist = ['prior_Esbjerg_claysand_N2000000_dmax90.h5','prior_Esbjerg_piggy_N2000000.h5']
 geus_files = ig.get_case_data(case=case, filelist=filelist)
 f_prior_h5 = geus_files[0]
 ig.integrate_update_prior_attributes(f_prior_h5)

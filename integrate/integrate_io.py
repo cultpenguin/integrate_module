@@ -803,6 +803,14 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
             filelist.append('TX07_20230906_2x4_RC20-33.gex')
             filelist.append('README_ESBJERG')
    
+        if (loadAll or loadType=='prior' or len(filelist)==0):
+            filelist.append('prior_Esbjerg_claysand_N2000000_dmax90.h5')
+            filelist.append('prior_Esbjerg_piggy_N2000000.h5')
+            
+        if (loadAll or loadType=='priordata' or len(filelist)==0):
+            filelist.append('prior_Esbjerg_piggy_N2000000_TX07_20230906_2x4_RC20-33_Nh280_Nf12.h5')
+            filelist.append('prior_Esbjerg_claysand_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+
 
     elif case=='GRUSGRAV':
 
