@@ -1257,4 +1257,8 @@ def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5=''):
         f.create_dataset('EV', data=EV)
         f.attrs['f5_prior'] = f_prior_h5
         f.attrs['f5_data'] = f_data_merged_h5
-    return f_post_merged_h5
+
+    return f_post_merged_h5, f_data_merged_h5
+
+
+
