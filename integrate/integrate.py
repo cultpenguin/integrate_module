@@ -2510,7 +2510,7 @@ def synthetic_case(case='Wedge', **kwargs):
 
 
 
-def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400, r_data=2, useLog=True, doPlot=False):
+def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400, r_data=2, useLog=True, doPlot=False, plFile=None):
     """Calculate weights based on distance and data similarity to a reference point.
 
     This function computes three sets of weights:
@@ -2586,18 +2586,27 @@ def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400,
 
     w_combined = w_data * w_dis
 
+    cmap = 'hot_r'
+    #cmap = 'jet'
+
     if doPlot:
         plt.figure(figsize=(15,5))
         for i in range(3):
             plt.subplot(1,3,i+1)
+            plt.plot(X,Y,'.', markersize=0.1, color='lightgray') 
+            #plt.scatter(X[i_use], Y[i_use], c=w[i_use], cmap='jet', s=1, zorder=3, vmin=0, vmax=1, marker='.')
+                 
             if i==0:
-                plt.scatter(X,Y,c=w_combined, s=0.2, cmap='hot_r', vmin=0, vmax=1)  
+                i_use = np.where(w_combined>0.001)[0]
+                plt.scatter(X[i_use],Y[i_use],c=w_combined[i_use], s=1, cmap=cmap, vmin=0, vmax=1, marker='.', zorder=3)  
                 plt.title('Combined weights')          
             elif i==1:
-                plt.scatter(X,Y,c=w_dis, s=0.2, cmap='hot_r', vmin=0, vmax=1)
+                i_use = np.where(w_dis>0.001)[0]                
+                plt.scatter(X[i_use],Y[i_use],c=w_dis[i_use], s=1, cmap=cmap, vmin=0, vmax=1, marker='.', zorder=3)
                 plt.title('XY distance weights')
             elif i==2:
-                plt.scatter(X,Y,c=w_data, s=0.2, cmap='hot_r', vmin=0, vmax=1)
+                i_use = np.where(w_data>0.001)[0]                                
+                plt.scatter(X[i_use],Y[i_use],c=w_data[i_use], s=0.2, cmap=cmap, vmin=0, vmax=1, marker='.', zorder=3)
                 plt.title('Data distance weights')
             plt.axis('equal')
             plt.colorbar()
@@ -2607,6 +2616,9 @@ def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400,
         plt.suptitle('Weights')
         plt.xlabel('X')
         plt.ylabel('Y')
+        if plFile is None:
+            plFile = 'weights_%d_%d_%d_rdis%d_rdata%d.png' % (x_well,y_well,i_ref,r_dis,r_data)
+        plt.savefig(plFile, dpi=300)
 
     return w_combined, w_dis, w_data, i_ref
 

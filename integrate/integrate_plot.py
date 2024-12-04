@@ -1072,6 +1072,8 @@ def plot_data_prior(f_prior_data_h5,
     import numpy as np
     import matplotlib.pyplot as plt
 
+    cols=['wheat','black','red']
+
     f_data = h5py.File(f_data_h5)
     f_prior_data = h5py.File(f_prior_data_h5)
     
@@ -1087,7 +1089,7 @@ def plot_data_prior(f_prior_data_h5,
         i_use = np.sort(np.random.choice(npr, nr, replace=False))
         D = f_prior_data[dh5_str][i_use]
         
-        plt.semilogy(D.T,'k-',alpha=alpha, linewidth=0.1)
+        plt.semilogy(D.T,'-',alpha=alpha, linewidth=0.1, color=cols[1], label='\rho(d)') 
         
     else:   
         print('%s not in f_prior_data' % dh5_str)
@@ -1103,7 +1105,7 @@ def plot_data_prior(f_prior_data_h5,
         # select nr random sample of d_obs
         i_use_d = np.sort(np.random.choice(ns, nr, replace=False))
 
-        plt.semilogy(d_obs[i_use_d,:].T,'r-',alpha=alpha, linewidth=0.1,label='d_obs')
+        plt.semilogy(d_obs[i_use_d,:].T,'-',alpha=alpha, linewidth=0.1,label='d_obs', color=cols[2])
         
     else:
         print('%s not in f_data'% dh5_str)
@@ -1115,7 +1117,9 @@ def plot_data_prior(f_prior_data_h5,
     plt.xlabel('Data #')
     plt.ylabel('Data Value')
     plt.tight_layout()
-    plt.title('Prior data (black) and observed data (red)\n%s (black)\n%s (red)' % (os.path.splitext(f_prior_data_h5)[0],os.path.splitext(f_data_h5)[0]) )
+    # Add legend but, only 'A' and 'B'
+    #plt.title('Prior data (black) and observed data (red)\n%s (black)\n%s (red)' % (os.path.splitext(f_prior_data_h5)[0],os.path.splitext(f_data_h5)[0]) )
+    plt.title('Prior data (black) and observed data (red)')
     
     f_data.close()
     f_prior_data.close()
@@ -1195,7 +1199,10 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
 
     f_data = h5py.File(f_data_h5,'r')
     f_prior = h5py.File(f_prior_h5,'r')
-    
+
+    cols=['gray','black','red']
+    cols=['wheat','black','red']
+
 
     if len(Dkey)==0:
         nd = 0
@@ -1230,9 +1237,11 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
             # get 400 random unique index of d_obs
             i_use = np.random.choice(d_obs.shape[0], nr, replace=False)
         else:
-            i_use = f_post['/i_use'][i_plot,:]
+            nr = np.min([nr,d_obs.shape[0]])
+            i_use = f_post['/i_use'][i_plot,0:nr]
             i_use = i_use.flatten()
         nr=len(i_use)
+        
         ns,ndata = f_data['/%s' % Dkey]['d_obs'].shape
         d_post = np.zeros((nr,ndata))
         d_prior = np.zeros((nr,ndata))
@@ -1248,21 +1257,21 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
         #i_plot=[]
         fig, ax = plt.subplots(1,1,figsize=(7,7))
         if is_log:
-            ax.plot(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
-            ax.plot(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
+            ax.plot(d_prior.T,'-',linewidth=.2, label='d_prior', color=cols[0])
+            ax.plot(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
         
             print('plot_data_prior_post: Plotting log10(d_prior)')
             print('This is not implemented yet')
             return        
         else:
-            ax.semilogy(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
+            ax.semilogy(d_prior.T,'-',linewidth=.2, label='d_prior', color=cols[0])
 
         if i_plot>-1:            
-            ax.semilogy(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
+            ax.semilogy(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
         
-            ax.semilogy(d_obs[i_plot,:],'r.',markersize=6, label='d_obs')
-            ax.semilogy(d_obs[i_plot,:]-2*d_std[i_plot,:],'r.',markersize=3, label='d_obs')
-            ax.semilogy(d_obs[i_plot,:]+2*d_std[i_plot,:],'r.',markersize=3, label='d_obs')
+            ax.semilogy(d_obs[i_plot,:],'.',markersize=6, label='d_obs', color=cols[2])
+            ax.semilogy(d_obs[i_plot,:]-2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
+            ax.semilogy(d_obs[i_plot,:]+2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
 
             #ax.text(0.1, 0.1, 'Data set %s, Observation # %d' % (Dkey, i_plot+1), transform=ax.transAxes)
             ax.text(0.1, 0.1, 'T = %4.2f.' % (f_post['/T'][i_plot]), transform=ax.transAxes)
@@ -1272,9 +1281,11 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
             # select nr random unqiue index of d_obs
             i_d = np.random.choice(d_obs.shape[0], nr, replace=False)
             if is_log:
-                ax.plot(d_obs[i_d,:].T,'r-',linewidth=.1, label='d_obs')
+                ax.plot(d_obs[i_d,:].T,'-',linewidth=.1, label='d_obs', color=cols[2])
+                ax.plot(d_obs[i_d,:].T,'*',linewidth=.1, label='d_obs', color=cols[2])
             else:
-                ax.semilogy(d_obs[i_d,:].T,'r-',linewidth=.1, label='d_obs')
+                ax.semilogy(d_obs[i_d,:].T,'-',linewidth=1, label='d_obs', color=cols[2])
+                ax.semilogy(d_obs[i_d,:].T,'*',linewidth=1, label='d_obs', color=cols[2])
             
         plt.xlabel('Data #')
         plt.ylabel('Data')

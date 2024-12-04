@@ -29,7 +29,7 @@ plt.ion()
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True
 # %% Get tTEM data from DAUGAARD
-N=200000
+N=2000000
 case = 'ESBJERG'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -59,7 +59,12 @@ plt.show()
 #f_prior_h5 = 'prior_Esbjerg_piggy_N200000.h5'
 filelist = ['prior_Esbjerg_claysand_N2000000_dmax90.h5','prior_Esbjerg_piggy_N2000000.h5']
 geus_files = ig.get_case_data(case=case, filelist=filelist)
-f_prior_h5 = geus_files[0]
+
+useGeusModel = 1
+useGeusModel = 0
+f_prior_h5 = geus_files[useGeusModel]  
+
+
 ig.integrate_update_prior_attributes(f_prior_h5)
 # Plot some summary statistics of the prior model
 ig.plot_prior_stats(f_prior_h5)
@@ -68,65 +73,118 @@ ig.plot_prior_stats(f_prior_h5)
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
 
 # %% Compute prior EM DATA 
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, N=N)
+compForward=False
+if compForward:
+    f_prior_data_h5  = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, N=N)
+else:
+    if useGeusModel==0:
+        f_prior_data_h5='prior_Esbjerg_claysand_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
+    else:
+        f_prior_data_h5='prior_Esbjerg_piggy_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
+    
 f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, doMakePriorCopy=True)
 ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy)
 
 
 # %% Well Observations
 # create dict called well_obs, with well_obs[1]['name'] = 'W1'
-well_obs = []
-W1 = {'name': 'Roust01',
-               'UTMX': 474659, 
-               'UTMY': 6156777,
-               'z_top':[0,9.7,10.8],
-               'z_bot':[9.7,10.8,15],
-               'lith':[1,2,1]}
-#               'z_top':[0,9.7,15.8],
-#               'z_bot':[9.7,15.8,25],
-#               'lith':[2,1,2]}
 
-W2 = {'name': 'Sakds01',
-                'UTMX': 474093, 
-                'UTMY': 6151995,
-                'z_top':[0,2,2.5,3.2],
-                'z_bot':[2,2.5,3.2,15],
-                'lith':[2,1,2,1]}   
+if useGeusModel==0:
 
-W3 = {'name': 'DGU nr. 121.993',
-                'UTMX': 473769, 
-                'UTMY': 6155215,
-                'z_top':[0,18,21,23,26,32,100,103],
-                'z_bot':[18,21,23,26,32,100,103,250],
-                'lith':[1,2,1,2,1,2,1,2]}
-well_obs.append(W1)
-well_obs.append(W2)
-well_obs.append(W3)
+    # SIMPLE MODEL
+    well_obs = []
+    W1 = {'name': 'Roust01',
+                'UTMX': 474659, 
+                'UTMY': 6156777,
+                'z_top':[0,9.7,10.8],
+                'z_bot':[9.7,10.8,15],
+                'lith':[1,2,1]}
+    #               'z_top':[0,9.7,15.8],
+    #               'z_bot':[9.7,15.8,25],
+    #               'lith':[2,1,2]}
+
+    W2 = {'name': 'Sakds01',
+                    'UTMX': 474093, 
+                    'UTMY': 6151995,
+                    'z_top':[0,2,2.5,3.2],
+                    'z_bot':[2,2.5,3.2,15],
+                    'lith':[2,1,2,1]}   
+
+    W3 = {'name': 'DGU nr. 121.993',
+                    'UTMX': 473769, 
+                    'UTMY': 6155215,
+                    'z_top':[0,18,21,23,26,32,100,103],
+                    'z_bot':[18,21,23,26,32,100,103,250],
+                    'lith':[1,2,1,2,1,2,1,2]}
+    well_obs.append(W1)
+    well_obs.append(W2)
+    well_obs.append(W3)
+
+else:
+    # PIGGY MODEL
+    well_obs = []
+    W1 = {'name': 'Roust01',
+                'UTMX': 474659, 
+                'UTMY': 6156777,
+                'z_top':[0,9.7,10.8],
+                'z_bot':[9.7,10.8,15],
+                'lith':[1,2,1]}
+    #               'z_top':[0,9.7,15.8],
+    #               'z_bot':[9.7,15.8,25],
+    #               'lith':[2,1,2]}
+
+    W2 = {'name': 'Sakds01',
+                    'UTMX': 474093, 
+                    'UTMY': 6151995,
+                    'z_top':[0,2,2.5,3.2],
+                    'z_bot':[2,2.5,3.2,15],
+                    'lith':[2,1,2,1]}   
+
+    W3 = {'name': 'DGU nr. 121.993',
+                    'UTMX': 473769, 
+                    'UTMY': 6155215,
+                    'z_top':[0,18,21,23,26,32,100,103],
+                    'z_bot':[18,21,23,26,32,100,103,250],
+                    'lith':[1,2,1,2,1,2,1,2]}
+    well_obs.append(W1)
+    well_obs.append(W2)
+    well_obs.append(W3)
+
 
 # %% 
-makeMulTest=False
+makeMulTest=True
+r_data_arr = [200,1000,50000]
+r_dis_arr = [1, 4, 1000]
+
+r_data_arr = [1,2,5,10]
+r_dis_arr = [3000,500,1000]
+
+
 if makeMulTest:
-    for r_data in [200,1000,50000]:
-        for r_dis in [1, 4, 1000]:
-        #for r_dis in [200,1000,50000]:
-            for iw in range(len(well_obs)):
+    for iw in range(len(well_obs)):
+        for r_data in r_data_arr:
+            for r_dis in r_dis_arr:
                 x_well = well_obs[iw]['UTMX']
                 y_well = well_obs[iw]['UTMY']            
-                w_combined, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, r_data=r_data, r_dis=r_dis)
-                w = w_combined
-                i_use = np.where(w>0.001)[0]
-                plt.figure()
-                plt.plot(X,Y,'k.')
-                plt.scatter(X[i_use], Y[i_use], c=w[i_use], cmap='jet', s=.1, zorder=3, vmin=0, vmax=1)
-                plt.plot(well_obs[iw]['UTMX'],well_obs[iw]['UTMY'],'ro')
-                plt.text(well_obs[iw]['UTMX'],well_obs[iw]['UTMY'],well_obs[iw]['name'], color='red')
-                plt.title(well_obs[iw]['name'])
-                plt.xlabel('UTMX')
-                plt.ylabel('UTMY')
-                plt.grid()
-                plt.axis('equal')
-                plt.colorbar()
-                plt.savefig('well_%d_rdis%d_rdata%d' % (iw, r_dis, r_data))
+                w_combined, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, r_data=r_data, r_dis=r_dis, doPlot=True)
+                w = w_data
+                pl=False
+                if pl:
+                    i_use = np.where(w>0.001)[0]
+                    plt.figure()
+                    plt.plot(X,Y,'.',markersize=.1, color='lightgrey')
+                    plt.scatter(X[i_use], Y[i_use], c=w[i_use], cmap='jet', s=1, zorder=3, vmin=0, vmax=1, marker='.')
+                    #plt.plot(X[i_use], Y[i_use], 'k.', zorder=13, markersize=1)
+                    plt.plot(well_obs[iw]['UTMX'],well_obs[iw]['UTMY'],'k.', markersize=10, zorder = 4)
+                    plt.text(well_obs[iw]['UTMX']+170,well_obs[iw]['UTMY']+170,well_obs[iw]['name'], color='red')
+                    plt.title(well_obs[iw]['name'])
+                    plt.xlabel('UTMX')
+                    plt.ylabel('UTMY')
+                    plt.grid()
+                    plt.axis('equal')
+                    plt.colorbar()
+                    plt.savefig('well_%d_rdis%d_rdata%d' % (iw, r_dis, r_data), dpi=300)
+        plt.show()
 #w_combined, w_dis, w_data = ig.get_weight_from_position(f_data_h5, x_well, y_well, r_data = 4, r_dis=200)
 
 #%% 
@@ -321,6 +379,9 @@ for i in range(len(id_use_arr)):
     
     f_post_h5_arr.append(f_post_h5)    
 
+    f_csv, f_point_csv = ig.post_to_csv(f_post_h5, Mstr='/M1')
+    f_csv, f_point_csv = ig.post_to_csv(f_post_h5, Mstr='/M2')
+
     ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
     ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
     ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
@@ -336,4 +397,24 @@ for i in range(len(id_use_arr)):
     ig.plot_feature_2d(f_post_h5,im=2,iz=10, key='Mode', uselog=0, cmap='jet', s=1, hardcopy=hardcopy)
     plt.show()
     
+# %% 
+for i in np.arange(len(f_post_h5_arr)):
+    f_post_h5 = f_post_h5_arr[i]
+    f_csv, f_point_csv = ig.post_to_csv(f_post_h5, Mstr='/M1')
+    f_csv, f_point_csv = ig.post_to_csv(f_post_h5, Mstr='/M2')
+
+
+# %% plot prior and posterior data
+X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+for iw in np.arange(len(well_obs)):
+    dis = (well_obs[iw]['UTMX']-X)**2 + (well_obs[iw]['UTMY']-Y)**2
+    i_min_dis = np.argmin(dis)
+
+    for i in [0,4,5]:
+        f_post_h5 = f_post_h5_arr[i]
+
+        ig.plot_data_prior_post(f_post_h5, i_plot=i_min_dis, nr=400, hardcopy=hardcopy)
+
+# %%
+ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy)
 # %%
