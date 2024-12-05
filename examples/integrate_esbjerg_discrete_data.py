@@ -29,7 +29,7 @@ plt.ion()
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True
 # %% Get tTEM data from DAUGAARD
-N=20000
+N=200000
 case = 'ESBJERG'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -394,7 +394,7 @@ f_post_h5_arr = []
 for i in range(len(id_use_arr)):
     # convert id_use_arr[i] (and np.array) to a strong
     id_use_str = ''.join(map(str, id_use_arr[i]))
-    f_post_h5 = 'post_mul_'+id_use_str+'.h5'
+    f_post_h5 = 'post_mul_geus%d_%s.h5' % (useGeusModel,id_use_str)
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                     f_data_h5,
                                     f_post_h5=f_post_h5, 
