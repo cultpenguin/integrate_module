@@ -526,7 +526,7 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
 
     if (len(stmfiles)>0) and (file_gex != '') and (len(GEX)==0):
         # GEX FILE and STM FILES
-        if (showInfo)>0:
+        if (showInfo)>1:
             print('Using submitted GEX file (%s)' % (file_gex))
         GEX =   ig.read_gex(file_gex)
     elif (len(stmfiles)==0) and (file_gex != '') and (len(GEX)==0):
@@ -558,7 +558,7 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
         print('Error: No GEX or STM files provided')
         return -1
 
-    if (showInfo>0):
+    if (showInfo>1):
         print('Using GEX file: ', GEX['filename'])
 
     nstm=len(stmfiles)
@@ -615,7 +615,7 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
 
     # Set geometru once, if tx_height has one value
     if len(tx_height)==1:
-        if (showInfo>0):
+        if (showInfo>1):
             print('Using tx_height=%f' % tx_height[0])
         G = Geometry(tx_height=tx_height, txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
     if (showInfo>1):
@@ -767,7 +767,12 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     # of 'Nproc' is set in kwargs use it 
     Ncpu = kwargs.get('Nproc', Ncpu)
     
+    if showInfo>0:
+        print('prior_data_gaaem: %s/%s -- starting' % (type, method))
+
     # Force open/close of hdf5 file
+    if showInfo>0:
+        print('Forcing open and close of %s' % (f_prior_h5))
     with h5py.File(f_prior_h5, 'r') as f:
         # open and close
         pass
@@ -2031,7 +2036,6 @@ def integrate_rejection_range(D,
                     if showInfo>3:
                         print(D[i])
                     
-                    #class_id = [1,2]
                     class_id = class_id_list[i]
                     #print(class_id)
                     useMultiNomal = True

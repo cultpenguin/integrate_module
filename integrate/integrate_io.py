@@ -503,7 +503,7 @@ def post_to_csv(f_post_h5='', Mstr='/M1'):
 '''
 HDF% related functions
 '''
-def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
+def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, **kwargs):
     """
     Copy the contents of an HDF5 file to another HDF5 file.
 
@@ -513,6 +513,8 @@ def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
     :type output_filename: str
     :param N: The number of elements to copy from each dataset. If not specified, all elements will be copied.
     :type N: int, optional
+    :param loadToMemory: Whether to load the entire dataset to memory before slicing. Default is True.
+    :type loadToMemory: bool, optional
 
     :return: None
     """
@@ -542,8 +544,20 @@ def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
                             i_use = np.arange(N)
                         else:
                             i_use = np.sort(np.random.choice(N_in,N,replace=False))
-                        
-                    data = input_file[name][i_use]
+
+                    if N<20000:
+                        loadToMemory=False
+
+                    # Read full dataset into memory
+                    if loadToMemory:
+                        # Load all data to memory, before slicing
+                        if showInfo>0:
+                            print('Loading %s to memory' % name)
+                        data_in = input_file[name][:]    
+                        data = data_in[i_use]
+                    else:
+                        # Read directly from HDF5 file   
+                        data = input_file[name][i_use]
 
                     # Create new dataset in output file
                     output_dataset = output_file.create_dataset(name, data=data)

@@ -48,7 +48,7 @@ ig.check_data(f_data_h5, showInfo=1)
 ig.plot_data(f_data_h5)
 plt.show()
 
-# %% [markdown]
+# %% 
 # ### SETUP INTEGRATE
 
 # SET PRIOR
@@ -63,11 +63,13 @@ geus_files = ig.get_case_data(case=case, filelist=filelist)
 useGeusModel = 1
 #useGeusModel = 0
 f_prior_h5 = geus_files[useGeusModel]  
+print("Using prior file: %s" % f_prior_h5)
 
-
+print("Updating prior")
 ig.integrate_update_prior_attributes(f_prior_h5)
 # Plot some summary statistics of the prior model
-ig.plot_prior_stats(f_prior_h5)
+print("Plot prior")
+#ig.plot_prior_stats(f_prior_h5)
 
 # %% [markdown]
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
@@ -75,6 +77,7 @@ ig.plot_prior_stats(f_prior_h5)
 # %% Compute prior EM DATA 
 compForward=True
 if compForward:
+    print("Computing %d prior data responses" % N)
     f_prior_data_h5  = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, N=N)
 else:
     if useGeusModel==0:
@@ -84,7 +87,7 @@ else:
     
 f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, doMakePriorCopy=True)
 ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy)
-
+print("loaded data")
 
 # %% Well Observations
 # create dict called well_obs, with well_obs[1]['name'] = 'W1'
@@ -257,14 +260,9 @@ plt.show()
 
 #%% TEST load data
 DATA = ig.load_data(f_data_h5, id_arr=[1,2,3,4], showInfo=1)
-#print(DATA['noise_model'])
-#print(DATA['i_use'])
-#print(DATA['id_use'])
-#for i in np.arange(len(DATA['i_use'])):
-#    print('%d: using %5d/%5d data' %(i,np.sum(DATA['i_use'][i]),DATA['i_use'][i].shape[0]))
     
 # %% 
-
+""" 
 iw=0
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 dis = (well_obs[iw]['UTMX']-X)**2 + (well_obs[iw]['UTMY']-Y)**2
@@ -280,7 +278,7 @@ j = np.where(H_obs<0.99)[0]
 d_obs2=d_obs[:,j]
 
 
-#%% COMPUTE LIKELIOOF for tTEM data
+#% COMPUTE LIKELIOOF for tTEM data
 iw=len(well_obs)-1
 iw=0
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
@@ -330,12 +328,10 @@ print(logL1.shape)
 #
 #X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
-#%% 
+#%
 D, idx = ig.load_prior_data(f_prior_data_h5)
 DATA = ig.load_data(f_data_h5, id_arr=[1,2,3,4], showInfo=1)
-#%% 
-
-#%% 
+ 
 a=11
 D2i, class_id_test, class_id_test2 = ig.class_id_to_idx(D2)
 
@@ -348,38 +344,15 @@ logL3b = ig.likelihood_multinomial(D2i, d_obs2, class_is_idx=True, entropyFilter
 t2=time.time()
 
 print("t1=%f, t2=%f" % (t1-t0, t2-t1))
-
+ """
 
 
 
 # %% INVERT AND PLOT
 #f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[4], showInfo=2, updatePostStat=False, parallel=False)
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[1,2,3,4], showInfo=2, updatePostStat=False, ip_range=np.arange(7045,7200), parallel=False)
+#f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[1,2,3,4], showInfo=2, updatePostStat=False, ip_range=np.arange(7045,7200), parallel=False)
 #f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[4], showInfo=2, updatePostStat=False, ip_range=np.arange(10), parallel=False)
 
-#%% TEST INVERSION
-'''
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
-                                f_data_h5, 
-                                showInfo=1, 
-                                Ncpu=8,
-                                id_use=[2,3,4],
-                                updatePostStat=True)
-
-ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
-#ig.plot_profile(f_post_h5, i1=i_min_dis-400, i2=i_min_dis+400, im=2, hardcopy=hardcopy)
-ig.plot_profile(f_post_h5, i1=i_min_dis-400, i2=i_min_dis+400, im=2, hardcopy=hardcopy)
-#ig.plot_profile(f_post_h5, im=2, i1=1, i2=5000, hardcopy=hardcopy)
-
-with h5py.File(f_post_h5,'r') as f_post:
-    T=f_post['/T'][:].T
-    EV=f_post['/EV'][:].T
-plt.figure()
-plt.scatter(X,Y,c=EV, s=.1)
-plt.axis('equal')
-plt.colorbar()
-plt.title('Evidence')
-'''
 # %% READY FOR INVERSION
 id_use_arr = []
 id_use_arr.append([1])
