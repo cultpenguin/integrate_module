@@ -29,7 +29,7 @@ plt.ion()
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True
 # %% Get tTEM data from DAUGAARD
-N=2000000
+N=20000
 case = 'ESBJERG'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -61,7 +61,7 @@ filelist = ['prior_Esbjerg_claysand_N2000000_dmax90.h5','prior_Esbjerg_piggy_N20
 geus_files = ig.get_case_data(case=case, filelist=filelist)
 
 useGeusModel = 1
-useGeusModel = 0
+#useGeusModel = 0
 f_prior_h5 = geus_files[useGeusModel]  
 
 
@@ -73,7 +73,7 @@ ig.plot_prior_stats(f_prior_h5)
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
 
 # %% Compute prior EM DATA 
-compForward=False
+compForward=True
 if compForward:
     f_prior_data_h5  = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, N=N)
 else:
@@ -126,33 +126,33 @@ else:
     W1 = {'name': 'Roust01',
                 'UTMX': 474659, 
                 'UTMY': 6156777,
-                'z_top':[0,9.7,10.8],
-                'z_bot':[9.7,10.8,15],
-                'lith':[1,2,1]}
-    #               'z_top':[0,9.7,15.8],
-    #               'z_bot':[9.7,15.8,25],
-    #               'lith':[2,1,2]}
-
-    W2 = {'name': 'Sakds01',
+                'z_top':[0, 1.2, 3.2, 9.7, 10.1],
+                'z_bot':[1.2, 3.2, 9.7, 10.1, 15],
+                'lith':[1,2,1,3,1]}
+    
+    W2 = {'name': 'Skads01',
                     'UTMX': 474093, 
                     'UTMY': 6151995,
                     'z_top':[0,2,2.5,3.2],
                     'z_bot':[2,2.5,3.2,15],
-                    'lith':[2,1,2,1]}   
+                    'lith':[3,1,3,1]}   
 
     W3 = {'name': 'DGU nr. 121.993',
                     'UTMX': 473769, 
                     'UTMY': 6155215,
-                    'z_top':[0,18,21,23,26,32,100,103],
-                    'z_bot':[18,21,23,26,32,100,103,250],
-                    'lith':[1,2,1,2,1,2,1,2]}
+                    'z_top':[0, 3, 5, 6, 11, 18, 20, 21, 23, 26, 28, 32, 71, 100, 103],
+                    'z_bot':[3, 5, 6, 11, 18, 20, 21, 23, 26, 28, 32, 71, 100, 103, 250],
+                    'lith':[5, 1, 5, 2, 1, 4, 3, 1, 3, 1, 1, 3, 6, 7, 6]}
+    
     well_obs.append(W1)
     well_obs.append(W2)
     well_obs.append(W3)
 
 
+
+
 # %% 
-makeMulTest=True
+makeMulTest=False
 r_data_arr = [200,1000,50000]
 r_dis_arr = [1, 4, 1000]
 
@@ -238,7 +238,7 @@ for iw in range(3): #len(well_obs)):
     for i in range(nd):
         if np.isnan(w[i]):
             w[i]=0
-        if w[i]>0.2: #0.05:
+        if w[i]>0.1: #0.05:
             i_use[i]=1
         P_post = P_distance_weight(P_obs, P_prior, w[i])
         
@@ -248,7 +248,7 @@ for iw in range(3): #len(well_obs)):
     #ig.write_data_multinomial(d_obs, f_data_h5=f_data_h5, i_use=i_use, id=iw+1+1)
     ig.write_data_multinomial(d_obs, f_data_h5=f_data_h5, i_use=i_use, id=iw+1+1, id_use=2)
 
-ig.write_data_gaussian
+#ig.write_data_gaussian
 
 plt.figure()
 plt.plot(w)
@@ -312,25 +312,50 @@ d_obs2 = DOBS2['d_obs'][0][ip]
 d_obs2 = np.squeeze(d_obs2)
 H_obs2=ig.entropy(d_obs2.T)
 used = np.where(H_obs2<0.99)[0]
+
 t0=time.time()
 logL2 = ig.likelihood_multinomial(D2, d_obs2, class_id)
 t1=time.time()
-logL2_alt = ig.likelihood_multinomial(D2[:,used], d_obs2[:,used], class_id)
+logL2 = ig.likelihood_multinomial(D2, d_obs2)
 t2=time.time()
-logL2_alt2 = ig.likelihood_multinomial(D2, d_obs2, class_id, entropyFilter=True, entropyThreshold=0.45)
+logL2_alt = ig.likelihood_multinomial(D2[:,used], d_obs2[:,used], class_id)
 t3=time.time()
+logL2_alt2 = ig.likelihood_multinomial(D2, d_obs2, class_id, entropyFilter=True, entropyThreshold=0.45)
+t4=time.time()
 
-print("t1=%f, t2=%f, t3=%f" % (t1-t0, t2-t1, t3-t2))
+print("t1=%f, t2=%f, t3=%f, t4=%f" % (t1-t0, t2-t1, t3-t2,  t4-t3))
 
 print(logL1.shape)
 #print(logL2.shape)
 #
 #X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
+#%% 
+D, idx = ig.load_prior_data(f_prior_data_h5)
+DATA = ig.load_data(f_data_h5, id_arr=[1,2,3,4], showInfo=1)
+#%% 
+
+#%% 
+a=11
+D2i, class_id_test, class_id_test2 = ig.class_id_to_idx(D2)
+
+
+t0=time.time()
+logL3a = ig.likelihood_multinomial(D2, d_obs2, class_id, class_is_idx=False)
+t1=time.time()
+#logL3b = ig.likelihood_multinomial(D2i, d_obs2, class_id, class_is_idx=True, entropyFilter=True)
+logL3b = ig.likelihood_multinomial(D2i, d_obs2, class_is_idx=True, entropyFilter=True)
+t2=time.time()
+
+print("t1=%f, t2=%f" % (t1-t0, t2-t1))
+
+
 
 
 # %% INVERT AND PLOT
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[2,3,4], showInfo=1, updatePostStat=False, ip_range=np.arange(1000), parallel=False)
+#f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[4], showInfo=2, updatePostStat=False, parallel=False)
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[1,2,3,4], showInfo=2, updatePostStat=False, ip_range=np.arange(7045,7200), parallel=False)
+#f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, id_use=[4], showInfo=2, updatePostStat=False, ip_range=np.arange(10), parallel=False)
 
 #%% TEST INVERSION
 '''

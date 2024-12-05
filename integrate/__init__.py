@@ -30,7 +30,7 @@ from integrate.integrate import reconstruct_shared_arrays
 from integrate.integrate import create_shared_memory
 from integrate.integrate import get_weight_from_position
 from integrate.integrate import entropy
-
+from integrate.integrate import class_id_to_idx
 
 
 from integrate.integrate_io import get_geometry 

@@ -1933,6 +1933,41 @@ def integrate_rejection_range(D,
     #print(id_prior_use)
     #print(i_use_data)
 
+    # Convert class id to index
+    # The class_id_list, could /should be loaded prior_h5:/M1/class_id !!
+
+    # Select whether to convert CLASS to IDX before doing inversion?
+    # class_is_idx = True is MUCH faster!!
+    class_is_idx = True
+    #class_is_idx = False
+    
+
+    class_id_list = []
+    updated_data_ids = []
+    for i in range(Ndt):
+        i_prior = id_prior_use[i]-1 
+        if (noise_model[i]=='multinomial'):
+            Di, class_id, class_id_out = ig.class_id_to_idx(D[i_prior])
+            #print(class_id_out)
+            if (class_is_idx)&(id not in updated_data_ids):
+                updated_data_ids.append(id)
+                D[i_prior]=Di
+                if showInfo>1:
+                    print('Updated prior id %d' % i_prior)
+            
+            if (class_is_idx):                
+                class_id_list.append(class_id_out)
+            else:
+                class_id_list.append(class_id)
+
+        else:    
+            class_id_list.append([])
+
+    if showInfo>1:
+        print('class_id_list',class_id_list)
+        print('len(class_id_list)',len(class_id_list))
+
+    
     # THIS IS THE ACTUAL INVERSION!!!!
     # Start looping over the data points
     for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection', leave=False):
@@ -1996,12 +2031,14 @@ def integrate_rejection_range(D,
                     if showInfo>3:
                         print(D[i])
                     
-                    class_id = [1,2]
-
+                    #class_id = [1,2]
+                    class_id = class_id_list[i]
+                    #print(class_id)
                     useMultiNomal = True
                     if useMultiNomal:
-                        L_single = likelihood_multinomial(D[i_prior],d_obs, np.array(class_id))
-
+                        
+                        L_single = likelihood_multinomial(D[i_prior],d_obs, np.array(class_id), class_is_idx=class_is_idx)
+                        #print(L_single[0])
                     L[i] = L_single           
                     t.append(time.time()-t0)
 
@@ -2303,7 +2340,7 @@ def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized
 
 
 
-def likelihood_multinomial(D, P_obs,class_id, entropyFilter=True, entropyThreshold=0.99):
+def likelihood_multinomial(D, P_obs, class_id=None, class_is_idx=False, entropyFilter=False, entropyThreshold=0.99):
     """
     Calculate log-likelihood of multinomial distribution for discrete data.
     This function computes the log-likelihood of multinomial distribution for given 
@@ -2318,6 +2355,10 @@ def likelihood_multinomial(D, P_obs,class_id, entropyFilter=True, entropyThresho
         represents probability distribution over classes for a feature.
     class_id : numpy.ndarray
         Array of unique class IDs corresponding to rows in P_obs.
+        If class=None, then the id class id's are extracted from the unique values in D.
+    class_is_idx=False, optional
+        If True, class_id is already an index. 
+        Default is False, and then the id is computed from the class_id array.
     entropyFilter : bool, optional
         If True, applies entropy filtering to select features. Default is False.
     entropyThreshold : float, optional
@@ -2337,7 +2378,11 @@ def likelihood_multinomial(D, P_obs,class_id, entropyFilter=True, entropyThresho
         4. Calculates log likelihood using max normalization for numerical stability
 
     """
-
+    
+    if class_id is None:
+        class_id =  np.arange(len(np.unique(D))).astype(int)
+        class_id =  np.unique(D).astype(int)
+    
     D=np.atleast_2d(D)
 
     if entropyFilter:
@@ -2349,22 +2394,28 @@ def likelihood_multinomial(D, P_obs,class_id, entropyFilter=True, entropyThresho
         P_obs = P_obs[:,used]
 
     N, nm = D.shape
-    #print('N=%d, nm=%d' % (N,nm))
     logL = np.zeros((N))
     class_id = class_id.astype(int)
     p_max = np.max(P_obs, axis=0)
 
     # Create mapping from class_id to index
     class_to_idx = {cid: idx for idx, cid in enumerate(class_id)}
-    
+    #print('class_id',class_id)  
+    #print('class_to_idx',class_to_idx)
+
     for i in range(N):
         # Convert test data to indices using the mapping
-        i_test = np.array([class_to_idx[cls] for cls in D[i]])
+        if class_is_idx:
+            i_test = D[i]
+        else:
+            i_test = np.array([class_to_idx[cls] for cls in D[i]])
+
         # Get probabilities directly using advanced indexing
         p = P_obs[i_test, np.arange(nm)]
         # Calculate log likelihood
         logL[i] = np.sum(np.log10(p/p_max))
-    
+
+       
     return logL
 
 
@@ -2593,7 +2644,7 @@ def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400,
         plt.figure(figsize=(15,5))
         for i in range(3):
             plt.subplot(1,3,i+1)
-            plt.plot(X,Y,'.', markersize=0.1, color='lightgray') 
+            plt.plot(X,Y,'.', markersize=1.02, color='lightgray') 
             #plt.scatter(X[i_use], Y[i_use], c=w[i_use], cmap='jet', s=1, zorder=3, vmin=0, vmax=1, marker='.')
                  
             if i==0:
@@ -2611,8 +2662,11 @@ def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400,
             plt.axis('equal')
             plt.colorbar()
             plt.grid()
-            plt.scatter(X[i_ref],Y[i_ref], c='k', s=100, marker='x')
-            plt.plot(x_well,y_well,'go', zorder=4)
+            plt.plot(x_well,y_well,'wo', zorder=6, markersize=2)
+            plt.plot(x_well,y_well,'ko', zorder=5, markersize=4)
+            plt.plot(x_well,y_well,'wo', zorder=4, markersize=6)
+    
+
         plt.suptitle('Weights')
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -2707,3 +2761,33 @@ def entropy(P, base = None):
         base = P.shape[1]
     H = -np.sum(P*np.log(P)/np.log(base), axis=1)
     return H
+
+def class_id_to_idx(D, class_id=None):
+    """
+    Convert class identifiers to indices.
+
+    This function takes an array of class identifiers and converts them to 
+    corresponding indices. If no class identifiers are provided, it will 
+    automatically determine the unique class identifiers from the input array.
+
+    :param D: numpy.ndarray
+        Array containing class identifiers.
+    :param class_id: numpy.ndarray, optional
+        Array of unique class identifiers. If None, unique class identifiers 
+        will be determined from the input array `D`.
+    :return: tuple
+        A tuple containing:
+        - D_idx (numpy.ndarray): Array with class identifiers converted to indices.
+        - class_id (numpy.ndarray): Array of unique class identifiers.
+    """
+
+    if class_id is None:
+        class_id = np.unique(D)
+    D_idx = np.zeros(D.shape)
+    for i in range(len(class_id)):
+        D_idx[D==class_id[i]]=i
+    # Make sure the indices are integers
+    D_idx = D_idx.astype(int)
+    class_id_out = np.unique(D_idx)
+    
+    return D_idx, class_id, class_id_out

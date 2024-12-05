@@ -45,51 +45,65 @@ d_std = DATA['d_std'][0]
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
 # %% SELECT a specic data point
-r_dis = 400
-r_data = 2
 
 
 # %% 
-r_data_arr = [1,2,5,10]
-r_dis_arr = [3000,500,1000]
-r_data_arr = [3]
-r_dis_arr = [1000]
 
 i_ref = 6000-1
-i_ref = 1560
+#i_ref = 1560
+
+x_well = X[i_ref]
+y_well = Y[i_ref]
+r_dis = 1000
+r_data = 4
+w_combined, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, r_data=r_data, r_dis=r_dis, doPlot=True)   
+   
+
+#%%
+r_data_arr = [1,2,5,10]
+r_dis_arr = [3000,500,1000]
+r_data_arr = [1,3,10]
+r_dis_arr = [1000,400,200]
+
 
 x0 =np.min(X) + 0.2*(np.max(X)-np.min(X))
 y0 =np.min(Y)
-y1 =np.max(Y)
+y1 =np.max(Y)-50
+y0 = y0+0.5*(y1-y0)
 
-
-y_arr = np.arange(y0, y1, 10)
+y_arr = np.arange(y0, y1, 25)
 
 #i_ref_arr = np.arange(1000,1100)
 #for i_ref in i_ref_arr: 
+for r_data in r_data_arr:
+    for r_dis in r_dis_arr:
 
-j=0
-for yy in y_arr:
-    j=j+1
-    dis = np.sqrt((X-x0)**2 + (Y-yy)**2)
-    i_ref = np.argmin(dis)
-    x_well = X[i_ref]
-    y_well = Y[i_ref]
+        j=0
+        for yy in y_arr:
+            j=j+1
+            dis = np.sqrt((X-x0)**2 + (Y-yy)**2)
+            i_ref = np.argmin(dis)
+            x_well = X[i_ref]
+            y_well = Y[i_ref]
 
-    print('i_ref=%d, x=%f, y=%f' % (i_ref, X[i_ref], Y[i_ref]))
+            print('i_ref=%d, x=%f, y=%f' % (i_ref, X[i_ref], Y[i_ref]))
 
-    makeMulTest=True
+            #plFile = 'weight_%04d_%d_%d' % (i_ref,r_data,r_dis)
+            plFile = 'weight_%04d_%d_%d' % (j,r_data,r_dis)
+
+            w_combined, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, r_data=r_data, r_dis=r_dis, doPlot=True, plFile=plFile)   
 
 
-    if makeMulTest:
-        for r_data in r_data_arr:
-            for r_dis in r_dis_arr:
-                #plFile = 'weight_%04d_%d_%d' % (i_ref,r_data,r_dis)
-                plFile = 'weight_%04d_%d_%d' % (j,r_data,r_dis)
-    
-                w_combined, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, r_data=r_data, r_dis=r_dis, doPlot=True, plFile=plFile)   
-        #plt.show()
-
+        # ffmpeg -framerate 30 -i weight_%04d_3_2000.png -c:v libx264 -pix_fmt yuv420p output.mp4
+        # run ffmpeg command in current folder
+        import os 
+        try:
+            cmd = 'ffmpeg -y -framerate 10 -i weight_%%04d_%d_%d.png -c:v libx264 -pix_fmt yuv420p weight_movie_%d_%d_n%d.mp4' % (r_data,r_dis,r_data,r_dis,j)
+            print(cmd)
+            os.system(cmd)    
+        except:
+            print('Error in ffmpeg command')
+            pass
 
 #%%
 # select gates to use 

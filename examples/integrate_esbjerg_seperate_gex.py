@@ -37,7 +37,8 @@ f_data_h5_files = f_data_h5_files[:nf]
 N=1000000
 # All surveys are inverted with the same prior model
 lay_dist='chi2'
-#lay_dist='uniform'
+lay_dist='uniform'
+lay_dist='wb'
 if lay_dist=='chi2':
     NLAY_deg=3
     f_prior_h5 = ig.prior_model_layered(N=N,lay_dist=lay_dist, NLAY_deg=NLAY_deg, RHO_min=1, RHO_max=500)
@@ -45,7 +46,10 @@ elif lay_dist=='uniform':
     NLAY_min=1
     NLAY_max=8
     f_prior_h5 = ig.prior_model_layered(N=N,lay_dist=lay_dist, NLAY_min=NLAY_min, NLAY_max=NLAY_max, RHO_min=1, RHO_max=500)
-
+elif lay_dist=='wb':
+    nlayers=11
+    nlayers=30
+    f_prior_h5 = ig.prior_model_workbench(N=N, z_max=90, nlayers=nlayers,  RHO_min=1, RHO_max=500)
 plFigs = True
 
 f_post_h5_files = []
@@ -112,9 +116,13 @@ f_post_merged_h5
 
 # %%
 ig.plot_geometry(f_data_merged_h5)
+plt.show()
 ig.plot_T_EV(f_post_merged_h5, pl='T', hardcopy=hardcopy)
+plt.show()
 ig.plot_profile(f_post_merged_h5, im=1, i1=0, i2=1000, hardcopy=hardcopy)
+plt.show()
 ig.plot_feature_2d(f_post_merged_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy);
+plt.show()
 
 
 
