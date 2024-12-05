@@ -1257,7 +1257,7 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
         #i_plot=[]
         fig, ax = plt.subplots(1,1,figsize=(7,7))
         if is_log:
-            ax.plot(d_prior.T,'-',linewidth=.2, label='d_prior', color=cols[0])
+            ax.plot(d_prior.T,'-',linewidth=1.4, label='d_prior', color=cols[0])
             ax.plot(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
         
             print('plot_data_prior_post: Plotting log10(d_prior)')

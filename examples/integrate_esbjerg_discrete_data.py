@@ -215,7 +215,7 @@ P_prior = np.ones((nclass,nm))/nclass
 for iw in range(3): #len(well_obs)):
     x_well = well_obs[iw]['UTMX']
     y_well = well_obs[iw]['UTMY']   
-    r_data = 250
+    r_data = 1000
     r_dis = 4
     w, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, -1, r_data, r_dis, doPlot=True)
 
@@ -367,7 +367,7 @@ f_post_h5_arr = []
 for i in range(len(id_use_arr)):
     # convert id_use_arr[i] (and np.array) to a strong
     id_use_str = ''.join(map(str, id_use_arr[i]))
-    f_post_h5 = 'post_mul_geus%d_%s.h5' % (useGeusModel,id_use_str)
+    f_post_h5 = 'post_mul_geus%d_N%d_%s.h5' % (useGeusModel,N,id_use_str)
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                     f_data_h5,
                                     f_post_h5=f_post_h5, 
