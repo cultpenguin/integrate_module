@@ -338,7 +338,6 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
     -----
     This function generates scatter plots of the geometry data. If `hardcopy` is True, the plots are saved as PNG files.
     """
-
     import h5py
     # Test if f_data_h5 is in fact f_post_h5 type file
     with h5py.File(f_data_h5,'r') as f_data:
@@ -367,6 +366,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
 
     if (pl=='all') or (pl=='LINE'):
         plt.figure(1, figsize=(20, 10))
+        plt.plot(X,Y,'.',color='lightgray', zorder=-1, markersize=1)
         plt.scatter(X[ii],Y[ii],c=LINE[ii],s=s,cmap='jet',**kwargs)            
         plt.grid()
         plt.xlabel('X')
@@ -379,6 +379,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             f_png = '%s_%d_%d_LINE.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
             plt.savefig(f_png)
         plt.show()
+    
 
     if (pl=='all') or (pl=='ELEVATION'):
         plt.figure(1, figsize=(20, 10))
