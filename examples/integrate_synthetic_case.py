@@ -30,7 +30,7 @@ hardcopy=True
 
 # %% [markdown]
 # # Create The reference model and data
-N=5000000 # sample size 
+N=200000 # sample size 
 case = 'wedge'
 case = '3layer'
 
@@ -41,10 +41,11 @@ case = '3layer'
 # select the type of referenc model
 
 z_max = 60
-rho = [120,10,120]
+#rho = [120,10,120]
 #rho = [10,120,10];N=N+1
 #rho = [120,10,10];N=N+2
-#rho = [720,10,520];N=N+3
+#rho = [8000,5,520];N=N+3
+rho = [520,5,1000];N=N+3
 dx=.1
 if case.lower() == 'wedge':
     # Make Wedge MODEL
@@ -130,7 +131,11 @@ ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim)
 #ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  im=2)
 
 # %%
-ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
+ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy, nr=400)
+i1 = np.ceil((M_ref.shape[0]-1)/2).astype(int)-1
+ig.plot_data_prior_post(f_post_h5, i_plot=i1, hardcopy=hardcopy, nr=400)
+i2 = M_ref.shape[0]-1
+ig.plot_data_prior_post(f_post_h5, i_plot=i2, hardcopy=hardcopy, nr=400)
 
 # %% 
 ig.plot_profile(f_post_h5, hardcopy=hardcopy)
