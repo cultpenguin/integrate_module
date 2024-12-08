@@ -30,19 +30,21 @@ hardcopy=True
 
 # %% [markdown]
 # # Create The reference model and data
+N=5000000 # sample size 
+case = 'wedge'
+case = '3layer'
+
 
 # %% Generate Synthetic Case model and data
 # Create reference model
 
 # select the type of referenc model
-case = 'wedge'
-case = '3layer'
 
 z_max = 60
 rho = [120,10,120]
-#rho = [120,10,10]
-#rho = [10,120,10]
-#rho = [720,10,520]
+#rho = [10,120,10];N=N+1
+#rho = [120,10,10];N=N+2
+#rho = [720,10,520];N=N+3
 dx=.1
 if case.lower() == 'wedge':
     # Make Wedge MODEL
@@ -83,15 +85,16 @@ plt.title('Reference model')
 plt.subplot(2,1,2)
 plt.semilogy(x_ref,D_ref);
 plt.title('Reference data')
+plt.savefig('Synthetic_%s_%s_z%d_rho%d-%d-%d' % (case.upper(),'REF',z_max, rho[0],rho[1],rho[2]))
 
-ig.plot_data(f_data_h5)
+ig.plot_data(f_data_h5, hardcopy=hardcopy)
 
 
 # %% [markdown]
 # ## Create prior model and data
 
 # %% make prior
-N=5000000 # sample size 
+
 RHO_dist='log-uniform'
 #RHO_dist='uniform'
 RHO_min=0.8*min(rho)
@@ -129,6 +132,8 @@ ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim)
 # %%
 ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
 
+# %% 
+ig.plot_profile(f_post_h5, hardcopy=hardcopy)
 
 # %% [markdown]
 # ## Compare reference model to posterior median
