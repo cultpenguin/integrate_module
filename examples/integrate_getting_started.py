@@ -21,7 +21,9 @@ except:
 import integrate as ig
 # check if parallel computations can be performed
 parallel = ig.use_parallel(showInfo=1)
-
+hardcopy = True 
+import matplotlib.pyplot as plt
+plt.show()
 # %% Get tTEM data from DAUGAARD
 case = 'DAUGAARD'
 files = ig.get_case_data(case=case)
@@ -41,12 +43,12 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=10000
+N=1000000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
 
 # Plot some summary statistics of the prior model
-ig.plot_prior_stats(f_prior_h5)
+ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 
 # %% [markdown]
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
@@ -54,6 +56,7 @@ ig.plot_prior_stats(f_prior_h5)
 # %% Compute prior DATA
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, Ncpu=64)
 
+ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,hardcopy=hardcopy)
 # %% [markdown]
 # ## Sample the posterior $\sigma(\mathbf{m})$
 #
@@ -75,26 +78,27 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
 # ### Plot some statistic from $\sigma(\mathbf{m})$
 
 # %% Plot prior, posterior, and observed  data
-ig.plot_data_prior_post(f_post_h5, i_plot=100)
-ig.plot_data_prior_post(f_post_h5, i_plot=0)
+ig.plot_data_prior_post(f_post_h5, i_plot=100,hardcopy=hardcopy)
+ig.plot_data_prior_post(f_post_h5, i_plot=0,hardcopy=hardcopy)
 
 # %% Posterior analysis
 # Plot the Temperature used for inversion
-ig.plot_T_EV(f_post_h5, pl='T')
+ig.plot_T_EV(f_post_h5, pl='T',hardcopy=hardcopy)
 # Plot the evidnence (prior likelihood) estimated as part of inversion
-ig.plot_T_EV(f_post_h5, pl='EV')
+ig.plot_T_EV(f_post_h5, pl='EV',hardcopy=hardcopy)
 
 # %% Plot Profiles
-ig.plot_profile(f_post_h5, i1=1000, i2=2000, im=1)
+ig.plot_profile(f_post_h5, i1=1000, i2=2000, im=1, hardcopy=hardcopy)
 # %%
 
 # Plot a 2D feature: Resistivity in layer 10
-ig.plot_feature_2d(f_post_h5,im=1,iz=12, key='Median', uselog=1, cmap='jet', s=10)
+ig.plot_feature_2d(f_post_h5,im=1,iz=12, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
 #ig.plot_feature_2d(f_post_h5,im=1,iz=80,key='Median')
+
 
 try:
     # Plot a 2D feature: The number of layers
-    ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of layers', uselog=0, clim=[1,6], cmap='jet', s=12)
+    ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of layers', uselog=0, clim=[1,6], cmap='jet', s=12,hardcopy=hardcopy)
 except:
     pass
 
