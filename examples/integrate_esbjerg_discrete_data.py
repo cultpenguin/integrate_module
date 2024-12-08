@@ -29,7 +29,7 @@ plt.ion()
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True
 # %% Get tTEM data from DAUGAARD
-N=200000
+N=2000000
 case = 'ESBJERG'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -215,7 +215,7 @@ P_prior = np.ones((nclass,nm))/nclass
 for iw in range(3): #len(well_obs)):
     x_well = well_obs[iw]['UTMX']
     y_well = well_obs[iw]['UTMY']   
-    r_data = 1000
+    r_data = 300
     r_dis = 4
     w, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, -1, r_data, r_dis, doPlot=True)
 
