@@ -61,7 +61,7 @@ filelist = ['prior_Esbjerg_claysand_N2000000_dmax90.h5','prior_Esbjerg_piggy_N20
 geus_files = ig.get_case_data(case=case, filelist=filelist)
 
 useGeusModel = 1
-#useGeusModel = 0
+useGeusModel = 0
 f_prior_h5 = geus_files[useGeusModel]  
 print("Using prior file: %s" % f_prior_h5)
 

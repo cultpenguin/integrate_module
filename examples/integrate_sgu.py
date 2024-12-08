@@ -45,11 +45,11 @@ ig.check_data(f_data_h5)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
-doLoadSimplePrior = 0
+N=200000
+doLoadSimplePrior = 1
 if doLoadSimplePrior:
     # Layered model
-    f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
+    f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=5000)
 else:   
     ig.integrate_update_prior_attributes(f_prior_h5)
 

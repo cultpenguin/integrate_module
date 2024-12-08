@@ -2560,8 +2560,11 @@ def synthetic_case(case='Wedge', **kwargs):
             rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
             M[ix,iz1] = rho1
             z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))            
+            rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
+            iz2 = np.where((z>=z1) & (z<=z2))[0]
+            M[ix,iz2] = rho2
 
-
+        return M, x, z
 
 
 
