@@ -41,7 +41,7 @@ hardcopy=True
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
 case = 'DAUGAARD'
 case = 'FANGEL'
-#case = 'HALD'
+case = 'HALD'
 #case = 'GRUSGRAV' # NOT YET AVAILABLE
 
 files = ig.get_case_data(case=case)
@@ -82,7 +82,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=500000
+N=1000000
 RHO_min = 1
 RHO_max = 2500
 RHO_dist='log-uniform'
@@ -135,7 +135,7 @@ for useP in useP_arr:
     
     ig.plot_prior_stats(f_prior_h5)
 
-# %% Make a gew forward realizations
+# %% Make a few forward realizations
 
 for f_prior_h5 in f_prior_h5_arr:
 
@@ -157,12 +157,22 @@ for f_prior_h5 in f_prior_h5_arr:
     f_post_h5_arr.append(f_post_h5)
     f_prior_data_h5_arr.append(f_prior_data_h5)
 
-    ig.plot_T_EV(f_post_h5, pl='EV')
+    ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
+    ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
     
+    ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
+    plt.show()
+
     ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy)
 
     ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
     ig.plot_data_prior_post(f_post_h5, i_plot=1000, hardcopy=hardcopy)
 
+#%%
+for f_post_h5 in f_post_h5_arr:
+    ig.plot_feature_2d(f_post_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
+    plt.show()
 
 
+
+# %%
