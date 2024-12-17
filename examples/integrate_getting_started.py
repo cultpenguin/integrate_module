@@ -43,12 +43,13 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
+N=100000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
 
 # Plot some summary statistics of the prior model
 ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
+
 
 # %% [markdown]
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
@@ -93,12 +94,14 @@ ig.plot_profile(f_post_h5, i1=1000, i2=2000, im=1, hardcopy=hardcopy)
 
 # Plot a 2D feature: Resistivity in layer 10
 ig.plot_feature_2d(f_post_h5,im=1,iz=12, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
+plt.show()
 #ig.plot_feature_2d(f_post_h5,im=1,iz=80,key='Median')
 
 
 try:
     # Plot a 2D feature: The number of layers
     ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of layers', uselog=0, clim=[1,6], cmap='jet', s=12,hardcopy=hardcopy)
+    plt.show()
 except:
     pass
 

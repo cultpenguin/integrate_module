@@ -45,8 +45,8 @@ ig.check_data(f_data_h5)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=200000
-doLoadSimplePrior = 1
+N=500000
+doLoadSimplePrior =0
 if doLoadSimplePrior:
     # Layered model
     f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=5000)
@@ -72,12 +72,12 @@ N_use = N
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                    f_data_h5, 
                                    N_use = N_use, 
-                                   showInfo=1, 
+                                   nr=1000,
                                    parallel=parallel)
 
 # %% Compute some generic statistic of the posterior distribution (Mean, Median, Std)
 # This is typically done after the inversion
-# ig.integrate_posterior_stats(f_post_h5)
+#ig.integrate_posterior_stats(f_post_h5)
 
 
 # %% 
@@ -216,3 +216,4 @@ p.show()
 '''
 
 # %%
+# Compute kullback-leibler divergence
