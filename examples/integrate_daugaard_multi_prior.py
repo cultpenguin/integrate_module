@@ -81,6 +81,9 @@ N_use = 2000000
 for f_prior_data_h5 in f_prior_data_h5_list:
     print('Using prior model file %s' % f_prior_data_h5)
 
+    #% plot some 1D statistics of the prior
+    ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
+
     #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
     updatePostStat =True
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 

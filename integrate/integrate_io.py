@@ -829,7 +829,7 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
     elif case=='GRUSGRAV':
 
         filelist = []
-        filelist.append('GRUSGRAV_AVG.h5')
+        filelist.append('03052023_AVG_export.h5')
         filelist.append('TX07_20230425_2x4_RC20_33.gex')
         filelist.append('README_GRUSGRAV')                    
 

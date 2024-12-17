@@ -30,21 +30,25 @@ hardcopy=True
 
 # %% [markdown]
 # # Create The reference model and data
-N=5000000 # sample size 
+
+#%% 
+N=500000 # sample size 
 case = 'wedge'
 case = '3layer'
 
-
-# %% Generate Synthetic Case model and data
-# Create reference model
-
 # select the type of referenc model
-
 z_max = 60
-rho = [120,10,120]
+rho = [150,75,150]
+#rho = [300,150,300];N=N+1
+#rho = [600,300,600];N=N+2
+rho = [1000,300,1000];N=N+2
+#rho = [120,10,120]
 #rho = [10,120,10];N=N+1
 #rho = [120,10,10];N=N+2
-#rho = [720,10,520];N=N+3
+#rho = [8000,5,520];N=N+3
+#rho = [520,5,1000];N=N+3
+
+
 dx=.1
 if case.lower() == 'wedge':
     # Make Wedge MODEL
@@ -60,7 +64,7 @@ thickness = np.diff(z_ref)
 file_gex = ig.get_case_data(case='DAUGAARD', filelist=['TX07_20231016_2x4_RC20-33.gex'])[0]
 D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
 
-# Initialize random number generator to sample from noise model!
+#% Initialize random number generator to sample from noise model!
 rng = np.random.default_rng()
 d_std = 0.05
 d_std_base = 1e-12
@@ -130,7 +134,11 @@ ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim)
 #ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  im=2)
 
 # %%
-ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
+ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy, nr=400)
+i1 = np.ceil((M_ref.shape[0]-1)/2).astype(int)-1
+ig.plot_data_prior_post(f_post_h5, i_plot=i1, hardcopy=hardcopy, nr=400)
+i2 = M_ref.shape[0]-1
+ig.plot_data_prior_post(f_post_h5, i_plot=i2, hardcopy=hardcopy, nr=400)
 
 # %% 
 ig.plot_profile(f_post_h5, hardcopy=hardcopy)
