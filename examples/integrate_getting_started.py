@@ -52,9 +52,9 @@ ig.plot_data(f_data_h5, hardcopy=hardcopy)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
+N=250000
 # Layered model
-f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi4', NLAY_deg=3, RHO_min=1, RHO_max=3000)
+f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000)
 
 # Plot some summary statistics of the prior model
 ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
@@ -64,7 +64,7 @@ ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
 
 # %% Compute prior DATA
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, Ncpu=64)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
 
 ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,hardcopy=hardcopy)
 # %% [markdown]
