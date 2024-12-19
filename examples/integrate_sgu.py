@@ -45,8 +45,8 @@ ig.check_data(f_data_h5)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=200000
-doLoadSimplePrior = 1
+N=500000
+doLoadSimplePrior =0
 if doLoadSimplePrior:
     # Layered model
     f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=5000)
@@ -54,13 +54,18 @@ else:
     ig.integrate_update_prior_attributes(f_prior_h5)
 
 # Plot some summary statistics of the prior model
-ig.plot_prior_stats(f_prior_h5)
+ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
+
+#%% Plot the prior model
+ig.plot_data(f_data_h5, hardcopy=hardcopy)
+
 
 # %% [markdown]
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
 
 # %% Compute prior DATA
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, Ncpu=64, N=N)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, Ncpu=0, N=N)
+ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy)
 
 # %% [markdown]
 # ## Sample the posterior $\sigma(\mathbf{m})$
@@ -72,12 +77,12 @@ N_use = N
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                    f_data_h5, 
                                    N_use = N_use, 
-                                   showInfo=1, 
+                                   nr=1000,
                                    parallel=parallel)
 
 # %% Compute some generic statistic of the posterior distribution (Mean, Median, Std)
 # This is typically done after the inversion
-# ig.integrate_posterior_stats(f_post_h5)
+#ig.integrate_posterior_stats(f_post_h5)
 
 
 # %% 
@@ -90,9 +95,10 @@ i2=ii[-1]
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$
 ig.plot_geometry(f_data_h5, hardcopy=hardcopy)
-
-#plt.show()
+plt.show()
+#%%
 ig.plot_geometry(f_data_h5, ii=ii, pl='LINE', hardcopy=hardcopy)
+plt.show()
 
 # %% Plot prior, posterior, and observed  data
 ig.plot_data_prior_post(f_post_h5, i_plot=i1, hardcopy=hardcopy)
@@ -216,3 +222,4 @@ p.show()
 '''
 
 # %%
+# Compute kullback-leibler divergence

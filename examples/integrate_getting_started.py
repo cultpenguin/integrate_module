@@ -26,35 +26,45 @@ import matplotlib.pyplot as plt
 plt.show()
 # %% Get tTEM data from DAUGAARD
 case = 'DAUGAARD'
+case = 'OERUM'
+case = 'HJOELLUND'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
-f_data_h5 = 'DAUGAARD_AVG.h5'
+#file_gex = files[1]
 file_gex= ig.get_gex_file_from_data(f_data_h5)
 
 print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
 
+#%% 
+# plot the Geometry
+ig.plot_geometry(f_data_h5, hardcopy=hardcopy)
+# Plot the data
+ig.plot_data(f_data_h5, hardcopy=hardcopy)
+
+
+
 # %% [markdown]
 # ## 1. Setup the prior model ($\rho(\mathbf{m},\mathbf{d})$
 #
 # In this example a simple layered prior model will be considered
-
 # %% [markdown]
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
+N=250000
 # Layered model
-f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
+f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000)
 
 # Plot some summary statistics of the prior model
 ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
+
 
 # %% [markdown]
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
 
 # %% Compute prior DATA
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, Ncpu=64)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
 
 ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,hardcopy=hardcopy)
 # %% [markdown]
@@ -88,17 +98,35 @@ ig.plot_T_EV(f_post_h5, pl='T',hardcopy=hardcopy)
 ig.plot_T_EV(f_post_h5, pl='EV',hardcopy=hardcopy)
 
 # %% Plot Profiles
-ig.plot_profile(f_post_h5, i1=1000, i2=2000, im=1, hardcopy=hardcopy)
+ig.plot_profile(f_post_h5, i1=1, i2=2000, im=1, hardcopy=hardcopy)
 # %%
 
 # Plot a 2D feature: Resistivity in layer 10
-ig.plot_feature_2d(f_post_h5,im=1,iz=12, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
-#ig.plot_feature_2d(f_post_h5,im=1,iz=80,key='Median')
+try:
+    ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
+    plt.show()
+except:
+    pass
+
+try:
+    ig.plot_feature_2d(f_post_h5,im=1,iz=30, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
+    plt.show()
+except:
+    pass
+
+try:
+    ig.plot_feature_2d(f_post_h5,im=1,iz=50, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
+    plt.show()
+except:
+    pass
+
+
 
 
 try:
     # Plot a 2D feature: The number of layers
     ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of layers', uselog=0, clim=[1,6], cmap='jet', s=12,hardcopy=hardcopy)
+    plt.show()
 except:
     pass
 

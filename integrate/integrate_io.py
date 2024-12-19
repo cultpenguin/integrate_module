@@ -746,7 +746,7 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
     """
     Get case data for a specific case.
 
-    :param case: The case name. Default is 'DAUGAARD'. Options are 'DAUGAARD', 'GRUSGRAV', 'FANGEL', and 'HALD'.
+    :param case: The case name. Default is 'DAUGAARD'. Options are 'DAUGAARD', 'GRUSGRAV', 'FANGEL', 'HALD', 'ESBJERG', and 'OERUM.
     :type case: str
     :param loadAll: Whether to load all files for the case. Default is False.
     :type loadAll: bool
@@ -829,7 +829,7 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
     elif case=='GRUSGRAV':
 
         filelist = []
-        filelist.append('GRUSGRAV_AVG.h5')
+        filelist.append('03052023_AVG_export.h5')
         filelist.append('TX07_20230425_2x4_RC20_33.gex')
         filelist.append('README_GRUSGRAV')                    
 
@@ -863,7 +863,28 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
             filelist.append('tTEM_20230815_AVG_export.h5')
             filelist.append('tTEM_20230905_AVG_export.h5')
             filelist.append('tTEM_20231018_AVG_export.h5')
-        
+
+    elif case=='OERUM':
+        filelist.append('OERUM_AVG.h5')
+        filelist.append('TX07_20240802_2x4_RC20-39.gex')
+        filelist.append('README_OERUM')
+        if loadAll:
+            filelist.append('OERUM_RAW.h5')
+            filelist.append('20240827_AVG_export.h5')
+            filelist.append('20240828_AVG_export.h5')
+            filelist.append('20240903_AVG_export.h5')
+            filelist.append('20240827_RAW_export.h5')
+            filelist.append('20240828_RAW_export.h5')
+            filelist.append('20240903_RAW_export.h5')
+                  
+
+    elif case=='HJOELLUND':
+        filelist.append('HJOELLUND_AVG.h5')
+        filelist.append('TX07_20241014_2x4_RC20_33_and_57_EksternGPS.gex')
+        filelist.append('README_HJOELLUND')
+        if loadAll:
+            filelist.append('HJOELLUND_RAW.h5')
+                  
 
     else:
         
