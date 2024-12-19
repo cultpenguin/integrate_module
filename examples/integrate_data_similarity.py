@@ -25,15 +25,13 @@ parallel = ig.use_parallel(showInfo=1)
 
 # %% Get tTEM data from DAUGAARD
 case = 'DAUGAARD'
+#case = 'GRUSGRAV'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
-f_data_h5 = 'DAUGAARD_AVG.h5'
 file_gex= ig.get_gex_file_from_data(f_data_h5)
 
 print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
-
-
 
 # %%
 # Load data and ploti
@@ -45,21 +43,16 @@ d_std = DATA['d_std'][0]
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
 # %% SELECT a specic data point
-
-
-# %% 
-
-i_ref = 6000-1
-#i_ref = 1560
+i_ref = int(np.ceil(d_obs.shape[0]/2))
 
 x_well = X[i_ref]
 y_well = Y[i_ref]
-r_dis = 1000
-r_data = 4
+r_dis = 100
+r_data = 1
 w_combined, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, r_data=r_data, r_dis=r_dis, doPlot=True)   
    
 
-#%%
+#%% Make a movie based on moving the central point arouns
 r_data_arr = [1,2,5,10]
 r_dis_arr = [3000,500,1000]
 r_data_arr = [1,3,10]
