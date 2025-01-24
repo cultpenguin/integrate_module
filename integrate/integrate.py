@@ -5,11 +5,24 @@ import subprocess
 from sys import exit
 import multiprocessing
 from multiprocessing import Pool
-from multiprocessing import Pool
 from multiprocessing import shared_memory
 from functools import partial
 import time
-    
+
+# %% Set up logging.. USed to test creation and use of shared memory
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING) # For production
+#logger.setLevel(logging.DEBUG)  # For debugging    
+if not logger.handlers:
+    print(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+
 def is_notebook():
     """
     Check if the code is running in a Jupyter notebook or IPython shell.
@@ -61,7 +74,7 @@ def use_parallel(**kwargs):
         else:
             if showInfo>0:
                 print('Non posix system detected. Parallel processing is not OK')        
-                print('If parallel processing is needed, make sure to embed you primary script in a :if __main__ == "__main__": block')        
+                print('If parallel processing is needed, make sure to embed you primary script in a :if __name__ == "__main__": block')        
             parallel = False
 
     return parallel
@@ -1642,35 +1655,83 @@ def load_data(f_data_h5, id_arr=[1], **kwargs):
 
     return DATA
 
-
-# Create shared memory arrays
 def create_shared_memory(arrays):
+    """Create shared memory segments for arrays."""
     shared_memories = []
-    for array in arrays:
-        shm = shared_memory.SharedMemory(create=True, size=array.nbytes)
-        # Copy the data into shared memory
-        shared_array = np.ndarray(array.shape, dtype=array.dtype, buffer=shm.buf)
-        shared_array[:] = array[:]
-        # Store the shared memory name, array shape, and dtype
-        shared_memories.append((shm.name, array.shape, array.dtype))
-    return shared_memories
+    shm_objects = []
+    
+    try:
+        for array in arrays:
+            shm = shared_memory.SharedMemory(create=True, size=array.nbytes)
+            shared_array = np.ndarray(array.shape, dtype=array.dtype, buffer=shm.buf)
+            shared_array[:] = array[:]
+            shared_memories.append((shm.name, array.shape, array.dtype))
+            shm_objects.append(shm)
+            logger.debug(f"Created shared memory: {shm.name}")
+        return shared_memories, shm_objects
+    except Exception as e:
+        logger.error(f"Error creating shared memory: {e}")
+        # Clean up any created memory segments before raising
+        for shm in shm_objects:
+            shm.close()
+            shm.unlink()
+        raise
 
-# Function to reconstruct the list D from shared memory
 def reconstruct_shared_arrays(shared_memory_refs):
+    """Reconstruct arrays from shared memory references."""
     reconstructed_arrays = []
     for shm_name, shape, dtype in shared_memory_refs:
-        shm = shared_memory.SharedMemory(name=shm_name)
-        array = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
-        reconstructed_arrays.append(array.copy())  # Copy the data to avoid leaving a view
-        shm.close()
+        try:
+            shm = shared_memory.SharedMemory(name=shm_name)
+            array = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+            reconstructed_arrays.append(array.copy())
+            shm.close()
+        except Exception as e:
+            logger.error(f"Error reconstructing array: {e}")
+            raise
     return reconstructed_arrays
 
-# Cleanup function for shared memory
-def cleanup_shared_memory(shared_memory_refs):
-    for shm_name, _, _ in shared_memory_refs:
-        shm = shared_memory.SharedMemory(name=shm_name)
-        shm.close()
-        shm.unlink()
+def cleanup_shared_memory(shm_objects):
+    """Clean up shared memory segments."""
+    if not shm_objects:
+        return
+    
+    for shm in shm_objects:
+        try:
+            shm.close()
+            shm.unlink()
+            logger.debug(f"Cleaned up shared memory: {shm.name}")
+        except Exception as e:
+            logger.error(f"Error cleaning up shared memory: {e}")
+
+# # Create shared memory arrays
+# def create_shared_memory(arrays):
+#     shared_memories = []
+#     for array in arrays:
+#         shm = shared_memory.SharedMemory(create=True, size=array.nbytes)
+#         # Copy the data into shared memory
+#         shared_array = np.ndarray(array.shape, dtype=array.dtype, buffer=shm.buf)
+#         shared_array[:] = array[:]
+#         # Store the shared memory name, array shape, and dtype
+#         shared_memories.append((shm.name, array.shape, array.dtype))
+#     return shared_memories
+
+# # Function to reconstruct the list D from shared memory
+# def reconstruct_shared_arrays(shared_memory_refs):
+#     reconstructed_arrays = []
+#     for shm_name, shape, dtype in shared_memory_refs:
+#         shm = shared_memory.SharedMemory(name=shm_name)
+#         array = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+#         reconstructed_arrays.append(array.copy())  # Copy the data to avoid leaving a view
+#         shm.close()
+#     return reconstructed_arrays
+
+# # Cleanup function for shared memory
+# def cleanup_shared_memory(shared_memory_refs):
+#     for shm_name, _, _ in shared_memory_refs:
+#         shm = shared_memory.SharedMemory(name=shm_name)
+#         shm.close()
+#         shm.unlink()
 
 # START OF REJECTION SAMPLING
 
@@ -1715,13 +1776,13 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
     
     # Load observed data from f_data_h5
-    DATA = load_data(f_data_h5)
+    DATA = load_data(f_data_h5, showInfo=showInfo)
     Ndt = len(DATA['d_obs']) # Number of data types
     if len(id_use)==0:
         id_use = np.arange(1,Ndt+1) 
     Ndt = len(id_use) # Number of data types used        
     # Perhaps load only the data types that are used
-    DATA = load_data(f_data_h5, id_arr=id_use)
+    DATA = load_data(f_data_h5, id_arr=id_use, showInfo=showInfo)
 
     if (showInfo>0):    
         for i in range(Ndt):
@@ -1838,7 +1899,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
     # WHere T_all is Inf set it to Nan
     T_all[T_all==np.inf] = np.nan
     EV_all[EV_all==np.inf] = np.nan
-    print('All done')
+    
     date_end = str(datetime.now())
     t_end = datetime.now()
     t_elapsed = (t_end - t_start).total_seconds()
@@ -2136,8 +2197,10 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
     #import integrate as ig
     from multiprocessing import Pool, shared_memory
 
-    shared_memory_refs = create_shared_memory(D)
-    
+    #shared_memory_refs = create_shared_memory(D)
+    shared_memory_refs, shm_objects = create_shared_memory(D)
+    #reconstructed_arrays = reconstruct_shared_arrays(shared_memory_refs)
+
     #with Pool(Ncpu) as p:
     with Pool(Ncpu) as p:
         # New implementation with shared memory
@@ -2146,7 +2209,9 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
         #results = p.map(integrate_posterior_chunk, [(i, ip_chunks, D, DATA, idx,  N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best) for i in range(len(ip_chunks))])
 
     # Cleanup shared memory
-    cleanup_shared_memory(shared_memory_refs)
+    #cleanup_shared_memory(shared_memory_refs)
+    cleanup_shared_memory(shm_objects)
+    
 
     # Get sample size N from f_prior_h5
     N=D[0].shape[0]
