@@ -47,7 +47,7 @@ ig.plot_prior_stats(f_prior_h5)
 
 # %% READY FOR INVERSION
 if parallel:
-    N_use = 100000 # Use all data in prior lookup table
+    N_use = 1000000 # Use all data in prior lookup table
 else:
     N_use = 10000 # Use only a small subset, whn not using parallel
 N_cpu = 8
@@ -81,5 +81,7 @@ ig.plot_feature_2d(f_post_h5,im=1,iz=10, key='Median', uselog=1, cmap='jet', s=1
 # Plot the mode of the 2nd type model parameter (lithology) at at layer 10
 ig.plot_feature_2d(f_post_h5,im=2,iz=10,key='Mode', uselog=0, clim=[1,6], cmap='jet', s=12)
 
+
+# %%
 
 # %%
