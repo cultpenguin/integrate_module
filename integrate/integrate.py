@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING) # For production
 #logger.setLevel(logging.DEBUG)  # For debugging    
 if not logger.handlers:
-    print(logging.DEBUG)
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
@@ -1757,10 +1756,15 @@ def integrate_rejection(f_prior_h5='prior.h5',
     #import h5py
 
     # get optional arguments
-    showInfo = kwargs.get('showInfo', 1)
+    showInfo = kwargs.get('showInfo', 0)
     updatePostStat = kwargs.get('updatePostStat', True)
     # If set, Nproc will be used as the number of processors
     Ncpu = kwargs.get('Nproc', Ncpu)
+    Ncpu = kwargs.get('N_cpu', Ncpu) # Allow using N_cpu instead of Ncpu
+    Nchunks = kwargs.get('N_chunks', Nchunks) # Allow using N_chunks instead of Nchunks
+
+
+
     if Ncpu < 1 :
         Ncpu =  int(multiprocessing.cpu_count())
 
