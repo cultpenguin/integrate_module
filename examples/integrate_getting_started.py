@@ -36,7 +36,7 @@ file_gex= ig.get_gex_file_from_data(f_data_h5)
 print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
 
-#%% 
+# %%
 # plot the Geometry
 ig.plot_geometry(f_data_h5, hardcopy=hardcopy)
 # Plot the data
