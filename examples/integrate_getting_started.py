@@ -27,7 +27,7 @@ plt.show()
 # %% Get tTEM data from DAUGAARD
 case = 'DAUGAARD'
 case = 'OERUM'
-case = 'HJOELLUND'
+#case = 'HJOELLUND'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
 #file_gex = files[1]
@@ -52,7 +52,7 @@ ig.plot_data(f_data_h5, hardcopy=hardcopy)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=250000
+N=1000000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000)
 
@@ -145,7 +145,7 @@ df.head()
 import pyvista as pv
 import numpy as np
 from pyvista import examples
-#pv.set_jupyter_backend('trame')
+#pv.set_jupyter_backend('client')
 pv.set_plot_theme("document")
 p = pv.Plotter(notebook=True)
 p = pv.Plotter()
@@ -155,9 +155,16 @@ points = filtered_df[['X', 'Y', 'Z']].values[:]
 median = np.log10(filtered_df['Mean'].values[:])
 opacity = np.where(filtered_df['Median'].values[:] < 100, 0.5, 1.0)
 #p.add_points(points, render_points_as_spheres=True, point_size=3, scalars=median, cmap='jet', opacity=opacity)
-p.add_points(points, render_points_as_spheres=True, point_size=6, scalars=median, cmap='hsv')
+p.add_points(points, render_points_as_spheres=True, point_size=6, scalars=median, cmap='hot')
 p.show_grid()
 p.show()
 
+
+# %%
+
+# %%
+
+# %%
+# !pip install trame
 
 # %%
