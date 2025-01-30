@@ -13,8 +13,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # # # # #%load_ext autoreload
-    # # # # # # # # # #%autoreload 2
+    # # # # # # # # # # #%load_ext autoreload
+    # # # # # # # # # # #%autoreload 2
     pass
 
 import integrate as ig
@@ -75,16 +75,15 @@ z_max = 90
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max)
-    
-ig.plot_prior_stats(f_prior_h5)
+                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5='PRIOR_N%d.h5' % N, showInfo=1)   
+#ig.plot_prior_stats(f_prior_h5)
 
 
 
 
 # %% Make a few forward realizations
 # Compute Prior Data
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, Ncpu=64)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
 ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy) 
 
 

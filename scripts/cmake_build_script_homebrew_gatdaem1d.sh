@@ -8,6 +8,8 @@ brew install gcc
 brew install fftw
 brew install open-mpi
 brew install cmake
+brew install pkg-config
+#export PKG_CONFIG_PATH="/opt/homebrew/opt/fftw/lib/pkgconfig:$PKG_CONFIG_PATH"
 
 ## 1. Clone the ga-aem repository from Github
 git clone --recursive --depth 1 https://github.com/GeoscienceAustralia/ga-aem.git
@@ -25,7 +27,19 @@ mkdir $BUILD_DIR
 cd $BUILD_DIR
 
 # compile gatdaem1d
-cmake -Wno-dev -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14 -DCMAKE_BUILD_TYPE=Release -DWITH_MPI=OFF -DWITH_NETCDF=OFF -DWITH_GDAL=OFF -DWITH_PETSC=OFF ..
+#cmake -Wno-dev -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14 -DCMAKE_BUILD_TYPE=Release -DWITH_FFTW=ON -DWITH_MPI=OFF -DWITH_NETCDF=OFF -DWITH_GDAL=OFF -DWITH_PETSC=OFF ..
+
+cmake -Wno-dev \
+      -DCMAKE_C_COMPILER=gcc-14 \
+      -DCMAKE_CXX_COMPILER=g++-14 \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DWITH_FFTW=ON \
+      -DWITH_MPI=OFF \
+      -DWITH_NETCDF=OFF \
+      -DWITH_GDAL=OFF \
+      -DWITH_PETSC=OFF ..
+
+
 #cmake --build . --target matlab-bindings --config=Release
 cmake --build . --target python-bindings --config=Release
 cmake --install . --prefix $INSTALL_DIR
@@ -39,4 +53,5 @@ cd $INSTALL_DIR/python
 pip install -e .
 
 ## Test the installation
-python $INSTALL_DIR/python/examples/skytem_example.py
+python $INSTALL_DIR/python/example
+s/skytem_example.py

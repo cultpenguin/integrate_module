@@ -1054,6 +1054,8 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     :type RHO_std: float
     :param N: Number of prior models to generate. Default is 100000.
     :type N: int
+    :param f_prior_h5: Path to the prior model file in HDF5 format. Default is ''.
+    :type f_prior_h5: str
 
     :return: Filepath of the saved prior model.
     :rtype: str
@@ -1062,6 +1064,7 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     from tqdm import tqdm
 
     showInfo = kwargs.get('showInfo', 0)
+    f_prior_h5 = kwargs.get('f_prior_h5', '')
  
     if NLAY_max < NLAY_min:
         #raise ValueError('NLAY_max must be greater than or equal to NLAY_min.')
@@ -1070,15 +1073,17 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     if NLAY_min < 1:
         #raise ValueError('NLAY_min must be greater than or equal to 1.')
         NLAY_min = 1
-        
+
     if lay_dist == 'uniform':
         NLAY = np.random.randint(NLAY_min, NLAY_max+1, N)
-        f_prior_h5 = 'PRIOR_UNIFORM_NL_%d-%d_%s_N%d.h5' % (NLAY_min, NLAY_max, RHO_dist, N)
+        if len(f_prior_h5)<1:
+            f_prior_h5 = 'PRIOR_UNIFORM_NL_%d-%d_%s_N%d.h5' % (NLAY_min, NLAY_max, RHO_dist, N)
 
     elif lay_dist == 'chi2':
         NLAY = np.random.chisquare(NLAY_deg, N)
         NLAY = np.ceil(NLAY).astype(int)    
-        f_prior_h5 = 'PRIOR_CHI2_NF_%d_%s_N%d.h5' % (NLAY_deg, RHO_dist, N)
+        if len(f_prior_h5)<1:
+            f_prior_h5 = 'PRIOR_CHI2_NF_%d_%s_N%d.h5' % (NLAY_deg, RHO_dist, N)
 
     # Force NLAY to be a 2 dimensional numpy array
     NLAY = NLAY[:, np.newaxis]
@@ -1158,12 +1163,16 @@ def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 
     :type RHO_std: float
     :param chi2_deg: Degrees of freedom for chi2 distribution. Only applicable if RHO_dist is 'chi2'. Default is 100.
     :type chi2_deg: int
+    :param f_prior_h5: Path to the prior model file in HDF5 format. Default is ''.
+    :type f_prior_h5: str
 
     :return: Filepath of the saved prior model.
     :rtype: str
     """
 
     showInfo = kwargs.get('showInfo', 0)
+    f_prior_h5 = kwargs.get('f_prior_h5', '')
+
     if nlayers<1:
         nlayers = 30
     
@@ -1180,19 +1189,24 @@ def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 
     
     if RHO_dist=='uniform':
         M_rho = np.random.uniform(low=RHO_min, high = RHO_max, size=(N, nz))
-        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, RHO_min, RHO_max)
+        if len(f_prior_h5)<1:
+            f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, RHO_min, RHO_max)
     elif RHO_dist=='log-uniform':
         M_rho = np.exp(np.random.uniform(low=np.log(RHO_min), high = np.log(RHO_max), size=(N, nz)))
-        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, RHO_min, RHO_max)
+        if len(f_prior_h5)<1:
+            f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, RHO_min, RHO_max)
     elif RHO_dist=='normal':
         M_rho = np.random.normal(loc=RHO_mean, scale = RHO_std, size=(N, nz))
-        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, RHO_mean, RHO_std)
+        if len(f_prior_h5)<1:
+            f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, RHO_mean, RHO_std)
     elif RHO_dist=='log-normal':
         M_rho = np.random.lognormal(mean=np.log(RHO_mean), sigma = RHO_std/RHO_mean, size=(N, nz))
-        f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, RHO_mean, RHO_std)
+        if len(f_prior_h5)<1:
+            f_prior_h5 = '%s_R%g_%g.h5' % (f_prior_h5, RHO_mean, RHO_std)
     elif RHO_dist=='chi2':
         M_rho = np.random.chisquare(df = chi2_deg, size=(N, nz))
-        f_prior_h5 = '%s_deg%d.h5' % (f_prior_h5,chi2_deg)
+        if len(f_prior_h5)<1:
+            f_prior_h5 = '%s_deg%d.h5' % (f_prior_h5,chi2_deg)
 
     #f_prior_h5 = f_prior_h5 + '.h5'
 
@@ -1246,12 +1260,15 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
     :type RHO_std: float
     :param chi2_deg: Degrees of freedom for chi2 distribution. Only applicable if RHO_dist is 'chi2'. Default is 100.
     :type chi2_deg: int
+    :param f_prior_h5: Path to the prior model file in HDF5 format. Default is ''.
+    :type f_prior_h5: str    
 
     :return: Filepath of the saved prior model.
     :rtype: str
     """
     from tqdm import tqdm
 
+    f_prior_h5 = kwargs.get('f_prior_h5', '')
     showInfo = kwargs.get('showInfo', 0)
     if nlayers>0:
         NLAY_min = nlayers
@@ -1269,14 +1286,17 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
     if lay_dist == 'chi2':
         NLAY = np.random.chisquare(NLAY_deg, N)
         NLAY = np.ceil(NLAY).astype(int)    
-        f_prior_h5 = 'PRIOR_WB_CHI2_NF_%d_%s_N%d.h5' % (NLAY_deg, RHO_dist, N)
+        if len(f_prior_h5)<1:
+            f_prior_h5 = 'PRIOR_WB_CHI2_NF_%d_%s_N%d.h5' % (NLAY_deg, RHO_dist, N)
     elif lay_dist == 'uniform':
         NLAY = np.random.randint(NLAY_min, NLAY_max+1, N)
         if NLAY_min == NLAY_max:
             nlayers = NLAY_min
-            f_prior_h5 = 'PRIOR_WB_UNIFORM_%d_N%d_%s' % (nlayers,N,RHO_dist)
+            if len(f_prior_h5)<1:
+                f_prior_h5 = 'PRIOR_WB_UNIFORM_%d_N%d_%s' % (nlayers,N,RHO_dist)
         else:   
-            f_prior_h5 = 'PROPR_WB_UNIFORM_%d-%d_N%d_%s' % (NLAY_min,NLAY_max,N,RHO_dist)
+            if len(f_prior_h5)<1:
+                f_prior_h5 = 'PROPR_WB_UNIFORM_%d-%d_N%d_%s' % (NLAY_min,NLAY_max,N,RHO_dist)
         
 
 
