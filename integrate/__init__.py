@@ -7,6 +7,7 @@ from integrate.integrate import prior_data
 from integrate.integrate import prior_data_gaaem
 from integrate.integrate import prior_data_identity
 from integrate.integrate import forward_gaaem
+from integrate.integrate import synthetic_case
 from integrate.integrate import prior_model_layered
 from integrate.integrate import prior_model_workbench
 from integrate.integrate import prior_model_workbench_direct
@@ -17,7 +18,20 @@ from integrate.integrate import integrate_posterior_chunk
 from integrate.integrate import integrate_posterior_main
 from integrate.integrate import likelihood_gaussian_diagonal
 from integrate.integrate import likelihood_gaussian_full
+from integrate.integrate import likelihood_multinomial
+from integrate.integrate import select_subset_for_inversion
 from integrate.integrate import use_parallel
+from integrate.integrate import load_prior
+from integrate.integrate import load_prior_data
+from integrate.integrate import load_prior_model
+from integrate.integrate import load_data
+from integrate.integrate import cleanup_shared_memory
+from integrate.integrate import reconstruct_shared_arrays
+from integrate.integrate import create_shared_memory
+from integrate.integrate import get_weight_from_position
+from integrate.integrate import entropy
+from integrate.integrate import class_id_to_idx
+
 
 from integrate.integrate_io import get_geometry 
 from integrate.integrate_io import read_gex
@@ -28,7 +42,14 @@ from integrate.integrate_io import post_to_csv
 from integrate.integrate_io import copy_hdf5_file
 from integrate.integrate_io import hdf5_scan
 from integrate.integrate_io import get_case_data
+from integrate.integrate_io import write_data_gaussian
+from integrate.integrate_io import write_data_multinomial
+from integrate.integrate_io import check_data
+from integrate.integrate_io import merge_data
+from integrate.integrate_io import merge_posterior
 
+
+from integrate.integrate_plot import plot_geometry
 from integrate.integrate_plot import plot_profile
 from integrate.integrate_plot import plot_profile_continuous
 from integrate.integrate_plot import plot_profile_discrete

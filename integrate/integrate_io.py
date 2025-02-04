@@ -497,13 +497,13 @@ def post_to_csv(f_post_h5='', Mstr='/M1'):
     f_post.close()
     f_prior.close()
 
-    return f_post_csv
+    return f_post_csv, f_csv
 
 
 '''
 HDF% related functions
 '''
-def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
+def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, **kwargs):
     """
     Copy the contents of an HDF5 file to another HDF5 file.
 
@@ -513,6 +513,8 @@ def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
     :type output_filename: str
     :param N: The number of elements to copy from each dataset. If not specified, all elements will be copied.
     :type N: int, optional
+    :param loadToMemory: Whether to load the entire dataset to memory before slicing. Default is True.
+    :type loadToMemory: bool, optional
 
     :return: None
     """
@@ -524,10 +526,39 @@ def copy_hdf5_file(input_filename, output_filename, N=None, **kwargs):
         # Create the output file
         with h5py.File(output_filename, 'w') as output_file:
             # Copy each group/dataset from the input file to the output file
+            #i_use = np.sort(np.random.choice(400000,10,replace=False))
+            i_use = []
             for name in input_file:
+                if showInfo>0:
+                    print('Copying %s' % name)
                 if isinstance(input_file[name], h5py.Dataset):                    
                     # If N is specified, only copy the first N elements
-                    data = input_file[name][:N]
+
+                    if len(i_use)==0:
+                        N_in = input_file[name].shape[0]
+                        if N is None:
+                            N=N_in
+                        if N>N_in:
+                            N=N_in
+                        if N==N_in:                            
+                            i_use = np.arange(N)
+                        else:
+                            i_use = np.sort(np.random.choice(N_in,N,replace=False))
+
+                    if N<20000:
+                        loadToMemory=False
+
+                    # Read full dataset into memory
+                    if loadToMemory:
+                        # Load all data to memory, before slicing
+                        if showInfo>0:
+                            print('Loading %s to memory' % name)
+                        data_in = input_file[name][:]    
+                        data = data_in[i_use]
+                    else:
+                        # Read directly from HDF5 file   
+                        data = input_file[name][i_use]
+
                     # Create new dataset in output file
                     output_dataset = output_file.create_dataset(name, data=data)
                     # Copy the attributes of the dataset
@@ -574,7 +605,14 @@ def hdf5_scan(file_path):
 
 
 def file_checksum(file_path):
-    """Calculate the MD5 checksum of a file."""
+    """
+    Calculate the MD5 checksum of a file.
+
+    :param file_path: The path to the file.
+    :type file_path: str
+    :return: The MD5 checksum of the file.
+    :rtype: str
+    """
     import hashlib
     hasher = hashlib.md5()
     with open(file_path, 'rb') as f:
@@ -584,6 +622,18 @@ def file_checksum(file_path):
 
 
 def download_file(url, download_dir, use_checksum=False, **kwargs):
+    """
+    Download a file from a URL to a specified directory.
+
+    :param url: The URL of the file to download.
+    :type url: str
+    :param download_dir: The directory to save the downloaded file.
+    :type download_dir: str
+    :param use_checksum: Whether to verify the file checksum after download.
+    :type use_checksum: bool
+    :param kwargs: Additional keyword arguments.
+    :return: None
+    """
     import requests
     import os
     showInfo = kwargs.get('showInfo', 0)
@@ -634,6 +684,16 @@ def download_file(url, download_dir, use_checksum=False, **kwargs):
         # print(f'Checksum verification disabled for {file_name}.')
 
 def download_file_old(url, download_dir, **kwargs):
+    """
+    Download a file from a URL to a specified directory (old version).
+
+    :param url: The URL of the file to download.
+    :type url: str
+    :param download_dir: The directory to save the downloaded file.
+    :type download_dir: str
+    :param kwargs: Additional keyword arguments.
+    :return: None
+    """
     import requests
     import os
     showInfo = kwargs.get('showInfo', 0)
@@ -682,39 +742,22 @@ def download_file_old(url, download_dir, **kwargs):
     print(f'Downloaded {file_name}')
 
 
-
 def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kwargs):
     """
     Get case data for a specific case.
 
-    :param case: The case name. Default is 'DAUGAARD'. Options are 'DAUGAARD' and 'FANGEL'.
+    :param case: The case name. Default is 'DAUGAARD'. Options are 'DAUGAARD', 'GRUSGRAV', 'FANGEL', 'HALD', 'ESBJERG', and 'OERUM.
     :type case: str
-    
     :param loadAll: Whether to load all files for the case. Default is False.
     :type loadAll: bool
-    
-    :return: A list of file names for the case.
-    :rtype: list
-    
-    :param case: The case name. Default is 'DAUGAARD'. Options are 'DAUGAARD', 'GRUSGRAV', 'FANGEL', and 'HALD'.
-    :type case: str
-    
     :param loadType: The type of files to load. Options are '', 'prior', 'prior_data', 'post', and 'inout'.
     :type loadType: str
-    
     :param filelist: A list of files to load. Default is an empty list.
     :type filelist: list
-
-    :example:
-    
-    >>> files = get_case_data()
-    Example: Daugaard data with prior:
-    >>> get_case_data(case='DAUGAARD', loadType='prior')
-    Example: Daugaard data with prior data:
-    >>> get_case_data(case='DAUGAARD', loadType='prior-data')
-    Example: Daugaard data with prior and posterior:
-    >>> get_case_data(case='DAUGAARD', loadType='post')
-    """  # noqa: DAUGAARD, FANGEL, GRUSGRAV, HALD, Daugaard
+    :param kwargs: Additional keyword arguments.
+    :return: A list of file names for the case.
+    :rtype: list
+    """
     showInfo = kwargs.get('showInfo', 0)
 
     if showInfo>-1:
@@ -757,6 +800,32 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
             filelist.append('POST_DAUGAARD_AVG_prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5')    
             filelist.append('prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 
+    elif case=='ESBJERG':
+        
+        if (loadAll or loadType=='gex'):  
+            filelist.append('TX07_20230906_2x4_RC20-33_merged.h5')  
+            filelist.append('TX07_20231016_2x4_RC20-33_merged.h5')
+            filelist.append('TX07_20231127_2x4x1_RC20_33_merged.h5')
+            filelist.append('TX07_20240125_2x4_RC20-33_merged.h5')
+            filelist.append('TX07_20230906_2x4_RC20-33.gex')
+            filelist.append('TX07_20231016_2x4_RC20-33.gex')
+            filelist.append('TX07_20231127_2x4x1_RC20_33.gex')
+            filelist.append('TX07_20240125_2x4_RC20-33.gex')
+        
+        if (loadAll or loadType=='ESBJERG_ALL' or len(filelist)==0):
+            filelist.append('ESBJERG_ALL.h5')
+            filelist.append('TX07_20230906_2x4_RC20-33.gex')
+            filelist.append('README_ESBJERG')
+   
+        if (loadAll or loadType=='prior' or len(filelist)==0):
+            filelist.append('prior_Esbjerg_claysand_N2000000_dmax90.h5')
+            filelist.append('prior_Esbjerg_piggy_N2000000.h5')
+            
+        if (loadAll or loadType=='priordata' or len(filelist)==0):
+            filelist.append('prior_Esbjerg_piggy_N2000000_TX07_20230906_2x4_RC20-33_Nh280_Nf12.h5')
+            filelist.append('prior_Esbjerg_claysand_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+
+
     elif case=='GRUSGRAV':
 
         filelist = []
@@ -794,7 +863,28 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
             filelist.append('tTEM_20230815_AVG_export.h5')
             filelist.append('tTEM_20230905_AVG_export.h5')
             filelist.append('tTEM_20231018_AVG_export.h5')
-        
+
+    elif case=='OERUM':
+        filelist.append('OERUM_AVG.h5')
+        filelist.append('TX07_20240802_2x4_RC20-39.gex')
+        filelist.append('README_OERUM')
+        if loadAll:
+            filelist.append('OERUM_RAW.h5')
+            filelist.append('20240827_AVG_export.h5')
+            filelist.append('20240828_AVG_export.h5')
+            filelist.append('20240903_AVG_export.h5')
+            filelist.append('20240827_RAW_export.h5')
+            filelist.append('20240828_RAW_export.h5')
+            filelist.append('20240903_RAW_export.h5')
+                  
+
+    elif case=='HJOELLUND':
+        filelist.append('HJOELLUND_AVG.h5')
+        filelist.append('TX07_20241014_2x4_RC20_33_and_57_EksternGPS.gex')
+        filelist.append('README_HJOELLUND')
+        if loadAll:
+            filelist.append('HJOELLUND_RAW.h5')
+                  
 
     else:
         
@@ -813,3 +903,405 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
         print('--> Got data for case: %s' % case)
 
     return filelist
+
+
+
+def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_data_h5='data.h5', **kwargs):
+    """
+    Write Gaussian noise data to an HDF5 file.
+    This function writes observed data and its associated Gaussian noise standard deviations
+    to an HDF5 file. It also creates necessary datasets if they do not exist and handles
+    optional attributes.
+    Parameters
+    ----------
+    D_obs : numpy.ndarray
+        Observed data array.
+    D_std : list, optional
+        Standard deviation of the observed data. If not provided, it is calculated using `d_std`.
+    d_std : list, optional
+        Default standard deviation multiplier. Used if `D_std` is not provided. Default is 0.01.
+    Cd : list, optional
+        Covariance data. If provided, it is written to the file.
+    id : int, optional
+        Identifier for the dataset group. Default is 1.
+    is_log : int, optional
+        Flag indicating if the data is in logarithmic scale. Default is 0.
+    f_data_h5 : str, optional
+        Path to the HDF5 file. Default is 'data.h5'.
+    **kwargs : dict
+        Additional keyword arguments:
+        - showInfo (int): Level of verbosity for printing information. Default is 0.
+        - f_gex (str): Name of the GEX file associated with the data. Default is an empty string.
+    Returns
+    -------
+    str
+        Path to the HDF5 file.
+    Notes
+    -----
+    - If `D_std` is not provided, it is calculated as `d_std * D_obs`.
+    - The function ensures that the datasets 'UTMX', 'UTMY', 'LINE', and 'ELEVATION' exist in the file.
+    - If a group with the name 'D{id}' exists, it is removed before adding the new data.
+    - The function writes attributes 'noise_model' and 'is_log' to the dataset group.
+    """
+    
+    showInfo = kwargs.get('showInfo', 0)
+    f_gex = kwargs.get('f_gex', '')
+
+    if len(D_std)==0:
+        if len(d_std)==0:
+            d_std = 0.01
+        D_std = np.abs(d_std * D_obs)
+
+    D_str = 'D%d' % id
+
+    ns,nd=D_obs.shape
+    
+    with h5py.File(f_data_h5, 'a') as f:
+        # check if '/UTMX' exists and create it if it does not
+        if 'UTMX' not in f:
+            if showInfo>0:
+                print('Creating %s:/UTMX' % f_data_h5) 
+            UTMX = np.atleast_2d(np.arange(ns)).T
+            f.create_dataset('UTMX' , data=UTMX) 
+        if 'UTMY' not in f:
+            if showInfo>0:
+                print('Creating %s:/UTMY' % f_data_h5)
+            UTMY = f['UTMX'][:]*0
+            f.create_dataset('UTMY', data=UTMY)
+        if 'LINE' not in f:
+            if showInfo>0:
+                print('Creating %s:/LINE' % f_data_h5)
+            LINE = f['UTMX'][:]*0+1
+            f.create_dataset('LINE', data=LINE)
+        if 'ELEVATION' not in f:
+            if showInfo>0:
+                print('Creating %s:/ELEVATION' % f_data_h5)
+            ELEVATION = f['UTMX'][:]*0
+            f.create_dataset('ELEVATION', data=ELEVATION)
+
+    # check if group 'D{id}/' exists and remove it if it does
+    with h5py.File(f_data_h5, 'a') as f:
+        if D_str in f:
+            if showInfo>-1:
+                print('Removing group %s:%s ' % (f_data_h5,D_str))
+            del f[D_str]
+
+    # Write DATA
+    with h5py.File(f_data_h5, 'a') as f:
+        if showInfo>-1:
+            print('Adding group %s:%s ' % (f_data_h5,D_str))
+
+        f.create_dataset('/%s/d_obs' % D_str, data=D_obs)
+        # Write either Cd or d_std
+        if len(Cd) == 0:
+            f.create_dataset('/%s/d_std' % D_str, data=D_std)
+        else:
+            f.create_dataset('/%s/Cd' % D_str, data=Cd)
+
+        # wrote attribute noise_model
+        f['/%s/' % D_str].attrs['noise_model'] = 'gaussian'
+        f['/%s/' % D_str].attrs['is_log'] = is_log
+        if len(f_gex)>0:
+            f['/%s/' % D_str].attrs['gex'] = f_gex
+    
+    return f_data_h5
+
+def write_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='data.h5', **kwargs):
+    """
+    Writes observed data to an HDF5 file in a specified group with a multinomial noise model.
+
+    :param D_obs: The observed data array to be written to the file.
+    :type D_obs: numpy.ndarray
+    :param id: The ID of the group to write the data to. If not provided, the function will find the next available ID.
+    :type id: list, optional
+    :param id_use: The ID of PRIOR data the refer to this data. If not set, id_use=id
+    :type id_use: list, optional
+    :param f_data_h5: The path to the HDF5 file where the data will be written. Default is 'data.h5'.
+    :type f_data_h5: str, optional
+    :param kwargs: Additional keyword arguments.
+    :return: The path to the HDF5 file where the data was written.
+    :rtype: str
+    """
+    showInfo = kwargs.get('showInfo', 0)
+
+    if np.ndim(D_obs)==1:
+        D_obs = np.atleast_2d(D_obs).T
+
+    # f_data_h5 is a HDF% file grousp "/D1/", "/D2". 
+    # FInd the is with for the maximum '/D*' group
+    if not id:
+        with h5py.File(f_data_h5, 'a') as f:
+            for id in range(1, 100):
+                D_str = 'D%d' % id
+                if D_str not in f:
+                    break
+        if showInfo>0:
+            print('Using id=%d' % id)
+
+
+    D_str = 'D%d' % id
+
+    if showInfo>0:
+        print("Trying to write %s to %s" % (D_str,f_data_h5))
+
+    ns,nclass,nm=D_obs.shape
+
+    if i_use is None:
+        i_use = np.ones((ns,1))
+    if np.ndim(D_obs)==1:
+        i_use = np.atleast_2d(i_use).T
+    
+    if id_use is None:
+        id_use = id
+        
+    # check if group 'D{id}/' exists and remove it if it does
+    with h5py.File(f_data_h5, 'a') as f:
+        if D_str in f:
+            if showInfo>-1:
+                print('Removing group %s:%s ' % (f_data_h5,D_str))
+                del f[D_str]
+
+
+    # Write DATA
+    with h5py.File(f_data_h5, 'a') as f:
+        if showInfo>-1:
+            print('Adding group %s:%s ' % (f_data_h5,D_str))
+
+        f.create_dataset('/%s/d_obs' % D_str, data=D_obs)
+        f.create_dataset('/%s/i_use' % D_str, data=i_use)
+        
+        f.create_dataset('/%s/id_use' % D_str, data=id_use)
+            
+
+        # write attribute noise_model as 'multinomial'
+        f['/%s/' % D_str].attrs['noise_model'] = 'multinomial'
+        
+    return f_data_h5
+
+
+def check_data(f_data_h5='data.h5', **kwargs):
+    """
+    Check and update INTEGRATE data in an HDF5 file.
+    This function checks for the presence of specific datasets ('UTMX', 'UTMY', 'LINE', 'ELEVATION') 
+    in the given HDF5 file. If any of these datasets are missing, it creates them using the provided 
+    keyword arguments or default values.
+    :param f_data_h5: Path to the HDF5 file to check and update. Default is 'data.h5'.
+    :type f_data_h5: str
+    :param kwargs: Additional keyword arguments to specify dataset values and control verbosity.
+    :keyword showInfo: Verbosity level. If greater than 0, prints information messages. Default is 0.
+    :type showInfo: int, optional
+    :keyword UTMX: Array of UTMX values. If not provided, attempts to read from the file or generates default values.
+    :type UTMX: array-like, optional
+    :keyword UTMY: Array of UTMY values. Default is an array of zeros with the same length as UTMX.
+    :type UTMY: array-like, optional
+    :keyword LINE: Array of LINE values. Default is an array of ones with the same length as UTMX.
+    :type LINE: array-like, optional
+    :keyword ELEVATION: Array of ELEVATION values. Default is an array of zeros with the same length as UTMX.
+    :type ELEVATION: array-like, optional
+    :raises KeyError: If the 'D1/d_obs' dataset is not found in the file and 'UTMX' is not provided.
+    """
+
+    showInfo = kwargs.get('showInfo', 0)
+
+    if showInfo>0:
+        print('Checking INTEGRATE data in %s' % f_data_h5)  
+
+    UTMX = kwargs.get('UTMX', [])
+    if len(UTMX)==0:
+        with h5py.File(f_data_h5, 'r') as f:
+            if 'UTMX' in f:
+                UTMX = f['UTMX'][:]
+            else:
+                ns = f['D1/d_obs'].shape[0] 
+                print('UTMX not found in %s' % f_data_h5)
+                UTMX = np.atleast_2d(np.arange(ns)).T    
+            f.close()
+
+    UTMY = kwargs.get('UTMY', UTMX*0)
+    LINE = kwargs.get('LINE', UTMX*0+1)
+    ELEVATION = kwargs.get('ELEVATION', UTMX*0)
+
+    with h5py.File(f_data_h5, 'a') as f:
+        # check if '/UTMX' exists and create it if it does not
+        if 'UTMX' not in f:
+            if showInfo>0:
+                print('Creating UTMX')            
+            f.create_dataset('UTMX', data=UTMX) 
+        if 'UTMY' not in f:
+            if showInfo>0:
+                print('Creating UTMY')            
+            f.create_dataset('UTMY', data=UTMY)
+        if 'LINE' not in f:
+            if showInfo>0:
+                print('Creating LINE')
+            f.create_dataset('LINE', data=LINE)
+        if 'ELEVATION' not in f:
+            if showInfo>0:
+                print('Creating ELEVATION')
+            f.create_dataset('ELEVATION', data=ELEVATION)
+
+            f.close()
+
+
+
+
+def merge_data(f_data, f_gex='', delta_line=0, f_data_merged_h5='', **kwargs):
+    """
+    Merge multiple data files into a single HDF5 file.
+
+    :param f_data: List of input data files to merge.
+    :type f_data: list
+    :param f_gex: Path to geometry exchange file, by default ''.
+    :type f_gex: str, optional
+    :param delta_line: Line number increment for each merged file, by default 0.
+    :type delta_line: int, optional
+    :param f_data_merged_h5: Output merged HDF5 file path, by default derived from f_gex.
+    :type f_data_merged_h5: str, optional
+    :param kwargs: Additional keyword arguments.
+    :return: Filename of the merged HDF5 file.
+    :rtype: str
+    :raises ValueError: If f_data is not a list.
+    """
+    
+    import h5py
+    import numpy as np
+    import integrate as ig
+
+    showInfo = kwargs.get('showInfo', 2)
+
+    if len(f_data_merged_h5) == 0:
+        f_data_merged_h5 = f_gex.split('.')[0] + '_merged.h5'
+    
+
+    # CHeck the f_data is a list. If so return a error
+    if not isinstance(f_data, list):
+        raise ValueError('f_data must be a list of strings')
+
+    nd = len(f_data)
+    if showInfo:
+        print('Merging %d data sets to %s ' % (nd, f_data_merged_h5))
+    
+    f_data_h5 = f_data[0]
+    if showInfo>1:
+        print('.. Merging ', f_data_h5)    
+    Xc, Yc, LINEc, ELEVATIONc = ig.get_geometry(f_data_h5)
+    Dc = ig.load_data(f_data_h5)
+    d_obs_c = Dc['d_obs']
+    d_std_c = Dc['d_std']
+    noise_model = Dc['noise_model']
+
+    for i in range(1, len(f_data)):
+        f_data_h5 = f_data[i]                   
+        if showInfo>1:
+            print('.. Merging ', f_data_h5)    
+        X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+        D = ig.load_data(f_data_h5)
+
+        # append data
+        Xc = np.append(Xc, X)
+        Yc = np.append(Yc, Y)
+        LINEc = np.append(LINEc, LINE+i*delta_line)
+        ELEVATIONc = np.append(ELEVATIONc, ELEVATION)
+        
+        for id in range(len(d_obs_c)):
+            #print(id)
+            try:
+                d_obs_c[id] = np.vstack((d_obs_c[id], np.atleast_2d(D['d_obs'][id])))        
+                d_std_c[id] = np.vstack((d_std_c[id], np.atleast_2d(D['d_std'][id])))
+            except:
+                print("Could not merge %s" % f_data_h5)
+
+    Xc = np.atleast_2d(Xc).T
+    Yc = np.atleast_2d(Yc).T
+    LINEc = np.atleast_2d(LINEc).T
+    ELEVATIONc = np.atleast_2d(ELEVATIONc).T
+
+    with h5py.File(f_data_merged_h5, 'w') as f:
+        f.create_dataset('UTMX', data=Xc)
+        f.create_dataset('UTMY', data=Yc)
+        f.create_dataset('LINE', data=LINEc)
+        f.create_dataset('ELEVATION', data=ELEVATIONc)
+
+    for id in range(len(d_obs_c)):
+        write_data_gaussian(d_obs_c[id], D_std = d_std_c[id], noise_model = noise_model, f_data_h5=f_data_merged_h5, id=id+1, f_gex = f_gex)
+
+    return f_data_merged_h5
+
+
+
+
+## 
+
+def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5=''):
+    """
+    Merge multiple posterior HDF5 files and their corresponding data HDF5 files into a single posterior HDF5 file.
+
+    Parameters
+    ----------
+    f_post_h5_files : list of str
+        List of file paths to the posterior HDF5 files to be merged.
+    f_data_h5_files : list of str
+        List of file paths to the data HDF5 files corresponding to the posterior files.
+    f_post_merged_h5 : str, optional
+        File path for the merged posterior HDF5 file. If not provided, a default name will be generated.
+
+    Returns
+    -------
+    str
+        File path of the merged posterior HDF5 file.
+
+    Raises
+    ------
+    ValueError
+        If the length of `f_data_h5_files` is not the same as `f_post_h5_files`.
+
+    Notes
+    -----
+    The function assumes that the `merge_data` function from the `ig` module is available for merging data files.
+    """
+    import h5py
+    import integrate as ig
+
+    nf = len(f_post_h5_files)
+    # Check that legth of f_data_h5_files is the same as f_post_h5_files
+    if len(f_data_h5_files) != nf:
+        raise ValueError('Length of f_data_h5_files must be the same as f_post_h5_files')
+
+    if len(f_post_merged_h5) == 0:
+        f_post_merged_h5 = 'POST_merged_N%d.h5' % nf
+
+    f_data_merged_h5 = 'DATA_merged_N%d.h5' % nf
+
+    f_data_merged_h5 = ig.merge_data(f_data_h5_files, f_data_merged_h5=f_data_merged_h5)
+
+
+    for i in range(len(f_post_h5_files)):
+        #  get 'i_sample' from the merged file
+        f_post_h5 = f_post_h5_files[i]
+        with h5py.File(f_post_h5, 'r') as f:
+            i_use_s = f['i_use'][:]
+            T_s = f['T'][:]
+            EV_s = f['EV'][:]
+            f_prior_h5 = f['/'].attrs['f5_prior']
+            f_data_h5 = f['/'].attrs['f5_data']
+            if i == 0:
+                i_use = i_use_s
+                T = T_s
+                EV = EV_s 
+            else:
+                i_use = np.concatenate((i_use,i_use_s))
+                T = np.concatenate((T,T_s))
+                EV = np.concatenate((EV,EV_s))
+
+    # Write the merged data to             
+    with h5py.File(f_post_merged_h5, 'w') as f:
+        f.create_dataset('i_use', data=i_use)
+        f.create_dataset('T', data=T)
+        f.create_dataset('EV', data=EV)
+        f.attrs['f5_prior'] = f_prior_h5
+        f.attrs['f5_data'] = f_data_merged_h5
+
+    return f_post_merged_h5, f_data_merged_h5
+
+
+

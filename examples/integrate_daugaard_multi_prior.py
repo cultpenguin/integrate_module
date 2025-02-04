@@ -60,7 +60,7 @@ if doComputePriorData:
         print('Using prior model file %s' % f_prior_h5)
 
         #% plot some 1D statistics of the prior
-        ig.plot_prior_stats(f_prior_h5)
+        ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 
         #% Compute prior data
         f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, N=N_use)
@@ -76,10 +76,13 @@ f_prior_data_h5_list.append('prior_detailed_outvalleys_N2000000_dmax90_TX07_2023
 #f_prior_h5_list.append('prior_detailed_general_N2000000_dmax90.h5_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 f_post_h5_list = []
 
-N_use = 20000
+N_use = 2000000
 
 for f_prior_data_h5 in f_prior_data_h5_list:
     print('Using prior model file %s' % f_prior_data_h5)
+
+    #% plot some 1D statistics of the prior
+    ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 
     #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
     updatePostStat =True
@@ -98,7 +101,7 @@ for f_post_h5 in f_post_h5_list:
     #% Posterior analysis
     # Plot the Temperature used for inversion
     #ig.plot_T_EV(f_post_h5, pl='T')
-    ig.plot_T_EV(f_post_h5, pl='EV')
+    ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
     #ig.plot_T_EV(f_post_h5, pl='ND')
 
     #% Plot Profiles
@@ -163,11 +166,13 @@ EV_P_max = np.max(EV_P, axis=0)
 psize = (EV_P_max-0.5)*20+0.001
 plt.subplot(2,1,2)
 #plt.plot(X, Y, 'k.', markersize=.1)
-plt.scatter(X, Y, c=EV_mode, cmap='Set1', s=psize)
+#plt.scatter(X, Y, c=EV_mode, cmap='Set1', s=psize)
+plt.scatter(X, Y, c=EV_mode, cmap='summer', s=psize)
 plt.axis('equal')
 plt.tight_layout()
 cbar = plt.colorbar(ticks=[0, 1])
 cbar.set_ticklabels(['In', 'Out'])
+plt.savefig('IN_EV_P_N%d.png' % (N_use), dpi=300)
 # %%
 
 

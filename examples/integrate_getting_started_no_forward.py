@@ -47,10 +47,11 @@ ig.plot_prior_stats(f_prior_h5)
 
 # %% READY FOR INVERSION
 if parallel:
-    N_use = 100000 # Use all data in prior lookup table
+    N_use = 1000000 # Use all data in prior lookup table
 else:
     N_use = 10000 # Use only a small subset, whn not using parallel
-f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = N_use, parallel=parallel, showInfo=1)
+N_cpu = 8
+f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = N_use, parallel=parallel, N_cpu=N_cpu)
 
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$
@@ -80,5 +81,7 @@ ig.plot_feature_2d(f_post_h5,im=1,iz=10, key='Median', uselog=1, cmap='jet', s=1
 # Plot the mode of the 2nd type model parameter (lithology) at at layer 10
 ig.plot_feature_2d(f_post_h5,im=2,iz=10,key='Mode', uselog=0, clim=[1,6], cmap='jet', s=12)
 
+
+# %%
 
 # %%

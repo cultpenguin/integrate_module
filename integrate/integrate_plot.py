@@ -21,6 +21,7 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
     :type usePrior: bool
     :param kwargs: Additional keyword arguments.
     :returns: fig -- The matplotlib figure object.
+    :rtype: matplotlib.figure.Figure
     """
 
     if isinstance(icat, int):
@@ -93,8 +94,15 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
     :type uselog: int
     :param title_text: Additional text to include in the plot title.
     :type title_text: str
+    :param hardcopy: Whether to save the plot as a PNG file.
+    :type hardcopy: bool
+    :param cmap: Colormap to use for the plot.
+    :type cmap: list
+    :param clim: Color limits for the plot.
+    :type clim: list
     :param kwargs: Additional keyword arguments to be passed to the scatter plot.
     :returns: int -- 1 if the plot is successful.
+    :rtype: int
     """
     from matplotlib.colors import LogNorm
 
@@ -180,6 +188,28 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
 
 
 def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardcopy=False, **kwargs):
+    """
+    Plot temperature and evidence field values from a given HDF5 file.
+
+    :param f_post_h5: Path to the HDF5 file.
+    :type f_post_h5: str
+    :param i1: Start index for the data to plot.
+    :type i1: int
+    :param i2: End index for the data to plot.
+    :type i2: int
+    :param s: Size of the scatter plot points.
+    :type s: int
+    :param T_min: Minimum temperature value.
+    :type T_min: int
+    :param T_max: Maximum temperature value.
+    :type T_max: int
+    :param pl: Type of plot to generate ('all', 'T', 'EV', 'ND').
+    :type pl: str
+    :param hardcopy: Whether to save the plot as a PNG file.
+    :type hardcopy: bool
+    :param kwargs: Additional keyword arguments.
+    :returns: None
+    """
 
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -224,7 +254,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             # get filename without extension        
             f_png = '%s_%d_%d_T.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
             plt.savefig(f_png)
-            #plt.show()
+            plt.show()
 
     if (pl=='all') or (pl=='EV'):
         # get the 99% percentile of EV values
@@ -250,7 +280,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             # get filename without extension
             f_png = '%s_%d_%d_EV.png' % (os.path.splitext(f_post_h5)[0],i1,i2)
             plt.savefig(f_png)
-            #plt.show()
+            plt.show()
     if (pl=='all') or (pl=='ND'):
         # 
         f_data = h5py.File(f_data_h5,'r')
@@ -276,7 +306,129 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
 
     return
 
+
+def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcopy=False, **kwargs):
+    """
+    Plots the geometry data from an INTEGRATE HDF5 file.
+
+    Parameters
+    ----------
+    f_data_h5 : str
+        Path to the HDF5 file containing the geometry data.
+    i1 : int, optional
+        Starting index for the data to be plotted (default is 0).
+    i2 : int, optional
+        Ending index for the data to be plotted (default is 0, which means the end of the data).
+    ii : numpy.ndarray, optional
+        Array of indices to be plotted (default is an empty array, which means all indices between i1 and i2).
+    s : int, optional
+        Size of the scatter plot points (default is 5).
+    pl : str, optional
+        Type of plot to generate. Options are 'all', 'LINE', 'ELEVATION', or 'id' (default is 'all').
+    hardcopy : bool, optional
+        If True, saves the plot as a PNG file (default is False).
+    **kwargs : dict, optional
+        Additional keyword arguments to pass to the scatter plot function.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    This function generates scatter plots of the geometry data. If `hardcopy` is True, the plots are saved as PNG files.
+    """
+    import h5py
+    # Test if f_data_h5 is in fact f_post_h5 type file
+    with h5py.File(f_data_h5,'r') as f_data:
+        if 'f5_prior' in f_data['/'].attrs:
+            f_data_h5 = f_data['/'].attrs['f5_data']
+    print('f_data_h5=%s' % f_data_h5)        
+    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    
+    nd = X.shape[0]
+
+    if len(ii)==0:
+        if i1==0:
+            i1=0
+        if i2==0:
+            i2=nd
+        if i2<i1:
+            i2=i1+1
+        if i1<1: 
+            i1=0
+        if i2>nd-1:
+            i2=nd
+        ii = np.arange(i1,i2)
+
+
+    tit = f_png = '%s_%d_%d.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
+
+    if (pl=='all') or (pl=='LINE'):
+        plt.figure(1, figsize=(20, 10))
+        plt.plot(X,Y,'.',color='lightgray', zorder=-1, markersize=1)
+        plt.scatter(X[ii],Y[ii],c=LINE[ii],s=s,cmap='jet',**kwargs)            
+        plt.grid()
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.colorbar(label='LINE')
+        plt.title('%s - LINE' % tit)
+        plt.axis('equal')
+        if hardcopy:
+            # get filename without extension        
+            f_png = '%s_%d_%d_LINE.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
+            plt.savefig(f_png)
+        plt.show()
+    
+
+    if (pl=='all') or (pl=='ELEVATION'):
+        plt.figure(1, figsize=(20, 10))
+        plt.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap='jet',**kwargs)            
+        plt.grid()
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.colorbar(label='ELEVATION')
+        plt.title('ELEVATION')
+        plt.axis('equal')
+        if hardcopy:
+            # get filename without extension        
+            f_png = '%s_%d_%d_ELEVATION.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
+            plt.savefig(f_png)
+        plt.show()
+
+    if (pl=='all') or (pl=='id'):
+        plt.figure(1, figsize=(20, 10))
+        plt.scatter(X[ii],Y[ii],c=ii,s=s,cmap='jet',**kwargs)  
+        plt.grid()
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.colorbar(label='id')
+        plt.title('id')
+        plt.axis('equal')
+        if hardcopy:
+            # get filename without extension        
+            f_png = '%s_%d_%d_id.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
+            plt.savefig(f_png)
+
+    return
+
+
+
 def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
+    """
+    Plot profile data from a given HDF5 file.
+
+    :param f_post_h5: Path to the HDF5 file.
+    :type f_post_h5: str
+    :param i1: Starting index for the profile.
+    :type i1: int
+    :param i2: Ending index for the profile.
+    :type i2: int
+    :param im: Index of the profile to plot.
+    :type im: int
+    :param kwargs: Additional keyword arguments.
+    :returns: None
+    """
 
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -297,9 +449,11 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
         with h5py.File(f_prior_h5,'r') as f_prior:
             for key in f_prior.keys():
                 im = int(key[1:])
-                if key[0]=='M':
-                    plot_profile(f_post_h5, i1, i2, im=im, **kwargs)
-                
+                try:
+                    if key[0]=='M':
+                        plot_profile(f_post_h5, i1, i2, im=im, **kwargs)
+                except:
+                    print('Error in plot_profile for key=%s' % key)
         return 
     
     
@@ -318,14 +472,16 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
     Plot discrete profiles from a given HDF5 file.
 
-    Parameters: 
-    - f_post_h5 (str): Path to the HDF5 file.
-    - i1 (int, optional): Starting index for the profile. Defaults to 1.
-    - i2 (int, optional): Ending index for the profile. Defaults to 1e+9.
-    - im (int, optional): Index of the profile to plot. Defaults to 1.
-
-    Returns:
-    - None
+    :param f_post_h5: Path to the HDF5 file.
+    :type f_post_h5: str
+    :param i1: Starting index for the profile.
+    :type i1: int
+    :param i2: Ending index for the profile.
+    :type i2: int
+    :param im: Index of the profile to plot.
+    :type im: int
+    :param kwargs: Additional keyword arguments.
+    :returns: None
     """
     from matplotlib.colors import LogNorm
 
@@ -371,7 +527,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         if 'cmap' in f_prior[Mstr].attrs.keys():
             cmap = f_prior[Mstr].attrs['cmap'][:]
         else:
-            cmap = plt.cm.hot(np.linspace(0, 1, n_class)).T
+            cmap = plt.cm.jet(np.linspace(0, 1, n_class)).T
         from matplotlib.colors import ListedColormap
         cmap = ListedColormap(cmap.T)            
 
@@ -500,14 +656,16 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
     Plot continuous profiles from a given HDF5 file.
 
-    Parameters: 
-    - f_post_h5 (str): Path to the HDF5 file.
-    - i1 (int, optional): Starting index for the profile. Defaults to 1.
-    - i2 (int, optional): Ending index for the profile. Defaults to 1e+9.
-    - im (int, optional): Index of the profile to plot. Defaults to 1.
-
-    Returns:
-    - None
+    :param f_post_h5: Path to the HDF5 file.
+    :type f_post_h5: str
+    :param i1: Starting index for the profile.
+    :type i1: int
+    :param i2: Ending index for the profile.
+    :type i2: int
+    :param im: Index of the profile to plot.
+    :type im: int
+    :param kwargs: Additional keyword arguments.
+    :returns: None
     """
     from matplotlib.colors import LogNorm
 
@@ -520,6 +678,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
+    with h5py.File(f_prior_h5,'r') as f_prior:
+        if 'name' in f_prior['/M%d' % im].attrs:
+            name = f_prior['/M%d' % im].attrs['name']
+        else:
+            name='M%d' % im
     
     X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
@@ -529,10 +692,12 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         print("Plotting profile %s from %s" % (Mstr, f_post_h5))
 
     with h5py.File(f_prior_h5,'r') as f_prior:
-        try:
+        if 'z' in f_prior[Mstr].attrs.keys():
             z = f_prior[Mstr].attrs['z'][:].flatten()
-        except:
+        elif 'x' in f_prior[Mstr].attrs.keys():
             z = f_prior[Mstr].attrs['x'][:].flatten()
+        else:
+            z=np.array(0)
         is_discrete = f_prior[Mstr].attrs['is_discrete']
         if 'clim' in f_prior[Mstr].attrs.keys():
             clim = f_prior[Mstr].attrs['clim'][:].flatten()
@@ -571,75 +736,99 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     nm = Mean.shape[0]
     if nm<=1:
-        print('Only nm=%d, model parameters. no profile will be plot' % (nm))
-        return 1
-
-    nd = LINE.shape[0]
-    id = np.arange(nd)
-    # Create a meshgrid from X and Y
-    XX, ZZ = np.meshgrid(X,z)
-    YY, ZZ = np.meshgrid(Y,z)
-    ID, ZZ = np.meshgrid(id,z)
-
-    ID = np.sort(ID, axis=0)
-    ZZ = np.sort(ZZ, axis=0)
-
-    # compute the depth from the surface plus the elevation
-    for i in range(nd):
-        ZZ[:,i] = ELEVATION[i]-ZZ[:,i]
-
+        pass
+        #print('Only nm=%d, model parameters. no profile will be plot' % (nm))
+        #return 1
 
     # Check for out of range
+    nd = LINE.shape[0]
     if i1<1: 
         i1=0
     if i2>nd-1:
         i2=nd-1
+    id = np.arange(nd)
+    
+    if nm>=1:
+        # Create a meshgrid from X and Y
+        XX, ZZ = np.meshgrid(X,z)
+        YY, ZZ = np.meshgrid(Y,z)
+        ID, ZZ = np.meshgrid(id,z)
 
-    # Get center of grid cells
-    IID = ID[:,i1:i2]
-    IIZ = ZZ[:,i1:i2]
-    # IID, IIZ is the center of the cell. Create new grids, DDc, ZZc, that hold the the cordńers if the grids. 
-    # DDc should have cells of size 1, while ZZc should be the same as ZZ but with a row added at the bottom that is the same as the last row of ZZ plus 100
-    DDc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
-    ZZc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
-    DDc[:-1,:-1] = IID - 0.5
-    DDc[:-1,-1] = IID[:,-1] + 0.5
-    DDc[-1,:] = DDc[-2,:] + 1
+        ID = np.sort(ID, axis=0)
+        ZZ = np.sort(ZZ, axis=0)
 
-    ZZc[:-1,:-1] = IIZ
-    ZZc[-1,:] = ZZc[-2,:] + 1
-  
+        # compute the depth from the surface plus the elevation
+        for i in range(nd):
+            ZZ[:,i] = ELEVATION[i]-ZZ[:,i]
+
+
+
+
+        # Get center of grid cells
+        IID = ID[:,i1:i2]
+        IIZ = ZZ[:,i1:i2]
+        # IID, IIZ is the center of the cell. Create new grids, DDc, ZZc, that hold the the cordńers if the grids. 
+        # DDc should have cells of size 1, while ZZc should be the same as ZZ but with a row added at the bottom that is the same as the last row of ZZ plus 100
+        DDc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
+        ZZc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
+        DDc[:-1,:-1] = IID - 0.5
+        DDc[:-1,-1] = IID[:,-1] + 0.5
+        DDc[-1,:] = DDc[-2,:] + 1
+
+        ZZc[:-1,:-1] = IIZ
+        ZZc[-1,:] = ZZc[-2,:] + 1
+    
     # Create a figure with 3 subplots sharing the same Xaxis!
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
     
-    # MEAN
-    #im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mean[:,i1:i2], 
-    im1 = ax[0].pcolormesh(DDc, ZZc, Mean[:,i1:i2], 
-            cmap=cmap,            
-            shading='auto',
-            norm=LogNorm())
-    im1.set_clim(clim[0],clim[1])        
-    ax[0].set_title('Mean')
-    fig.colorbar(im1, ax=ax[0], label='Resistivity (Ohm.m)')
+    if nm>1:
+        # MEAN
+        #im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mean[:,i1:i2], 
+        im1 = ax[0].pcolormesh(DDc, ZZc, Mean[:,i1:i2], 
+                cmap=cmap,            
+                shading='auto',
+                norm=LogNorm())
+        im1.set_clim(clim[0],clim[1])        
+        ax[0].set_title('Mean %s' % name)
+        fig.colorbar(im1, ax=ax[0], label='%s' % name)
     
-    # MEDIAN
-    im2 = ax[1].pcolormesh(DDc, ZZc, Median[:,i1:i2], 
-            cmap=cmap,            
-            shading='auto',
-            norm=LogNorm())  # Set color scale to logarithmic
-    im2.set_clim(clim[0],clim[1])        
-    ax[1].set_title('Median')
-    fig.colorbar(im2, ax=ax[1], label='Resistivity (Ohm.m)')
+    if nm>1:
+        # MEDIAN
+        im2 = ax[1].pcolormesh(DDc, ZZc, Median[:,i1:i2], 
+                cmap=cmap,            
+                shading='auto',
+                norm=LogNorm())  # Set color scale to logarithmic
+        im2.set_clim(clim[0],clim[1])        
+        ax[1].set_title('Median %s' % name)
+        fig.colorbar(im2, ax=ax[1], label='%s' % name) 
 
-    # STD
-    import matplotlib
-    im3 = ax[2].pcolormesh(DDc, ZZc, Std[:,i1:i2], 
-                cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]), 
-                shading='auto')
-    im3.set_clim(0,1)
-    ax[2].set_title('std')
-    fig.colorbar(im3, ax=ax[2], label='Standard deviation (Ohm.m)')
+    if nm>1:
+        # STD
+        import matplotlib
+        im3 = ax[2].pcolormesh(DDc, ZZc, Std[:,i1:i2], 
+                    cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]), 
+                    shading='auto')
+        im3.set_clim(0,1)
+        ax[2].set_title('Std %s' % name)
+        fig.colorbar(im3, ax=ax[2], label='Standard deviation (Ohm.m)')
+    else:
+        im3 = ax[2].plot(id[i1:i2],Mean[:,i1:i2].T, 'k', label='Mean')
+        ax[2].plot(id[i1:i2],Mean[:,i1:i2].T+2*Std[:,i1:i2].T, 'k:', label='P97.5')
+        ax[2].plot(id[i1:i2],Mean[:,i1:i2].T-2*Std[:,i1:i2].T, 'k:', label='P2.5')
+        
+        ax[2].plot(id[i1:i2],Median[:,i1:i2].T, 'r', label='Median')
+        # add legend
+        ax[2].legend(loc='upper right')
+        # add grd on
+        ax[2].grid(True)
+        # hide ax[0]
 
+        # set axis on ax[3] to be the same as on ax[4]
+        ax[2].set_xlim(i1,i2)
+        ax[2].set_title(name)
+        ax[0].axis('off')
+        ax[1].axis('off')
+        
     ## T and V
     ax[0].set_xticks([])
     ax[1].set_xticks([])
@@ -653,12 +842,13 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     ax[3].legend(loc='upper right')
     plt.grid(True)
 
-    # Create an invisible colorbar for the last subplot
-    cbar4 = fig.colorbar(im3, ax=ax[3])
-    cbar4.solids.set(alpha=0)
-    cbar4.outline.set_visible(False)
-    cbar4.ax.set_yticks([])  # Hide the colorbar ticks
-    cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
+    if nm>1:
+        # Create an invisible colorbar for the last subplot
+        cbar4 = fig.colorbar(im3, ax=ax[3])
+        cbar4.solids.set(alpha=0)
+        cbar4.outline.set_visible(False)
+        cbar4.ax.set_yticks([])  # Hide the colorbar ticks
+        cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
 
 
     # get filename without extension
@@ -669,8 +859,19 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     return
 
-def plot_data_xy(f_data_h5, pl_type='all', **kwargs):
-    import integrate as ig
+def plot_data_xy(f_data_h5, pl_type='line', **kwargs):
+    """
+    Plot the XY geometry data from an HDF5 file.
+
+    :param f_data_h5: Path to the HDF5 file.
+    :type f_data_h5: str
+    :param pl_type: Type of plot to generate ('line', 'elevation', 'all').
+    :type pl_type: str
+    :param kwargs: Additional keyword arguments.
+    :returns: fig -- The matplotlib figure object.
+    :rtype: matplotlib.figure.Figure
+    """
+    #import integrate as ig
     import matplotlib.pyplot as plt
     
     kwargs.setdefault('hardcopy', False)
@@ -849,13 +1050,30 @@ def plot_data_prior(f_prior_data_h5,
                     ylim=None, 
                     **kwargs):
     """
-    Plot the prior data on top of prior data realizations. 
-    Usefull for checking the consistency between the choid of prior and observed before runnning an inversion.
-    """
+    Plot the prior data on top of prior data realizations.
 
+    :param f_prior_data_h5: Path to the HDF5 file containing the prior data.
+    :type f_prior_data_h5: str
+    :param f_data_h5: Path to the HDF5 file containing the observed data.
+    :type f_data_h5: str
+    :param nr: Number of realizations to plot.
+    :type nr: int
+    :param id: Data set ID.
+    :type id: int
+    :param d_str: Data string key.
+    :type d_str: str
+    :param alpha: Transparency level for the plot.
+    :type alpha: float
+    :param ylim: Y-axis limits for the plot.
+    :type ylim: tuple or list
+    :param kwargs: Additional keyword arguments.
+    :returns: None
+    """
     import h5py
     import numpy as np
     import matplotlib.pyplot as plt
+
+    cols=['wheat','black','red']
 
     f_data = h5py.File(f_data_h5)
     f_prior_data = h5py.File(f_prior_data_h5)
@@ -872,7 +1090,7 @@ def plot_data_prior(f_prior_data_h5,
         i_use = np.sort(np.random.choice(npr, nr, replace=False))
         D = f_prior_data[dh5_str][i_use]
         
-        plt.semilogy(D.T,'k-',alpha=alpha, linewidth=0.1)
+        plt.semilogy(D.T,'-',alpha=alpha, linewidth=0.1, color=cols[1], label='\rho(d)') 
         
     else:   
         print('%s not in f_prior_data' % dh5_str)
@@ -888,7 +1106,7 @@ def plot_data_prior(f_prior_data_h5,
         # select nr random sample of d_obs
         i_use_d = np.sort(np.random.choice(ns, nr, replace=False))
 
-        plt.semilogy(d_obs[i_use_d,:].T,'r-',alpha=alpha, linewidth=0.1,label='d_obs')
+        plt.semilogy(d_obs[i_use_d,:].T,'-',alpha=alpha, linewidth=0.1,label='d_obs', color=cols[2])
         
     else:
         print('%s not in f_data'% dh5_str)
@@ -900,7 +1118,9 @@ def plot_data_prior(f_prior_data_h5,
     plt.xlabel('Data #')
     plt.ylabel('Data Value')
     plt.tight_layout()
-    plt.title('Prior data (black) and observed data (red)\n%s (black)\n%s (red)' % (os.path.splitext(f_prior_data_h5)[0],os.path.splitext(f_data_h5)[0]) )
+    # Add legend but, only 'A' and 'B'
+    #plt.title('Prior data (black) and observed data (red)\n%s (black)\n%s (red)' % (os.path.splitext(f_prior_data_h5)[0],os.path.splitext(f_data_h5)[0]) )
+    plt.title('Prior data (black) and observed data (red)')
     
     f_data.close()
     f_prior_data.close()
@@ -911,9 +1131,9 @@ def plot_data_prior(f_prior_data_h5,
     if kwargs['hardcopy']:
         # strip the filename from f_data_h5
         plt.savefig('%s_%s_id%d_%s.png' % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_data_h5)[0],id,d_str))
+    plt.show()
 
-
-def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
+def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
     """
     Plot the prior and posterior data for a given dataset.
 
@@ -921,16 +1141,15 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     :type f_post_h5: str
     :param i_plot: The index of the observation to plot.
     :type i_plot: int
-    :param Dkey: String of the hdf5 key for the data set.
+    :param nr: Number of realizations to plot.
+    :type nr: int
+    :param id: Data set ID.
+    :type id: int
+    :param Dkey: String of the HDF5 key for the data set.
     :type Dkey: str
     :param kwargs: Additional keyword arguments.
-    :type kwargs: dict
-
     :returns: None
-    :rtype: None
     """
-
-
     import numpy as np
     import matplotlib.pyplot as plt
     import matplotlib
@@ -938,20 +1157,54 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     import os
     
     showInfo = kwargs.get('showInfo', 0)
+    is_log = kwargs.get('is_log', False)
 
     ## Check if the data file f_data_h5 exists
     if not os.path.exists(f_post_h5):
         print("plot_data: File %s does not exist" % f_data_h5)
         return
 
+
     f_post = h5py.File(f_post_h5,'r')
 
     f_prior_h5 = f_post['/'].attrs['f5_prior']
     f_data_h5 = f_post['/'].attrs['f5_data']
 
+
+    # if id is a list of integers, then loop over them and call 
+    # plot_data_prior_post for each id
+    if isinstance(id, list):
+        for i in id:
+            plot_data_prior_post(f_post_h5, i_plot=i_plot, nr=nr, id=i, **kwargs)
+        return
+
+    if id==0:
+        # get number of data sets in f_post_h5
+        nd = 0
+        id_plot = []
+        with h5py.File(f_data_h5,'r') as f_data:
+            for key in f_data.keys():
+                if key[0]=='D':
+                    if showInfo>0:
+                        print("plot_data_prior_post: Found data set %s" % key)
+                    nd += 1
+                    id_plot.append(nd)  
+
+        #print(id_plot)
+        plot_data_prior_post(f_post_h5, i_plot=i_plot, nr=nr, id=id_plot, **kwargs)
+        return
+
+    if id>0:
+        Dkey = 'D%d' % id
+    
+
     f_data = h5py.File(f_data_h5,'r')
     f_prior = h5py.File(f_prior_h5,'r')
-    
+
+    cols=['gray','black','red']
+    cols=['wheat','black','red']
+
+
     if len(Dkey)==0:
         nd = 0
         Dkeys = []
@@ -969,15 +1222,27 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     if noise_model == 'gaussian':
         noise_model = 'Gaussian'
         d_obs = f_data['/%s' % Dkey]['d_obs'][:]
-        d_std = f_data['/%s' % Dkey]['d_std'][:]
+        try:
+            d_std = f_data['/%s' % Dkey]['d_std'][:]
+        except:
+            if 'Cd' in f_data['/%s' % Dkey].keys():
+                # if 'Cd' is 3 dim then take the diagonal
+                if len(f_data['/%s' % Dkey]['Cd'].shape)==3:
+                    d_std = np.sqrt(np.diag(f_data['/%s' % Dkey]['Cd'][i_plot]))
+                else:
+                    d_std = np.sqrt(f_data['/%s' % Dkey]['Cd'])
+            else:
+                d_std = np.zeros(d_obs.shape)
 
         if i_plot==-1:
             # get 400 random unique index of d_obs
             i_use = np.random.choice(d_obs.shape[0], nr, replace=False)
         else:
-            i_use = f_post['/i_use'][i_plot,:]
+            nr = np.min([nr,d_obs.shape[0]])
+            i_use = f_post['/i_use'][i_plot,0:nr]
             i_use = i_use.flatten()
         nr=len(i_use)
+        
         ns,ndata = f_data['/%s' % Dkey]['d_obs'].shape
         d_post = np.zeros((nr,ndata))
         d_prior = np.zeros((nr,ndata))
@@ -992,14 +1257,22 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
     
         #i_plot=[]
         fig, ax = plt.subplots(1,1,figsize=(7,7))
-        ax.semilogy(d_prior.T,'-',linewidth=.1, label='d_prior', color='gray')
+        if is_log:
+            ax.plot(d_prior.T,'-',linewidth=1.4, label='d_prior', color=cols[0])
+            ax.plot(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
         
-        if i_plot>-1:
-            ax.semilogy(d_post.T,'-',linewidth=.1, label='d_prior', color='black')
+            print('plot_data_prior_post: Plotting log10(d_prior)')
+            print('This is not implemented yet')
+            return        
+        else:
+            ax.semilogy(d_prior.T,'-',linewidth=.2, label='d_prior', color=cols[0])
+
+        if i_plot>-1:            
+            ax.semilogy(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
         
-            ax.semilogy(d_obs[i_plot,:],'r.',markersize=6, label='d_obs')
-            ax.semilogy(d_obs[i_plot,:]-2*d_std[i_plot,:],'r.',markersize=3, label='d_obs')
-            ax.semilogy(d_obs[i_plot,:]+2*d_std[i_plot,:],'r.',markersize=3, label='d_obs')
+            ax.semilogy(d_obs[i_plot,:],'.',markersize=6, label='d_obs', color=cols[2])
+            ax.semilogy(d_obs[i_plot,:]-2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
+            ax.semilogy(d_obs[i_plot,:]+2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
 
             #ax.text(0.1, 0.1, 'Data set %s, Observation # %d' % (Dkey, i_plot+1), transform=ax.transAxes)
             ax.text(0.1, 0.1, 'T = %4.2f.' % (f_post['/T'][i_plot]), transform=ax.transAxes)
@@ -1008,10 +1281,13 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
         else:   
             # select nr random unqiue index of d_obs
             i_d = np.random.choice(d_obs.shape[0], nr, replace=False)
-            #for i in i_d:
-            #    ax.semilogy(d_obs[i,:],'r-',linewidth=.1, label='d_obs')
-            ax.semilogy(d_obs[i_d,:].T,'r-',linewidth=.1, label='d_obs')
-
+            if is_log:
+                ax.plot(d_obs[i_d,:].T,'-',linewidth=.1, label='d_obs', color=cols[2])
+                ax.plot(d_obs[i_d,:].T,'*',linewidth=.1, label='d_obs', color=cols[2])
+            else:
+                ax.semilogy(d_obs[i_d,:].T,'-',linewidth=1, label='d_obs', color=cols[2])
+                ax.semilogy(d_obs[i_d,:].T,'*',linewidth=1, label='d_obs', color=cols[2])
+            
         plt.xlabel('Data #')
         plt.ylabel('Data')
         plt.grid()
@@ -1027,9 +1303,22 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, Dkey=[], **kwargs):
                 plt.savefig('%s_%s.png' % (os.path.splitext(f_post_h5)[0],Dkey))
             else:
                 plt.savefig('%s_%s_id%05d.png' % (os.path.splitext(f_post_h5)[0],Dkey,i_plot))
-            
+        plt.show()
+    
 
 def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
+    """
+    Plot the prior statistics for a given dataset.
+
+    :param f_prior_h5: The path to the prior data file.
+    :type f_prior_h5: str
+    :param Mkey: Key of the model to plot.
+    :type Mkey: str or list
+    :param nr: Number of realizations to plot.
+    :type nr: int
+    :param kwargs: Additional keyword arguments.
+    :returns: None
+    """
     from matplotlib.colors import LogNorm
     
     f_prior = h5py.File(f_prior_h5,'r')
@@ -1213,6 +1502,16 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
 
 # function that reads cmap and clim if they are set
 def get_clim_cmap(f_prior_h5, Mstr='/M1'):
+    """
+    Get the color limits and colormap for a given model.
+
+    :param f_prior_h5: Path to the HDF5 file containing the prior data.
+    :type f_prior_h5: str
+    :param Mstr: Model string key.
+    :type Mstr: str
+    :returns: clim, cmap -- Color limits and colormap.
+    :rtype: tuple
+    """
     with h5py.File(f_prior_h5,'r') as f_prior:
         if 'clim' in f_prior[Mstr].attrs.keys():
             clim = f_prior[Mstr].attrs['clim'][:].flatten()
@@ -1227,4 +1526,3 @@ def get_clim_cmap(f_prior_h5, Mstr='/M1'):
             cmap = 'jet'
 
         return clim, cmap
-    
