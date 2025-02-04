@@ -20,8 +20,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # # # # #%load_ext autoreload
-    # # # # # # # # # #%autoreload 2
+    # # # # # # # # # # #%load_ext autoreload
+    # # # # # # # # # # #%autoreload 2
     pass
 
 # %%
@@ -65,7 +65,7 @@ with h5py.File(f_data_h5, 'r') as f:
 
 
 # %% TIMING
-# Set the size of the data sets to test
+#### Set the size of the data sets to test
 N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000])
 
 # Set the number of cores to test
@@ -73,19 +73,20 @@ Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu_total)))))
 
 useAltTest=True
 if useAltTest:
-    #N_arr = np.array([100,500,1000,5000])
+    N_arr = np.array([100,500,1000,5000,10000])
     #N_arr = np.array([100,1000,2000,5000,10000,50000,100000,500000])
+    
     skip_proc = 0
     Nproc_arr=2**(np.double(skip_proc+np.arange(1+int(np.log2(Ncpu_total)))));
     Nproc_arr=np.int8(np.ceil(np.linspace(1,Ncpu_total,5)))
     Nproc_arr=1+np.arange(Ncpu_total)
     #Nproc_arr ois 1:4:Ncpu_total
-    Nproc_arr=np.arange(1, 9, 1)
+    Nproc_arr=np.arange(2, 9, 2)
     
     ##Nproc_arr=np.arange(2, Ncpu_total/2+1, 2)
     Nproc_arr=np.append(Nproc_arr,np.arange(10,1+Ncpu_total/2,2))
     Nproc_arr=np.append(Nproc_arr,Ncpu_total)
-
+    Nproc_arr=np.array([1,4,8])
 
 n1 = len(N_arr)
 n2 = len(Nproc_arr)
@@ -105,7 +106,7 @@ print("Writing results to %s " % file_out)
 
 # %%
 
-loadFromFile=True
+loadFromFile=False
 if loadFromFile:
     file_out = 'timing_3990X-64_Nproc7_N9'  
     file_out = 'timing_3990X-64_Nproc35_N8' 
@@ -197,15 +198,18 @@ else:
                 if testPostStat and testRejection:
                     ig.integrate_posterior_stats(f_post_h5,showInfo=showInfo)
                     T_poststat[i,j]=time.time()-t0_poststat
-                
-            np.savez(file_out, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr, nobs=nobs)
+
+            T_total = T_prior + T_forward + T_rejection + T_poststat
+            np.savez(file_out, T_total=T_total, T_prior=T_prior, T_forward=T_forward, T_rejection=T_rejection, T_poststat=T_poststat, N_arr=N_arr, Nproc_arr=Nproc_arr, nobs=nobs)
 
 
 
-#%% Plot 
-# LSQ
+# %%
+
+# %% Plot
+# LSQ, Assumed time, in seconds, for least squares inversion of a single sounding
 t_lsq = 2.0
-# SAMPLING
+# SAMPLING, Assumed time, in seconds, for an McMC inversion of a single sounding
 t_mcmc = 10.0*60.0 
 
 total_lsq = np.array([nobs*t_lsq, nobs*t_lsq/Nproc_arr[-1]])
@@ -254,10 +258,11 @@ T_forward_sounding_speedup = T_forward_sounding_per_sec/T_forward_sounding_per_s
 plt.figure(figsize=(6,6))    
 #plt.plot(Nproc_arr, T_forward_sounding.T, 'o-')
 #plt.plot(Nproc_arr, T_forward.T, 'o-')
-plt.loglog(Nproc_arr, T_forward.T, 'o-')
+plt.loglog(Nproc_arr, T_forward.T, 'o-', label='A')
 # plot line 
 plt.ylabel(r'TIME - $[s]$')
 plt.xlabel('Number of processors')
+plt.title('Forward calculation')
 plt.grid()
 plt.legend(N_arr, loc='upper left')
 plt.ylim(1e-1, 1e+4)
@@ -269,6 +274,7 @@ plt.plot(Nproc_arr, T_forward_sounding_per_sec.T, 'o-')
 # plot line 
 plt.ylabel(r'Forward computations per second - $[s^{-1}]$')
 plt.xlabel('Number of processors')
+plt.title('Forward calculation')
 plt.grid()
 plt.legend(N_arr)
 plt.tight_layout()
@@ -278,6 +284,7 @@ plt.figure(figsize=(6,6))
 plt.plot(Nproc_arr, T_forward_sounding_per_sec_per_cpu.T, 'o-')
 plt.ylabel('Forward computations per second per cpu')
 plt.xlabel('Number of processors')
+plt.title('Forward calculation')
 plt.grid()
 plt.legend(N_arr)
 plt.savefig('%s_forward_sounding_per_sec_per_cpu' % file_out)
@@ -297,7 +304,7 @@ plt.savefig('%s_forward_speedup' % file_out)
 
 
 
-#%% STATS FOR REJECTION SAMPLING
+# %% STATS FOR REJECTION SAMPLING
 # Average timer per sounding
 T_rejection_sounding = T_rejection/N_arr[:,np.newaxis]
 T_rejection_sounding_per_sec = N_arr[:,np.newaxis]/T_rejection
@@ -338,7 +345,7 @@ plt.ylim(1e-5, 1e+3)
 plt.savefig('%s_rejection_sec_per_sound' % file_out)
 
 
-#%%
+# %%
 plt.figure(figsize=(6,6))
 #plt.loglog(Nproc_arr, T_rejection.T, 'o-')
 plt.semilogy(Nproc_arr, T_rejection.T, 'o-')
@@ -347,10 +354,10 @@ plt.xlabel('Number of processors')
 plt.grid()
 plt.legend(N_arr)
 plt.tight_layout()
-plt.ylim(5e-1, 2e+3)
+plt.ylim(1e-1, 2e+3)
 plt.savefig('%s_rejection_time' % file_out)
 
-#%%
+# %%
 plt.figure(figsize=(6,6))
 plt.plot(Nproc_arr, T_rejection_sounding_speedup.T, 'o-')
 # plot a line from 0,0 tp Nproc_arr[-1], Nproc_arr[-1]
@@ -365,7 +372,7 @@ plt.legend(N_arr)
 plt.savefig('%s_rejection_speedup' % file_out)
 
 
-#%% STATS FOR POSTERIOR STATISTICS
+# %% STATS FOR POSTERIOR STATISTICS
 # Average timer per sounding
 T_poststat_sounding = T_poststat/N_arr[:,np.newaxis]
 T_poststat_sounding_per_sec = N_arr[:,np.newaxis]/T_poststat
@@ -394,182 +401,36 @@ plt.grid()
 plt.legend(N_arr)
 plt.savefig('%s_poststat_speedup' % file_out)
 
-'''
-# OLD STATS
+# %%
 
-ax, fig = plt.subplots(1,1, figsize=(8,8))
-plt.loglog(N_arr, T_prior, 'k-*',label='Prior model')
-plt.plot(N_arr, T_forward, 'r-*', label='Forward model')
-plt.plot(N_arr, T_rejection, 'b-*', label='Rejection sampling')
-plt.plot(N_arr, T_poststat, 'g-*', label='Posterior statistics')
-plt.xlabel('N_prior')
-plt.ylabel('Time [s]')
-#plt.legend({'A','B','C','D'})
-plt.grid()
-plt.savefig('%s_Narr' % file_out)
+# %%
 
+# %%
+i_proc = len(Nproc_arr)-1
+T_total[:,i_proc]
+T_forward[:,i_proc]
 
-dlw = 0.1
-ax, fig = plt.subplots(2,2, figsize=(8,8))
-plt.subplot(2,2,1)
-for i in range(len(Nproc_arr)):
-    plt.loglog(N_arr, T_prior[:,i], 'k-*',label='Np=%d' % Nproc_arr[i], linewidth=2+(2*(i*dlw)))
-plt.xlabel('N-prior')
-plt.ylabel('Time [s]')
-plt.title('Prior')
-plt.legend()
-plt.grid()
-
-plt.subplot(2,2,2)
-for i in range(len(Nproc_arr)):
-    plt.loglog(N_arr, T_forward[:,i], 'r-*',label='Np=%d' % Nproc_arr[i], linewidth=2+(2*(i*dlw)))
-plt.xlabel('N-prior')
-plt.ylabel('Time [s]')
-plt.title('Forward')
-plt.legend()
-plt.grid()
-
-plt.subplot(2,2,3)
-for i in range(len(Nproc_arr)):
-    plt.loglog(N_arr, T_rejection[:,i], 'b-*',label='Np=%d' % Nproc_arr[i], linewidth=2+(2*(i*dlw)))
-plt.xlabel('N-prior')
-plt.ylabel('Time [s]')
-plt.title('Rejection sampling')
-plt.legend()
-plt.grid()
-
-plt.subplot(2,2,4)
-for i in range(len(Nproc_arr)):
-    plt.loglog(N_arr, T_poststat[:,i], 'g-*',label='Np=%d' % Nproc_arr[i], linewidth=2+(2*(i*dlw)))
-plt.xlabel('N-prior')
-plt.ylabel('Time [s]')
-plt.title('Posterior statistics')
-plt.legend()
-plt.grid()
-ymin, ymax = plt.ylim()
-plt.ylim(ymin*.9, ymax*1.1)
-
-plt.tight_layout()
-plt.savefig('%s_N_arr_sp' % file_out)
-plt.show()
+# %%
+T = [T_prior[:,i_proc],T_forward[:,i_proc],T_rejection[:,i_proc],T_poststat[:,i_proc]]
+T=np.array(T)
+cumT=np.cumsum(T, axis=0)
+plt.semilogx(N_arr,cumT.T,'*')
+plt.plot(N_arr,T_total[:,i_proc],'k--')
+plt.xlabel('$N_{lookup}$')
+plt.ylabel('Time [$s$]')
 
 
-#
-dlw = 0.4
-ax, fig = plt.subplots(2,2, figsize=(8,8))
-plt.subplot(2,2,1)
-for i in range(len(N_arr)):
-    plt.loglog(Nproc_arr, T_prior[i,:].T, 'k-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
-plt.xlabel('Number of processors')
-plt.ylabel('Time [s]')
-plt.title('Prior')
-plt.legend()
-plt.grid()
-ymin, ymax = plt.ylim()
-plt.ylim(ymin*.9, ymax*1.1)
-plt.xticks(ticks=Nproc_arr, labels=[str(int(x)) for x in Nproc_arr])
-
-plt.subplot(2,2,2)
-for i in range(len(N_arr)):
-    plt.loglog(Nproc_arr, T_forward[i,:].T, 'r-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
-plt.xlabel('Number of processors')
-plt.ylabel('Time [m]')
-plt.title('Forward')
-plt.legend()
-plt.grid()
-ymin, ymax = plt.ylim()
-plt.ylim(ymin*.9, ymax*1.1)
-plt.xticks(ticks=Nproc_arr, labels=[str(int(x)) for x in Nproc_arr])
-
-plt.subplot(2,2,3)
-for i in range(len(N_arr)):
-    plt.loglog(Nproc_arr, T_rejection[i,:].T, 'b-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
-plt.xlabel('Number of processors')
-plt.ylabel('Time [s]')
-plt.title('Rejection sampling')
-plt.legend()
-plt.grid()
-ymin, ymax = plt.ylim()
-plt.ylim(ymin*.9, ymax*1.1)
-plt.xticks(ticks=Nproc_arr, labels=[str(int(x)) for x in Nproc_arr])
-
-plt.subplot(2,2,4)
-for i in range(len(N_arr)):
-    plt.semilogx(Nproc_arr, T_poststat[i,:].T, 'g-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
-plt.xlabel('Number of processors')
-plt.ylabel('Time [s]')
-plt.title('Posterior statistics')
-plt.legend()
-plt.grid()
-# get yaxis limits
-ymin, ymax = plt.ylim()
-plt.ylim(ymin*.9, ymax*1.1)
-plt.xticks(ticks=Nproc_arr, labels=[str(int(x)) for x in Nproc_arr])
-
-plt.tight_layout()
-
-plt.savefig('%s_N_proc_sp' % file_out)
-plt.show()
+# %%
+N_arr
 
 
-# PER SOUNDING
-dlw = 0.4
-ax, fig = plt.subplots(2,2, figsize=(8,8))
-plt.subplot(2,2,1)
-for i in range(len(N_arr)):
-    plt.loglog(Nproc_arr, 1000*T_prior[i,:].T/N_arr[i], 'k-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
-plt.xlabel('Number of processors')
-plt.ylabel('Time/sonding [ms]')
-plt.title('Prior')
-plt.legend()
-plt.grid()
-ymin, ymax = plt.ylim()
-plt.ylim(ymin*.9, ymax*1.1)
-plt.xticks(ticks=Nproc_arr, labels=[str(int(x)) for x in Nproc_arr])
+# %%
+cumT
 
-plt.subplot(2,2,2)
-for i in range(len(N_arr)):
-    plt.loglog(Nproc_arr, 1000*T_forward[i,:].T/N_arr[i], 'r-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
-plt.xlabel('Number of processors')
-plt.ylabel('Time/sonding [ms]')
-plt.title('Forward')
-plt.legend()
-plt.grid()
-ymin, ymax = plt.ylim()
-plt.ylim(ymin*.9, ymax*1.1)
-plt.xticks(ticks=Nproc_arr, labels=[str(int(x)) for x in Nproc_arr])
+# %%
+cumT
 
-plt.subplot(2,2,3)
-for i in range(len(N_arr)):
-    plt.loglog(Nproc_arr, 1000*T_rejection[i,:].T/N_arr[i], 'b-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
-plt.xlabel('Number of processors')
-plt.ylabel('Time/sonding [ms]')
-plt.title('Rejection sampling')
-plt.legend()
-plt.grid()
-ymin, ymax = plt.ylim()
-plt.ylim(ymin*.9, ymax*1.1)
-plt.xticks(ticks=Nproc_arr, labels=[str(int(x)) for x in Nproc_arr])
+# %%
+plt.plot(T.cumsum())
 
-plt.subplot(2,2,4)
-for i in range(len(N_arr)):
-    plt.semilogx(Nproc_arr, 1000*T_poststat[i,:].T/N_arr[i], 'g-*',label='N=%d' % N_arr[i], linewidth=1+(2*(i*dlw)))
-plt.xlabel('Number of processors')
-plt.ylabel('Time/sonding [ms]')
-plt.title('Posterior statistics')
-plt.legend()
-plt.grid()
-# get yaxis limits
-ymin, ymax = plt.ylim()
-plt.ylim(ymin*.9, ymax*1.1)
-plt.xticks(ticks=Nproc_arr, labels=[str(int(x)) for x in Nproc_arr])
-
-plt.tight_layout()
-
-plt.savefig('%s_N_proc_sp_per_sounding' % file_out)
-plt.show()
-
-
-plt.show()
-'''
 # %%

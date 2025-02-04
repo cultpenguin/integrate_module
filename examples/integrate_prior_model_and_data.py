@@ -64,7 +64,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=200000
+N=2000000
 RHO_min = 1
 RHO_max = 2500
 RHO_dist='log-uniform'
