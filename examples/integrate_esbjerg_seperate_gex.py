@@ -35,6 +35,7 @@ f_data_h5_files = f_data_h5_files[:nf]
 
 
 N=1000000
+N=10000
 # All surveys are inverted with the same prior model
 lay_dist='chi2'
 lay_dist='uniform'

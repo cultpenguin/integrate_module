@@ -1,16 +1,14 @@
-#!/usr/bin/env python
 # %% [markdown]
 # # INTEGRATE timing
 # This notebook compares CPU time using for both forward mdoeling and inversion 
-#
+# 
 # # Force use of single CPU with numpy
 # export OMP_NUM_THREADS=1
 # export MKL_NUM_THREADS=1
 # export OPENBLAS_NUM_THREADS=1
-#
+# 
 
-
-# %% Imports
+# %%
 try:
     # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
     get_ipython()
@@ -20,8 +18,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # # # # # #%load_ext autoreload
-    # # # # # # # # # # #%autoreload 2
+    # # # # # # # # # #%load_ext autoreload
+    # # # # # # # # # #%autoreload 2
     pass
 
 # %%
@@ -44,11 +42,10 @@ Ncpu_total = os.cpu_count()
 print("Hostname: %s" % hostname)
 print("Number of processors: %d" % Ncpu_total)
 
-
 # %% [markdown]
 # ## Get the default data set
 
-# %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
+# %%
 files = ig.get_case_data()
 f_data_h5 = files[0]
 file_gex= ig.get_gex_file_from_data(f_data_h5)
@@ -59,37 +56,33 @@ print("Using GEX file: %s" % file_gex)
 with h5py.File(f_data_h5, 'r') as f:
     nobs = f['D1/d_obs'].shape[0]
 
-
 # %% [markdown]
 # ## Setup the timing test
 
-
-# %% TIMING
+# %%
 #### Set the size of the data sets to test
 N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000])
+N_arr = np.array([100,1000,10000,100000])
 
 # Set the number of cores to test
-Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu_total)))))
+#Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu_total)))))
+Nproc_arr=2**(1+np.double(np.arange(int(np.log2(Ncpu_total)))))
 
 useAltTest=True
 if useAltTest:
-    N_arr = np.array([100,500,1000,5000,10000])
-    #N_arr = np.array([100,1000,2000,5000,10000,50000,100000,500000])
+    N_arr = np.array([100,500,1000,5000,10000,50000,100000])
+    N_arr = np.array([100,500,1000,5000,10000,50000,100000])
     
     skip_proc = 0
-    Nproc_arr=2**(np.double(skip_proc+np.arange(1+int(np.log2(Ncpu_total)))));
-    Nproc_arr=np.int8(np.ceil(np.linspace(1,Ncpu_total,5)))
-    Nproc_arr=1+np.arange(Ncpu_total)
-    #Nproc_arr ois 1:4:Ncpu_total
-    Nproc_arr=np.arange(2, 9, 2)
-    
+    Nproc_arr=2**(np.double(skip_proc+np.arange(1+int(np.log2(Ncpu_total)))))
+    #Nproc_arr=2**(np.double(skip_proc+np.arange(int(np.log2(Ncpu_total)))))
     ##Nproc_arr=np.arange(2, Ncpu_total/2+1, 2)
-    Nproc_arr=np.append(Nproc_arr,np.arange(10,1+Ncpu_total/2,2))
-    Nproc_arr=np.append(Nproc_arr,Ncpu_total)
-    Nproc_arr=np.array([1,4,8])
+    #Nproc_arr=np.append(Nproc_arr,np.arange(10,1+Ncpu_total/2,2))
+    #Nproc_arr=np.array([1,4,8])
 
-    N_arr = np.array([1000,5000])
-    Nproc_arr=np.array([8])
+    N_arr = np.array([500,600,700,800,900,1000])
+    Nproc_arr=np.array([2,4,6,8])
+    
 
 n1 = len(N_arr)
 n2 = len(Nproc_arr)
@@ -113,11 +106,12 @@ loadFromFile=False
 if loadFromFile:
     file_out = 'timing_3990X-64_Nproc7_N9'  
     file_out = 'timing_3990X-64_Nproc35_N8' 
+    file_out = 'timing_d60897-10_Nproc3_N5'
     
     #file_out = 'timing_d52534-32_Nproc13_N9'
     #file_out = 'timing_d52534-32_Nproc6_N9'  
-    file_out = 'timing_d52534-32_Nproc17_N9'
-    file_out = 'timing_d52534-32_Nproc13_N9-issue16'
+    #file_out = 'timing_d52534-32_Nproc17_N9'
+    #file_out = 'timing_d52534-32_Nproc13_N9-issue16'
     
     #file_out = 'timing_Z13-16_Nproc8_N7'
     
@@ -209,7 +203,8 @@ else:
 
 # %%
 
-# %% Plot
+
+# %%
 # LSQ, Assumed time, in seconds, for least squares inversion of a single sounding
 t_lsq = 2.0
 # SAMPLING, Assumed time, in seconds, for an McMC inversion of a single sounding
@@ -218,8 +213,7 @@ t_mcmc = 10.0*60.0
 total_lsq = np.array([nobs*t_lsq, nobs*t_lsq/Nproc_arr[-1]])
 total_mcmc = np.array([nobs*t_mcmc, nobs*t_mcmc/Nproc_arr[-1]])
 
-
-# %% loglog(T_total.T)
+# %%
 plt.figure(figsize=(6,6))    
 plt.loglog(Nproc_arr, T_total.T, 'o-',  label=N_arr)
 plt.ylabel(r'Total time - $[s]$')
@@ -249,7 +243,7 @@ plt.savefig('%s_total_sec' % file_out)
 
 
 
-# %% Plot timing results for forward modeling - GAAEM
+# %%
 
 # Average timer per sounding 
 T_forward_sounding = T_forward/N_arr[:,np.newaxis]
@@ -307,7 +301,7 @@ plt.savefig('%s_forward_speedup' % file_out)
 
 
 
-# %% STATS FOR REJECTION SAMPLING
+# %%
 # Average timer per sounding
 T_rejection_sounding = T_rejection/N_arr[:,np.newaxis]
 T_rejection_sounding_per_sec = N_arr[:,np.newaxis]/T_rejection
@@ -347,7 +341,6 @@ plt.tight_layout()
 plt.ylim(1e-5, 1e+3)
 plt.savefig('%s_rejection_sec_per_sound' % file_out)
 
-
 # %%
 plt.figure(figsize=(6,6))
 #plt.loglog(Nproc_arr, T_rejection.T, 'o-')
@@ -374,8 +367,7 @@ plt.grid()
 plt.legend(N_arr)
 plt.savefig('%s_rejection_speedup' % file_out)
 
-
-# %% STATS FOR POSTERIOR STATISTICS
+# %%
 # Average timer per sounding
 T_poststat_sounding = T_poststat/N_arr[:,np.newaxis]
 T_poststat_sounding_per_sec = N_arr[:,np.newaxis]/T_poststat
@@ -404,24 +396,9 @@ plt.grid()
 plt.legend(N_arr)
 plt.savefig('%s_poststat_speedup' % file_out)
 
-# %%
 
-# %%
-
-# %%
-i_proc = len(Nproc_arr)-1
-T_total[:,i_proc]
-T_forward[:,i_proc]
-
-# %%
-T = [T_prior[:,i_proc],T_forward[:,i_proc],T_rejection[:,i_proc],T_poststat[:,i_proc]]
-T=np.array(T)
-cumT=np.cumsum(T, axis=0)
-plt.semilogx(N_arr,cumT.T,'*')
-plt.plot(N_arr,T_total[:,i_proc],'k--')
-plt.xlabel('$N_{lookup}$')
-plt.ylabel('Time [$s$]')
-
+# %% [markdown]
+# ## Plot Cumulative Time useage for min and max number of used cores
 
 # %%
 i_proc = len(Nproc_arr)-1
@@ -459,14 +436,16 @@ for i_proc in [0,len(Nproc_arr)-1]:
 
 
 
+# %%
+Nproc_arr[i_proc]
 
 # %%
-cumT
+
 
 # %%
-cumT
+
 
 # %%
-plt.plot(T.cumsum())
 
-# %%
+
+
