@@ -51,7 +51,12 @@ if parallel:
 else:
     N_use = 10000 # Use only a small subset, whn not using parallel
 N_cpu = 8
-f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = N_use, parallel=parallel, N_cpu=N_cpu)
+
+if __name__ == '__main__':
+    from multiprocessing import freeze_support, set_start_method
+    freeze_support()  # Necessary on Windows
+    set_start_method('spawn', force=True)  # Force spawn method on all platforms
+    f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, N_use = N_use, parallel=parallel, N_cpu=N_cpu)
 
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$

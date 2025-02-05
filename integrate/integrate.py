@@ -21,7 +21,6 @@ if not logger.handlers:
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
-
 def is_notebook():
     """
     Check if the code is running in a Jupyter notebook or IPython shell.
@@ -30,15 +29,20 @@ def is_notebook():
         bool: True if running in a Jupyter notebook or IPython shell, False otherwise.
     """
     try:
+        # Get the shell type from IPython
         shell = get_ipython().__class__.__name__
+        
         if shell == 'ZMQInteractiveShell':
-            return True   # Jupyter notebook or qtconsole
-        elif shell == 'TerminalInteractiveShell':
-            return False  # Terminal running IPython
+            # Additional check for VS Code
+            import sys
+            if 'vscode' in sys.modules:
+                return False
+            return True
         else:
-            return False  # Other type (?)
-    except NameError:
-        return False      # Probably standard Python interpreter
+            return False
+            
+    except NameError:  # If get_ipython is not defined (standard Python)
+        return False
 
 
 def use_parallel(**kwargs):
@@ -807,7 +811,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
             f_prior_data_h5 = '%s_%s_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex)[0], Nhank, Nfreq)
             
         
-        if (showInfo>0):
+        if (showInfo>-1):
             print("Creating a copy of %s" % (f_prior_h5))
             print("                as %s" % (f_prior_data_h5))
         if (showInfo>0):
@@ -828,7 +832,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     f_prior = h5py.File(f_prior_data_h5, 'a')
 
     if im_height>0:    
-        if (showInfo>0):
+        if (showInfo>1):
             print('Using M%d for height' % im_height)
         tx_height = f_prior[Mheight][:]
 
@@ -847,7 +851,6 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
 
     N = f_prior[Mname].shape[0]
     t1 = time.time()
-    print(parallel)
     if not parallel:
         if (showInfo>-1):
             print("prior_data_gaaem: Using 1 thread /(sequential).")
@@ -919,7 +922,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     t2 = time.time()
     t_elapsed = t2 - t1
     if (showInfo>-1):
-        print('Time elapsed: %5.1f s, for %d soundings. %4.3f ms/sounding. %4.1fit/s' % (t_elapsed, N, 1000*t_elapsed/N,N/t_elapsed))
+        print('prior_data_gaaem: Time=%5.1fs/%d soundings. %4.1fms/sounding, %3.1fit/s' % (t_elapsed, N, 1000*t_elapsed/N,N/t_elapsed))
     
     # Write D to f_prior['/D1']
     f_prior[Dname] = D
@@ -1787,10 +1790,15 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
     if Ncpu < 1 :
         Ncpu =  int(multiprocessing.cpu_count())
+        # Set Ncpu to be min of Ncpu and 8
+        # as no gain is expected from using more than 8 processors
+        Ncpu = min(Ncpu, 8) 
+
 
     # Set default f_post_h5 filename if not set    
     if len(f_post_h5)==0:
-        f_post_h5 = "POST_%s_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_h5)[0],N_use,autoT)
+        # f_post_h5 = "POST_%s_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_h5)[0],N_use,autoT)
+        f_post_h5 = "POST_%s_%s_aT%d.h5" % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_h5)[0],autoT)
 
     # Check that f_post_h5 allready exists, and warn the user   
     if os.path.isfile(f_post_h5):
@@ -1824,6 +1832,8 @@ def integrate_rejection(f_prior_h5='prior.h5',
     N = D[0].shape[0]
     if N_use>N:
         N_use = N
+
+
 
     # Get number of data points from, f_data_h5
     Ndp = DATA['d_obs'][0].shape[0]
@@ -1929,7 +1939,9 @@ def integrate_rejection(f_prior_h5='prior.h5',
     t_elapsed = (t_end - t_start).total_seconds()
     t_per_sounding = t_elapsed / Ndp_invert
     if (showInfo>-1):
-        print('T_av=%3.1f, Time=%5.1fs/%d soundings ,%4.1fms/sounding, %3.1fit/s' % (np.nanmean(T_all),t_elapsed,Ndp_invert,t_per_sounding*1000,Ndp_invert/t_elapsed))
+        print('integrate_rejection: Time=%5.1fs/%d soundings, %4.1fms/sounding, %3.1fit/s' % (t_elapsed,Ndp_invert,t_per_sounding*1000,Ndp_invert/t_elapsed))
+    if (showInfo>-1):
+        print('integrate_rejection: T_av=%3.1f' % (np.nanmean(T_all)))
 
     # SAVE THE RESULTS to f_post_h5
     with h5py.File(f_post_h5, 'w') as f_post:
