@@ -424,7 +424,40 @@ plt.ylabel('Time [$s$]')
 
 
 # %%
-N_arr
+i_proc = len(Nproc_arr)-1
+#i_proc= 0
+
+for i_proc in [0,len(Nproc_arr)-1]:
+
+    T=[T_prior[:,i_proc], T_forward[:,i_proc], T_rejection[:,i_proc], T_poststat[:,i_proc]]
+
+    #%% Plor cumT as an area plot
+    plt.figure(figsize=(6,6))
+    plt.stackplot(N_arr, T, labels=['Prior', 'Forward', 'Rejection', 'PostStat'])
+    plt.plot(N_arr, T_total[:, i_proc], 'k--')
+    plt.xscale('log')
+    #plt.yscale('log')
+    plt.xlabel('$N_{lookup}$')
+    plt.ylabel('Time [$s$]')
+    plt.title('Cumulative time, using %d processors' % Nproc_arr[i_proc])
+    plt.legend(loc='upper left')
+    plt.grid(True, which="both", ls="--")
+    plt.tight_layout()
+    plt.savefig('%s_Ncpu%d_cumT' % (file_out,Nproc_arr[i_proc]))
+
+    # The same as thea area plot but normalized to the total time
+    plt.figure(figsize=(6,6))
+    plt.stackplot(N_arr, T/np.sum(T, axis=0), labels=['Prior', 'Forward', 'Rejection', 'PostStat'])
+    plt.xscale('log')
+    plt.xlabel('$N_{lookup}$')
+    plt.ylabel('Normalized time')
+    plt.legend(loc='upper left')
+    plt.grid(True, which="both", ls="--")
+    plt.tight_layout()
+    plt.title('Normalized time, using %d processors' % Nproc_arr[i_proc])
+    plt.savefig('%s_Ncpu%d_cumT_norm' % (file_out,Nproc_arr[i_proc]))
+
+
 
 
 # %%
