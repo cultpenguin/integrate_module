@@ -88,6 +88,9 @@ if useAltTest:
     Nproc_arr=np.append(Nproc_arr,Ncpu_total)
     Nproc_arr=np.array([1,4,8])
 
+    N_arr = np.array([1000,5000])
+    Nproc_arr=np.array([8])
+
 n1 = len(N_arr)
 n2 = len(Nproc_arr)
 
