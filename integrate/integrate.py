@@ -804,11 +804,12 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         print("ERRROR: file_gex=%s does not exist in the current folder." % file_gex)
 
     if doMakePriorCopy:
-        
+        file_gex_basename = os.path.splitext(os.path.basename(file_gex))[0]
+
         if N < N_in:
-            f_prior_data_h5 = '%s_%s_N%d_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex)[0], N, Nhank, Nfreq)
+            f_prior_data_h5 = '%s_%s_N%d_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex_basename)[0], N, Nhank, Nfreq)
         else:
-            f_prior_data_h5 = '%s_%s_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex)[0], Nhank, Nfreq)
+            f_prior_data_h5 = '%s_%s_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex_basename)[0], Nhank, Nfreq)
             
         
         if (showInfo>-1):
@@ -1785,8 +1786,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
     Ncpu = kwargs.get('Nproc', Ncpu)
     Ncpu = kwargs.get('N_cpu', Ncpu) # Allow using N_cpu instead of Ncpu
     Nchunks = kwargs.get('N_chunks', Nchunks) # Allow using N_chunks instead of Nchunks
-
-
+    posterior_output_path = kwargs.get('post_dir', os.getcwd())
 
     if Ncpu < 1 :
         Ncpu =  int(multiprocessing.cpu_count())
@@ -1797,8 +1797,11 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
     # Set default f_post_h5 filename if not set    
     if len(f_post_h5)==0:
-        # f_post_h5 = "POST_%s_%s_Nu%d_aT%d.h5" % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_h5)[0],N_use,autoT)
-        f_post_h5 = "POST_%s_%s_aT%d.h5" % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_h5)[0],autoT)
+        # Extract the base name of f_prior_h5 without its path or extension
+        f_prior_basename = os.path.splitext(os.path.basename(f_prior_h5))[0]
+        
+        # Construct the new filename
+        f_post_h5 = os.path.join(posterior_output_path, "POST_%s_Nu%d_aT%d.h5" % (f_prior_basename, N_use, autoT))
 
     # Check that f_post_h5 allready exists, and warn the user   
     if os.path.isfile(f_post_h5):
