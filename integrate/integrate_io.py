@@ -781,6 +781,15 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
             filelist.append('tTEM_20230913_AVG_export.h5')
             filelist.append('tTEM_20231109_AVG_export.h5')
             filelist.append('DAUGAARD_AVG_inout.h5')
+
+        if (loadAll or loadType=='shapefiles'):            
+            #filelist.append('Begravet dal.zip')
+            filelist.append('Begravet dal.shp')
+            filelist.append('Begravet dal.shx')
+            #filelist.append('Erosion øvre.zip')
+            filelist.append('Erosion øvre.shp')
+            filelist.append('Erosion øvre.shx')
+            
         
         if (loadAll or loadType=='prior'):            
             filelist.append('prior_detailed_general_N2000000_dmax90.h5')
