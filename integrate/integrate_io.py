@@ -821,6 +821,22 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
             filelist.append('TX07_20231127_2x4x1_RC20_33.gex')
             filelist.append('TX07_20240125_2x4_RC20-33.gex')
         
+        if (loadAll or loadType=='premerge'):
+            filelist.append('20230921_AVG_export.h5')
+            filelist.append('20230922_AVG_export.h5')
+            filelist.append('20230925_AVG_export.h5')
+            filelist.append('20230926_AVG_export.h5')
+            filelist.append('20231026_AVG_export.h5')
+            filelist.append('20231027_AVG_export.h5')
+            filelist.append('20240109_AVG_export.h5')
+            filelist.append('20240313_AVG_export.h5')
+            filelist.append('TX07_20230906_2x4_RC20-33.gex')
+            filelist.append('TX07_20231016_2x4_RC20-33.gex')
+            filelist.append('TX07_20231127_2x4x1_RC20_33.gex')
+            filelist.append('TX07_20240125_2x4_RC20-33.gex')
+            
+        
+
         if (loadAll or loadType=='ESBJERG_ALL' or len(filelist)==0):
             filelist.append('ESBJERG_ALL.h5')
             filelist.append('TX07_20230906_2x4_RC20-33.gex')
@@ -1176,7 +1192,7 @@ def merge_data(f_data, f_gex='', delta_line=0, f_data_merged_h5='', **kwargs):
     import numpy as np
     import integrate as ig
 
-    showInfo = kwargs.get('showInfo', 2)
+    showInfo = kwargs.get('showInfo', 0)
 
     if len(f_data_merged_h5) == 0:
         f_data_merged_h5 = f_gex.split('.')[0] + '_merged.h5'
@@ -1194,7 +1210,7 @@ def merge_data(f_data, f_gex='', delta_line=0, f_data_merged_h5='', **kwargs):
     if showInfo>1:
         print('.. Merging ', f_data_h5)    
     Xc, Yc, LINEc, ELEVATIONc = ig.get_geometry(f_data_h5)
-    Dc = ig.load_data(f_data_h5)
+    Dc = ig.load_data(f_data_h5, showInfo=showInfo-1)
     d_obs_c = Dc['d_obs']
     d_std_c = Dc['d_std']
     noise_model = Dc['noise_model']
@@ -1204,7 +1220,7 @@ def merge_data(f_data, f_gex='', delta_line=0, f_data_merged_h5='', **kwargs):
         if showInfo>1:
             print('.. Merging ', f_data_h5)    
         X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-        D = ig.load_data(f_data_h5)
+        D = ig.load_data(f_data_h5, showInfo=showInfo)
 
         # append data
         Xc = np.append(Xc, X)
@@ -1218,7 +1234,8 @@ def merge_data(f_data, f_gex='', delta_line=0, f_data_merged_h5='', **kwargs):
                 d_obs_c[id] = np.vstack((d_obs_c[id], np.atleast_2d(D['d_obs'][id])))        
                 d_std_c[id] = np.vstack((d_std_c[id], np.atleast_2d(D['d_std'][id])))
             except:
-                print("Could not merge %s" % f_data_h5)
+                if showInfo>-1:
+                    print("!!!!! Could not merge %s" % f_data_h5)
 
     Xc = np.atleast_2d(Xc).T
     Yc = np.atleast_2d(Yc).T
@@ -1256,8 +1273,9 @@ def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5=''):
 
     Returns
     -------
-    str
-        File path of the merged posterior HDF5 file.
+    array
+        [0] File path of the merged posterior HDF5 file.
+        [1] File path of the merged data HDF5 file.
 
     Raises
     ------
@@ -1309,6 +1327,9 @@ def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5=''):
         f.create_dataset('EV', data=EV)
         f.attrs['f5_prior'] = f_prior_h5
         f.attrs['f5_data'] = f_data_merged_h5
+        # ALSOE WRITE AN ATTRIBUET 'f5_data_mul' to the merged file
+        #f.attrs['f5_data_files'] = f_data_h5_files
+
 
     return f_post_merged_h5, f_data_merged_h5
 

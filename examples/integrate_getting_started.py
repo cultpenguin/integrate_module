@@ -14,12 +14,12 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # #%load_ext autoreload
-    # # # # #%autoreload 2
+    # # # # # #%load_ext autoreload
+    # # # # # #%autoreload 2
     pass
 # %%
 import integrate as ig
-# check if parallel computations can be performed
+# check if parallel computations can be performed*
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True 
 import matplotlib.pyplot as plt
@@ -52,7 +52,7 @@ ig.plot_data(f_data_h5, hardcopy=hardcopy)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
+N=100000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000)
 
@@ -165,6 +165,6 @@ p.show()
 # %%
 
 # %%
-# !pip install trame
+# # !pip install trame
 
 # %%
