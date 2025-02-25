@@ -71,10 +71,18 @@ def use_parallel(**kwargs):
     else:
         # if os is Linux, when default is spawn, then parallel processing is OK
         if os.name == 'posix':
-            if showInfo>0:
-                print('Posix system detected. Parallel processing is OK')        
-            parallel = True
+            if os.uname().sysname == 'Darwin':
+                if showInfo>0:
+                    # MacOS use fork, which is not OK
+                    print('MacOS detected. Parallel processing is not OK')        
+                parallel = False
+            else:
+                if showInfo>0:
+                    print('Posix system detected. Parallel processing is OK')        
+                parallel = True            
         else:
+            parallel = False
+        if not parallel:    
             if showInfo>0:
                 print('Non posix system detected. Parallel processing is not OK')        
                 print('If parallel processing is needed, make sure to embed you primary script in a :if __name__ == "__main__": block')        
