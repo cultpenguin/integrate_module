@@ -60,7 +60,7 @@ def timing_compute(useAltTest=False,  N_arr=[], Nproc_arr=[]):
 
     #### Set the size of the data sets to test
     if len(N_arr)==0:
-        N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000])
+        N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000, 5000000])
 
     # Set the number of cores to test
     if len(Nproc_arr)==0:
