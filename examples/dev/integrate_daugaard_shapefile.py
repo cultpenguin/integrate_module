@@ -22,6 +22,7 @@ except:
 import integrate as ig
 import numpy as np
 import matplotlib.pyplot as plt
+import geopandas as gpd
 
 #%% Get data from Daugaard including shapefiles
 files = ig.get_case_data(case='DAUGAARD', loadType='shapefiles')
@@ -30,8 +31,6 @@ f_data_h5=files[0]
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
 #%%
-import geopandas as gpd
-
 # Read the shapefile and # Extract X and Y from gdf
 gdf = gpd.read_file('Begravet dal.shp')
 line_coords = gdf[gdf.geometry.type == 'LineString'].geometry.apply(lambda geom: list(geom.coords))
@@ -44,8 +43,6 @@ plt.scatter(X,Y,c=ELEVATION, s=2)
 plt.axis('equal')
 plt.grid()
 plt.title('Elevation with buried valleys')
-
-plt.axis('equal')
 plt.colorbar()
 plt.plot(line1[:,0],line1[:,1],'y-',linewidth=6)
 plt.plot(line1[:,0],line1[:,1],'k-',linewidth=2)
@@ -55,3 +52,5 @@ plt.tight_layout()
 #plt.savefig('P_hypothesis_N%d_flemming.png' % (N_use))
 
 
+
+# %%
