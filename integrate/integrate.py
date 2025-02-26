@@ -6,6 +6,7 @@ from sys import exit
 import multiprocessing
 from multiprocessing import Pool
 from multiprocessing import shared_memory
+from multiprocessing import get_context
 from functools import partial
 import time
 
@@ -748,6 +749,13 @@ def forward_gaaem_chunk(C_chunk, tx_height_chunk, thickness, stmfiles, file_gex,
 
 # %% PRIOR DATA GENERATORS
 
+# Add this function to check current handle count (Windows only)
+def get_process_handle_count():
+    """Return the number of handles used by the current process (Windows only)"""
+    import psutil
+    import os
+    return psutil.Process(os.getpid()).num_handles()
+
 def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1, im_height=0, Nhank=280, Nfreq=12, is_log=False, parallel=True, **kwargs):
     """
     Generate prior data for the ga-aem method.
@@ -783,14 +791,14 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     :rtype: str
     """
     import integrate as ig
-
+    import os 
     type = 'TDEM'
     method = 'ga-aem'
     showInfo = kwargs.get('showInfo', 0)
     Ncpu = kwargs.get('Ncpu', 0)
     # of 'Nproc' is set in kwargs use it 
     Ncpu = kwargs.get('Nproc', Ncpu)
-    
+
     if showInfo>0:
         print('prior_data_gaaem: %s/%s -- starting' % (type, method))
 
@@ -872,7 +880,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         if is_log:
             D = np.log10(D)
     else:
-    
+
         # Make sure STM files are only written once!!! (need for multihreading)
         # D = ig.forward_gaaem(C=C[0:1,:], thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)
         stmfiles, GEX = ig.gex_to_stm(file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
@@ -896,34 +904,43 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
             # create tx_height_chunks as a list of length Ncpu, where each entry is tx_height=np.array(())
             tx_height_chunks = [np.array(())]*Ncpu
 
+
+        import os
+        if os.name == 'nt':  # Windows
+            # Log handle count before creating pool
+            handle_count_before = get_process_handle_count()
+            print(f"Handle count before pool: {handle_count_before}")
         
+
+
         # 3: Compute the chunks in parallel
         forward_gaaem_chunk_partial = partial(forward_gaaem_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
 
-        # Create a multiprocessing pool and compute D for each chunk of C
-        
-        # Use spawn context for cross-platform compatibility
-        #ctx = multiprocessing.get_context("spawn")
-        #with ctx.Pool(processes=Nproc) as p:
-        #    D_chunks = p.map(forward_gaaem_chunk_partial, C_chunks)
-        
-        with Pool() as p:
-            #D_chunks = p.map(forward_gaaem_chunk_partial, C_chunks)
-            D_chunks = p.starmap(forward_gaaem_chunk_partial, zip(C_chunks, tx_height_chunks))
-        
-        #useIterative=0
-        #if useIterative==1:
-        #    D_chunks = []
-        #    for C_chunk in C_chunks:    
-        #        D_chunk = ig.forward_gaaem(C=C_chunk, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)
-        #        D_chunks.append(D_chunk)
+        # Use spawn context on Windows for better handle management
+        if os.name == 'nt':
+            ctx = multiprocessing.get_context("spawn")
+            with ctx.Pool(processes=Ncpu) as p:
+                D_chunks = p.starmap(forward_gaaem_chunk_partial, zip(C_chunks, tx_height_chunks))
+        else:
+            # On non-Windows platforms, use regular Pool
+            with Pool(processes=Ncpu) as p:
+                D_chunks = p.starmap(forward_gaaem_chunk_partial, zip(C_chunks, tx_height_chunks))
 
-        # 4: Combine the chunks into D
-        #print('Concatenating D_chunks')
+
+        #with Pool() as p:
+        #    #D_chunks = p.map(forward_gaaem_chunk_partial, C_chunks)
+        #    D_chunks = p.starmap(forward_gaaem_chunk_partial, zip(C_chunks, tx_height_chunks))
+        
+  
         D = np.concatenate(D_chunks)
         #print("D.shape", D.shape)
         if is_log:
             D = np.log10(D)
+
+        if os.name == 'nt' and 'get_process_handle_count' in globals():
+            # Log handle count after pool is closed
+            handle_count_after = get_process_handle_count()
+            print(f"Handle count after pool: {handle_count_after}")
 
 
         # D = ig.forward_gaaem(C=C, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)
@@ -2249,11 +2266,16 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
     #reconstructed_arrays = reconstruct_shared_arrays(shared_memory_refs)
 
     #with Pool(Ncpu) as p:
-    with Pool(Ncpu) as p:
-        # New implementation with shared memory
-        results = p.map(integrate_posterior_chunk, [(i, ip_chunks, DATA, idx,  N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best) for i in range(len(ip_chunks))])
-        # Old implementation where D was copied to each process
-        #results = p.map(integrate_posterior_chunk, [(i, ip_chunks, D, DATA, idx,  N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best) for i in range(len(ip_chunks))])
+    try:
+        with Pool(Ncpu) as p:
+            # New implementation with shared memory
+            results = p.map(integrate_posterior_chunk, [(i, ip_chunks, DATA, idx,  N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best) for i in range(len(ip_chunks))])
+            # Old implementation where D was copied to each process
+            #results = p.map(integrate_posterior_chunk, [(i, ip_chunks, D, DATA, idx,  N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best) for i in range(len(ip_chunks))])
+    finally:
+        # Always clean up shared memory
+        if shm_objects:
+            cleanup_shared_memory(shm_objects)
 
     # Cleanup shared memory
     #cleanup_shared_memory(shared_memory_refs)

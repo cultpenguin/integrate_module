@@ -410,6 +410,28 @@ def timing_plot(f_timing=''):
 
 
 #%% Perform the timing test
+# if __name__ == '__main__':
+#     import multiprocessing
+#     multiprocessing.freeze_support()
+    
+#     # Set a lower limit for processes to avoid handle limit issues on Windows
+#     import platform
+#     if platform.system() == 'Windows':
+#         # On Windows, limit the max processes to avoid handle limit issues
+#         multiprocessing.set_start_method('spawn')
+        
+#         # Optional - can help with some multiprocessing issues
+#         import os
+#         os.environ['PYTHONWARNINGS'] = 'ignore:semaphore_tracker:UserWarning'
+    
+#     #f_timing = timing_compute(useAltTest=True)
+#     f_timing = timing_compute(N_arr=[1000,2000], Nproc_arr=[2,4])
+#     #f_timing = timing_compute()
+    
+#     timing_plot(f_timing)  
+
+
+#%% Perform the timing test
 if __name__ == '__main__':
     #f_timing = timing_compute(useAltTest=True)
     #f_timing = timing_compute(N_arr=[1000,2000], Nproc_arr=[2,4])
