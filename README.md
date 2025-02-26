@@ -63,7 +63,7 @@ unzip GA-AEM.zip to get GA-AEM
 
 unzip fftw-3.3.5-dll64.zip to get fftw-3.3.5-dll64
 
-cp fftw-3.3.5-dll64/*.dll to GA-AEM/python/gatdaem1d/
+Copy fftw-3.3.5-dll64/*.dll to GA-AEM/python/gatdaem1d/
 
     cp fftw-3.3.5-dll64/*.dll GA-AEM/python/gatdaem1d/
 
