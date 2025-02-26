@@ -411,9 +411,9 @@ def timing_plot(f_timing=''):
 
 #%% Perform the timing test
 if __name__ == '__main__':
-    f_timing = timing_compute(useAltTest=True)
-    f_timing = timing_compute(N_arr=[1000,2000], Nproc_arr=[2,4])
-    #f_timing = timing_compute()
+    #f_timing = timing_compute(useAltTest=True)
+    #f_timing = timing_compute(N_arr=[1000,2000], Nproc_arr=[2,4])
+    f_timing = timing_compute()
     
     timing_plot(f_timing)    
 
