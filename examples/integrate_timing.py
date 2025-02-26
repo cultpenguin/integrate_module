@@ -12,7 +12,7 @@
 
 # %% Functions
 
-def timing_compute(useAltTest=True,  N_arr=[], Nproc_arr=[]):
+def timing_compute(useAltTest=False,  N_arr=[], Nproc_arr=[]):
 
     import integrate as ig
     # check if parallel computations can be performed
