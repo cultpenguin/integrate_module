@@ -9,6 +9,12 @@ sudo apt-get install -y build-essential
 sudo apt-get install -y libfftw3-dev libfftw3-bin libfftw3-double3
 sudo apt-get install -y libopenmpi-dev
 sudo apt-get install -y cmake build-essential libfftw3-dev libopenmpi-dev
+sudo apt remove -y --purge libfftw3-* fftw3
+sudo apt autoremove -y
+sudo apt update
+sudo apt install -y libfftw3-dev libfftw3-bin libfftw3-double3
+
+
 
 ## 1. Clone the ga-aem repository from Github
 git clone --recursive https://github.com/GeoscienceAustralia/ga-aem.git
