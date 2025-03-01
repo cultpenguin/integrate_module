@@ -12,6 +12,40 @@
 
 # %% Functions
 
+
+def allocate_large_page():
+    import os
+    import ctypes
+    """Allocates a 2MB large page if running on Windows."""
+    if os.name == "nt":
+        kernel32 = ctypes.windll.kernel32
+        kernel32.VirtualAlloc.restype = ctypes.c_void_p
+        
+        LARGE_PAGE_SIZE = 2 * 1024 * 1024  # 2MB
+        
+        MEM_COMMIT = 0x1000
+        MEM_LARGE_PAGES = 0x20000000
+        PAGE_READWRITE = 0x04
+        
+        ptr = kernel32.VirtualAlloc(None, LARGE_PAGE_SIZE, MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE)
+        
+        if not ptr:
+            error_code = ctypes.GetLastError()
+            print(f"Failed to allocate large page. Error code: {error_code}")
+            return None
+        
+        print(f"Successfully allocated {LARGE_PAGE_SIZE} bytes at address {hex(ptr)}")
+        return ptr
+    else:
+        print("Large pages are only supported on Windows.")
+        return None
+
+
+# Example usage
+large_page_memory = allocate_large_page()
+
+
+
 def timing_compute(useAltTest=False,  N_arr=[], Nproc_arr=[]):
 
     import integrate as ig
