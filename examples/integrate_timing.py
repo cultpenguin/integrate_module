@@ -41,8 +41,8 @@ def allocate_large_page():
         return None
 
 
-# Example usage
-large_page_memory = allocate_large_page()
+## Example usage
+#large_page_memory = allocate_large_page()
 
 
 
@@ -260,21 +260,53 @@ def timing_plot(f_timing=''):
     T_forward_sounding_per_sec_per_cpu = T_forward_sounding_per_sec/Nproc_arr[np.newaxis,:]
     T_forward_sounding_speedup = T_forward_sounding_per_sec/T_forward_sounding_per_sec[0,0]
 
-
     plt.figure(figsize=(6,6))    
-    #plt.plot(Nproc_arr, T_forward_sounding.T, 'o-')
-    #plt.plot(Nproc_arr, T_forward.T, 'o-')
     plt.loglog(Nproc_arr, T_forward.T, 'o-', label='A')
-    # plot line 
-    plt.ylabel(r'TIME - $[s]$')
+    # plot dashed line indicating linear scaling
+    for i in range(len(N_arr)):
+        # Find index of first non-nan value in T_forward[i,:]
+        try:
+            idx = np.nonzero(~np.isnan(T_forward[i,:]))[0][0]
+            plt.plot([Nproc_arr[0], Nproc_arr[-1]], [T_forward[i,idx]*Nproc_arr[idx]/Nproc_arr[0], T_forward[i,idx]*Nproc_arr[idx]/Nproc_arr[-1]], 'k--', 
+                    label='Linear scaling', 
+                    linewidth=0.5)   
+        except:
+            pass
+    
+    plt.ylabel(r'Forward time - $[s]$')
     plt.xlabel('Number of processors')
     plt.title('Forward calculation')
     plt.grid()
     plt.legend(N_arr, loc='upper left')
     plt.ylim(1e-1, 1e+4)
+    plt.xlim(Nproc_arr[0], Nproc_arr[-1])
     plt.tight_layout()
-    plt.savefig('%s_forward_sec' % file_out)
+    plt.savefig('%s_forward_sec_CPU' % file_out)
 
+    plt.figure(figsize=(6,6))    
+    plt.loglog(N_arr, T_forward, 'o-', label='A')
+    # plot dashed line indicating linear scaling
+    for i in range(len(N_arr)):
+        # Find index of first non-nan value in T_forward[i,:]
+        try:
+            idx = np.nonzero(~np.isnan(T_forward[i,:]))[0][0]
+            ref_time = T_forward[i,idx]
+            ref_N = N_arr[i]
+            plt.plot([N_arr[0], N_arr[-1]], [ref_time*N_arr[0]/ref_N, ref_time*N_arr[-1]/ref_N], 'k--', label='Linear scaling', linewidth=0.5)   
+        except:
+            pass
+    plt.ylabel(r'Forward time - $[s]$')
+    plt.xlabel('Number of models')
+    plt.title('Forward calculation')
+    plt.grid()
+    plt.legend(Nproc_arr, loc='upper left')
+    #plt.ylim(1e-1, 1e+4)
+    #plt.xlim(Nproc_arr[0], Nproc_arr[-1])
+    plt.tight_layout()
+    plt.savefig('%s_forward_sec_N' % file_out)
+
+
+    #
     plt.figure(figsize=(6,6))    
     plt.plot(Nproc_arr, T_forward_sounding_per_sec.T, 'o-')
     # plot line 
@@ -286,14 +318,19 @@ def timing_plot(f_timing=''):
     plt.tight_layout()
     plt.savefig('%s_forward_sounding_per_sec' % file_out)
 
+    #
     plt.figure(figsize=(6,6))    
     plt.plot(Nproc_arr, T_forward_sounding_per_sec_per_cpu.T, 'o-')
     plt.ylabel('Forward computations per second per cpu')
     plt.xlabel('Number of processors')
     plt.title('Forward calculation')
     plt.grid()
+    # Make yaxis start at 0
+    plt.ylim(0, 70)    
+    plt.xlim(Nproc_arr[0], Nproc_arr[-1])
     plt.legend(N_arr)
     plt.savefig('%s_forward_sounding_per_sec_per_cpu' % file_out)
+    #
 
     plt.figure(figsize=(6,6))    
     plt.plot(Nproc_arr, T_forward_sounding_speedup.T, 'o-')
@@ -321,9 +358,13 @@ def timing_plot(f_timing=''):
     T_rejection_per_data = nobs/T_rejection
 
     for i in range(len(N_arr)):
-        # find index of first valiue in T_rejection_sounding_per_sec[i,:] that is not nan
-        idx = np.where(~np.isnan(T_rejection_sounding_per_sec[i,:]))[0][0]
-        T_rejection_sounding_speedup[i,:] = T_rejection_sounding_per_sec[i,:]/(T_rejection_sounding_per_sec[i,idx]/Nproc_arr[idx]) 
+        # find index of first value in T_rejection_sounding_per_sec[i,:] that is not nan
+        try:
+            idx = np.where(~np.isnan(T_rejection_sounding_per_sec[i,:]))[0][0]
+            T_rejection_sounding_speedup[i,:] = T_rejection_sounding_per_sec[i,:]/(T_rejection_sounding_per_sec[i,idx]/Nproc_arr[idx]) 
+        except:
+            T_rejection_sounding_speedup[i,:] = T_rejection_sounding_per_sec[i,:]*0
+
 
     plt.figure(figsize=(6,6))
     plt.loglog(Nproc_arr, T_rejection_per_data.T, 'o-', label=N_arr)
@@ -353,15 +394,46 @@ def timing_plot(f_timing=''):
 
     # 
     plt.figure(figsize=(6,6))
-    #plt.loglog(Nproc_arr, T_rejection.T, 'o-')
-    plt.semilogy(Nproc_arr, T_rejection.T, 'o-')
-    plt.ylabel('Rejection sampling - total time - $[s]$')
+    plt.loglog(Nproc_arr, T_rejection.T, 'o-')
+    for i in range(len(N_arr)):
+        # Find index of first non-nan value in T_forward[i,:]
+        try:
+            idx = np.nonzero(~np.isnan(T_rejection[i,:]))[0][0]
+            plt.plot([Nproc_arr[0], Nproc_arr[-1]], [T_rejection[i,idx]*Nproc_arr[idx]/Nproc_arr[0], T_rejection[i,idx]*Nproc_arr[idx]/Nproc_arr[-1]], 'k--',
+                        label='Linear scaling', 
+                        linewidth=0.5)
+        except:
+            pass
+    plt.ylabel('Rejection sampling - time $[s]$')
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(N_arr)
     plt.tight_layout()
     plt.ylim(1e-1, 2e+3)
-    plt.savefig('%s_rejection_time' % file_out)
+    plt.savefig('%s_rejection_sec_CPU' % file_out)
+
+
+    # as above, but plt.loglog(N_arr, T_rejection, 'o-')
+    plt.figure(figsize=(6,6))
+    plt.loglog(N_arr, T_rejection, 'o-')
+    for i in range(len(Nproc_arr)):
+        # Find index of first non-nan value in T_forward[i,:]
+        try:
+            idx = np.nonzero(~np.isnan(T_rejection[:,i]))[0][0]
+            ref_time = np.abs(T_rejection[idx,i])
+            plt.plot([N_arr[0], N_arr[-1]], [ref_time*N_arr[0]/N_arr[idx], ref_time*N_arr[-1]/N_arr[idx]], 'k--',
+                        label='Linear scaling', 
+                        linewidth=0.5)
+        except:
+            pass
+    plt.ylabel('Rejection sampling - time $[s]$')
+    plt.xlabel('Lookup table size')
+    plt.grid()
+    plt.legend(Nproc_arr)
+    plt.tight_layout()
+    plt.ylim(1e-1, 2e+3)
+    plt.savefig('%s_rejection_sec_N' % file_out)
+
 
     # 
     plt.figure(figsize=(6,6))
@@ -377,6 +449,54 @@ def timing_plot(f_timing=''):
     plt.legend(N_arr)
     plt.savefig('%s_rejection_speedup' % file_out)
 
+    # 
+    plt.figure(figsize=(6,6))
+    plt.loglog(N_arr, T_rejection_sounding_per_sec, 'o-')
+    plt.xlim(90, 5000000*1.1)
+    plt.ylim(0, 8000)
+    plt.ylabel('Rejection sampling - Soundings per second')
+    plt.xlabel('Lookup table size')
+    plt.grid()
+    plt.legend(Nproc_arr)
+    plt.savefig('%s_rejection_sound_per_sec_N' % file_out)
+
+    plt.figure(figsize=(6,6))
+    plt.loglog(Nproc_arr, T_rejection_sounding_per_sec.T, 'o-')
+    #plt.xlim(90, 5000000*1.1)
+    plt.ylim(0, 8000)
+    plt.ylabel('Rejection sampling - Soundings per second')
+    plt.xlabel('Number of processors')
+    plt.grid()
+    plt.legend(Nproc_arr)
+    plt.savefig('%s_rejection_sound_per_sec_CPU' % file_out)
+
+
+    plt.figure(figsize=(6,6))
+    plt.loglog(N_arr, T_rejection_sounding_per_sec_per_cpu, 'o-')
+    plt.plot([0, Nproc_arr[-1]], [0, Nproc_arr[-1]], 'k--')
+    plt.xlim(90, 5000000*1.1)
+    plt.ylim(0, 8000)
+    plt.ylabel('Rejection sampling - Soundings per second per cpu')
+    plt.xlabel('Lookup table size')
+    plt.grid()
+    plt.legend(Nproc_arr)
+    plt.savefig('%s_rejection_sound_per_sec_per_cpu_N' % file_out)
+
+
+    plt.figure(figsize=(6,6))
+    plt.semilogx(Nproc_arr, T_rejection_sounding_per_sec_per_cpu.T, 'o-')
+    #plt.plot([0, Nproc_arr[-1]], [0, Nproc_arr[-1]], 'k--')
+    #plt.xlim(90, 5000000*1.1)
+    #plt.ylim(0, 8000)
+    plt.ylabel('Rejection sampling - Soundings per second per cpu')
+    plt.xlabel('Number of processors')
+    plt.grid()
+    plt.legend(N_arr)
+    plt.savefig('%s_rejection_sound_per_sec_per_cpu_CPU' % file_out)
+
+
+
+
     #### STATS FOR POSTERIOR STATISTICS
     # Average timer per sounding
     T_poststat_sounding = T_poststat/N_arr[:,np.newaxis]
@@ -386,25 +506,25 @@ def timing_plot(f_timing=''):
 
     plt.figure(figsize=(6,6))
     plt.plot(Nproc_arr, T_poststat_sounding_per_sec.T, 'o-')
-    plt.ylabel('Soundings per second - $[s^{-1}]$')
+    plt.ylabel('Posterior statistics - Soundings per second - $[s^{-1}]$')
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(N_arr)
     plt.tight_layout()
     plt.savefig('%s_poststat_sounding_per_sec' % file_out)
 
-    plt.figure(figsize=(6,6))
-    plt.plot(Nproc_arr, T_poststat_sounding_speedup.T, 'o-')
-    # plot a line from 0,0 tp Nproc_arr[-1], Nproc_arr[-1]
-    plt.plot([0, Nproc_arr[-1]], [0, Nproc_arr[-1]], 'k--')
-    # set xlim to 1, Nproc_arr[-1]
-    plt.xlim(.8, Nproc_arr[-1])
-    plt.ylim(.8, Nproc_arr[-1])
-    plt.ylabel('Posterior statistics - speedup compared to 1 processor')
-    plt.xlabel('Number of processors')
-    plt.grid()
-    plt.legend(N_arr)
-    plt.savefig('%s_poststat_speedup' % file_out)
+    # plt.figure(figsize=(6,6))
+    # plt.plot(Nproc_arr, T_poststat_sounding_speedup.T, 'o-')
+    # # plot a line from 0,0 tp Nproc_arr[-1], Nproc_arr[-1]
+    # plt.plot([0, Nproc_arr[-1]], [0, Nproc_arr[-1]], 'k--')
+    # # set xlim to 1, Nproc_arr[-1]
+    # plt.xlim(.8, Nproc_arr[-1])
+    # plt.ylim(.8, Nproc_arr[-1])
+    # plt.ylabel('Posterior statistics - speedup compared to 1 processor')
+    # plt.xlabel('Number of processors')
+    # plt.grid()
+    # plt.legend(N_arr)
+    # plt.savefig('%s_poststat_speedup' % file_out)
 
     #####
     # ## Plot Cumulative Time useage for min and max number of used cores
@@ -469,14 +589,19 @@ def timing_plot(f_timing=''):
 if __name__ == '__main__':
     #f_timing = timing_compute(useAltTest=True)
     #f_timing = timing_compute(N_arr=[1000,2000], Nproc_arr=[2,4])
-    f_timing = timing_compute()
-    
-    timing_plot(f_timing)    
+    import numpy as np
+    #f_timing = timing_compute(N_arr=np.ceil(np.logspace(2,5,7)))
+    #f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,5,9)), Nproc_arr = np.arange(1,9))
+    f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,5,9)), Nproc_arr = np.arange(1,Ncpu+1))
+    #f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,4,3)), Nproc_arr = [1,2,4,8,16,24])
+    timing_plot(f_timing) 
+    pass   
+
 
     
 #%% Plot figures for all NPZ files in folder
 # find all files in the current folder with extension .npz, and store them in a list
-plotAll = False
+plotAll = True
 if plotAll:
     import os
     import glob
