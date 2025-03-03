@@ -587,6 +587,8 @@ def timing_plot(f_timing=''):
 
 #%% Perform the timing test
 if __name__ == '__main__':
+    import psutil
+    Ncpu = psutil.cpu_count(logical=False)
     #f_timing = timing_compute(useAltTest=True)
     #f_timing = timing_compute(N_arr=[1000,2000], Nproc_arr=[2,4])
     import numpy as np
