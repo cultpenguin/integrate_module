@@ -191,6 +191,8 @@ def timing_plot(f_timing=''):
     if len(f_timing)==0:
         print('No timing file provided')
         return
+    else:
+        print('Plotting timing results from %s' % f_timing)
 
     # file_out is f_timing, without file extension
     file_out = f_timing.split('.')[0]
@@ -260,6 +262,7 @@ def timing_plot(f_timing=''):
     T_forward_sounding_per_sec_per_cpu = T_forward_sounding_per_sec/Nproc_arr[np.newaxis,:]
     T_forward_sounding_speedup = T_forward_sounding_per_sec/T_forward_sounding_per_sec[0,0]
 
+    ## Forward time per sounding - CPU
     plt.figure(figsize=(6,6))    
     plt.loglog(Nproc_arr, T_forward.T, 'o-', label='A')
     # plot dashed line indicating linear scaling
@@ -283,6 +286,7 @@ def timing_plot(f_timing=''):
     plt.tight_layout()
     plt.savefig('%s_forward_sec_CPU' % file_out)
 
+    ## Forward time per sounding - Nproc
     plt.figure(figsize=(6,6))    
     plt.loglog(N_arr, T_forward, 'o-', label='A')
     # plot dashed line indicating linear scaling
@@ -366,33 +370,7 @@ def timing_plot(f_timing=''):
             T_rejection_sounding_speedup[i,:] = T_rejection_sounding_per_sec[i,:]*0
 
 
-    plt.figure(figsize=(6,6))
-    plt.loglog(Nproc_arr, T_rejection_per_data.T, 'o-', label=N_arr)
-    plt.plot([Nproc_arr[0], Nproc_arr[-1]], [1./t_lsq, 1./t_lsq], 'k--', label='LSQ')
-    plt.plot([Nproc_arr[0], Nproc_arr[-1]], [1./t_mcmc, 1./t_mcmc], 'r--', label='MCMC')
-    plt.ylabel('Rejection sampling - number of soundings per second - $s^{-1}$')
-    plt.xlabel('Number of processors')
-    plt.grid()
-    plt.legend(loc='lower left')
-    plt.tight_layout()
-    plt.ylim(1e-3, 1e+5)
-    plt.savefig('%s_rejection_sound_per_sec' % file_out)
-
-    plt.figure(figsize=(6,6))
-    plt.semilogy(Nproc_arr, 1./T_rejection_per_data.T, 'o-', label=N_arr)
-    #plt.plot(Nproc_arr, 1./T_rejection_per_data.T, 'o-', label=N_arr)
-    plt.plot([Nproc_arr[0], Nproc_arr[-1]], [t_lsq, t_lsq], 'k--', label='LSQ')
-    plt.plot([Nproc_arr[0], Nproc_arr[-1]], [t_mcmc, t_mcmc], 'r--', label='MCMC')
-    plt.ylabel('Rejection sampling - seconds per sounding - $s$')
-    plt.xlabel('Number of processors')
-    plt.grid()
-    plt.legend(loc='upper right')
-    plt.tight_layout()
-    plt.ylim(1e-5, 1e+3)
-    plt.savefig('%s_rejection_sec_per_sound' % file_out)
-
-
-    # 
+    ## Rejection total sec - per CPU
     plt.figure(figsize=(6,6))
     plt.loglog(Nproc_arr, T_rejection.T, 'o-')
     for i in range(len(N_arr)):
@@ -413,7 +391,7 @@ def timing_plot(f_timing=''):
     plt.savefig('%s_rejection_sec_CPU' % file_out)
 
 
-    # as above, but plt.loglog(N_arr, T_rejection, 'o-')
+    ## Rejection total sec - per process
     plt.figure(figsize=(6,6))
     plt.loglog(N_arr, T_rejection, 'o-')
     for i in range(len(Nproc_arr)):
@@ -435,7 +413,7 @@ def timing_plot(f_timing=''):
     plt.savefig('%s_rejection_sec_N' % file_out)
 
 
-    # 
+    ## Rejection speedup
     plt.figure(figsize=(6,6))
     plt.plot(Nproc_arr, T_rejection_sounding_speedup.T, 'o-')
     # plot a line from 0,0 tp Nproc_arr[-1], Nproc_arr[-1]
@@ -449,33 +427,60 @@ def timing_plot(f_timing=''):
     plt.legend(N_arr)
     plt.savefig('%s_rejection_speedup' % file_out)
 
-    # 
+
+    ## Rejection sound per sec
+    plt.figure(figsize=(6,6))
+    plt.loglog(Nproc_arr, T_rejection_per_data.T, 'o-', label=N_arr)
+    plt.plot([Nproc_arr[0], Nproc_arr[-1]], [1./t_lsq, 1./t_lsq], 'k--', label='LSQ')
+    plt.plot([Nproc_arr[0], Nproc_arr[-1]], [1./t_mcmc, 1./t_mcmc], 'r--', label='MCMC')
+    plt.ylabel('Rejection sampling - number of soundings per second - $s^{-1}$')
+    plt.xlabel('Number of processors')
+    plt.grid()
+    plt.legend(loc='lower left')
+    plt.tight_layout()
+    plt.ylim(1e-3, 1e+5)
+    plt.savefig('%s_rejection_sound_per_sec' % file_out)
+
+    ## Rejection sec per sounding
+    plt.figure(figsize=(6,6))
+    plt.semilogy(Nproc_arr, 1./T_rejection_per_data.T, 'o-', label=N_arr)
+    #plt.plot(Nproc_arr, 1./T_rejection_per_data.T, 'o-', label=N_arr)
+    plt.plot([Nproc_arr[0], Nproc_arr[-1]], [t_lsq, t_lsq], 'k--', label='LSQ')
+    plt.plot([Nproc_arr[0], Nproc_arr[-1]], [t_mcmc, t_mcmc], 'r--', label='MCMC')
+    plt.ylabel('Rejection sampling - seconds per sounding - $s$')
+    plt.xlabel('Number of processors')
+    plt.grid()
+    plt.legend(loc='upper right')
+    plt.tight_layout()
+    plt.ylim(1e-5, 1e+3)
+    plt.savefig('%s_rejection_sec_per_sound' % file_out)
+
+    ## Rejection sound per sec - N
     plt.figure(figsize=(6,6))
     plt.loglog(N_arr, T_rejection_sounding_per_sec, 'o-')
-    plt.xlim(90, 5000000*1.1)
-    plt.ylim(0, 8000)
+    #plt.ylim(0, 8000)
     plt.ylabel('Rejection sampling - Soundings per second')
     plt.xlabel('Lookup table size')
     plt.grid()
     plt.legend(Nproc_arr)
     plt.savefig('%s_rejection_sound_per_sec_N' % file_out)
 
+    ## Rejection sound per sec - per CPU
     plt.figure(figsize=(6,6))
     plt.loglog(Nproc_arr, T_rejection_sounding_per_sec.T, 'o-')
-    #plt.xlim(90, 5000000*1.1)
-    plt.ylim(0, 8000)
+    #plt.ylim(0, 8000)
     plt.ylabel('Rejection sampling - Soundings per second')
     plt.xlabel('Number of processors')
     plt.grid()
-    plt.legend(Nproc_arr)
+    plt.legend(N_arr)
     plt.savefig('%s_rejection_sound_per_sec_CPU' % file_out)
 
-
+    ##  Sound per sec per CPU - N  
     plt.figure(figsize=(6,6))
     plt.loglog(N_arr, T_rejection_sounding_per_sec_per_cpu, 'o-')
     plt.plot([0, Nproc_arr[-1]], [0, Nproc_arr[-1]], 'k--')
     plt.xlim(90, 5000000*1.1)
-    plt.ylim(0, 8000)
+    #plt.ylim(0, 8000)
     plt.ylabel('Rejection sampling - Soundings per second per cpu')
     plt.xlabel('Lookup table size')
     plt.grid()
@@ -483,11 +488,10 @@ def timing_plot(f_timing=''):
     plt.savefig('%s_rejection_sound_per_sec_per_cpu_N' % file_out)
 
 
+    ##  Sound per sec per CPU - CPU 
     plt.figure(figsize=(6,6))
     plt.semilogx(Nproc_arr, T_rejection_sounding_per_sec_per_cpu.T, 'o-')
-    #plt.plot([0, Nproc_arr[-1]], [0, Nproc_arr[-1]], 'k--')
-    #plt.xlim(90, 5000000*1.1)
-    #plt.ylim(0, 8000)
+    plt.ylim([0, np.nanmax(T_rejection_sounding_per_sec_per_cpu.T)*1.1])
     plt.ylabel('Rejection sampling - Soundings per second per cpu')
     plt.xlabel('Number of processors')
     plt.grid()
@@ -594,12 +598,13 @@ if __name__ == '__main__':
     import numpy as np
     #f_timing = timing_compute(N_arr=np.ceil(np.logspace(2,5,7)))
     #f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,5,9)), Nproc_arr = np.arange(1,9))
-    f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,5,9)), Nproc_arr = np.arange(1,Ncpu+1))
+    #f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,5,9)), Nproc_arr = np.arange(1,Ncpu+1))
     #f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,4,3)), Nproc_arr = [1,2,4,8,16,24])
-    timing_plot(f_timing) 
+    #timing_plot(f_timing) 
     pass   
 
-
+#f_timing = 'timing_d52534-Linux-24core_Nproc24_N9.npz'
+#timing_plot(f_timing)
     
 #%% Plot figures for all NPZ files in folder
 # find all files in the current folder with extension .npz, and store them in a list
