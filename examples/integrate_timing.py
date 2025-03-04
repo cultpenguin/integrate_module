@@ -330,7 +330,7 @@ def timing_plot(f_timing=''):
     plt.title('Forward calculation')
     plt.grid()
     # Make yaxis start at 0
-    plt.ylim(0, 70)    
+    plt.ylim(0, 80)    
     plt.xlim(Nproc_arr[0], Nproc_arr[-1])
     plt.legend(N_arr)
     plt.savefig('%s_forward_sounding_per_sec_per_cpu' % file_out)
