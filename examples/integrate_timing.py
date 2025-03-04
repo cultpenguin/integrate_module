@@ -598,7 +598,7 @@ if __name__ == '__main__':
     import numpy as np
     #f_timing = timing_compute(N_arr=np.ceil(np.logspace(2,5,7)))
     #f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,5,9)), Nproc_arr = np.arange(1,9))
-    #f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,5,9)), Nproc_arr = np.arange(1,Ncpu+1))
+    f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,5,9)), Nproc_arr = np.arange(1,Ncpu+1))
     #f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,4,3)), Nproc_arr = [1,2,4,8,16,24])
     #timing_plot(f_timing) 
     pass   
@@ -608,7 +608,7 @@ if __name__ == '__main__':
     
 #%% Plot figures for all NPZ files in folder
 # find all files in the current folder with extension .npz, and store them in a list
-plotAll = True
+plotAll = False
 if plotAll:
     import os
     import glob
