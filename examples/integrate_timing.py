@@ -639,9 +639,8 @@ def main():
         
         if args.size == 'small':
             # Small benchmark
-            
             N_arr = np.ceil(np.logspace(2,4,3))
-            N_arr = np.array([1000])
+            N_arr = np.array([10000])
             f_timing = timing_compute(
                 N_arr = N_arr,
                 Nproc_arr = Nproc_arr
