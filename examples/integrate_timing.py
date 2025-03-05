@@ -603,15 +603,7 @@ def main():
     if args.command is None:
         args.command = 'time'
         args.size = 'small'
-    
-    ## Default behavior if no arguments
-    #if len(sys.argv) == 1:
-    #    parser.print_help()
-    #    # Set default arguments as if "-time medium" was provided
-    #    args.command = 'time'
-    #    args.size = 'medium'
-    #print(args)
-    
+   
     # Execute command
     if args.command == 'plot':
         if args.all:
@@ -638,12 +630,18 @@ def main():
     
     elif args.command == 'time':
         Ncpu = psutil.cpu_count(logical=False)
+
+        k = int(np.floor(np.log2(Ncpu)))
+        Nproc_arr = 2**np.linspace(0,k,(k)+1)
+        Nproc_arr = np.append(Nproc_arr, Ncpu)
+        Nproc_arr = np.unique(Nproc_arr)
+        Nproc_arr = np.unique(Nproc_arr)
         
         if args.size == 'small':
             # Small benchmark
+            
             N_arr = np.ceil(np.logspace(2,4,3))
             N_arr = np.array([1000])
-            Nproc_arr = np.array([1,2,4])            
             f_timing = timing_compute(
                 N_arr = N_arr,
                 Nproc_arr = Nproc_arr
@@ -659,11 +657,6 @@ def main():
             )
         elif args.size == 'large':
             # Large benchmark
-            k=int(np.floor(Ncpu**(1/2)))
-            Nproc_arr = 2**np.linspace(2,k,(k-2)+1)
-            Nproc_arr = np.append(Nproc_arr, Ncpu)
-            Nproc_arr = np.unique(Nproc_arr)
-
             N_arr = np.ceil(np.logspace(4,6,7))
             f_timing = timing_compute(                
                 N_arr=N_arr,
