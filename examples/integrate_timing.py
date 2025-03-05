@@ -46,7 +46,7 @@ def allocate_large_page():
 
 
 
-def timing_compute(useAltTest=False,  N_arr=[], Nproc_arr=[]):
+def timing_compute(N_arr=[], Nproc_arr=[]):
 
     import integrate as ig
     # check if parallel computations can be performed
@@ -74,8 +74,6 @@ def timing_compute(useAltTest=False,  N_arr=[], Nproc_arr=[]):
 
     print("Hostname (system): %s (%s) " % (hostname, system))
     print("Number of processors: %d" % Ncpu)
-
-
     
     # SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
     files = ig.get_case_data()
@@ -91,7 +89,6 @@ def timing_compute(useAltTest=False,  N_arr=[], Nproc_arr=[]):
 
     ## Setup the timing test
 
-
     #### Set the size of the data sets to test
     if len(N_arr)==0:
         N_arr = np.array([100,500,1000,5000,10000,50000,100000, 500000, 1000000, 5000000])
@@ -99,10 +96,6 @@ def timing_compute(useAltTest=False,  N_arr=[], Nproc_arr=[]):
     # Set the number of cores to test
     if len(Nproc_arr)==0:
         Nproc_arr=2**(np.double(np.arange(1+int(np.log2(Ncpu)))))   
-
-    if useAltTest:
-        N_arr = np.array([100,500,1000])
-        Nproc_arr = np.array([2,4])
 
     n1 = len(N_arr)
     n2 = len(Nproc_arr)    
@@ -567,55 +560,133 @@ def timing_plot(f_timing=''):
         plt.savefig('%s_Ncpu%d_cumT_norm' % (file_out,Nproc_arr[i_proc]))
 
 
-#%% Perform the timing test
-# if __name__ == '__main__':
-#     import multiprocessing
-#     multiprocessing.freeze_support()
-    
-#     # Set a lower limit for processes to avoid handle limit issues on Windows
-#     import platform
-#     if platform.system() == 'Windows':
-#         # On Windows, limit the max processes to avoid handle limit issues
-#         multiprocessing.set_start_method('spawn')
-        
-#         # Optional - can help with some multiprocessing issues
-#         import os
-#         os.environ['PYTHONWARNINGS'] = 'ignore:semaphore_tracker:UserWarning'
-    
-#     #f_timing = timing_compute(useAltTest=True)
-#     f_timing = timing_compute(N_arr=[1000,2000], Nproc_arr=[2,4])
-#     #f_timing = timing_compute()
-    
-#     timing_plot(f_timing)  
 
+# %% The main function
 
-#%% Perform the timing test
+# Add near the bottom of your script, replacing the current if __name__ == '__main__' block
 if __name__ == '__main__':
-    import psutil
-    Ncpu = psutil.cpu_count(logical=False)
-    #f_timing = timing_compute(useAltTest=True)
-    #f_timing = timing_compute(N_arr=[1000,2000], Nproc_arr=[2,4])
-    import numpy as np
-    #f_timing = timing_compute(N_arr=np.ceil(np.logspace(2,5,7)))
-    #f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,5,9)), Nproc_arr = np.arange(1,9))
-    f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,5,9)), Nproc_arr = np.arange(1,Ncpu+1))
-    #f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,4,3)), Nproc_arr = [1,2,4,8,16,24])
-    #timing_plot(f_timing) 
-    pass   
-
-#f_timing = 'timing_d52534-Linux-24core_Nproc24_N9.npz'
-#timing_plot(f_timing)
-    
-#%% Plot figures for all NPZ files in folder
-# find all files in the current folder with extension .npz, and store them in a list
-plotAll = False
-if plotAll:
+    import argparse
+    import sys
     import os
     import glob
-    files = glob.glob('*.npz')
-    for f in files:
-        try:
-            timing_plot(f)
-        except: 
-            print('Error in %s' % f)
+    import psutil
+    import numpy as np
 
+    # Create argument parser
+    parser = argparse.ArgumentParser(description='INTEGRATE timing benchmark tool')
+    
+    # Create subparsers for different command groups
+    subparsers = parser.add_subparsers(dest='command', help='Command to run')
+    
+    # Plot command
+    plot_parser = subparsers.add_parser('plot', help='Plot timing results')
+    plot_parser.add_argument('file', nargs='?', default='', help='NPZ file to plot')
+    plot_parser.add_argument('--all', action='store_true', help='Plot all NPZ files in the current directory')
+    
+    # Time command
+    time_parser = subparsers.add_parser('time', help='Run timing benchmark')
+    time_parser.add_argument('size', choices=['small', 'medium', 'large'], 
+                            default='medium', help='Size of the benchmark')
+    
+    # Parse arguments
+    args = parser.parse_args()
+    
+    # Default behavior if no arguments
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
+    
+    # Execute command
+    if args.command == 'plot':
+        if args.all:
+            # Plot all NPZ files in the current directory
+            files = glob.glob('*.npz')
+            for f in files:
+                try:
+                    timing_plot(f)
+                    print(f"Successfully plotted: {f}")
+                except Exception as e:
+                    print(f"Error plotting {f}: {str(e)}")
+        elif args.file:
+            # Plot specified file
+            if not os.path.exists(args.file):
+                print(f"File not found: {args.file}")
+                sys.exit(1)
+            try:
+                timing_plot(args.file)
+                print(f"Successfully plotted: {args.file}")
+            except Exception as e:
+                print(f"Error plotting {args.file}: {str(e)}")
+        else:
+            print("Please specify a file to plot or use --all")
+    
+    elif args.command == 'time':
+        #%%
+        Ncpu = psutil.cpu_count(logical=False)        
+        
+        #%%
+        if args.size == 'small':
+            # Small benchmark
+            N_arr = np.ceil(np.logspace(2,4,3))
+            Nproc_arr = np.array([1,2,4])            
+            f_timing = timing_compute(
+                N_arr = N_arr,
+                Nproc_arr = Nproc_arr
+            )
+        elif args.size == 'medium':
+            # Medium benchmark
+            N_arr=np.ceil(np.logspace(3,5,9)) 
+            Nproc_arr = np.arange(1,Ncpu+1)
+
+            f_timing = timing_compute(
+                N_arr=np.ceil(np.logspace(3, 5, 9)), 
+                Nproc_arr=Nproc_arr
+            )
+        elif args.size == 'large':
+            # Large benchmark
+            k=int(np.floor(Ncpu**(1/2)))
+            Nproc_arr = 2**np.linspace(2,k,(k-2)+1)
+            Nproc_arr = np.append(Nproc_arr, Ncpu)
+            Nproc_arr = np.unique(Nproc_arr)
+
+            N_arr = np.ceil(np.logspace(4,6,7))
+            f_timing = timing_compute(                
+                N_arr=N_arr,
+                Nproc_arr=Nproc_arr
+            )
+        
+        # Always plot the results
+        timing_plot(f_timing)
+
+
+
+# #%% Perform the timing test
+# if __name__ == '__main__':
+#     import psutil
+#     Ncpu = psutil.cpu_count(logical=False)
+#     #f_timing = timing_compute(useAltTest=True)
+#     #f_timing = timing_compute(N_arr=[1000,2000], Nproc_arr=[2,4])
+#     import numpy as np
+#     #f_timing = timing_compute(N_arr=np.ceil(np.logspace(2,5,7)))
+#     #f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,5,9)), Nproc_arr = np.arange(1,9))
+#     f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,5,9)), Nproc_arr = np.arange(1,Ncpu+1))
+#     #f_timing = timing_compute(N_arr=np.ceil(np.logspace(3,4,3)), Nproc_arr = [1,2,4,8,16,24])
+#     #timing_plot(f_timing) 
+#     pass   
+
+    
+# #%% Plot figures for all NPZ files in folder
+# # find all files in the current folder with extension .npz, and store them in a list
+# plotAll = False
+# if plotAll:
+#     import os
+#     import glob
+#     files = glob.glob('*.npz')
+#     for f in files:
+#         try:
+#             timing_plot(f)
+#         except: 
+#             print('Error in %s' % f)
+
+
+# %%
