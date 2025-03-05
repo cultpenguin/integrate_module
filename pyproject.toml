@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "integrate"
+version = "0.2.1"
+dependencies = [
+    "numpy>=1.26.4",
+    "matplotlib>=3.8.3", 
+    "h5py>=3.10.0",
+    "scipy",
+    "psutil",
+    "tqdm>=4.66.2",
+    "jupyter>=1.0.0",
+    "jupytext",
+    "pandas",
+    "pyvista",
+]
+
+[project.scripts]
+integrate_timing = "integrate.examples.integrate_timing:main"
+
+[tool.setuptools]
+packages = ["integrate"]
