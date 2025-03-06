@@ -910,8 +910,6 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
             # Log handle count before creating pool
             handle_count_before = get_process_handle_count()
             print(f"Handle count before pool: {handle_count_before}")
-        
-
 
         # 3: Compute the chunks in parallel
         forward_gaaem_chunk_partial = partial(forward_gaaem_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
@@ -919,6 +917,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         # Use spawn context on Windows for better handle management
         if os.name == 'nt':
             ctx = multiprocessing.get_context("spawn")
+            Ncpu = min(Ncpu, 60)  # Set to a safe limit below 63
             with ctx.Pool(processes=Ncpu) as p:
                 D_chunks = p.starmap(forward_gaaem_chunk_partial, zip(C_chunks, tx_height_chunks))
         else:
@@ -926,11 +925,6 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
             with Pool(processes=Ncpu) as p:
                 D_chunks = p.starmap(forward_gaaem_chunk_partial, zip(C_chunks, tx_height_chunks))
 
-
-        #with Pool() as p:
-        #    #D_chunks = p.map(forward_gaaem_chunk_partial, C_chunks)
-        #    D_chunks = p.starmap(forward_gaaem_chunk_partial, zip(C_chunks, tx_height_chunks))
-        
   
         D = np.concatenate(D_chunks)
         #print("D.shape", D.shape)

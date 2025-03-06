@@ -571,6 +571,20 @@ def main():
     import psutil
     import numpy as np
 
+    import multiprocessing
+    multiprocessing.freeze_support()
+    
+    # Set a lower limit for processes to avoid handle limit issues on Windows
+    import platform
+    if platform.system() == 'Windows':
+        # On Windows, limit the max processes to avoid handle limit issues
+        multiprocessing.set_start_method('spawn')
+        
+        # Optional - can help with some multiprocessing issues
+        import os
+        os.environ['PYTHONWARNINGS'] = 'ignore:semaphore_tracker:UserWarning'
+    
+
     # Create argument parser
     parser = argparse.ArgumentParser(description='INTEGRATE timing benchmark tool')
     
@@ -630,7 +644,11 @@ def main():
     
     elif args.command == 'time':
         Ncpu = psutil.cpu_count(logical=False)
-
+        import os
+        if os.name == 'nt':  # Windows
+            # use max 32 Cpus
+            Ncpu = min(Ncpu, 32)
+                
         k = int(np.floor(np.log2(Ncpu)))
         Nproc_arr = 2**np.linspace(0,k,(k)+1)
         Nproc_arr = np.append(Nproc_arr, Ncpu)
