@@ -18,6 +18,11 @@ dependencies = [
     "pyvista",
 ]
 
+[project.optional-dependencies]
+windows = [
+    "ga-aem-python-win; platform_system == 'Windows'"
+]
+
 [project.scripts]
 integrate_timing = "integrate.examples.integrate_timing:main"
 
