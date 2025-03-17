@@ -20,7 +20,7 @@ dependencies = [
 
 [project.optional-dependencies]
 windows = [
-    "ga-aem-python-win; platform_system == 'Windows'"
+    "ga-aem-forward-win; platform_system == 'Windows'"
 ]
 
 [project.scripts]
