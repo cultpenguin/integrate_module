@@ -1,12 +1,13 @@
-numpy >=1.26.4
-matplotlib >= 3.8.3
-h5py >= 3.10.0
-tqdm >= 4.66.2
-jupyter >= 1.0.0
+numpy>=1.26.4
+matplotlib>=3.8.3
+h5py>=3.10.0
+tqdm>=4.66.2
+jupyter>=1.0.0
 scipy
 jupytext
 pandas
 pyvista
 psutil
+ga-aem-forward-win; platform_system=="Windows"
 
 
