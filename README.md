@@ -1,19 +1,22 @@
-# integrate_module
+# INTEGRATE Python Module
 
 This repository holds the INTEGRATE Python module
 
-Installation 
-------------
+## Installation 
+
 Assuming you allready have python 3.10 installed
 
-    pip install --upgrade -r requirements.txt
+Install the INTEGRATE module using pip:
+
+    pip install 
+
+If you wish to develop the code, it is recommended to clone of download this repository, and install the INTEGRATE module using
+
     pip install -e .
 
------------
+On windows this will also install the python wrapper for the ga-aem (1D EM forward modeling - GPL v2 code) --> [ga-aem-forward-win](https://pypi.org/project/ga-aem-forward-win/)
 
-
-PIP (Test in a fresh install of Ubuntu 22.04, Ubuntu 22.04 in WSL) 
-==================================================================
+### PIP 
 
     # Install python3 venv
     sudo apt install python3-venv
@@ -27,33 +30,27 @@ PIP (Test in a fresh install of Ubuntu 22.04, Ubuntu 22.04 in WSL)
     cd path/to/integrate module
     pip install --upgrade -r requirements.txt
     pip install -e .
-    
-    # install GA-AEM
-    sh scripts/cmake_build_script_ubuntu_gatdaem1d.sh
-    cd ga-aem/install-ubuntu/python
-    pip install .
-    
+        
 
-Conda + PIP
-===========
+### Conda + PIP
+
 Create a Conda environment (called integrate) and install the required modules, using 
 
     conda create --name integrate python=3.10  
     conda activate integrate
+    cd INTGERATE_SOURCE_DIRECTORY
     pip install --upgrade -r requirements.txt
     pip install -e .
 
 
-GA-AEM
-======
+## GA-AEM
+
 In order to use GA-AEM for forward EM modeling, the 'gatdaem1d' Python module must be installed.
 
 Follow instructions at https://github.com/GeoscienceAustralia/ga-aem.
 
 
--------------------------------------
-Pre-Compiled Python module in Windows
--------------------------------------
+### Pre-Compiled Python module in Windows
 
 Download pre-compiled version of GA-AEM for windows through the latest  release from https://github.com/GeoscienceAustralia/ga-aem/releases as GA-AEM.zip
 
@@ -78,9 +75,8 @@ Install the python gatdaem1d module
 
 
 
--------------------------------------
-Compile Python module in Ubuntu/Linux
--------------------------------------
+### Compile Python module in Ubuntu/Linux
+
 
 A script that downloads and install GA-AEM is located in 'scripts/cmake_build_script_ubuntu_gatdaem1d.sh'. Be sure to be usiong the appropriate Python environment and then run
 
@@ -88,9 +84,8 @@ A script that downloads and install GA-AEM is located in 'scripts/cmake_build_sc
     cd ga-aem/install-ubuntu/python
     pip install .
     
--------------------------------------
-Compile Python module in OSX/Homebrew
--------------------------------------
+### Compile Python module in OSX/Homebrew
+
 First install homebrew, then run 
 
     sh ./scripts/cmake_build_script_homebrew_gatdaem1d.sh
@@ -98,8 +93,8 @@ First install homebrew, then run
     pip install .
 
 
-Development
-===========
+## Development
+
 The main branch should be the most stable, and updates, less frequent, but with larger changes.
 
 The develop branch contains the current development code and can  updated frequently.
