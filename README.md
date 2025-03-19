@@ -4,17 +4,17 @@ This repository holds the INTEGRATE Python module
 
 ## Installation 
 
-Assuming you allready have python 3.10 installed
+Assuming you already have python 3.10 installed
 
 Install the INTEGRATE module using pip:
 
-    pip install 
+    pip install --upgrade integrate
 
 If you wish to develop the code, it is recommended to clone of download this repository, and install the INTEGRATE module using
 
     pip install -e .
 
-On windows this will also install the python wrapper for the ga-aem (1D EM forward modeling - GPL v2 code) --> [ga-aem-forward-win](https://pypi.org/project/ga-aem-forward-win/)
+On Windows this will also install the python wrapper for the ga-aem (1D EM forward modeling - GPL v2 code) --> [ga-aem-forward-win](https://pypi.org/project/ga-aem-forward-win/)
 
 ### PIP 
 
@@ -78,7 +78,7 @@ Install the python gatdaem1d module
 ### Compile Python module in Ubuntu/Linux
 
 
-A script that downloads and install GA-AEM is located in 'scripts/cmake_build_script_ubuntu_gatdaem1d.sh'. Be sure to be usiong the appropriate Python environment and then run
+A script that downloads and install GA-AEM is located in 'scripts/cmake_build_script_ubuntu_gatdaem1d.sh'. Be sure to use the appropriate Python environment and then run
 
     sh scripts/cmake_build_script_ubuntu_gatdaem1d.sh
     cd ga-aem/install-ubuntu/python
@@ -97,7 +97,7 @@ First install homebrew, then run
 
 The main branch should be the most stable, and updates, less frequent, but with larger changes.
 
-The develop branch contains the current development code and can  updated frequently.
+The develop branch contains the current development code and may be updated frequently, and some functions and examples may be broken.
 
 
 
