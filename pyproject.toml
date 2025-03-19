@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "integrate"
-version = "0.2.5"
+version = "0.2.6"
 description = "Localized probabilistic data integration"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
@@ -36,7 +36,7 @@ dev = [
 ]
 
 [project.scripts]
-integrate_timing = "integrate.examples.integrate_timing:main"
+integrate_timing = "integrate.integrate_timing:main"
 integrate_rejection = "integrate.integrate_cli:main"
 
 [tool.setuptools]
