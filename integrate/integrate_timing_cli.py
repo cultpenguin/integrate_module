@@ -684,4 +684,4 @@ def main():
         timing_plot(f_timing)
 
 if __name__ == '__main__':
-    main()   
+    main()
