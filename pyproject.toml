@@ -36,8 +36,8 @@ dev = [
 ]
 
 [project.scripts]
-integrate_timing = "integrate.integrate_timing:main"
-integrate_rejection = "integrate.integrate_cli:main"
+integrate_timing = "integrate.integrate_timing_cli:main"
+integrate_rejection = "integrate.integrate_rejection_cli:main"
 
 [tool.setuptools]
 packages = ["integrate"]

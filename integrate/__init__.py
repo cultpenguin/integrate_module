@@ -62,7 +62,7 @@ from integrate.integrate_plot import plot_feature_2d
 from integrate.integrate_plot import plot_posterior_cumulative_thickness
 from integrate.integrate_plot import get_clim_cmap
 
-# Import the CLI module
-from . import integrate_cli
-from . import integrate_timing
+# REMOVE CLI IMPORTS - These cause circular dependencies
+# from . import integrate_cli
+# from . import integrate_timing
 
