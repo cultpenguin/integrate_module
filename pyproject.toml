@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "integrate"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
     "numpy>=1.26.4",
     "matplotlib>=3.8.3", 
@@ -16,11 +16,13 @@ dependencies = [
     "jupytext",
     "pandas",
     "pyvista",
+    "ga-aem-forward-win; platform_system == 'Windows'",
 ]
 
 [project.optional-dependencies]
-windows = [
-    "ga-aem-forward-win; platform_system == 'Windows'"
+dev = [
+    "pytest",
+    "black",
 ]
 
 [project.scripts]
