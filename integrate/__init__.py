@@ -48,7 +48,6 @@ from integrate.integrate_io import check_data
 from integrate.integrate_io import merge_data
 from integrate.integrate_io import merge_posterior
 
-
 from integrate.integrate_plot import plot_geometry
 from integrate.integrate_plot import plot_profile
 from integrate.integrate_plot import plot_profile_continuous
@@ -62,4 +61,7 @@ from integrate.integrate_plot import plot_prior_stats
 from integrate.integrate_plot import plot_feature_2d
 from integrate.integrate_plot import plot_posterior_cumulative_thickness
 from integrate.integrate_plot import get_clim_cmap
+
+# Import the CLI module
+from . import integrate_cli
 
