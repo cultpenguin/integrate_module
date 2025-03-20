@@ -44,7 +44,7 @@ Assuming you allready have python 3.10 installed
 Create a Conda environment (called integrate) and install the required modules, using 
 
     conda create --name integrate python=3.10 numpy pandas matplotlib scipy tqdm requests h5py psutil
-    conda activate integratr
+    conda activate integrate
     pip install -i https://test.pypi.org/simple/ integrate
     
     
