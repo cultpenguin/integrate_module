@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "integrate"
-version = "0.2.9"
+version = "0.2.11"
 description = "Localized probabilistic data integration"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
@@ -15,7 +15,6 @@ classifiers = [
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python :: 3',
 ]
-
 dependencies = [
     "numpy",
     "matplotlib", 
@@ -23,6 +22,7 @@ dependencies = [
     "scipy",
     "psutil",
     "tqdm",
+    "requests",
     "ga-aem-forward-win; platform_system == 'Windows'",
 ]
 
@@ -37,12 +37,6 @@ all=[
     "pandas",
     "pyvista",
 ]
-
-[project.urls]
-"Homepage" = "http://github.com/integrate"
-"Repository" = "http://github.com/integrate"
-"Bug Tracker" = "http://github.com/integrate/issues"
-"Documentation" = "https://cultpenguin.github.io/integrate/"
 
 [project.scripts]
 integrate_timing = "integrate.integrate_timing_cli:main"
