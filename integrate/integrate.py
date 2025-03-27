@@ -263,6 +263,7 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
     else:
         disableTqdm=False
     usePrior = kwargs.get('usePrior', False)
+    updateGeometryFromData = kwargs.get('updateGeometryFromData', True)
 
     #f_post_h5='DJURSLAND_P01_N0100000_NB-13_NR03_POST_Nu50000_aT1.h5'
     # Check if f_prior_h5 attribute exists in the HDF5 file
@@ -270,11 +271,33 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
         if 'f5_prior' in f.attrs:
             f_prior_h5 = f.attrs['f5_prior']
         else:
+            f_prior_h5 = None
             raise ValueError(f"'f5_prior' attribute does not exist in {f_post_h5}")
 
-    #integrate.integrate_update_prior_attributes(f_prior_h5, **kwargs)
+    # Check if f5_data attribute exists in the HDF5 file
+    with h5py.File(f_post_h5, 'r') as f:
+        if 'f5_data' in f.attrs:
+            f_data_h5 = f.attrs['f5_data']
+        else:
+            f_data_h5 = None
+            raise ValueError(f"'f5_data' attribute does not exist in {f_post_h5}")
 
-
+    # update Geometry from f_data_h5
+    if (updateGeometryFromData)&(f_data_h5 is not None):
+        with h5py.File(f_data_h5, 'r') as f_data, h5py.File(f_post_h5, 'a') as f_post:
+            if '/UTMX' in f_data:
+                if '/UTMX' not in f_post:
+                    f_data.copy('/UTMX', f_post)
+            if '/UTMY' in f_data:
+                if '/UTMY' not in f_post:
+                    f_data.copy('/UTMY', f_post)
+            if '/LINE' in f_data:
+                if '/LINE' not in f_post:
+                    f_data.copy('/LINE', f_post)
+            if '/ELEVATION' in f_data:
+                if '/ELEVATION' not in f_post:
+                    f_data.copy('/ELEVATION', f_post)
+    
     # Load 'i_use' data from the HDF5 file
     try:
         with h5py.File(f_post_h5, 'r') as f:
