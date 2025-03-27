@@ -2,32 +2,15 @@
 
 This repository holds the INTEGRATE Python module
 
-<<<<<<< HEAD
-## Installation 
-
-Assuming you already have python 3.10 installed
-
-Install the INTEGRATE module using pip:
-
-    pip install --upgrade integrate
-
-If you wish to develop the code, it is recommended to clone of download this repository, and install the INTEGRATE module using
-
-    pip install -e .
-=======
 
 ## Installation 
 
 Assuming you allready have python 3.10 installed
 
     pip install -i https://test.pypi.org/simple/ integrate
->>>>>>> 91e1596e19e0c4f8d330b6c2ebe36a223d366c71
 
 On Windows this will also install the python wrapper for the ga-aem (1D EM forward modeling - GPL v2 code) --> [ga-aem-forward-win](https://pypi.org/project/ga-aem-forward-win/)
 
-<<<<<<< HEAD
-### PIP 
-=======
 
 ### PIP (from pypi)
 
@@ -43,7 +26,6 @@ On Windows this will also install the python wrapper for the ga-aem (1D EM forwa
     pip install -i https://test.pypi.org/simple/ integrate
     
 ### PIP (from source)
->>>>>>> 91e1596e19e0c4f8d330b6c2ebe36a223d366c71
 
     # Install python3 venv
     sudo apt install python3-venv
@@ -56,16 +38,9 @@ On Windows this will also install the python wrapper for the ga-aem (1D EM forwa
     # Install integrate module
     cd path/to/integrate module
     pip install -e .
-<<<<<<< HEAD
-        
-
-### Conda + PIP
-
-=======
 
 ### Conda + PIP (from pypi)
 
->>>>>>> 91e1596e19e0c4f8d330b6c2ebe36a223d366c71
 Create a Conda environment (called integrate) and install the required modules, using 
 
     conda create --name integrate python=3.10 numpy pandas matplotlib scipy tqdm requests h5py psutil
@@ -80,33 +55,20 @@ Create a Conda environment (called integrate) and install the required modules, 
 
     conda create --name integrate python=3.10 numpy pandas matplotlib scipy tqdm requests h5py psutil
     conda activate integrate
-<<<<<<< HEAD
-    cd INTGERATE_SOURCE_DIRECTORY
-    pip install --upgrade -r requirements.txt
-=======
->>>>>>> 91e1596e19e0c4f8d330b6c2ebe36a223d366c71
     pip install -e .
 
 
 ## GA-AEM
-<<<<<<< HEAD
-
-In order to use GA-AEM for forward EM modeling, the 'gatdaem1d' Python module must be installed.
-=======
->>>>>>> 91e1596e19e0c4f8d330b6c2ebe36a223d366c71
 
 In order to use GA-AEM for forward EM modeling, the 'gatdaem1d' Python module must be installed. Follow instructions at [https://github.com/GeoscienceAustralia/ga-aem](https://github.com/GeoscienceAustralia/ga-aem) or use the information below.
 
 
-<<<<<<< HEAD
-=======
 ### pypi paackage for windows
 
 In Windows the [ga-aem-forward-win](https://pypi.org/project/ga-aem-forward-win/) package will be autoamtically installed that provides access to the GA-AEM forward code. It can be installed manually using
 
     pip install ga-aem-forward-win
 
->>>>>>> 91e1596e19e0c4f8d330b6c2ebe36a223d366c71
 ### Pre-Compiled Python module in Windows
 
 Download pre-compiled version of GA-AEM for windows through the latest  release from https://github.com/GeoscienceAustralia/ga-aem/releases as GA-AEM.zip
@@ -132,11 +94,7 @@ Install the python gatdaem1d module
 
 
 
-<<<<<<< HEAD
-### Compile Python module in Ubuntu/Linux
-=======
 ### Compile ga-aem Python module in Ubuntu/Linux
->>>>>>> 91e1596e19e0c4f8d330b6c2ebe36a223d366c71
 
 
 A script that downloads and install GA-AEM is located in 'scripts/cmake_build_script_ubuntu_gatdaem1d.sh'. Be sure to use the appropriate Python environment and then run
@@ -145,11 +103,7 @@ A script that downloads and install GA-AEM is located in 'scripts/cmake_build_sc
     cd ga-aem/install-ubuntu/python
     pip install .
     
-<<<<<<< HEAD
-### Compile Python module in OSX/Homebrew
-=======
 ### Compile ga-aem Python module in OSX/Homebrew
->>>>>>> 91e1596e19e0c4f8d330b6c2ebe36a223d366c71
 
 First install homebrew, then run 
 
