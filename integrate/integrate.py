@@ -195,12 +195,15 @@ def integrate_update_prior_attributes(f_prior_h5, **kwargs):
                     if 'z' in dataset.attrs:
                         dataset.attrs['x'] = dataset.attrs['z']
                     else:
-                        if 'M1' in f.keys():
-                            if 'x' in f['/M1'].attrs.keys():
-                                f[name].attrs['x'] = f['/M1'].attrs['x']
-                                print('Setting %s/x = /M1/x ' % name)
-                            else:
-                                print('No x attribute found in %s' % name)    
+                        x = np.arange(dataset.shape[1])
+                        dataset.attrs['x'] = x
+                        print(dataset.attrs)
+                        #if 'M1' in f.keys():
+                        #    if 'x' in f['/M1'].attrs.keys():
+                        #        f[name].attrs['x'] = f['/M1'].attrs['x']
+                        #        print('Setting %s/x = /M1/x ' % name)
+                        #    else:
+                        #        print('No x attribute found in %s' % name)    
                 
                 if 'is_discrete' in dataset.attrs:
                     if (showInfo>0):
@@ -832,7 +835,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         # open and close
         pass
 
-    with h5py.File(f_prior_h5, 'a') as f:
+    with h5py.File(f_prior_h5, 'r') as f:
         N_in = f['M1'].shape[0]
     if N==0: 
         N = N_in     
