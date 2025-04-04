@@ -33,6 +33,7 @@ print("Using GEX file: %s" % file_gex)
 # f_prior_h5 = prior_generator_app('excel_file.cls',N=10000, zmax=90, dz=1, hardcopy=hardcopy)
 f_prior_h5 = 'prior_faelles_os_Roesnes_N50000_dmax90.h5'
 f_prior_h5 = 'prior_faelles_os_Roesnes_N50000_dmax90.h5'
+f_prior_h5 = 'prior_faelles_os_Roesnes_01042025_N1000000_dmax90.h5';
 
 
 with h5py.File(f_prior_h5, 'a') as f:
