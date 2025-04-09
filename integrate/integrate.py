@@ -1872,8 +1872,13 @@ def integrate_rejection(f_prior_h5='prior.h5',
     #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
     id_data_use = 1+np.arange(np.max(DATA['id_use']))
     D, idx = load_prior_data(f_prior_h5, id_use = id_data_use, N_use = N_use, Randomize=True)
-    #D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
+    # Convert D to 32 bit float
+    #D = [d.astype(np.float32) for d in D]
+    #D = [d.astype(np.float128) for d in D]
+    # Pritn the memory size of D
+    print('Memory size of D: %s' % str(np.array(D).nbytes))   
 
+    #D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
     # M, idx = load_prior_model(f_prior_h5, idx=idx, N_use=N_use, Randomize=True)
 
     # Get sample size N from f_prior_h5
