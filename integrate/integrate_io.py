@@ -1,6 +1,8 @@
 import os
 import numpy as np
 import h5py
+import re
+from typing import Dict, List, Union, Any
 
 #def write_stm_files(GEX, Nhank=140, Nfreq=6, Ndig=7, **kwargs):
 def write_stm_files(GEX, **kwargs):
@@ -1332,6 +1334,321 @@ def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5=''):
 
 
     return f_post_merged_h5, f_data_merged_h5
+
+
+
+
+def read_usf(file_path: str) -> Dict[str, Any]:
+    """
+    Read a Universal Sounding Format (USF) file and parse its contents.
+    
+    Args:
+        file_path: Path to the USF file
+        
+    Returns:
+        Dictionary containing all parsed parameters from the USF file
+    """
+    # Initialize result dictionary
+    usf_data = {}
+    # Current sweep being processed
+    current_sweep = None
+    # List to store all sweeps
+    sweeps = []
+    # Flag to indicate if we're reading data points
+    reading_points = False
+    # Store data points for current sweep
+    data_points = []
+    # Store the dummy value
+    dummy_value = None
+    
+    try:
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+    except Exception as e:
+        raise ValueError(f"Error reading file: {e}")
+    
+    # Process each line in the file
+    for line in lines:
+        line = line.strip()
+        
+        # Skip empty lines
+        if not line:
+            continue
+            
+        # Process variable declarations in comment lines (//XXX: YYY)
+        if line.startswith('//') and ': ' in line and not line.startswith('//USF:'):
+            # Extract variable name and value
+            var_match = re.match(r"//([^:]+):\s*(.+)", line)
+            if var_match:
+                var_name, var_value = var_match.groups()
+                var_name = var_name.strip()
+                var_value = var_value.strip()
+                
+                # Process dummy value
+                if var_name == 'DUMMY':
+                    try:
+                        dummy_value = float(var_value)
+                    except ValueError:
+                        dummy_value = var_value
+                    usf_data[var_name] = dummy_value
+                else:
+                    # Try to convert to numeric if possible
+                    try:
+                        usf_data[var_name] = float(var_value)
+                    except ValueError:
+                        usf_data[var_name] = var_value
+        
+        # Process lines starting with a single '/'
+        elif line.startswith('/') and not line.startswith('//'):
+            # Check if it's an END marker
+            if line == '/END':
+                # This doesn't actually end the data reading - it just marks the end of the sweep header
+                # We'll now be expecting a header line followed by data points
+                reading_points = True
+                continue
+                
+            # Check if it's a SWEEP_NUMBER marker
+            if line.startswith('/SWEEP_NUMBER:'):
+                # If we already have a sweep, add it to our list
+                if current_sweep is not None:
+                    sweeps.append(current_sweep)
+                
+                # Start a new sweep
+                current_sweep = {}
+                reading_points = False
+                data_points = []
+                
+                # Extract sweep number
+                sweep_match = re.match(r"/SWEEP_NUMBER:\s*(\d+)", line)
+                if sweep_match:
+                    sweep_number = int(sweep_match.group(1))
+                    current_sweep['SWEEP_NUMBER'] = sweep_number
+                continue
+            
+            # Check if it's a POINTS marker
+            if line.startswith('/POINTS:'):
+                points_match = re.match(r"/POINTS:\s*(\d+)", line)
+                if points_match and current_sweep is not None:
+                    current_sweep['POINTS'] = int(points_match.group(1))
+                continue
+                
+            # Process other parameters
+            param_match = re.match(r"/([^:]+):\s*(.+)", line)
+            if param_match:
+                param_name, param_value = param_match.groups()
+                param_name = param_name.strip()
+                param_value = param_value.strip()
+                
+                # Check if this is TX_RAMP which contains a complex list
+                if param_name == 'TX_RAMP':
+                    values = []
+                    pairs = param_value.split(',')
+                    for i in range(0, len(pairs), 2):
+                        if i+1 < len(pairs):
+                            try:
+                                time_val = float(pairs[i].strip())
+                                amp_val = float(pairs[i+1].strip())
+                                values.append((time_val, amp_val))
+                            except ValueError:
+                                pass
+                    if current_sweep is not None:
+                        current_sweep[param_name] = values
+                # Check if parameter contains multiple values
+                elif ',' in param_value:
+                    values = []
+                    for val in param_value.split(','):
+                        val = val.strip()
+                        try:
+                            values.append(float(val))
+                        except ValueError:
+                            values.append(val)
+                    
+                    if current_sweep is not None:
+                        current_sweep[param_name] = values
+                    else:
+                        usf_data[param_name] = values
+                else:
+                    # Try to convert to numeric if possible
+                    try:
+                        value = float(param_value)
+                        if current_sweep is not None:
+                            current_sweep[param_name] = value
+                        else:
+                            usf_data[param_name] = value
+                    except ValueError:
+                        if current_sweep is not None:
+                            current_sweep[param_name] = param_value
+                        else:
+                            usf_data[param_name] = param_value
+            
+            # Check if we should start reading data points
+            if line == '/CHANNEL: 1' or line == '/CHANNEL: 2':
+                reading_points = True
+                channel_match = re.match(r"/CHANNEL:\s*(\d+)", line)
+                if channel_match and current_sweep is not None:
+                    current_sweep['CHANNEL'] = int(channel_match.group(1))
+                continue
+                
+        # Process data points
+        elif reading_points and current_sweep is not None:
+            # Check for the header line that comes after /END
+            if line.strip().startswith('TIME,'):
+                # Store the header names for this data block
+                headers = [h.strip() for h in line.split(',')]
+                current_sweep['DATA_HEADERS'] = headers
+                
+                # Initialize arrays for each data column
+                for header in headers:
+                    current_sweep[header] = []
+                
+                continue
+                
+            # Parse data point values
+            values = line.split(',')
+            if len(values) >= 6:
+                try:
+                    # Add each value to the corresponding array
+                    for i, val in enumerate(values):
+                        if i < len(headers):
+                            # Try to convert to appropriate type
+                            try:
+                                if headers[i] == 'QUALITY':
+                                    current_sweep[headers[i]].append(int(val.strip()))
+                                else:
+                                    current_sweep[headers[i]].append(float(val.strip()))
+                            except ValueError:
+                                current_sweep[headers[i]].append(val.strip())
+                                
+                except (ValueError, IndexError, NameError) as e:
+                    # Skip problematic lines
+                    pass
+    
+    # Add the last sweep if there is one
+    if current_sweep is not None:
+        sweeps.append(current_sweep)
+    
+    # Add sweeps to the result
+    usf_data['SWEEP'] = sweeps
+
+
+    # Extract d_obs as an array of usf_data['SWEEP'][0]['VOLTAGE'],usf_data['SWEEP'][1]['VOLTAGE'] ...
+    # and store it a single 1D numpy array
+    d_obs = np.concatenate([sweep['VOLTAGE'] for sweep in usf_data['SWEEP']])
+    d_obs = np.array(d_obs)
+    usf_data['d_obs'] = d_obs
+    d_rel_err = np.concatenate([sweep['ERROR_BAR'] for sweep in usf_data['SWEEP']])
+    d_rel_err = np.array(d_rel_err)
+    usf_data['d_rel_err'] = d_rel_err
+    time = np.concatenate([sweep['TIME'] for sweep in usf_data['SWEEP']])
+    time = np.array(time)   
+    usf_data['time'] = time
+    # Add usf_data['id'] that is '0' for SWEEP1 and '1' for SWEEP2  etc
+    # so, usf_data['id'] = [0,0,0,0,1,1,1,1,1] for 2 sweeps with 4 and 5 data points
+    usf_data['id'] = np.concatenate([[i] * sweep['POINTS'] for i, sweep in enumerate(usf_data['SWEEP'])])
+    usf_data['id'] = 1+np.array(usf_data['id'])
+    # Add usf_data['dummy'] that is the dummy value
+    usf_data['dummy'] = dummy_value
+    # Add usf_data['file_name'] that is the file name
+    usf_data['file_name'] = file_path.split('/')[-1]
+    # Add usf_data['file_path'] that is the file path
+    usf_data['file_path'] = file_path
+    
+    
+    return usf_data
+
+
+def test_read_usf(file_path: str) -> None:
+    """
+    Test function to read a USF file and print some key values.
+    
+    Args:
+        file_path: Path to the USF file
+    """
+    usf = read_usf(file_path)
+    
+    print(f"DUMMY: {usf.get('DUMMY')}")
+    print(f"SWEEPS: {usf.get('SWEEPS')}")
+    
+    for i, sweep in enumerate(usf.get('SWEEP', [])):
+        print(f"\nSWEEP {i}:")
+        print(f"CURRENT: {sweep.get('CURRENT')}")
+        print(f"FREQUENCY: {sweep.get('FREQUENCY')}")
+        print(f"POINTS: {sweep.get('POINTS')}")
+        
+        if 'TIME' in sweep and len(sweep['TIME']) > 0:
+            print(f"First TIME value: {sweep['TIME'][0]}")
+            print(f"First VOLTAGE value: {sweep['VOLTAGE'][0]}")
+            print(f"Number of data points: {len(sweep['TIME'])}")
+            print(f"Data headers: {sweep.get('DATA_HEADERS', [])}")
+    
+
+
+
+    return usf
+
+
+def read_usf_mul(directory: str = ".", ext: str = ".usf") -> List[Dict[str, Any]]:
+    """
+    Read all USF files in a specified directory and return a list of USF data structures.
+    
+    Args:
+        directory: Path to the directory containing USF files (default: current directory)
+        ext: File extension to look for (default: ".usf")
+        
+    Returns:
+        tuple containing:
+            - np.ndarray: Array of observed data (d_obs) from all USF files
+            - np.ndarray: Array of relative errors (d_rel_err) from all USF files
+            - List[Dict[str, Any]]: List of USF data structures, each representing a single USF file
+
+    """
+    import os
+    import glob
+    from typing import List, Dict, Any
+
+    # Make sure the extension starts with a period
+    if not ext.startswith('.'):
+        ext = '.' + ext
+    
+    # Get all matching files in the directory
+    file_pattern = os.path.join(directory, f"*{ext}")
+    usf_files = sorted(glob.glob(file_pattern))
+    
+    if not usf_files:
+        print(f"No files with extension '{ext}' found in '{directory}'")
+        return []
+    
+    # List to hold all USF data structures
+    usf_list = []
+
+
+    D_obs = []
+    D_rel_err = []
+    # Process each file
+    for file_path in usf_files:
+        try:
+            # Read the USF file
+            usf_data = read_usf(file_path)
+            
+            # Add the file name to the USF data structure
+            usf_data['FILE_NAME'] = os.path.basename(file_path)
+
+            D_obs.append(usf_data['d_obs'])
+            D_rel_err.append(usf_data['d_rel_err'])
+
+            # Add to the list
+            usf_list.append(usf_data)
+            
+            print(f"Successfully read: {file_path}")
+        except Exception as e:
+            print(f"Error reading file {file_path}: {e}")
+    
+    D_obs = np.array(D_obs)
+    D_rel_err = np.array(D_rel_err)
+
+    print(f"Read {len(usf_list)} out of {len(usf_files)} files.")
+    return D_obs, D_rel_err, usf_list
+
 
 
 

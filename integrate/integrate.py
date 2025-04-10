@@ -609,6 +609,8 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
         print('Error: No GEX or STM files provided')
         return -1
 
+    print(stmfiles)
+
     if (showInfo>1):
         print('Using GEX file: ', GEX['filename'])
 
