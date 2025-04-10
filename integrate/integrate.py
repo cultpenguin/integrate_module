@@ -540,7 +540,17 @@ def prior_data(f_prior_in_h5, f_forward_h5, id=1, im=1, doMakePriorCopy=0, paral
 Forward simulation
 '''
 
-def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', tx_height=np.array(()), stmfiles=[], showtime=False, **kwargs):
+def forward_gaaem(C=np.array(()), 
+                    thickness=np.array(()), 
+                    stmfiles=[], 
+                    tx_height=np.array(()), 
+                    txrx_dx = -13, 
+                    txrx_dy = 0,
+                    txrx_dz     = .1,
+                    GEX={}, 
+                    file_gex='', 
+                    showtime=False, 
+                    **kwargs):
     """
     Perform forward modeling using the **GAAEM** method.
 
@@ -595,8 +605,9 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
         stmfiles = ig.write_stm_files(GEX, **kwargs)
     elif (len(GEX)==0) and (len(stmfiles)>1):
         if (file_gex == ''):
-            print('Error: file_gex not provided')
-            return -1
+            if (showInfo>-1):
+                print('Using STM files without GEX file')
+            #return -1
         else:
             print('Converting STM files to GEX')
             GEX =   ig.read_gex(file_gex)
@@ -609,7 +620,9 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
         print('Error: No GEX or STM files provided')
         return -1
 
-    print(stmfiles)
+    if (showInfo-1):
+        print('Using STM files : ')
+        print(stmfiles)
 
     if (showInfo>1):
         print('Using GEX file: ', GEX['filename'])
@@ -647,41 +660,49 @@ def forward_gaaem(C=np.array(()), thickness=np.array(()), GEX={}, file_gex='', t
         print("Time, Setting up systems = %4.1fms" % t_system)
 
     # Setting up geometry
-    GEX = ig.read_gex(file_gex)
-    if 'TxCoilPosition1' in GEX['General']:
-        # Typical for tTEM system
-        txrx_dx = float(GEX['General']['RxCoilPosition1'][0])-float(GEX['General']['TxCoilPosition1'][0])
-        txrx_dy = float(GEX['General']['RxCoilPosition1'][1])-float(GEX['General']['TxCoilPosition1'][1])
-        txrx_dz = float(GEX['General']['RxCoilPosition1'][2])-float(GEX['General']['TxCoilPosition1'][2])
-        if len(tx_height)==0:
-            tx_height = -float(GEX['General']['TxCoilPosition1'][2])
-            tx_height=np.array([tx_height])
+    if len(GEX)>0:
+        GEX = ig.read_gex(file_gex)
+        if 'TxCoilPosition1' in GEX['General']:
+            # Typical for tTEM system
+            txrx_dx = float(GEX['General']['RxCoilPosition1'][0])-float(GEX['General']['TxCoilPosition1'][0])
+            txrx_dy = float(GEX['General']['RxCoilPosition1'][1])-float(GEX['General']['TxCoilPosition1'][1])
+            txrx_dz = float(GEX['General']['RxCoilPosition1'][2])-float(GEX['General']['TxCoilPosition1'][2])
+            if len(tx_height)==0:
+                tx_height = -float(GEX['General']['TxCoilPosition1'][2])
+                tx_height=np.array([tx_height])
 
-    else:
-        # Typical for SkyTEM system
-        txrx_dx = float(GEX['General']['RxCoilPosition1'][0])
-        txrx_dy = float(GEX['General']['RxCoilPosition1'][1])
-        txrx_dz = float(GEX['General']['RxCoilPosition1'][2])
-        if len(tx_height)==0:
-            tx_height=np.array([40])
- 
-
-    # Set geometru once, if tx_height has one value
-    if len(tx_height)==1:
-        if (showInfo>1):
-            print('Using tx_height=%f' % tx_height[0])
-        G = Geometry(tx_height=tx_height, txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
-    if (showInfo>1):
-        print('tx_height=%f, txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (tx_height[0], txrx_dx, txrx_dy, txrx_dz))
+        else:
+            # Typical for SkyTEM system
+            txrx_dx = float(GEX['General']['RxCoilPosition1'][0])
+            txrx_dy = float(GEX['General']['RxCoilPosition1'][1])
+            txrx_dz = float(GEX['General']['RxCoilPosition1'][2])
+            if len(tx_height)==0:
+                tx_height=np.array([40])
     
-    ng0 = GEX['Channel1']['NoGates']-GEX['Channel1']['RemoveInitialGates'][0]
-    if nstm>1:
-        ng1 = GEX['Channel2']['NoGates']-GEX['Channel2']['RemoveInitialGates'][0]
+
+        # Set geometru once, if tx_height has one value
+        if len(tx_height)==1:
+            if (showInfo>1):
+                print('Using tx_height=%f' % tx_height[0])
+            G = Geometry(tx_height=tx_height, txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
+        if (showInfo>1):
+            print('tx_height=%f, txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (tx_height[0], txrx_dx, txrx_dy, txrx_dz))
+        
+        ng0 = GEX['Channel1']['NoGates']-GEX['Channel1']['RemoveInitialGates'][0]
+        if nstm>1:
+            ng1 = GEX['Channel2']['NoGates']-GEX['Channel2']['RemoveInitialGates'][0]
+        else:
+            ng1 = 0
+        ng = int(ng0+ng1)
+    
     else:
-        ng1 = 0
+        if len(tx_height)==0:
+            tx_height=np.array([0])
+        G = Geometry(tx_height=tx_height, txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
+        ng = 28
 
     #print(tx_height)
-    ng = int(ng0+ng1)
+
     D = np.zeros((nd,ng))
 
     # Compute forward data
