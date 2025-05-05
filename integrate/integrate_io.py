@@ -911,6 +911,13 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
         filelist.append('README_HJOELLUND')
         if loadAll:
             filelist.append('HJOELLUND_RAW.h5')
+
+    elif case=='HADERUP':
+        filelist.append('HADERUP_MEAN_ALL.h5')
+        filelist.append('TX07_Haderup_mean.gex')
+        filelist.append('README_HADERUP')
+        #if loadAll:
+        #    filelist.append('HADERUP_RAW.h5')
                   
 
     else:
