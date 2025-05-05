@@ -7,7 +7,7 @@ This repository holds the INTEGRATE Python module
 
 Assuming you allready have python 3.10 installed
 
-    pip install -i https://test.pypi.org/simple/ integrate
+    pip install -i https://test.pypi.org/simple/ geointegrate
 
 On Windows this will also install the python wrapper for the ga-aem (1D EM forward modeling - GPL v2 code) --> [ga-aem-forward-win](https://pypi.org/project/ga-aem-forward-win/)
 
@@ -23,7 +23,7 @@ On Windows this will also install the python wrapper for the ga-aem (1D EM forwa
     pip install --upgrade pip
     
     # Install integrate module
-    pip install -i https://test.pypi.org/simple/ integrate
+    pip install -i https://test.pypi.org/simple/ geointegrate
     
 ### PIP (from source)
 
@@ -45,7 +45,7 @@ Create a Conda environment (called integrate) and install the required modules, 
 
     conda create --name integrate python=3.10 numpy pandas matplotlib scipy tqdm requests h5py psutil
     conda activate integrate
-    pip install -i https://test.pypi.org/simple/ integrate
+    pip install -i https://test.pypi.org/simple/ geointegrate
     
     
     
