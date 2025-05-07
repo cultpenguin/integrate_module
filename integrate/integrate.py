@@ -620,7 +620,7 @@ def forward_gaaem(C=np.array(()),
         print('Error: No GEX or STM files provided')
         return -1
 
-    if (showInfo-1):
+    if (showInfo>0):
         print('Using STM files : ')
         print(stmfiles)
 
@@ -1676,7 +1676,7 @@ def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
         D = [f_prior[f'/D{id}'][:][idx] for id in id_use]
     return D, idx
 
-def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False):
+def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False, **kwargs):
     """
     Save the new prior data to a new file.
     If the key already exists, it will be deleted if force_delete is set to True.
@@ -1716,9 +1716,28 @@ def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False):
 
     # Write the new data
     with h5py.File(f_prior_h5, 'a') as f_prior:
-        f_prior.create_dataset(key, data=D_new, compression='gzip', compression_opts=9)
+        # Convert to 32-bit float for better memory efficiency if the data is floating point
+        if np.issubdtype(D_new.dtype, np.floating):
+            D_new_32 = D_new.astype(np.float32)
+            f_prior.create_dataset(key, data=D_new_32, compression='gzip', compression_opts=9)
+        else:
+            f_prior.create_dataset(key, data=D_new, compression='gzip', compression_opts=9)
         print("New prior data '%s' saved to file: %s " % (key,f_prior_h5))
-        # Add attributes to the dataset
+        # if kwarg has keyy 'method' then write it to the file as att
+        if 'method' in kwargs:
+             f_prior[key].attrs['method'] = kwargs['method']
+        if 'type' in kwargs:
+            f_prior[key].attrs['type'] = kwargs['type']
+        if 'im' in kwargs:
+            f_prior[key].attrs['im'] = kwargs['im']
+        if 'Nhank' in kwargs:
+            f_prior[key].attrs['Nhank'] = kwargs['Nhank']
+        if 'Nfreq' in kwargs:
+            f_prior[key].attrs['Nfreq'] = kwargs['Nfreq']
+        if 'f5_forward' in kwargs:
+            f_prior[key].attrs['f5_forward'] = kwargs['f5_forward']
+        if 'with_noise' in kwargs:
+            f_prior[key].attrs['with_noise'] = kwargs['with_noise']
 
     return id
 
