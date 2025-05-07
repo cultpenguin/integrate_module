@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # %% [markdown]
 # # Getting started with INTEGRATE
+# Example of reading/writing/updating prior data in a prior hdf5 file.
 
 # %%
 try:
@@ -17,6 +18,8 @@ except:
     pass
 # %%
 import integrate as ig
+import numpy as np
+import matplotlib.pyplot as plt
 # check if parallel computations can be performed
 parallel = ig.use_parallel(showInfo=1)
 
@@ -37,7 +40,7 @@ N=500
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000)
 
 # compute prior data
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, Ncpu=8)
 
 # plot prior data and observed data
 ig.plot_data_prior(f_prior_data_h5, f_data_h5)
@@ -47,13 +50,10 @@ nd = len(D_prior_arr)
 
 D_new = D_prior_arr[0]
 # Add gaussian noise
-import numpy as np
-import matplotlib.pyplot as plt
 D_new = 10**(np.log10(D_new) + np.random.normal(0, .13, size=D_prior_arr[0].shape))
 D_new = np.real(D_new)
 D_new = np.abs(D_new)
 
-plt.semilogy(D_new[1])
 
 # %%
 
@@ -67,5 +67,6 @@ ig.save_prior_data(f_prior_data_h5, D_new/10, id=2, force_delete=True, method='o
 ig.plot_data_prior(f_prior_data_h5, f_data_h5, id=1)
 ig.plot_data_prior(f_prior_data_h5, f_data_h5, id=2, id_data=1)
 ig.plot_data_prior(f_prior_data_h5, f_data_h5, id=3, id_data=1)
+ig.plot_data_prior(f_prior_data_h5, f_data_h5, id=4, id_data=1)
 plt.show()
 # %%
