@@ -1041,10 +1041,12 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
 
 
 
+
 def plot_data_prior(f_prior_data_h5,
                     f_data_h5, 
                     nr=1000,
                     id=1,
+                    id_data = None,
                     d_str='d_obs', 
                     alpha=0.5,
                     ylim=None, 
@@ -1060,6 +1062,8 @@ def plot_data_prior(f_prior_data_h5,
     :type nr: int
     :param id: Data set ID.
     :type id: int
+    :param id_data: Data set ID for the observed data.
+    :type id_data: int (if not set, is_data is set to id)
     :param d_str: Data string key.
     :type d_str: str
     :param alpha: Transparency level for the plot.
@@ -1073,6 +1077,9 @@ def plot_data_prior(f_prior_data_h5,
     import numpy as np
     import matplotlib.pyplot as plt
 
+    if id_data is None:
+        id_data = id
+    
     cols=['wheat','black','red']
 
     f_data = h5py.File(f_data_h5)
@@ -1082,8 +1089,8 @@ def plot_data_prior(f_prior_data_h5,
     # PLOT PRIOR REALIZATIONS
     dh5_str = 'D%d' % (id)
     if dh5_str in f_prior_data:
-        f_prior_data['D1']  
-        npr = f_prior_data['D1'].shape[0]
+        f_prior_data[dh5_str]  
+        npr = f_prior_data[dh5_str].shape[0]
         
         nr = np.min([nr,npr])
         # select nr random sample of d_obs
@@ -1096,7 +1103,8 @@ def plot_data_prior(f_prior_data_h5,
         print('%s not in f_prior_data' % dh5_str)
 
     # PLOT OBSERVED DATA
-    dh5_str = 'D%d/%s' % (id,d_str)
+    print('id_data = %d' % id_data)
+    dh5_str = 'D%d/%s' % (id_data,d_str)
 
     # check that dh5_str is in f_data
     if dh5_str in f_data:
@@ -1132,6 +1140,8 @@ def plot_data_prior(f_prior_data_h5,
         # strip the filename from f_data_h5
         plt.savefig('%s_%s_id%d_%s.png' % (os.path.splitext(f_data_h5)[0],os.path.splitext(f_prior_data_h5)[0],id,d_str))
     plt.show()
+    
+    return True
 
 def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
     """

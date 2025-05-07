@@ -1676,6 +1676,53 @@ def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
         D = [f_prior[f'/D{id}'][:][idx] for id in id_use]
     return D, idx
 
+def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False):
+    """
+    Save the new prior data to a new file.
+    If the key already exists, it will be deleted if force_delete is set to True.
+    If id is None, a new id will be created based on the number of existing keys.
+    If id is provided, it will be used as the key for the new data.
+    Parameters:
+    f_prior_h5 (str): Path to the HDF5 file where the prior data will be saved.
+    D_new (numpy.ndarray): The new prior data to be saved.
+    id (int, optional): The id to be used as the key for the new data. If None, a new id will be created.
+    force_delete (bool, optional): If True, the existing key will be deleted before saving the new data. Default is False.
+    Returns:
+    int: The id used for the new data.
+    """
+    import h5py
+    import numpy as np
+
+    if id is None:
+        Ndt=0
+        with h5py.File(f_prior_h5, 'r') as f_prior:
+            for key in f_prior.keys():
+                if key[0]=='D':
+                    Ndt = Ndt+1
+        id = Ndt+1
+    
+    key = '/D%d' % id
+    print("Saving new prior data '%s' to file: %s " % (key,f_prior_h5))
+
+    # Delete the 'key' if it exists
+    with h5py.File(f_prior_h5, 'a') as f_prior:
+        if key in f_prior:
+            print("Deleting prior data '%s' from file: %s " % (key,f_prior))
+            if force_delete:
+                del f_prior[key]
+            else:
+                print("Key '%s' already exists. Use force_delete=True to overwrite." % key)
+                return False
+
+    # Write the new data
+    with h5py.File(f_prior_h5, 'a') as f_prior:
+        f_prior.create_dataset(key, data=D_new, compression='gzip', compression_opts=9)
+        print("New prior data '%s' saved to file: %s " % (key,f_prior_h5))
+        # Add attributes to the dataset
+
+    return id
+
+
 def load_data(f_data_h5, id_arr=[1], **kwargs):
     """
     Load data from an HDF5 file.

@@ -23,6 +23,7 @@ from integrate.integrate import select_subset_for_inversion
 from integrate.integrate import use_parallel
 from integrate.integrate import load_prior
 from integrate.integrate import load_prior_data
+from integrate.integrate import save_prior_data
 from integrate.integrate import load_prior_model
 from integrate.integrate import load_data
 from integrate.integrate import cleanup_shared_memory
