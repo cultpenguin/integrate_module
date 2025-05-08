@@ -35,7 +35,7 @@ print("Using GEX file: %s" % file_gex)
 
 # %% [markdown]
 # sample a prior, to compute prior models
-N=200001
+N=1000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000)
 
@@ -50,18 +50,12 @@ f_prior_data_h5_nn = 'f_prior_data_nn.h5'
 ig.copy_hdf5_file(f_prior_data_h5,f_prior_data_h5_nn)
 
 
-
-
-
 # %% create some new data
 D_prior_arr, idx = ig.load_prior_data(f_prior_data_h5)
-nd = len(D_prior_arr)
-
 D_new = D_prior_arr[0]
 # Add gaussian noise
-D_new = 10**(np.log10(D_new) + .1 + np.random.normal(0, .13, size=D_prior_arr[0].shape))
-D_new = np.real(D_new)
-D_new = np.abs(D_new)
+D_new = 10**(np.log10(D_new) + np.random.normal(0, .13, size=D_prior_arr[0].shape))
+D_new = np.abs(np.real(D_new))
 
 
 # %%
