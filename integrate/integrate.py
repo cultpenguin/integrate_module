@@ -1192,12 +1192,13 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
         print("Saving prior model to %s" % f_prior_h5)
     
     with h5py.File(f_prior_h5, 'w') as f_prior:
-        f_prior.create_dataset('/M1', data=M_rho)
+        f_prior.create_dataset('/M1', data=M_rho.astype(np.float32), compression='gzip', compression_opts=4)
+        #f_prior.create_dataset('/M1', data=M_rho)
         f_prior['/M1'].attrs['name']='Resistivity'
         f_prior['/M1'].attrs['is_discrete'] = 0
         f_prior['/M1'].attrs['z'] = z
         f_prior['/M1'].attrs['x'] = z
-        f_prior.create_dataset('/M2', data=NLAY)
+        f_prior.create_dataset('/M2', data=NLAY.astype(np.float32))
         f_prior['/M2'].attrs['name'] = 'Number of layers'
         f_prior['/M2'].attrs['is_discrete'] = 0
         f_prior['/M2'].attrs['z'] = z
@@ -1286,7 +1287,7 @@ def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 
         print("Saving prior model to %s" % f_prior_h5)
 
     with h5py.File(f_prior_h5, 'w') as f_prior:
-        f_prior.create_dataset('/M1', data=M_rho)
+        f_prior.create_dataset('/M1', data=M_rho.astype(np.float32), compression='gzip', compression_opts=4)
         f_prior['/M1'].attrs['name']='Resistivity'
         f_prior['/M1'].attrs['is_discrete'] = 0
         f_prior['/M1'].attrs['z'] = z
@@ -1407,12 +1408,12 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
 
     print(f_prior_h5)
     with h5py.File(f_prior_h5, 'w') as f_prior:
-        f_prior.create_dataset('/M1', data=M_rho)
+        f_prior.create_dataset('/M1', data=M_rho.astype(np.float32), compression='gzip', compression_opts=4)
         f_prior['/M1'].attrs['name'] = 'Resistivity'
         f_prior['/M1'].attrs['is_discrete'] = 0
         f_prior['/M1'].attrs['z'] = z
         f_prior['/M1'].attrs['x'] = z
-        f_prior.create_dataset('/M2', data=NLAY)
+        f_prior.create_dataset('/M2', data=NLAY.astype(np.float32), compression='gzip', compression_opts=4)
         f_prior['/M2'].attrs['name'] = 'Number of layers'
         f_prior['/M2'].attrs['is_discrete'] = 0
         f_prior['/M2'].attrs['z'] = np.array([0])

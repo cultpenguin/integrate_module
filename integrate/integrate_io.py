@@ -505,7 +505,7 @@ def post_to_csv(f_post_h5='', Mstr='/M1'):
 '''
 HDF% related functions
 '''
-def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, **kwargs):
+def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, compress=True, **kwargs):
     """
     Copy the contents of an HDF5 file to another HDF5 file.
 
@@ -517,6 +517,8 @@ def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, *
     :type N: int, optional
     :param loadToMemory: Whether to load the entire dataset to memory before slicing. Default is True.
     :type loadToMemory: bool, optional
+    :param compress: Whether to compress the output dataset. Default is True.
+    :type compress: bool, optional
 
     :return: None
     """
@@ -561,8 +563,16 @@ def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, *
                         # Read directly from HDF5 file   
                         data = input_file[name][i_use]
 
-                    # Create new dataset in output file
-                    output_dataset = output_file.create_dataset(name, data=data)
+                    # Create new dataset in output file with compression
+                    # Convert floating point data to 32-bit precision
+                    if data.dtype.kind == 'f':
+                        data = data.astype(np.float32)
+                        
+                    if compress:
+                        #output_dataset = output_file.create_dataset(name, data=data, compression="lzf")
+                        output_dataset = output_file.create_dataset(name, data=data, compression="gzip", compression_opts=4)
+                    else:
+                        output_dataset = output_file.create_dataset(name, data=data)
                     # Copy the attributes of the dataset
                     for key, value in input_file[name].attrs.items():                        
                         output_dataset.attrs[key] = value

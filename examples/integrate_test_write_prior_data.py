@@ -35,38 +35,48 @@ print("Using GEX file: %s" % file_gex)
 
 # %% [markdown]
 # sample a prior, to compute prior models
-N=500
+N=200001
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000)
 
-# compute prior data
+#%%  compute prior data
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0, Ncpu=8)
 
-# plot prior data and observed data
-ig.plot_data_prior(f_prior_data_h5, f_data_h5)
+
+#%% Make a copy of the prior data
+f_prior_data_h5_org = 'f_prior_data_org.h5'
+ig.copy_hdf5_file(f_prior_data_h5,f_prior_data_h5_org)
+f_prior_data_h5_nn = 'f_prior_data_nn.h5'
+ig.copy_hdf5_file(f_prior_data_h5,f_prior_data_h5_nn)
+
+
+
+
+
 # %% create some new data
 D_prior_arr, idx = ig.load_prior_data(f_prior_data_h5)
 nd = len(D_prior_arr)
 
 D_new = D_prior_arr[0]
 # Add gaussian noise
-D_new = 10**(np.log10(D_new) + np.random.normal(0, .13, size=D_prior_arr[0].shape))
+D_new = 10**(np.log10(D_new) + .1 + np.random.normal(0, .13, size=D_prior_arr[0].shape))
 D_new = np.real(D_new)
 D_new = np.abs(D_new)
 
 
 # %%
-
-ig.save_prior_data(f_prior_data_h5, D_new)
-ig.save_prior_data(f_prior_data_h5, 10*D_new)
-ig.save_prior_data(f_prior_data_h5, 50*D_new)
-ig.save_prior_data(f_prior_data_h5, D_new/10, id=2, force_delete=False)
-ig.save_prior_data(f_prior_data_h5, D_new/10, id=2, force_delete=True, method='other', with_noise=1)
+ig.save_prior_data(f_prior_data_h5_nn, D_new, id=1, force_delete=True)
 
 # %%
-ig.plot_data_prior(f_prior_data_h5, f_data_h5, id=1)
-ig.plot_data_prior(f_prior_data_h5, f_data_h5, id=2, id_data=1)
-ig.plot_data_prior(f_prior_data_h5, f_data_h5, id=3, id_data=1)
-ig.plot_data_prior(f_prior_data_h5, f_data_h5, id=4, id_data=1)
+ig.plot_data_prior(f_prior_data_h5_org, f_data_h5, id=1)
+ig.plot_data_prior(f_prior_data_h5_nn, f_data_h5, id=1)
 plt.show()
+# %% Solve the inverse problem
+f_post_h5_org = ig.integrate_rejection(f_prior_data_h5_org, f_data_h5, N_use = 1000, parallel=parallel, showInfo=0)
+f_post_h5_nn = ig.integrate_rejection(f_prior_data_h5_nn, f_data_h5, N_use = 1000, parallel=parallel, showInfo=0)
+#%%
+ig.plot_profile(f_post_h5_org, i1=500, i2=1000, im=1)
+ig.plot_profile(f_post_h5_nn, i1=500, i2=1000, im=1)
+
+
 # %%
