@@ -357,7 +357,9 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
                     m_logmean = np.exp(np.mean(np.log(m_post), axis=0))
                     m_mean = np.mean(m_post, axis=0)
                     m_median = np.median(m_post, axis=0)
-                    m_std = np.std(np.log10(m_post), axis=0)
+                    # Handle negative and zero values when taking log10 for standard deviation
+                    with np.errstate(invalid='ignore', divide='ignore'):
+                        m_std = np.std(np.log10(np.maximum(m_post, 1e-10)), axis=0)
 
                     M_logmean[iid,:] = m_logmean
                     M_mean[iid,:] = m_mean
@@ -1134,6 +1136,7 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     """
     
     from tqdm import tqdm
+    import integrate as ig
 
     showInfo = kwargs.get('showInfo', 0)
     f_prior_h5 = kwargs.get('f_prior_h5', '')
@@ -1165,8 +1168,6 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     nz= len(z)
     M_rho = np.zeros((N, nz))
 
-    # save to hdf5 file
-    
     #% simulate the number of layers as in integer
     for i in tqdm(range(N), mininterval=1, disable=(showInfo<0), desc='prior_layered', leave=False):
     
@@ -1191,19 +1192,46 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     if (showInfo>0):
         print("Saving prior model to %s" % f_prior_h5)
     
-    with h5py.File(f_prior_h5, 'w') as f_prior:
-        f_prior.create_dataset('/M1', data=M_rho.astype(np.float32), compression='gzip', compression_opts=4)
-        #f_prior.create_dataset('/M1', data=M_rho)
-        f_prior['/M1'].attrs['name']='Resistivity'
-        f_prior['/M1'].attrs['is_discrete'] = 0
-        f_prior['/M1'].attrs['z'] = z
-        f_prior['/M1'].attrs['x'] = z
-        f_prior.create_dataset('/M2', data=NLAY.astype(np.float32))
-        f_prior['/M2'].attrs['name'] = 'Number of layers'
-        f_prior['/M2'].attrs['is_discrete'] = 0
-        f_prior['/M2'].attrs['z'] = z
-        f_prior['/M2'].attrs['x'] = z
+    # save to hdf5 file
+
+    # with h5py.File(f_prior_h5, 'w') as f_prior:
+    #     f_prior.create_dataset('/M1', data=M_rho.astype(np.float32), compression='gzip', compression_opts=4)
+    #     #f_prior.create_dataset('/M1', data=M_rho)
+    #     f_prior['/M1'].attrs['name']='Resistivity'
+    #     f_prior['/M1'].attrs['is_discrete'] = 0
+    #     f_prior['/M1'].attrs['z'] = z
+    #     f_prior['/M1'].attrs['x'] = z
+    #     f_prior.create_dataset('/M2', data=NLAY.astype(np.float32))
+    #     f_prior['/M2'].attrs['name'] = 'Number of layers'
+    #     f_prior['/M2'].attrs['is_discrete'] = 0
+    #     f_prior['/M2'].attrs['z'] = z
+    #     f_prior['/M2'].attrs['x'] = z
     
+    if (showInfo>0):
+        print("Saving '/M1' prior model  %s" % f_prior_h5)
+    ig.save_prior_model(f_prior_h5,M_rho.astype(np.float32),
+                im=1,
+                name='resistivity',
+                is_discrete = 0, 
+                x = z,
+                z = z,
+                delete_if_exist = True,
+                force_replace=True,
+                showInfo=showInfo,
+                )
+
+    if (showInfo>0):
+        print("Saving '/M2' prior model  %s" % f_prior_h5)
+    ig.save_prior_model(f_prior_h5,NLAY.astype(np.float32),
+                        im=2,
+                        name = 'Number of layers',
+                        is_discrete=0, 
+                        x=np.array([0]), 
+                        z=np.array([0]),
+                        force_replace=True, 
+                        showInfo=showInfo,
+                )
+
     return f_prior_h5
 
 def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 100, 

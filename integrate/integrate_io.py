@@ -95,7 +95,11 @@ def load_prior_model(f_prior_h5, im_use=[], idx=[], N_use=0, Randomize=False):
     
     return M, idx
 
-def save_prior_model(f_prior_h5, M_new, im=None, force_delete=False, **kwargs):
+def save_prior_model(f_prior_h5, M_new, 
+                     im=None, 
+                     force_replace=False,
+                     delete_if_exist=False,   
+                     **kwargs):
     """
     Save the new prior model data to a new file.
     If the key already exists, it will be deleted if force_delete is set to True.
@@ -105,13 +109,28 @@ def save_prior_model(f_prior_h5, M_new, im=None, force_delete=False, **kwargs):
     f_prior_h5 (str): Path to the HDF5 file where the prior model data will be saved.
     M_new (numpy.ndarray): The new prior model data to be saved.
     im (int, optional): The im to be used as the key for the new data. If None, a new im will be created.
-    force_delete (bool, optional): If True, the existing key will be deleted before saving the new data. Default is False.
+    force_replace (bool, optional): If True, the existing key will be deleted before saving the new data. Default is False.
     Returns:
     int: The im used for the new data.
     """
     import h5py
     import numpy as np
+    import os
 
+    showInfo = kwargs.get('showInfo', 0)
+    # if f_prior_h5 exists, delete it
+    if delete_if_exist:
+        
+        # Assuming f_prior_h5 already contains the filename
+        if os.path.exists(f_prior_h5):
+            os.remove(f_prior_h5)
+            if showInfo>0:
+                print("File %s has been deleted." % f_prior_h5)
+        else:
+            print("File %s does not exist." % f_prior_h5)
+            pass
+
+        
     if im is None:
         Nmt=0
         with h5py.File(f_prior_h5, 'r') as f_prior:
@@ -121,16 +140,17 @@ def save_prior_model(f_prior_h5, M_new, im=None, force_delete=False, **kwargs):
         im = Nmt+1
     
     key = '/M%d' % im
-    print("Saving new prior model '%s' to file: %s " % (key,f_prior_h5))
+    if showInfo>0:
+        print("Saving new prior model '%s' to file: %s " % (key,f_prior_h5))
 
     # Delete the 'key' if it exists
     with h5py.File(f_prior_h5, 'a') as f_prior:
         if key in f_prior:
             print("Deleting prior model '%s' from file: %s " % (key,f_prior))
-            if force_delete:
+            if force_replace:
                 del f_prior[key]
             else:
-                print("Key '%s' already exists. Use force_delete=True to overwrite." % key)
+                print("Key '%s' already exists. Use force_replace=True to overwrite." % key)
                 return False
 
     # Make sure the data is 2D using atleast_2d
@@ -149,17 +169,18 @@ def save_prior_model(f_prior_h5, M_new, im=None, force_delete=False, **kwargs):
         else:
             f_prior.create_dataset(key, data=M_new, compression='gzip', compression_opts=9)
 
-        print("New prior data '%s' saved to file: %s " % (key,f_prior_h5))
-
-        # of 'name' is not set in wargsa, set it to 'XXX'
+        # if 'name' is not set in kwargs, set it to 'XXX'
         if 'name' not in kwargs:
             kwargs['name'] = 'Model %d' % (im)
         if 'is_discrete' not in kwargs:
             kwargs['is_discrete'] = 0
+        if 'x' not in kwargs:
+            kwargs['x'] = np.arange(M_new.shape[1])
 
         # if kwargs is set print keys
-        for kwargkey in kwargs:
-            print('key=%s, value=%s' % (kwargkey, kwargs[kwargkey]))
+        if showInfo>1:
+            for kwargkey in kwargs:
+                print('save_prior_model: key=%s, value=%s' % (kwargkey, kwargs[kwargkey]))
 
 
         # if kwarg has keyy 'method' then write it to the file as att
@@ -169,17 +190,21 @@ def save_prior_model(f_prior_h5, M_new, im=None, force_delete=False, **kwargs):
              f_prior[key].attrs['name'] = kwargs['name']
         if 'method' in kwargs:
              f_prior[key].attrs['method'] = kwargs['method']
-        if 'type' in kwargs:
+        if 'is_discrete' in kwargs:
             f_prior[key].attrs['is_discrete'] = kwargs['is_discrete']
-        if 'im' in kwargs:
+        if 'class_id' in kwargs:
             f_prior[key].attrs['class_id'] = kwargs['class_id']
-        if 'Nhank' in kwargs:
+        if 'class_name' in kwargs:
             f_prior[key].attrs['class_name'] = kwargs['class_name']
-        if 'Nfreq' in kwargs:
+        if 'clim' in kwargs:
             f_prior[key].attrs['clim'] = kwargs['clim']
-        if 'f5_forward' in kwargs:
+        if 'cmap' in kwargs:
             f_prior[key].attrs['cmap'] = kwargs['cmap']
-        
+
+        if showInfo>0:
+            print("New prior data '%s' saved to file: %s " % (key,f_prior_h5))
+
+
 
 def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
     import h5py
