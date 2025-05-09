@@ -35,7 +35,7 @@ print("Using GEX file: %s" % file_gex)
 
 # %% [markdown]
 # sample a prior, to compute prior models
-N=1000
+N=500000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000)
 
