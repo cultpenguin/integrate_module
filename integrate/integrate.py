@@ -1550,269 +1550,6 @@ def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **
     return thick_mean, thick_median, thick_std, class_out, X, Y
 
 
-'''
-THIS IS THE NEW MULTI DATA IMPLEMENTATION
-'''
-
-def load_prior(f_prior_h5, N_use=0, idx = [], Randomize=False):
-    """
-    Load prior data from an HDF5 file.
-
-    :param f_prior_h5: Path to the prior HDF5 file.
-    :type f_prior_h5: str
-    :param N_use: Number of samples to use. Default is 0, which means all samples.
-    :type N_use: int, optional
-    :param idx: List of indices to use. If empty, all indices are used.
-    :type idx: list, optional
-    :param Randomize: Flag indicating whether to randomize the order of the samples. Default is False.
-    :type Randomize: bool, optional
-    :return: Dictionary containing the loaded prior data.
-    :rtype: dict
-    """
-    if len(idx)==0:
-        D, idx = load_prior_data(f_prior_h5, N_use=N_use, Randomize=Randomize)
-    else:
-        D, idx = load_prior_data(f_prior_h5, idx=idx, Randomize=Randomize)
-    M, idx = load_prior_model(f_prior_h5, idx=idx, Randomize=Randomize)
-    return D, M, idx
-
-
-
-def load_prior_model(f_prior_h5, im_use=[], idx=[], N_use=0, Randomize=False):
-    """
-    Load prior model data from an HDF5 file.
-    Parameters
-    ----------
-    f_prior_h5 : str
-        Path to the HDF5 file containing the prior model data.
-    im_use : list, optional
-        List of model indices to use. If empty, all models are used. Default is an empty list.
-    idx : list, optional
-        List of indices to select from the data. If empty, indices are generated based on `N_use` and `Randomize`. Default is an empty list.
-    N_use : int, optional
-        Number of samples to use. If 0, all samples are used. Default is 0.
-    Randomize : bool, optional
-        If True, indices are randomized. If False, sequential indices are used. Default is False.
-    Returns
-    -------
-    M : list of numpy.ndarray
-        List of arrays containing the selected data for each model.
-    idx : numpy.ndarray
-        Array of indices used to select the data.
-    Raises
-    ------
-    ValueError
-        If the length of `idx` is not equal to `N_use`.
-    """
-    import h5py
-    import numpy as np
-
-
-    if len(im_use)==0:
-        Nmt=0
-        with h5py.File(f_prior_h5, 'r') as f_prior:
-            for key in f_prior.keys():
-                if key[0]=='M':
-                    Nmt = Nmt+1
-        if len(im_use)==0:
-            im_use = np.arange(1,Nmt+1) 
-    
-    with h5py.File(f_prior_h5, 'r') as f_prior:
-        N = f_prior['/M1'].shape[0]
-        if N_use == 0:
-            N_use = N    
-        
-        if len(idx)==0:
-            if Randomize:
-                idx = np.sort(np.random.choice(N, min(N_use, N), replace=False)) if N_use < N else np.arange(N)
-            else:
-                idx = np.arange(N_use)
-        else:
-            # check if length of idx is equal to N_use
-            if len(idx)!=N_use:
-                print('Length of idx (%d) must be equal to N_use)=%d' % (len(idx), N_use))
-                N_use = len(idx)      
-                print('using N_use=len(idx)=%d' % N_use)
-                
-        M = [f_prior[f'/M{id}'][:][idx] for id in im_use]
-    
-    
-    return M, idx
-
-
-
-def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
-    import h5py
-    import numpy as np
-
-    if len(id_use)==0:        
-        Ndt=0
-        with h5py.File(f_prior_h5, 'r') as f_prior:
-            for key in f_prior.keys():
-                if key[0]=='D':
-                    Ndt = Ndt+1
-        if len(id_use)==0:
-            id_use = np.arange(1,Ndt+1) 
-
-    with h5py.File(f_prior_h5, 'r') as f_prior:
-        N = f_prior['/D1'].shape[0]
-        if N_use == 0:
-            N_use = N    
-        if N_use>N:
-            N_use = N
-
-        if len(idx)==0:
-            if Randomize:
-                idx = np.sort(np.random.choice(N, min(N_use, N), replace=False)) if N_use < N else np.arange(N)
-            else:
-                idx = np.arange(N_use)
-        else:
-            # check if length of idx is equal to N_use
-            if len(idx)!=N_use:
-                print('Length of idx (%d) must be equal to N_use)=%d' % (len(idx), N_use))
-                N_use = len(idx)      
-                print('using N_use=len(idx)=%d' % N_use)
-
-
-        D = [f_prior[f'/D{id}'][:][idx] for id in id_use]
-    return D, idx
-
-def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False, **kwargs):
-    """
-    Save the new prior data to a new file.
-    If the key already exists, it will be deleted if force_delete is set to True.
-    If id is None, a new id will be created based on the number of existing keys.
-    If id is provided, it will be used as the key for the new data.
-    Parameters:
-    f_prior_h5 (str): Path to the HDF5 file where the prior data will be saved.
-    D_new (numpy.ndarray): The new prior data to be saved.
-    id (int, optional): The id to be used as the key for the new data. If None, a new id will be created.
-    force_delete (bool, optional): If True, the existing key will be deleted before saving the new data. Default is False.
-    Returns:
-    int: The id used for the new data.
-    """
-    import h5py
-    import numpy as np
-
-    if id is None:
-        Ndt=0
-        with h5py.File(f_prior_h5, 'r') as f_prior:
-            for key in f_prior.keys():
-                if key[0]=='D':
-                    Ndt = Ndt+1
-        id = Ndt+1
-    
-    key = '/D%d' % id
-    print("Saving new prior data '%s' to file: %s " % (key,f_prior_h5))
-
-    # Delete the 'key' if it exists
-    with h5py.File(f_prior_h5, 'a') as f_prior:
-        if key in f_prior:
-            print("Deleting prior data '%s' from file: %s " % (key,f_prior))
-            if force_delete:
-                del f_prior[key]
-            else:
-                print("Key '%s' already exists. Use force_delete=True to overwrite." % key)
-                return False
-
-    # Write the new data
-    with h5py.File(f_prior_h5, 'a') as f_prior:
-        # Convert to 32-bit float for better memory efficiency if the data is floating point
-        if np.issubdtype(D_new.dtype, np.floating):
-            D_new_32 = D_new.astype(np.float32)
-            f_prior.create_dataset(key, data=D_new_32, compression='gzip', compression_opts=9)
-        else:
-            f_prior.create_dataset(key, data=D_new, compression='gzip', compression_opts=9)
-        print("New prior data '%s' saved to file: %s " % (key,f_prior_h5))
-        # if kwarg has keyy 'method' then write it to the file as att
-        if 'method' in kwargs:
-             f_prior[key].attrs['method'] = kwargs['method']
-        if 'type' in kwargs:
-            f_prior[key].attrs['type'] = kwargs['type']
-        if 'im' in kwargs:
-            f_prior[key].attrs['im'] = kwargs['im']
-        if 'Nhank' in kwargs:
-            f_prior[key].attrs['Nhank'] = kwargs['Nhank']
-        if 'Nfreq' in kwargs:
-            f_prior[key].attrs['Nfreq'] = kwargs['Nfreq']
-        if 'f5_forward' in kwargs:
-            f_prior[key].attrs['f5_forward'] = kwargs['f5_forward']
-        if 'with_noise' in kwargs:
-            f_prior[key].attrs['with_noise'] = kwargs['with_noise']
-
-    return id
-
-
-def load_data(f_data_h5, id_arr=[1], **kwargs):
-    """
-    Load data from an HDF5 file.
-    Parameters
-    ----------
-    f_data_h5 : str
-        Path to the HDF5 file containing the data.
-    id_arr : list of int, optional
-        List of dataset IDs to load from the HDF5 file. Default is [1].
-    Returns
-    -------
-    dict
-        A dictionary containing the following keys:
-        - 'noise_model': list of str
-            Noise models for each dataset.
-        - 'd_obs': list of numpy.ndarray
-            Observed data for each dataset.
-        - 'd_std': list of numpy.ndarray or None
-            Standard deviation of the observed data for each dataset, if available.
-        - 'Cd': list of numpy.ndarray or None
-            Covariance matrix for each dataset, if available.
-        - 'id_arr': list of int
-            List of dataset IDs.
-        - 'i_use': list of numpy.ndarray
-            Indicator array for each dataset.
-        - 'id_use': list of int or numpy.ndarray
-            ID use array for each dataset.
-    Notes
-    -----
-    If 'd_std', 'Cd', 'i_use', or 'id_use' are not available in the HDF5 file for a given dataset,
-    they will be set to None. If 'id_use' is not available, it will be set to the dataset ID.
-    If 'i_use' is not available, it will be set to an array of ones with the same length as 'd_obs'.
-    """
-
-    showInfo = kwargs.get('showInfo', 1)
-    
-    import h5py
-    with h5py.File(f_data_h5, 'r') as f_data:
-        noise_model = [f_data[f'/D{id}'].attrs.get('noise_model', 'none') for id in id_arr]
-        d_obs = [f_data[f'/D{id}/d_obs'][:] for id in id_arr]
-        d_std = [f_data[f'/D{id}/d_std'][:] if 'd_std' in f_data[f'/D{id}'] else None for id in id_arr]
-        Cd = [f_data[f'/D{id}/Cd'][:] if 'Cd' in f_data[f'/D{id}'] else None for id in id_arr]
-        i_use = [f_data[f'/D{id}/i_use'][:] if 'i_use' in f_data[f'/D{id}'] else None for id in id_arr]
-        id_use = [f_data[f'/D{id}/id_use'][()] if 'id_use' in f_data[f'/D{id}'] and f_data[f'/D{id}/id_use'].shape == () else f_data[f'/D{id}/id_use'][:] if 'id_use' in f_data[f'/D{id}'] else None for id in id_arr]
-        
-    for i in range(len(id_arr)):
-        if id_use[i] is None:
-            id_use[i] = i+1
-        if i_use[i] is None:
-            i_use[i] = np.ones((len(d_obs[i]),1))
-
-        
-    DATA = {}
-    DATA['noise_model'] = noise_model
-    DATA['d_obs'] = d_obs
-    DATA['d_std'] = d_std
-    DATA['Cd'] = Cd
-    DATA['id_arr'] = id_arr        
-    DATA['i_use'] = i_use        
-    DATA['id_use'] = id_use        
-    # return noise_model, d_obs, d_std, Cd, id_arr
-
-
-    if showInfo>0:
-        print('Loaded data from %s' % f_data_h5)
-        for i in range(len(id_arr)):
-            print('Data type %d: id_use=%d, %11s, Using %5d/%5d data' % (id_arr[i], id_use[i], noise_model[i], np.sum(i_use[i]), len(i_use[i])))
-
-    return DATA
-
 def create_shared_memory(arrays):
     """Create shared memory segments for arrays."""
     shared_memories = []
@@ -1859,8 +1596,11 @@ def cleanup_shared_memory(shm_objects):
             shm.close()
             shm.unlink()
             logger.debug(f"Cleaned up shared memory: {shm.name}")
+
         except Exception as e:
-            logger.error(f"Error cleaning up shared memory: {e}")
+            #logger.error(f"Error cleaning up shared memory: {e}")
+            pass
+
 
 # # Create shared memory arrays
 # def create_shared_memory(arrays):
@@ -1910,7 +1650,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
     from datetime import datetime   
     #from multiprocessing import Pool
     #import multiprocessing
-    #import integrate as ig
+    import integrate as ig
     #import numpy as np
     #import h5py
 
@@ -1946,13 +1686,13 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
     
     # Load observed data from f_data_h5
-    DATA = load_data(f_data_h5, showInfo=showInfo)
+    DATA = ig.load_data(f_data_h5, showInfo=showInfo)
     Ndt = len(DATA['d_obs']) # Number of data types
     if len(id_use)==0:
         id_use = np.arange(1,Ndt+1) 
     Ndt = len(id_use) # Number of data types used        
     # Perhaps load only the data types that are used
-    DATA = load_data(f_data_h5, id_arr=id_use, showInfo=showInfo)
+    DATA = ig.load_data(f_data_h5, id_arr=id_use, showInfo=showInfo)
 
     if (showInfo>0):    
         for i in range(Ndt):
@@ -1961,12 +1701,13 @@ def integrate_rejection(f_prior_h5='prior.h5',
     # Load the prior data from the h5 files
     #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
     id_data_use = 1+np.arange(np.max(DATA['id_use']))
-    D, idx = load_prior_data(f_prior_h5, id_use = id_data_use, N_use = N_use, Randomize=True)
+    D, idx = ig.load_prior_data(f_prior_h5, id_use = id_data_use, N_use = N_use, Randomize=True)
     # Convert D to 32 bit float
     #D = [d.astype(np.float32) for d in D]
     #D = [d.astype(np.float128) for d in D]
     # Pritn the memory size of D
-    print('Memory size of D: %s' % str(np.array(D).nbytes))   
+    if showInfo>0:
+        print('Memory size of D: %s' % str(np.array(D).nbytes))   
 
     #D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
     # M, idx = load_prior_model(f_prior_h5, idx=idx, N_use=N_use, Randomize=True)
