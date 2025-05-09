@@ -82,7 +82,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=100000
+N=1000000
 RHO_min = 1
 RHO_max = 2500
 RHO_dist='log-uniform'
@@ -91,7 +91,7 @@ NLAY_max=9
 z_max = 90
 
 useP_arr  = [1,2,3,4,5]
-useP_arr  = [5]
+#useP_arr  = [5]
 f_prior_h5_arr = []
 for useP in useP_arr:
 
