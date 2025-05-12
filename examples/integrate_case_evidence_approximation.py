@@ -64,7 +64,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=50000
+N=1000000
 z_max = 80
 RHO_min = 1
 RHO_max = 1000
@@ -114,7 +114,7 @@ for f_prior_h5 in f_prior_h5_arr:
 nprior = len(f_prior_data_h5_arr)
 
 # # Narr should an array from 10 to N, in nstep in logspace
-nsteps=11
+nsteps=5
 N_use_arr = np.logspace(2, np.log10(N+1), num=nsteps, dtype=int)
 
 
@@ -164,7 +164,7 @@ for ih in np.arange(len(f_prior_data_h5_arr)):
         #plt.legend()
         #plt.show()
         # get X, Y coordinates using ig.get_geometry(f_post_h5)
-        plt.subplot(3,4,j+1)
+        plt.subplot(2,3,j+1)
         plt.scatter(X, Y, c=P[ih,:], s=1, cmap='hot_r', alpha=0.5, vmin=0, vmax=1)
         plt.axis('equal')
         plt.title('N_use=%d' % N_use_arr[j])
