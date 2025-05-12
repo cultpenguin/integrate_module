@@ -35,7 +35,7 @@ print("Using GEX file: %s" % file_gex)
 
 # %% [markdown]
 # sample a prior, to compute prior models
-N=15000
+N=1000000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='prior.h5')
 
@@ -83,6 +83,12 @@ ig.plot_profile(f_post_h5_nn, i1=800, i2=1000, im=1)
 ig.plot_profile(f_post_h5_org, i1=800, i2=1000, im=3)
 ig.plot_profile(f_post_h5_nn, i1=800, i2=1000, im=3)
 # %%
-ig.plot_feature_2d(f_post_h5_org, im=3, key='Median', uselog=False, clim=np.array([1, 20]))
-ig.plot_feature_2d(f_post_h5_nn, im=3, key='Median', uselog=False, clim=np.array([1, 20]))
+ig.plot_feature_2d(f_post_h5_org, im=3, key='Mean', uselog=False, clim=np.array([1, 20]))
+plt.show()
+# %%
+ig.plot_feature_2d(f_post_h5_nn, im=3, key='Mean', uselog=False, clim=np.array([1, 20]))
+plt.show()
+ig.plot_feature_2d(f_post_h5_nn, im=3, key='Std', uselog=False, clim=np.array([.01, 2]))
+plt.show()
+
 # %%

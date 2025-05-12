@@ -124,7 +124,7 @@ def save_prior_model(f_prior_h5, M_new,
         # Assuming f_prior_h5 already contains the filename
         if os.path.exists(f_prior_h5):
             os.remove(f_prior_h5)
-            if showInfo>0:
+            if showInfo>1:
                 print("File %s has been deleted." % f_prior_h5)
         else:
             print("File %s does not exist." % f_prior_h5)
@@ -140,7 +140,7 @@ def save_prior_model(f_prior_h5, M_new,
         im = Nmt+1
     
     key = '/M%d' % im
-    if showInfo>0:
+    if showInfo>1:
         print("Saving new prior model '%s' to file: %s " % (key,f_prior_h5))
 
     # Delete the 'key' if it exists
@@ -178,7 +178,7 @@ def save_prior_model(f_prior_h5, M_new,
             kwargs['x'] = np.arange(M_new.shape[1])
 
         # if kwargs is set print keys
-        if showInfo>1:
+        if showInfo>2:
             for kwargkey in kwargs:
                 print('save_prior_model: key=%s, value=%s' % (kwargkey, kwargs[kwargkey]))
 
@@ -201,7 +201,7 @@ def save_prior_model(f_prior_h5, M_new,
         if 'cmap' in kwargs:
             f_prior[key].attrs['cmap'] = kwargs['cmap']
 
-        if showInfo>0:
+        if showInfo>1:
             print("New prior data '%s' saved to file: %s " % (key,f_prior_h5))
 
 

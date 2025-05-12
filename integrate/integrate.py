@@ -1190,25 +1190,13 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
         M_rho[i]=rho        
 
     if (showInfo>0):
-        print("Saving prior model to %s" % f_prior_h5)
+        print("prior_model_layered: Saving prior model to %s" % f_prior_h5)
     
     # save to hdf5 file
-
-    # with h5py.File(f_prior_h5, 'w') as f_prior:
-    #     f_prior.create_dataset('/M1', data=M_rho.astype(np.float32), compression='gzip', compression_opts=4)
-    #     #f_prior.create_dataset('/M1', data=M_rho)
-    #     f_prior['/M1'].attrs['name']='Resistivity'
-    #     f_prior['/M1'].attrs['is_discrete'] = 0
-    #     f_prior['/M1'].attrs['z'] = z
-    #     f_prior['/M1'].attrs['x'] = z
-    #     f_prior.create_dataset('/M2', data=NLAY.astype(np.float32))
-    #     f_prior['/M2'].attrs['name'] = 'Number of layers'
-    #     f_prior['/M2'].attrs['is_discrete'] = 0
-    #     f_prior['/M2'].attrs['z'] = z
-    #     f_prior['/M2'].attrs['x'] = z
     
-    if (showInfo>0):
+    if (showInfo>1):
         print("Saving '/M1' prior model  %s" % f_prior_h5)
+
     ig.save_prior_model(f_prior_h5,M_rho.astype(np.float32),
                 im=1,
                 name='resistivity',
@@ -1220,7 +1208,7 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
                 showInfo=showInfo,
                 )
 
-    if (showInfo>0):
+    if (showInfo>1):
         print("Saving '/M2' prior model  %s" % f_prior_h5)
     ig.save_prior_model(f_prior_h5,NLAY.astype(np.float32),
                         im=2,
@@ -1271,18 +1259,14 @@ def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 
     :rtype: str
     """
 
+    import integrate as ig
+
     showInfo = kwargs.get('showInfo', 0)
     f_prior_h5 = kwargs.get('f_prior_h5', '')
 
     if nlayers<1:
         nlayers = 30
     
-
-    f_prior_h5 = 'PRIOR_WB%d_N%d_%s' % (nlayers,N,RHO_dist)
-    
-    print('nlayers=%d, N=%d' % (nlayers,N))
-    print('NLAY_min=%d, NLAY_max=%d' % (NLAY_min,NLAY_max))
-
     z2=z_max
     z= z1 + (z2 - z1) * np.linspace(0, 1, nlayers) ** p
 
@@ -1308,20 +1292,28 @@ def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 
         M_rho = np.random.chisquare(df = chi2_deg, size=(N, nz))
         if len(f_prior_h5)<1:
             f_prior_h5 = '%s_deg%d.h5' % (f_prior_h5,chi2_deg)
-
-    #f_prior_h5 = f_prior_h5 + '.h5'
-
+    else:
+        raise ValueError('RHO_dist=%s not supported' % RHO_dist)
+    
+    
     if (showInfo>0):
-        print("Saving prior model to %s" % f_prior_h5)
+        print("prior_model_workbench_direct: Saving prior model to %s" % f_prior_h5)
 
-    with h5py.File(f_prior_h5, 'w') as f_prior:
-        f_prior.create_dataset('/M1', data=M_rho.astype(np.float32), compression='gzip', compression_opts=4)
-        f_prior['/M1'].attrs['name']='Resistivity'
-        f_prior['/M1'].attrs['is_discrete'] = 0
-        f_prior['/M1'].attrs['z'] = z
-        f_prior['/M1'].attrs['x'] = z
-        
-    # return the full filepath to f_prior_h5
+
+    if (showInfo>1):
+        print("Saving '/M1' prior model  %s" % f_prior_h5)
+    ig.save_prior_model(f_prior_h5,M_rho.astype(np.float32),
+                im=1,
+                name='Resistivity',
+                is_discrete = 0, 
+                x = z,
+                z = z,
+                delete_if_exist = True,
+                force_replace=True,
+                showInfo=showInfo,
+                )
+
+
     return f_prior_h5
 
 
@@ -1368,6 +1360,7 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
     :rtype: str
     """
     from tqdm import tqdm
+    import integrate as ig
 
     f_prior_h5 = kwargs.get('f_prior_h5', '')
     showInfo = kwargs.get('showInfo', 0)
@@ -1407,7 +1400,8 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
     z_min = 0
     z = np.arange(z_min, z_max, dz)
     nz= len(z)
-    print('z_min, z_max, dz, nz = %g, %g, %g, %d' % (z_min, z_max, dz, nz))
+    if showInfo>1:
+        print('z_min, z_max, dz, nz = %g, %g, %g, %d' % (z_min, z_max, dz, nz))
     M_rho = np.zeros((N, nz))
 
     for i in tqdm(range(N), mininterval=1, disable=(showInfo<0), desc='prior_workbench', leave=False):
@@ -1432,21 +1426,33 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
             M_rho[i,ind]= M_rho_single[0,j]
 
     if (showInfo>0):
-        print("Saving prior model to %s" % f_prior_h5)
+        print("prior_model_workbench: Saving prior model to %s" % f_prior_h5)
 
-    print(f_prior_h5)
-    with h5py.File(f_prior_h5, 'w') as f_prior:
-        f_prior.create_dataset('/M1', data=M_rho.astype(np.float32), compression='gzip', compression_opts=4)
-        f_prior['/M1'].attrs['name'] = 'Resistivity'
-        f_prior['/M1'].attrs['is_discrete'] = 0
-        f_prior['/M1'].attrs['z'] = z
-        f_prior['/M1'].attrs['x'] = z
-        f_prior.create_dataset('/M2', data=NLAY.astype(np.float32), compression='gzip', compression_opts=4)
-        f_prior['/M2'].attrs['name'] = 'Number of layers'
-        f_prior['/M2'].attrs['is_discrete'] = 0
-        f_prior['/M2'].attrs['z'] = np.array([0])
-        f_prior['/M2'].attrs['x'] = np.array([0])
-    
+    if (showInfo>1):
+        print("Saving '/M1' prior model  %s" % f_prior_h5)
+    ig.save_prior_model(f_prior_h5,M_rho.astype(np.float32),
+                im=1,
+                name='Resistivity',
+                is_discrete = 0, 
+                x = z,
+                z = z,
+                delete_if_exist = True,
+                force_replace=True,
+                showInfo=showInfo,
+                )
+
+    if (showInfo>1):
+        print("Saving '/M2' prior model  %s" % f_prior_h5)
+    ig.save_prior_model(f_prior_h5,NLAY.astype(np.float32),
+                        im=2,
+                        name = 'Number of layers',
+                        is_discrete=0, 
+                        x=np.array([0]), 
+                        z=np.array([0]),
+                        force_replace=True, 
+                        showInfo=showInfo,
+                )
+
     # return the full filepath to f_prior_h5
     return f_prior_h5
 

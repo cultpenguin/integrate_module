@@ -26,6 +26,7 @@ parallel = ig.use_parallel(showInfo=1)
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+showInfo = 1
 hardcopy=True
 
 # %% [markdown]
@@ -82,7 +83,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
+N=20000
 RHO_min = 1
 RHO_max = 2500
 RHO_dist='log-uniform'
@@ -90,9 +91,12 @@ NLAY_min=1
 NLAY_max=9 
 z_max = 90
 
-useP_arr  = [1,2,3,4,5]
+showInfo = 1
+
+useP_arr  = [1,2,3,4,5,6]
 #useP_arr  = [5]
-f_prior_h5_arr = []
+f_prior_h5_arr=[]
+
 for useP in useP_arr:
 
     if useP==1:
@@ -100,27 +104,27 @@ for useP in useP_arr:
         f_prior_h5 = ig.prior_model_layered(N=N,
                                             lay_dist='uniform', z_max = z_max, 
                                             NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                            RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max)
+                                            RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_1.h5', showInfo=showInfo)
         f_prior_h5_arr.append(f_prior_h5)
     elif useP==2:
-        ## 20 layer model with increasing thickness
-        f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max,
-                                            RHO_mean=45, RHO_std=45, RHO_dist='log-normal', 
-                                            RHO_min = RHO_min, RHO_max = RHO_max)
-        f_prior_h5_arr.append(f_prior_h5)
-    elif useP==3:
-        ## NLAY_max-layer model with increasing thickness
-        f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max, 
-                                              nlayers=NLAY_max, 
-                                              RHO_dist=RHO_dist, RHO_min = RHO_min, RHO_max = RHO_max)
-        f_prior_h5_arr.append(f_prior_h5)
-    elif useP==4:
         ## 10 Layered model
         nlay=4
         f_prior_h5 = ig.prior_model_layered(N=N,
                                             lay_dist='uniform', z_max = z_max, 
                                             NLAY_min=1, NLAY_max=nlay, 
-                                            RHO_dist=RHO_dist, RHO_min=10, RHO_max=500)
+                                            RHO_dist=RHO_dist, RHO_min=10, RHO_max=500, f_prior_h5 = 'prior_2.h5', showInfo=showInfo)
+        f_prior_h5_arr.append(f_prior_h5)
+    elif useP==3:
+        ## 20 layer model with increasing thickness
+        f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max,
+                                            RHO_mean=45, RHO_std=45, RHO_dist='log-normal', 
+                                            RHO_min = RHO_min, RHO_max = RHO_max, f_prior_h5 = 'prior_3.h5', showInfo=showInfo)
+        f_prior_h5_arr.append(f_prior_h5)
+    elif useP==4:
+        ## NLAY_max-layer model with increasing thickness
+        f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max, 
+                                              nlayers=NLAY_max, 
+                                              RHO_dist=RHO_dist, RHO_min = RHO_min, RHO_max = RHO_max, f_prior_h5 = 'prior_4.h5', showInfo=showInfo)
         f_prior_h5_arr.append(f_prior_h5)
     elif useP==5:
         ## 10 Layered model
@@ -130,21 +134,34 @@ for useP in useP_arr:
         f_prior_h5 = ig.prior_model_workbench(N=N, dz = 1,
                                             lay_dist='chi2', z_max = z_max, 
                                             NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                            RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max)        
+                                            RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_5.h5', showInfo=showInfo)        
+        f_prior_h5_arr.append(f_prior_h5)
+    elif useP==6:
+        ## 10 Layered model
+        ## 1-9 layer model with increasing thickness
+        RHO_dist = 'log-uniform'
+        LAY_dist='chi2'
+        f_prior_h5 = ig.prior_model_workbench_direct(N=N, dz = 1,
+                                            lay_dist='chi2', z_max = z_max, 
+                                            NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
+                                            RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_6.h5', showInfo=showInfo)        
         f_prior_h5_arr.append(f_prior_h5)
     
     ig.plot_prior_stats(f_prior_h5)
 
 # %% Make a few forward realizations
+makeForwardTest = False
+if makeForwardTest:
+    # Generate a few forward models and plot them against the observed data
+    f_prior_data_h5_arr=[]
+    for f_prior_h5 in f_prior_h5_arr:
 
-for f_prior_h5 in f_prior_h5_arr:
+        f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=0, N=1001)
+        ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy) 
+        plt.show()
 
-    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=0, N=1001)
-    ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy) 
-    plt.show()
-
-    #f_prior_data_h5_arr.append(f_prior_data_h5)
-    
+        #f_prior_data_h5_arr.append(f_prior_data_h5)
+        
 # %% Perform inversion and compare
 f_prior_data_h5_arr=[]
 f_post_h5_arr=[]
