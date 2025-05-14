@@ -37,7 +37,7 @@ print("Using GEX file: %s" % file_gex)
 # %% [markdown]
 # sample a prior, to compute prior models
 showInfo = 1
-N=1000
+N=20000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='prior.h5', showInfo=showInfo)
 
@@ -58,4 +58,6 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel
 ig.integrate_posterior_stats(f_post_h5, showInfo=showInfo)
 
 #%%
-ig.plot_feature_2d(f_post_h5_nn, im=3, key='Median', uselog=False, clim=np.array([1, 20]))
+ig.plot_feature_2d(f_post_h5, im=3, key='Median', uselog=False, clim=np.array([1, 20]))
+
+# %%

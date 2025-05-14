@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # %% [markdown]
-# # INTEGRATE EM example - Evidence
+# # INTEGRATE example - Evidence
 #
 # This notebook demonstrates howto compute an estimate of the evidence using the INTEGRATE package. 
 #
@@ -15,8 +15,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # # # # #%load_ext autoreload
-    # # # # # # # # # #%autoreload 2
+    # # # # # # # # # # #%load_ext autoreload
+    # # # # # # # # # # #%autoreload 2
     pass
 
 import integrate as ig
@@ -53,17 +53,18 @@ file_gex= ig.get_gex_file_from_data(f_data_h5_org)
 if not os.path.isfile(file_gex):
     print("file_gex=%s does not exist in the current folder." % file_gex)
 
-# %% Inflating noise 
+# %% Inflating noise
 # Read 'D1/d_std' from f_data_h5, increase it by 100% and write it back to f_data_h5
 f_data_h5 = f_data_h5_org
 f_data_h5 = '%s_data.h5' % case
 
+# Inflate noise such that noise floor is 5% and not 3%
 if f_data_h5 != f_data_h5_org:
     ig.copy_hdf5_file(f_data_h5_org,f_data_h5, compress = True)
     with h5py.File(f_data_h5, 'a') as f:
         print(f['D1'].keys())
         d_std = f['D1/d_std'][:]
-        d_std = d_std*2.5
+        d_std = d_std*5/3
         f['D1/d_std'][:] = d_std
 
 print('CASE: %s' % case)
@@ -78,7 +79,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=10000
+N=100000
 z_max = 80
 RHO_min = 1
 RHO_max = 1000
@@ -87,13 +88,23 @@ RHO_dist='log-uniform'
 f_prior_h5_arr = []
 hypothesis_name = []
 
+## 1 layered model
+NLAY_min=1
+NLAY_max=1
+f_prior_h5 = ig.prior_model_layered(N=N,
+                                    lay_dist='uniform', z_max = z_max, 
+                                    NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
+                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_1l.h5', showInfo=showInfo)
+f_prior_h5_arr.append(f_prior_h5)
+hypothesis_name.append('1 layer model')
+
 ## 2 layered model
 NLAY_min=2
 NLAY_max=2
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_1.h5', showInfo=showInfo)
+                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_2l.h5', showInfo=showInfo)
 f_prior_h5_arr.append(f_prior_h5)
 hypothesis_name.append('2 layered model')
 
@@ -103,24 +114,35 @@ NLAY_max=4
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_2.h5', showInfo=showInfo)
+                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_4l.h5', showInfo=showInfo)
 f_prior_h5_arr.append(f_prior_h5)
 hypothesis_name.append('4 layered model')
 
-## 4 layered model
-NLAY_deg = 4
+## 6 layered model
+NLAY_min=6
+NLAY_max=6
 f_prior_h5 = ig.prior_model_layered(N=N,
-                                    lay_dist='chi2', z_max = z_max, NLAY_deg=NLAY_deg, 
-                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_3.h5', showInfo=showInfo)
+                                    lay_dist='uniform', z_max = z_max, 
+                                    NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
+                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_6l.h5', showInfo=showInfo)
 f_prior_h5_arr.append(f_prior_h5)
-hypothesis_name.append('4 layered model (chi2)')
+hypothesis_name.append('6 layered model')
+
+
+## 4 layered model
+#NLAY_deg = 4
+#f_prior_h5 = ig.prior_model_layered(N=N,
+#                                    lay_dist='chi2', z_max = z_max, NLAY_deg=NLAY_deg, 
+#                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_chi4.h5', showInfo=showInfo)
+#f_prior_h5_arr.append(f_prior_h5)
+#hypothesis_name.append('4 layered model (chi2)')
 
 # ## 4 layered model
 # NLAY_deg = 4
 # #RHO_min = 10
 # f_prior_h5 = ig.prior_model_layered(N=N,
 #                                     lay_dist='chi2', z_max = z_max, NLAY_deg=NLAY_deg, 
-#                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_4.h5', showInfo=showInfo)
+#                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_chi4_10.h5', showInfo=showInfo)
 # f_prior_h5_arr.append(f_prior_h5)
 
 
@@ -129,12 +151,16 @@ for f_prior_h5 in f_prior_h5_arr:
 
 # %% [markdown]
 # ### Generate prior data
+#
+
+# %%
 f_prior_data_h5_arr = []
 for f_prior_h5 in f_prior_h5_arr:
     f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=0, N=N)
     f_prior_data_h5_arr.append(f_prior_data_h5)
 
-
+# %% [markdown]
+# ## Perform inversion for multiuple lookup table sizes
 
 # %% Invert using the difefrent prior models, using different lookup table sizes
 nprior = len(f_prior_data_h5_arr)
@@ -149,7 +175,7 @@ logN = np.log10(N)
 nsteps=int(np.ceil(logN-logN1))+1
 nsteps = nsteps + nsteps-1
 N_use_arr = np.logspace(2, np.log10(N), num=nsteps, dtype=int)
-N_use_arr = [10000]
+N_use_arr = [N]
 print(N_use_arr)
 
 EV_all = []
@@ -216,12 +242,21 @@ for N_use in N_use_arr:
     
 
 
-M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis)
-M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr)
 
-
+# %% [markdown]
+# ## Combine mulitple hypotheses
+# rho(m) = pA*rho(m|hypotheses A) + pB*rho(m|hypotheses B) + pC*rho(m|hypotheses C) + ...
 
 # %%
+# The the probability of each hypothrdiod using evidence
+P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr)
+
+# Combine posterior arrays using P_hypothesis
+M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis)
+# Combine posterior arrays using uniform hypothesis probability
+# M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr)
+
+
 plt.imshow(M_post_arr[1], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
 #plt.imshow(M_post_arr[0][110], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
 
