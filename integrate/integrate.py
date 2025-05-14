@@ -2882,3 +2882,117 @@ def get_hypothesis_probability(f_post_h5_arr):
     
 
     return P, EV_all, MODE_hypothesis, ENT_hypothesis 
+
+
+
+def sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis=None):
+    """Sample posterior models from multiple hypotheses.
+    This function samples posterior models from multiple hypotheses stored in HDF5 files,
+    according to the given hypothesis probabilities.
+    Parameters
+    ----------
+    f_post_h5_arr : list of str
+        List of paths to HDF5 files containing posterior models for different hypotheses.
+    P_hypothesis : numpy.ndarray, optional
+        Array of shape (n_hypotheses, n_soundings) containing the probability of each hypothesis
+        for each sounding. If None, uniform probabilities are used.
+    Returns
+    -------
+    list of numpy.ndarray
+        List of posterior model arrays. Each array has shape (n_soundings, n_samples, n_parameters),
+        where n_samples is determined by the first hypothesis's number of samples.
+    Notes
+    -----
+    The function combines posterior samples from different hypotheses in proportion to their
+    probabilities. It ensures that the total number of samples used from all hypotheses equals
+    the number of samples in the first hypothesis.
+    """
+
+
+    import numpy as np
+    import h5py
+    import integrate as ig
+    
+    f_prior_h5_arr = []
+    M_all = []
+    i_use_all = []
+    n_use_all = []
+    for ip in range(len(f_post_h5_arr)):
+            f_post_h5 = f_post_h5_arr[ip]
+            with h5py.File(f_post_h5, 'r') as f_post:
+                f_prior_h5 = f_post['/'].attrs['f5_prior']
+                f_data_h5 = f_post['/'].attrs['f5_data']
+                f_prior_h5_arr.append(f_prior_h5)
+
+                i_use = f_post['/i_use'][:]
+                i_use_all.append(i_use)
+                n_use_all.append(i_use.shape[1])
+
+                print("loading prior model %s" % f_prior_h5)
+                M, idx = ig.load_prior_model(f_prior_h5)
+                M_all.append(M)
+    print(f_prior_h5_arr)
+    i_use_all = np.array(i_use_all)
+    n_use_all = np.array(n_use_all)
+
+    if P_hypothesis is None:
+        print('Using unform hypothesis probability')
+        D = ig.load_data(f_data_h5)
+        n_soundings = D['d_obs'][0].shape[0]
+
+        P_hypothesis = np.ones((len(f_post_h5_arr), n_soundings))
+        P_hypothesis = P_hypothesis/np.sum(P_hypothesis, axis=0)
+
+    # def sample_posterior_multipleh_hypotheses(f_post_h5_arr, P_hypothesis, n_post=100):
+    nsoundings = P_hypothesis.shape[1]
+    # If different hypothsis have different number of realizations..
+    #for i in range(nsoundings):
+
+
+    M_post_arr = []
+
+    for im in range(len(M)):
+        print("im=%d/%d" % (im+1,len(M)))
+        nm = M[im].shape[1]
+        M_post = np.zeros((nsoundings, n_use_all[0],nm))
+
+        for i in range(nsoundings):
+            # get the probabliity of each hypothesis
+            P_hypothesis_is = P_hypothesis[:,i]
+            i_use = i_use_all[:,i,:]
+
+            n_use = P_hypothesis_is*n_use_all
+            #num_scale = np.max(n_use_all)/np.max(n_use)
+            #n_use = num_scale*n_use
+            n_use = np.round(n_use).astype(int)
+            #print(n_use)
+            n_sum = np.sum(n_use)
+            # make sure that the sum of n_use is equal to the number of realizations
+            delta_n = n_use_all[0]-n_sum
+            if delta_n > 0:
+                n_use[0] = n_use[0] + delta_n
+            elif delta_n < 0:
+                n_use[0] = n_use[0] - np.abs(delta_n)
+            n_sum = np.sum(n_use)
+            #print(n_sum)
+            
+            M_dummy = []
+            for j in range(len(n_use)):  
+                # i_use_singe should be n_use[j] random values taken from  i_use[j]
+                #_use_single = i_use[j, np.random.choice(i_use[j].shape[0], n_use[j], replace=False)] if n_use[j] > 0 else np.array([])
+                
+                # use the first  realizations from i_use[j]
+                #i_use_single = i_use[j,:n_use[j]]
+                # use n_use[j] random realizations from iuse[j]
+                i_use_single = np.random.choice(i_use[j], n_use[j], replace=False)
+                
+                M_dummy.append(M_all[j][im][i_use_single,:])
+            M_sounding = np.concatenate(M_dummy, axis=0)        
+            M_post[i]=M_sounding
+
+        M_post_arr.append(M_post)    
+                
+    return M_post_arr
+
+
+

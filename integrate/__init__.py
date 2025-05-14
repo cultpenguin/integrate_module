@@ -29,6 +29,7 @@ from integrate.integrate import entropy
 from integrate.integrate import class_id_to_idx
 from integrate.integrate import is_notebook
 from integrate.integrate import get_hypothesis_probability
+from integrate.integrate import sample_posterior_multiple_hypotheses
 
 from integrate.integrate_io import load_prior
 from integrate.integrate_io import load_prior_data

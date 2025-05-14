@@ -78,7 +78,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
+N=10000
 z_max = 80
 RHO_min = 1
 RHO_max = 1000
@@ -149,6 +149,7 @@ logN = np.log10(N)
 nsteps=int(np.ceil(logN-logN1))+1
 nsteps = nsteps + nsteps-1
 N_use_arr = np.logspace(2, np.log10(N), num=nsteps, dtype=int)
+N_use_arr = [10000]
 print(N_use_arr)
 
 EV_all = []
@@ -210,6 +211,18 @@ for N_use in N_use_arr:
     plt.colorbar(scatter, label='Hypotheisis Entropy')
     plt.grid()
     plt.savefig('hypothesis_entropy_N%d.png' % (N_use), dpi=300)
+
+    plt.show()
     
-    
+
+
+M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis)
+M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr)
+
+
+
+# %%
+plt.imshow(M_post_arr[1], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
+#plt.imshow(M_post_arr[0][110], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
+
 # %%

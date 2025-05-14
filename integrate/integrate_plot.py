@@ -1618,10 +1618,10 @@ def plot_cumulative_probability_profile(P_hypothesis, i1=0, i2=0, label=None, co
     # ax.set_xlim(0, 1000)  # Uncomment to focus on first 1000 data points
 
     plt.tight_layout()
-    plt.show()
     # Save the figure if hardcopy is True
     if hardcopy:
         plt.savefig(name, dpi=300)
         print("Saved figure as %s.png" % (name))
-
+    plt.show()
+    
 
