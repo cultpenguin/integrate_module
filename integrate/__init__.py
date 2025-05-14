@@ -28,6 +28,7 @@ from integrate.integrate import get_weight_from_position
 from integrate.integrate import entropy
 from integrate.integrate import class_id_to_idx
 from integrate.integrate import is_notebook
+from integrate.integrate import get_hypothesis_probability
 
 from integrate.integrate_io import load_prior
 from integrate.integrate_io import load_prior_data
@@ -57,6 +58,7 @@ from integrate.integrate_plot import plot_geometry
 from integrate.integrate_plot import plot_profile
 from integrate.integrate_plot import plot_profile_continuous
 from integrate.integrate_plot import plot_profile_discrete
+from integrate.integrate_plot import plot_cumulative_probability_profile
 from integrate.integrate_plot import plot_T_EV
 from integrate.integrate_plot import plot_data_xy
 from integrate.integrate_plot import plot_data

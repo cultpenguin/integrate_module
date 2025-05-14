@@ -2823,3 +2823,62 @@ def class_id_to_idx(D, class_id=None):
     class_id_out = np.unique(D_idx)
     
     return D_idx, class_id, class_id_out
+
+
+
+
+
+def get_hypothesis_probability(f_post_h5_arr):
+    """
+    Calculate hypothesis probabilities and related statistics from posterior files.
+    This function processes an array of HDF5 file paths containing posterior evidences
+    to compute normalized probabilities for each hypothesis, along with evidence values,
+    mode hypotheses, and entropy measures.
+    Parameters
+    ----------
+    f_post_h5_arr : list of str
+        Array of file paths to HDF5 files containing posterior evidence values.
+        Each file should have an '/EV' dataset.
+    Returns
+    -------
+    P : numpy.ndarray
+        Normalized probabilities for each hypothesis. Shape (n_hypothesis, n_samples).
+    EV_all : numpy.ndarray
+        Evidence values for each hypothesis and sample. Shape (n_hypothesis, n_samples).
+    MODE_hypothesis : numpy.ndarray
+        Index of the most probable hypothesis for each sample. Shape (n_samples,).
+    ENT_hypothesis : numpy.ndarray
+        Entropy of the hypothesis distribution for each sample, normalized by
+        the number of hypotheses. Shape (n_samples,).
+    Notes
+    -----
+    The probability normalization uses the log-sum-exp trick to avoid numerical
+    underflow issues when working with evidence values.
+    """
+
+    from scipy import stats
+
+    n_hypothesis = len(f_post_h5_arr)
+    EV_all = []
+    for f_post_h5 in f_post_h5_arr:
+        with h5py.File(f_post_h5, 'r') as f:
+            EV = f['/EV'][()]
+        EV_all.append(EV)
+    EV_all = np.array(EV_all)
+    # subtract the small value on each column form each column
+    P  = np.exp(EV_all - np.max(EV_all, axis=0))
+    # Normalize each column to sum to 1 using NumPy broadcasting
+    P = P / np.sum(P, axis=0, keepdims=True)
+
+    ENT_hypothesis = np.zeros(P.shape[1])
+    MODE_hypothesis = np.zeros(P.shape[1])
+
+    for i in range(P.shape[1]):        
+        # get the entropy for each hypothesis
+        ENT_hypothesis[i] = stats.entropy(P[:,i], base=n_hypothesis)
+        # get the is of the hypothesis with the maximum probability
+        MODE_hypothesis[i] = np.argmax(P[:,i], axis=0)
+
+    
+
+    return P, EV_all, MODE_hypothesis, ENT_hypothesis 

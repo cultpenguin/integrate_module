@@ -47,30 +47,55 @@ case = 'HALD'
 case = 'HADERUP' # NOT YET AVAILABLE
 
 files = ig.get_case_data(case=case)
-f_data_h5 = files[0]
-file_gex= ig.get_gex_file_from_data(f_data_h5)
+f_data_h5_org = files[0]
+file_gex= ig.get_gex_file_from_data(f_data_h5_org)
 # check that file_gex exists
 if not os.path.isfile(file_gex):
     print("file_gex=%s does not exist in the current folder." % file_gex)
 
+# %% Inflating noise 
+# Read 'D1/d_std' from f_data_h5, increase it by 100% and write it back to f_data_h5
+f_data_h5 = f_data_h5_org
+f_data_h5 = '%s_data.h5' % case
+
+if f_data_h5 != f_data_h5_org:
+    ig.copy_hdf5_file(f_data_h5_org,f_data_h5, compress = True)
+    with h5py.File(f_data_h5, 'a') as f:
+        print(f['D1'].keys())
+        d_std = f['D1/d_std'][:]
+        d_std = d_std*2.5
+        f['D1/d_std'][:] = d_std
+
 print('CASE: %s' % case)
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
+
 # %% [markdown]
-# ### Multiple hypotjhsis: 
+# ### Multiple hypothesis. 
 # Propose multiple hypothesis.
 #
 
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
+N=10000
 z_max = 80
 RHO_min = 1
 RHO_max = 1000
 RHO_dist='log-uniform'
 
 f_prior_h5_arr = []
+hypothesis_name = []
+
+## 2 layered model
+NLAY_min=1
+NLAY_max=1
+f_prior_h5 = ig.prior_model_layered(N=N,
+                                    lay_dist='uniform', z_max = z_max, 
+                                    NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
+                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_1.h5', showInfo=showInfo)
+f_prior_h5_arr.append(f_prior_h5)
+hypothesis_name.append('2 layered model')
 
 ## 4 layered model
 NLAY_min=4
@@ -78,31 +103,32 @@ NLAY_max=4
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_1.h5', showInfo=showInfo)
+                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_2.h5', showInfo=showInfo)
 f_prior_h5_arr.append(f_prior_h5)
+hypothesis_name.append('4 layered model')
 
 ## 4 layered model
 NLAY_deg = 4
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='chi2', z_max = z_max, NLAY_deg=NLAY_deg, 
-                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_2.h5', showInfo=showInfo)
+                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_3.h5', showInfo=showInfo)
 f_prior_h5_arr.append(f_prior_h5)
+hypothesis_name.append('4 layered model (chi2)')
 
-## 4 layered model
-NLAY_deg = 4
-RHO_min = 10
-f_prior_h5 = ig.prior_model_layered(N=N,
-                                    lay_dist='chi2', z_max = z_max, NLAY_deg=NLAY_deg, 
-                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_2.h5', showInfo=showInfo)
-f_prior_h5_arr.append(f_prior_h5)
-
+# ## 4 layered model
+# NLAY_deg = 4
+# #RHO_min = 10
+# f_prior_h5 = ig.prior_model_layered(N=N,
+#                                     lay_dist='chi2', z_max = z_max, NLAY_deg=NLAY_deg, 
+#                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_4.h5', showInfo=showInfo)
+# f_prior_h5_arr.append(f_prior_h5)
 
 
 for f_prior_h5 in f_prior_h5_arr:
     ig.plot_prior_stats(f_prior_h5)
 
 # %% [markdown]
-# ### Genewarte prior data
+# ### Generate prior data
 f_prior_data_h5_arr = []
 for f_prior_h5 in f_prior_h5_arr:
     f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=0, N=N)
@@ -110,72 +136,80 @@ for f_prior_h5 in f_prior_h5_arr:
 
 
 
-# %% TEST 
+# %% Invert using the difefrent prior models, using different lookup table sizes
 nprior = len(f_prior_data_h5_arr)
 
+i1=7600
+i2=8600
+    
 # # Narr should an array from 10 to N, in nstep in logspace
-nsteps=5
-N_use_arr = np.logspace(2, np.log10(N+1), num=nsteps, dtype=int)
-
+N1=100
+logN1=  np.log10(N1)
+logN = np.log10(N)
+nsteps=int(np.ceil(logN-logN1))+1
+nsteps = nsteps + nsteps-1
+N_use_arr = np.logspace(2, np.log10(N), num=nsteps, dtype=int)
+print(N_use_arr)
+N_use_arr = [100,1000]
 
 EV_all = []
-for f_prior_data_h5 in  f_prior_data_h5_arr:
+T_all = []
+f_post_h5_all_arr = []
+for N_use in N_use_arr:
     EV_arr = []
-    for N_use in N_use_arr:
+    f_post_h5_arr = []
+    # Loop over the prior models, and perform the inversion
+    for f_prior_data_h5 in  f_prior_data_h5_arr:
         print("N_use=%d" % N_use)
         f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8, N_use = N_use, updatePostStat=False)
+        ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=True, im=1)
+        f_post_h5_arr.append(f_post_h5)
+        f_post_h5_all_arr.append(f_post_h5)
+
+        # read T
         with h5py.File(f_post_h5, 'r') as f:
-            EV = f['/EV'][()]
-        EV_arr.append(EV)
-    EV_all.append(EV_arr)
+            T = f['T'][:]
+            T_all.append(T)
 
-# %%
-EV_arr = np.array(EV_arr)
-for i in range(len(N_use_arr)):
-    plt.semilogy(-EV_arr[i,:100],'-',label=str(N_use_arr[i]), linewidth=3-i*0.2)
-plt.xlabel('Prior model')
-#plt.plot(EV_arr[:,::100].T, )
-plt.ylabel('-log(Evidence)')
-plt.legend()
-plt.title('Evidence for different N_use')
-plt.show()
+    # Get the probability (and log-evidence) for each of the four hypothesis
+    P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr, label=hypothesis_name)
+    #P_hypothesis, EV_hypothesis = get_hypothesis_probability(f_post_h5_arr)
+    # Plot a cumulative probability profile for the hypothesis
+    ig.plot_cumulative_probability_profile(P_hypothesis, i1=i1, i2=i2, label=None, name ='hyp_prob_N%d' %(N_use))
+    
 
+    #  
+    import matplotlib.pyplot as plt
+    from scipy import stats
+    X, Y, LINE, ELEVATION = ig.get_geometry(f_post_h5)
 
-
-# %%
-import matplotlib.pyplot as plt
-X, Y, LINE, ELEVATION = ig.get_geometry(f_post_h5)
-
-for ih in np.arange(len(f_prior_data_h5_arr)):
-    #ih=2;    
-    for j in np.arange(len(N_use_arr)):
-        EV = np.squeeze(EV_all[:,j,:])
-        # subtract the small value on each column form each column
-        P  = np.exp(EV - np.max(EV, axis=0))
-        # Normalize each column to sum to 1
-        P = P / np.sum(P, axis=0)
-        #plt.imshow(P[:,0:100], aspect='auto', cmap='viridis', interpolation='nearest')
-        # Plot a cumulgtive sum of the probabilities as an area plot
-        #plt.fill_between(np.arange(P.shape[1]), np.sum(P, axis=0), alpha=0.5)
-        #plt.plot(np.sum(P, axis=0),'-', label='Cumulative sum of probabilities')
-        #plt.xlabel('Prior model')
-        ##plt.ylabel('Cumulative sum of probabilities')
-        #p#lt.title('Cumulative sum of probabilities for different N_use')
-        #plt.legend()
-        #plt.show()
-        # get X, Y coordinates using ig.get_geometry(f_post_h5)
-        plt.subplot(2,3,j+1)
-        plt.scatter(X, Y, c=P[ih,:], s=1, cmap='hot_r', alpha=0.5, vmin=0, vmax=1)
-        plt.axis('equal')
-        plt.title('N_use=%d' % N_use_arr[j])
-        # set axiss off
-        plt.axis('off')
-    plt.colorbar()
-    plt.suptitle('Posterior probability of hypothesis H%d' %(ih+1))
-    plt.tight_layout()
-    plt.savefig('posterior_probabilities_hypothesis_%d.png' % (ih+1), dpi=300)
-    plt.show()
-        
-
-
+    n_hypothesis = P_hypothesis.shape[0]
+    plt.figure(figsize=(12, 12))
+    plt.subplot(1,1,1)
+    from matplotlib.colors import BoundaryNorm, ListedColormap
+    # Create discrete colormap with n_hypothesis colors
+    colors = plt.cm.jet_r(np.linspace(0, 1, n_hypothesis))
+    cmap = ListedColormap(colors)
+    # Create boundaries for each hypothesis
+    bounds = np.arange(0.5, n_hypothesis + 1.5, 1)
+    norm = BoundaryNorm(bounds, cmap.N)
+    scatter = plt.scatter(X, Y, c=MODE_hypothesis+1, s=5, cmap=cmap, alpha=1-ENT_hypothesis, norm=norm)
+    plt.xlabel('X coordinate')
+    plt.ylabel('Y coordinate')
+    plt.grid()
+    # Add discrete colorbar with labels
+    cbar = plt.colorbar(scatter, ticks=range(1, n_hypothesis+1))
+    cbar.set_label('Hypothesis')
+    plt.title('Posterior mode of hypotheses')
+    plt.savefig('hypothesis_mode_N%d.png' % (N_use), dpi=300)
+    # Plot teh entorpy of the sigma(m|d,Hypothesis)
+    plt.figure(figsize=(12, 12))
+    scatter = plt.scatter(X, Y, c=ENT_hypothesis, s=5, vmin = -.05, vmax=1.0, alpha=1, cmap='hot_r')
+    plt.xlabel('X coordinate')
+    plt.ylabel('Y coordinate')
+    plt.colorbar(scatter, label='Hypotheisis Entropy')
+    plt.grid()
+    plt.savefig('hypothesis_entropy_N%d.png' % (N_use), dpi=300)
+    
+    
 # %%

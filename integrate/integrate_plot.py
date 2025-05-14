@@ -1536,3 +1536,93 @@ def get_clim_cmap(f_prior_h5, Mstr='/M1'):
             cmap = 'jet'
 
         return clim, cmap
+
+
+def plot_cumulative_probability_profile(P_hypothesis, i1=0, i2=0, label=None, colors = None, hardcopy=True, name='cumulative_probability_profile'):
+    """
+    Plot the cumulative probability profile of different hypotheses.
+    This function visualizes how the probability of different hypotheses accumulates
+    over a sequence of data points, with each hypothesis represented as a colored
+    area in a stacked plot.
+    Parameters
+    ----------
+    P_hypothesis : numpy.ndarray
+        A 2D array where each row represents a hypothesis and each column
+        represents a data point. Values should be probabilities.
+    i1 : int, optional
+        Starting index for the x-axis (data points), default is 0.
+    i2 : int, optional
+        Ending index for the x-axis (data points), default is the number of data points
+        in P_hypothesis.
+    label : list of str, optional
+        List of labels for each hypothesis. If None, generic labels will be created.
+    colors : list or numpy.ndarray, optional
+        List of colors for each hypothesis. If None, colors from the 'hot' colormap will be used.
+    hardcopy : bool, optional
+        If True, saves the figure to a file named 'cumulative_probability_profile.png', default is True.
+    Returns
+    -------
+    None
+        The function displays the plot and optionally saves it to a file.
+    Notes
+    -----
+    The plot shows how probabilities accumulate across hypotheses, with each hypothesis
+    represented as a colored band. The total height of all bands at any x position equals 1.0
+    (or the sum of probabilities for that data point).
+    """
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    nhypothesis = P_hypothesis.shape[0]
+
+    if i2==0:
+        i2 = P_hypothesis.shape[1]
+
+    if label is None:
+        # Generate  list of length nhypothesis, with generic label names
+        label = [f'Hypothesiss {i+1}' for i in range(nhypothesis)]
+
+    # Define nypothesis colors from the hot colormap
+    if colors is None:
+        colors = plt.cm.hot(np.linspace(0, 1, nhypothesis))
+
+    ii  = np.arange(i1,i2,1)
+    P_hypothesis_plot = P_hypothesis[:,ii]
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    
+    # Calculate cumulative probabilities
+    cum_probs = np.zeros((P_hypothesis_plot.shape[0] + 1, P_hypothesis_plot.shape[1]))
+    for i in range(P_hypothesis_plot.shape[0]):
+        cum_probs[i+1] = cum_probs[i] + P_hypothesis_plot[i]
+
+    # Plot filled areas between cumulative probabilities
+    for i in range(P_hypothesis_plot.shape[0]):
+        label = f'Hypothesis {i+1}'
+        ax.fill_between(
+            ii, 
+            cum_probs[i], 
+            cum_probs[i+1], 
+            color=colors[i], 
+            alpha=0.7,
+            label=label
+        )
+
+    # Add labels and title
+    ax.set_xlabel('Data point index')
+    ax.set_ylabel('Cumulative Probability')
+    ax.set_title('Cumulative Probability of Hypotheses')
+    ax.legend(loc='upper right')
+
+    # Optional: Limit x-axis if needed to focus on a specific range
+    # ax.set_xlim(0, 1000)  # Uncomment to focus on first 1000 data points
+
+    plt.tight_layout()
+    plt.show()
+    # Save the figure if hardcopy is True
+    if hardcopy:
+        plt.savefig(name, dpi=300)
+        print("Saved figure as %s.png" % (name))
+
+
