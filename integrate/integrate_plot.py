@@ -1599,14 +1599,13 @@ def plot_cumulative_probability_profile(P_hypothesis, i1=0, i2=0, label=None, co
 
     # Plot filled areas between cumulative probabilities
     for i in range(P_hypothesis_plot.shape[0]):
-        label = f'Hypothesis {i+1}'
         ax.fill_between(
             ii, 
             cum_probs[i], 
             cum_probs[i+1], 
             color=colors[i], 
             alpha=0.7,
-            label=label
+            label=label[i]
         )
 
     # Add labels and title

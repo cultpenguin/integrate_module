@@ -78,7 +78,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=10000
+N=1000000
 z_max = 80
 RHO_min = 1
 RHO_max = 1000
@@ -88,8 +88,8 @@ f_prior_h5_arr = []
 hypothesis_name = []
 
 ## 2 layered model
-NLAY_min=1
-NLAY_max=1
+NLAY_min=2
+NLAY_max=2
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
@@ -150,7 +150,6 @@ nsteps=int(np.ceil(logN-logN1))+1
 nsteps = nsteps + nsteps-1
 N_use_arr = np.logspace(2, np.log10(N), num=nsteps, dtype=int)
 print(N_use_arr)
-N_use_arr = [100,1000]
 
 EV_all = []
 T_all = []
@@ -172,10 +171,11 @@ for N_use in N_use_arr:
             T_all.append(T)
 
     # Get the probability (and log-evidence) for each of the four hypothesis
-    P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr, label=hypothesis_name)
+    P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr)
     #P_hypothesis, EV_hypothesis = get_hypothesis_probability(f_post_h5_arr)
     # Plot a cumulative probability profile for the hypothesis
-    ig.plot_cumulative_probability_profile(P_hypothesis, i1=i1, i2=i2, label=None, name ='hyp_prob_N%d' %(N_use))
+    ig.plot_cumulative_probability_profile(P_hypothesis, i1=i1, i2=i2,label=hypothesis_name, name ='hyp_prob_N%d' %(N_use))
+    #ig.plot_cumulative_probability_profile(P_hypothesis, i1=i1, i2=i2)
     
 
     #  
