@@ -42,9 +42,10 @@ hardcopy=True
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
 case = 'DAUGAARD'
-case = 'FANGEL'
-case = 'HALD'
-case = 'HADERUP' # NOT YET AVAILABLE
+#case = 'FANGEL'
+#case = 'HALD'
+#case = 'HADERUP
+
 
 files = ig.get_case_data(case=case)
 f_data_h5_org = files[0]
@@ -79,7 +80,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=100000
+N=1000000
 z_max = 80
 RHO_min = 1
 RHO_max = 1000
@@ -202,28 +203,45 @@ print(N_use_arr)
 
 EV_all = []
 T_all = []
-f_post_h5_all_arr = []
+ic = -1
+T_hyp=5
+
+# if variable f_post_h5_arr_all exists then set H=1
+doInversion = True
+if 'f_post_h5_arr_all' in locals():
+    doInversion = False
+    print("f_post_h5_arr_all exists, set doInversion=False")
+
+if doInversion:
+    f_post_h5_arr_all = []
+
 for N_use in N_use_arr:
-    EV_arr = []
-    f_post_h5_arr = []
+    ic += 1
     # Loop over the prior models, and perform the inversion
-    for f_prior_data_h5 in  f_prior_data_h5_arr:
-        print("N_use=%d" % N_use)
-        f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8, N_use = N_use, updatePostStat=False)
-        ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=True, im=1)
-        f_post_h5_arr.append(f_post_h5)
-        f_post_h5_all_arr.append(f_post_h5)
+    if doInversion:
+        EV_arr = []
+        f_post_h5_arr = []
+        for f_prior_data_h5 in  f_prior_data_h5_arr:
+            print("N_use=%d" % N_use)
+            f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8, N_use = N_use, updatePostStat=False)
+            ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=True, im=1)
+            f_post_h5_arr.append(f_post_h5)
+    
+            # read T
+            with h5py.File(f_post_h5, 'r') as f:
+                T = f['T'][:]
+                T_all.append(T)
+        
+        f_post_h5_arr_all.append(f_post_h5_arr)
 
-        # read T
-        with h5py.File(f_post_h5, 'r') as f:
-            T = f['T'][:]
-            T_all.append(T)
+    else:
+        f_post_h5_arr = f_post_h5_arr_all[ic]
+        f_post_h5 = f_post_h5_arr[0]
 
-    #%% 
 
     # Get the probability (and log-evidence) for each of the four hypothesis
-    P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr)
-    #P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr, T=50)
+    #P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr)
+    P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr, T=T_hyp)
     # Plot a cumulative probability profile for the hypothesis
     ig.plot_cumulative_probability_profile(P_hypothesis, i1=i1, i2=i2,label=hypothesis_name, name ='hyp_prob_N%d' %(N_use))
     #ig.plot_cumulative_probability_profile(P_hypothesis, i1=i1, i2=i2)
@@ -252,15 +270,28 @@ for N_use in N_use_arr:
     cbar = plt.colorbar(scatter, ticks=range(1, n_hypothesis+1))
     cbar.set_label('Hypothesis')
     plt.title('Posterior mode of hypotheses')
-    plt.savefig('hypothesis_mode_N%d.png' % (N_use), dpi=300)
+    plt.savefig('hypothesis_mode_N%d_T%d.png' % (N_use,T_hyp), dpi=300)
     # Plot teh entorpy of the sigma(m|d,Hypothesis)
-    plt.figure(figsize=(12, 12))
-    scatter = plt.scatter(X, Y, c=ENT_hypothesis, s=5, vmin = 0, vmax=1.0, alpha=1, cmap='jet_r')
-    plt.xlabel('X coordinate')
-    plt.ylabel('Y coordinate')
-    plt.colorbar(scatter, label='Hypothesis Entropy')
+    #plt.figure(figsize=(12, 12))
+    
+    # Set the default font size for all plot elements
+    plt.rcParams.update({'font.size': 12})
+    
+    plt.figure(figsize=(8,8), facecolor='w', dpi=300, edgecolor='k')
+    scatter = plt.scatter(X, Y, c=ENT_hypothesis, s=5, vmin = 0, vmax=1.0, alpha=1, cmap='hot', edgecolors='k', linewidth=0.1)
+    plt.xlabel('X coordinate', fontsize=14)
+    plt.ylabel('Y coordinate', fontsize=14)
+    cbar = plt.colorbar(scatter, label='Hypothesis Entropy')
+    cbar.ax.tick_params(labelsize=12)
+    cbar.set_label('Hypothesis Entropy', fontsize=14)
+    
+    # Set font size for all tick labels (equivalent to MATLAB's set(gca,'FontSize',10))
+    plt.tick_params(axis='both', which='major', labelsize=12)
+    
     plt.grid()
-    plt.savefig('hypothesis_entropy_N%d.png' % (N_use), dpi=300)
+    plt.title('Hypothesis Entropy', fontsize=16)
+    plt.tight_layout()
+    plt.savefig('hypothesis_entropy_N%d_T%d.png' % (N_use,T_hyp), dpi=300)
 
     plt.show()
     
@@ -277,7 +308,7 @@ for i in range(nprior):
 
 # %%
 # The the probability of each hypothrdiod using evidence
-P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr)
+P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr, T=10)
 
 # Combine posterior arrays using P_hypothesis
 M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis)
