@@ -672,6 +672,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     kwargs.setdefault('hardcopy', False)
     kwargs.setdefault('cmap', 'jet')
     
+    alpha = kwargs.get('alpha',0.0)
+    key = kwargs.get('key','Median')
     txt = kwargs.get('txt','')
     showInfo = kwargs.get('showInfo', 0)
     
@@ -734,6 +736,19 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         except:
             a=1
 
+    # Compute alpha matrix 'A' such that 
+    # any values with Std<alpha are fully solid
+    # any values with Std>2*alpha are transparent
+    # linear interpolation between 0 and 1 elsewhere
+    A = np.zeros(Std.shape)
+    A = (Std-alpha)/(2*alpha)
+    A[A<0] = 0
+    A[A>1] = 1
+    A=1-A
+    #A[Std<alpha] = 1
+    #A[Std>=2*alpha] = 0
+    #A[Std>alpha] = (Std[Std>alpha]-alpha)/(np.max(Std)-alpha)
+    
     nm = Mean.shape[0]
     if nm<=1:
         pass
@@ -781,37 +796,49 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     # Create a figure with 3 subplots sharing the same Xaxis!
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
     
-    if nm>1:
+    # Set ax[0] to be invisible
+    ax[0].axis('off')
+
+    if (nm>1)&(key=='Mean'):
+        isp=1
         # MEAN
-        #im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mean[:,i1:i2], 
-        im1 = ax[0].pcolormesh(DDc, ZZc, Mean[:,i1:i2], 
+        im1 = ax[isp].pcolormesh(DDc, ZZc, Mean[:,i1:i2], 
                 cmap=cmap,            
                 shading='auto',
                 norm=LogNorm())
         im1.set_clim(clim[0],clim[1])        
-        ax[0].set_title('Mean %s' % name)
-        fig.colorbar(im1, ax=ax[0], label='%s' % name)
+        # if transp>0, set alpha
+        if alpha>0:
+            im1.set_alpha(A[:,i1:i2])
+        ax[isp].set_title('Mean %s' % name)
+        fig.colorbar(im1, ax=ax[isp], label='%s' % name)
     
-    if nm>1:
+    if (nm>1)&(key=='Median'):
+        isp=1
         # MEDIAN
-        im2 = ax[1].pcolormesh(DDc, ZZc, Median[:,i1:i2], 
+        im2 = ax[isp].pcolormesh(DDc, ZZc, Median[:,i1:i2], 
                 cmap=cmap,            
                 shading='auto',
                 norm=LogNorm())  # Set color scale to logarithmic
         im2.set_clim(clim[0],clim[1])        
-        ax[1].set_title('Median %s' % name)
-        fig.colorbar(im2, ax=ax[1], label='%s' % name) 
+        if alpha>0:
+            im2.set_alpha(A[:,i1:i2])
+        ax[isp].set_title('Median %s' % name)
+        fig.colorbar(im2, ax=ax[isp], label='%s' % name) 
 
     if nm>1:
+        isp=2
         # STD
         import matplotlib
-        im3 = ax[2].pcolormesh(DDc, ZZc, Std[:,i1:i2], 
+        im3 = ax[isp].pcolormesh(DDc, ZZc, Std[:,i1:i2], 
                     cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]), 
                     shading='auto')
         im3.set_clim(0,1)
-        ax[2].set_title('Std %s' % name)
-        fig.colorbar(im3, ax=ax[2], label='Standard deviation (Ohm.m)')
+        ax[isp].set_title('Std %s' % name)
+        fig.colorbar(im3, ax=ax[isp], label='Standard deviation (Ohm.m)')
     else:
+        isp=2
+        
         im3 = ax[2].plot(id[i1:i2],Mean[:,i1:i2].T, 'k', label='Mean')
         ax[2].plot(id[i1:i2],Mean[:,i1:i2].T+2*Std[:,i1:i2].T, 'k:', label='P97.5')
         ax[2].plot(id[i1:i2],Mean[:,i1:i2].T-2*Std[:,i1:i2].T, 'k:', label='P2.5')
@@ -830,7 +857,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         ax[1].axis('off')
         
     ## T and V
-    ax[0].set_xticks([])
+    #ax[0].set_xticks([])
     ax[1].set_xticks([])
     ax[2].set_xticks([])
     
