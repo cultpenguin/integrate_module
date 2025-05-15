@@ -79,7 +79,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
+N=100000
 z_max = 80
 RHO_min = 1
 RHO_max = 1000
@@ -95,8 +95,8 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_1l.h5', showInfo=showInfo)
-f_prior_h5_arr.append(f_prior_h5)
-hypothesis_name.append('1 layer model')
+#f_prior_h5_arr.append(f_prior_h5)
+#hypothesis_name.append('1 layer model')
 
 ## 2 layered model
 NLAY_min=2
@@ -105,8 +105,30 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_2l.h5', showInfo=showInfo)
+#f_prior_h5_arr.append(f_prior_h5)
+#hypothesis_name.append('2 layered model')
+
+## 3 layered model
+NLAY_min=3
+NLAY_max=3
+f_prior_h5 = ig.prior_model_layered(N=N,
+                                    lay_dist='uniform', z_max = z_max, 
+                                    NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
+                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_3l.h5', showInfo=showInfo)
 f_prior_h5_arr.append(f_prior_h5)
-hypothesis_name.append('2 layered model')
+hypothesis_name.append('3 layered model')
+
+## 3 layered model
+NLAY_min=3
+NLAY_max=3
+f_prior_h5 = ig.prior_model_layered(N=N,
+                                    lay_dist='uniform', z_max = z_max, 
+                                    NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
+                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_3l_alt.h5', showInfo=showInfo)
+f_prior_h5_arr.append(f_prior_h5)
+hypothesis_name.append('3 layered model - alt')
+
+
 
 ## 4 layered model
 NLAY_min=4
@@ -115,8 +137,8 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_4l.h5', showInfo=showInfo)
-f_prior_h5_arr.append(f_prior_h5)
-hypothesis_name.append('4 layered model')
+#f_prior_h5_arr.append(f_prior_h5)
+#hypothesis_name.append('4 layered model')
 
 ## 6 layered model
 NLAY_min=6
@@ -125,8 +147,8 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_6l.h5', showInfo=showInfo)
-f_prior_h5_arr.append(f_prior_h5)
-hypothesis_name.append('6 layered model')
+#f_prior_h5_arr.append(f_prior_h5)
+#hypothesis_name.append('6 layered model')
 
 
 ## 4 layered model
@@ -197,9 +219,11 @@ for N_use in N_use_arr:
             T = f['T'][:]
             T_all.append(T)
 
+    #%% 
+
     # Get the probability (and log-evidence) for each of the four hypothesis
     P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr)
-    #P_hypothesis, EV_hypothesis = get_hypothesis_probability(f_post_h5_arr)
+    #P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr, T=50)
     # Plot a cumulative probability profile for the hypothesis
     ig.plot_cumulative_probability_profile(P_hypothesis, i1=i1, i2=i2,label=hypothesis_name, name ='hyp_prob_N%d' %(N_use))
     #ig.plot_cumulative_probability_profile(P_hypothesis, i1=i1, i2=i2)
@@ -231,10 +255,10 @@ for N_use in N_use_arr:
     plt.savefig('hypothesis_mode_N%d.png' % (N_use), dpi=300)
     # Plot teh entorpy of the sigma(m|d,Hypothesis)
     plt.figure(figsize=(12, 12))
-    scatter = plt.scatter(X, Y, c=ENT_hypothesis, s=5, vmin = -.05, vmax=1.0, alpha=1, cmap='hot_r')
+    scatter = plt.scatter(X, Y, c=ENT_hypothesis, s=5, vmin = 0, vmax=1.0, alpha=1, cmap='jet_r')
     plt.xlabel('X coordinate')
     plt.ylabel('Y coordinate')
-    plt.colorbar(scatter, label='Hypotheisis Entropy')
+    plt.colorbar(scatter, label='Hypothesis Entropy')
     plt.grid()
     plt.savefig('hypothesis_entropy_N%d.png' % (N_use), dpi=300)
 
@@ -261,8 +285,8 @@ M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis
 # M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr)
 
 
-plt.imshow(M_post_arr[1], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
-#plt.imshow(M_post_arr[0][110], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
+#plt.imshow(M_post_arr[1], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
+plt.imshow(M_post_arr[0][110], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
 
 
 

@@ -2828,7 +2828,7 @@ def class_id_to_idx(D, class_id=None):
 
 
 
-def get_hypothesis_probability(f_post_h5_arr):
+def get_hypothesis_probability(f_post_h5_arr, T=1):
     """
     Calculate hypothesis probabilities and related statistics from posterior files.
     This function processes an array of HDF5 file paths containing posterior evidences
@@ -2839,6 +2839,10 @@ def get_hypothesis_probability(f_post_h5_arr):
     f_post_h5_arr : list of str
         Array of file paths to HDF5 files containing posterior evidence values.
         Each file should have an '/EV' dataset.
+    T : float, optional
+        Temperature parameter that applies annealing Default is 1.
+        The higher the temperature, the more uniform the distribution.
+        Can be useful to smooth the distribution using evidence computed from smaller lookuptables.
     Returns
     -------
     P : numpy.ndarray
@@ -2866,7 +2870,9 @@ def get_hypothesis_probability(f_post_h5_arr):
         EV_all.append(EV)
     EV_all = np.array(EV_all)
     # subtract the small value on each column form each column
-    P  = np.exp(EV_all - np.max(EV_all, axis=0))
+    P  = np.exp(EV_all - np.max(EV_all, axis=0))**(1/T)
+    P  = np.exp((1/T)*(EV_all - np.max(EV_all, axis=0)))
+    #P_acc = np.exp((1/T) * (logL - np.nanmax(logL)))
     # Normalize each column to sum to 1 using NumPy broadcasting
     P = P / np.sum(P, axis=0, keepdims=True)
 
