@@ -41,10 +41,11 @@ hardcopy=True
 #
 
 # %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
-case = 'DAUGAARD'
+case = 'GRUSGRAV'; i1=0; i2=800
+case = 'DAUGAARD'; i1=7600;i2=8600
 #case = 'FANGEL'
 #case = 'HALD'
-#case = 'HADERUP
+#case = 'HADERUP; i1=7600;i2=8600
 
 
 files = ig.get_case_data(case=case)
@@ -80,7 +81,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=1000000
+N=5000000
 z_max = 80
 RHO_min = 1
 RHO_max = 1000
@@ -188,8 +189,6 @@ for f_prior_h5 in f_prior_h5_arr:
 # %% Invert using the difefrent prior models, using different lookup table sizes
 nprior = len(f_prior_data_h5_arr)
 
-i1=7600
-i2=8600
     
 # # Narr should an array from 10 to N, in nstep in logspace
 N1=100
@@ -204,7 +203,7 @@ print(N_use_arr)
 EV_all = []
 T_all = []
 ic = -1
-T_hyp=20
+T_hyp=1
 
 # if variable f_post_h5_arr_all exists then set H=1
 doInversion = True

@@ -745,14 +745,12 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     # any values with Std<alpha are fully solid
     # any values with Std>2*alpha are transparent
     # linear interpolation between 0 and 1 elsewhere
-    A = np.zeros(Std.shape)
-    A = (Std-alpha)/(2*alpha)
-    A[A<0] = 0
-    A[A>1] = 1
-    A=1-A
-    #A[Std<alpha] = 1
-    #A[Std>=2*alpha] = 0
-    #A[Std>alpha] = (Std[Std>alpha]-alpha)/(np.max(Std)-alpha)
+    A = np.zeros(Std.shape)+alpha
+    if alpha>0:
+        A = (Std-alpha)/(2*alpha)
+        A[A<0] = 0
+        A[A>1] = 1
+        A=1-A
     
     nm = Mean.shape[0]
     if nm<=1:
