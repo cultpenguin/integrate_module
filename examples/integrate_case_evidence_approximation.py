@@ -79,7 +79,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% SELECT THE PRIOR MODEL
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=100000
+N=1000000
 z_max = 80
 RHO_min = 1
 RHO_max = 1000
@@ -175,7 +175,7 @@ logN = np.log10(N)
 nsteps=int(np.ceil(logN-logN1))+1
 nsteps = nsteps + nsteps-1
 N_use_arr = np.logspace(2, np.log10(N), num=nsteps, dtype=int)
-N_use_arr = [N]
+#N_use_arr = [N]
 print(N_use_arr)
 
 EV_all = []
@@ -242,6 +242,10 @@ for N_use in N_use_arr:
     
 
 
+# %% 
+for i in range(nprior):
+    ig.plot_data_prior_post(f_post_h5_arr[i], i_plot=i1, ylim=[1e-13,1e-5], hardcopy=hardcopy)
+
 
 # %% [markdown]
 # ## Combine mulitple hypotheses
@@ -259,5 +263,29 @@ M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis
 
 plt.imshow(M_post_arr[1], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
 #plt.imshow(M_post_arr[0][110], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
+
+
+
+# %%
+
+#%% Comput the mean, median and std of the posterior samples, and save it to a copy a posterior hdf5 file
+ns, nr, nm = M_post_arr[0].shape
+M_median = np.zeros((ns, nm))
+M_mean = np.zeros((ns, nm))
+M_std = np.zeros((ns, nm))
+for i in range(ns):
+    M_median[i] = np.median(M_post_arr[0][i], axis=0)
+    M_mean[i] = np.mean(M_post_arr[0][i], axis=0)
+    M_std[i] = np.std(np.log10(M_post_arr[0][i]), axis=0)
+f_post_h5_combined = 'posterior_combined.h5'
+ig.copy_hdf5_file(f_post_h5_arr[0], f_post_h5_combined, compress = True)
+with h5py.File(f_post_h5_combined, 'a') as f:
+    f['/M1/Mean'][:] = M_mean
+    f['/M1/Median'][:] = M_median
+    f['/M1/Std'][:] = M_std
+
+ig.plot_profile(f_post_h5_arr[1], i1=i1, i2=i2, hardcopy=True, im=1)
+ig.plot_profile(f_post_h5_combined, i1=i1, i2=i2, hardcopy=True, im=1)
+
 
 # %%

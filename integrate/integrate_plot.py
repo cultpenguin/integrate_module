@@ -1143,7 +1143,7 @@ def plot_data_prior(f_prior_data_h5,
     
     return True
 
-def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
+def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[], **kwargs):
     """
     Plot the prior and posterior data for a given dataset.
 
@@ -1185,7 +1185,7 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
     # plot_data_prior_post for each id
     if isinstance(id, list):
         for i in id:
-            plot_data_prior_post(f_post_h5, i_plot=i_plot, nr=nr, id=i, **kwargs)
+            plot_data_prior_post(f_post_h5, i_plot=i_plot, nr=nr, id=i, ylim=ylim, **kwargs)
         return
 
     if id==0:
@@ -1201,19 +1201,17 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
                     id_plot.append(nd)  
 
         #print(id_plot)
-        plot_data_prior_post(f_post_h5, i_plot=i_plot, nr=nr, id=id_plot, **kwargs)
+        plot_data_prior_post(f_post_h5, i_plot=i_plot, nr=nr, id=id_plot, ylim=ylim, **kwargs)
         return
 
     if id>0:
         Dkey = 'D%d' % id
-    
 
     f_data = h5py.File(f_data_h5,'r')
     f_prior = h5py.File(f_prior_h5,'r')
 
     cols=['gray','black','red']
     cols=['wheat','black','red']
-
 
     if len(Dkey)==0:
         nd = 0
@@ -1297,9 +1295,12 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, Dkey=[], **kwargs):
             else:
                 ax.semilogy(d_obs[i_d,:].T,'-',linewidth=1, label='d_obs', color=cols[2])
                 ax.semilogy(d_obs[i_d,:].T,'*',linewidth=1, label='d_obs', color=cols[2])
-            
+
+        if ylim is not None:            
+            plt.ylim(ylim)
+
         plt.xlabel('Data #')
-        plt.ylabel('Data')
+        plt.ylabel('dBDt')
         plt.grid()
         #plt.legend()
 

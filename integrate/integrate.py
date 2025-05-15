@@ -2962,8 +2962,6 @@ def sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis=None):
             i_use = i_use_all[:,i,:]
 
             n_use = P_hypothesis_is*n_use_all
-            #num_scale = np.max(n_use_all)/np.max(n_use)
-            #n_use = num_scale*n_use
             n_use = np.round(n_use).astype(int)
             #print(n_use)
             n_sum = np.sum(n_use)
@@ -2972,24 +2970,31 @@ def sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis=None):
             if delta_n > 0:
                 n_use[0] = n_use[0] + delta_n
             elif delta_n < 0:
-                n_use[0] = n_use[0] - np.abs(delta_n)
+                pass
+                #n_use[0] = n_use[0] - np.abs(delta_n)
             n_sum = np.sum(n_use)
-            #print(n_sum)
             
             M_dummy = []
             for j in range(len(n_use)):  
-                # i_use_singe should be n_use[j] random values taken from  i_use[j]
-                #_use_single = i_use[j, np.random.choice(i_use[j].shape[0], n_use[j], replace=False)] if n_use[j] > 0 else np.array([])
-                
                 # use the first  realizations from i_use[j]
                 #i_use_single = i_use[j,:n_use[j]]
                 # use n_use[j] random realizations from iuse[j]
-                i_use_single = np.random.choice(i_use[j], n_use[j], replace=False)
-                
-                M_dummy.append(M_all[j][im][i_use_single,:])
+                #print('    j=%d, n_use=%d' % (j,n_use[j]))
+                if n_use[j]>0:                    
+                    i_use_single = np.random.choice(i_use[j], n_use[j], replace=False)                
+                    M_dummy.append(M_all[j][im][i_use_single,:])
+                    
             M_sounding = np.concatenate(M_dummy, axis=0)        
-            M_post[i]=M_sounding
-
+            try:
+                # take the first n_use_all[0] realizations
+                M_post[i]=M_sounding[:n_use_all[0]]
+            except:
+                print('i=%d, [%d], n_sum=%d, delta_n=%d, n_use_all[0]=%d' % (i,M_sounding.shape[0],n_sum,delta_n,n_use_all[0]))
+                try:
+                    M_post[i]=M_sounding[:,:n_use[0]]
+                except:
+                    pass
+                
         M_post_arr.append(M_post)    
                 
     return M_post_arr
