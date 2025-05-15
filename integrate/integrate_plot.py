@@ -664,6 +664,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     :type i2: int
     :param im: Index of the profile to plot.
     :type im: int
+    :param key: 'Mean'm or 'Median'[def] profile
+    :type key: str
+    :param alpha: Set the transparency realtove to the STD values. alpha=0 means no transparency, alpha=.8 means full transparency when std>0.8.
+    :type alpha: float
+        :type alpha: float
     :param kwargs: Additional keyword arguments.
     :returns: None
     """

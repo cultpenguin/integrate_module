@@ -2826,8 +2826,6 @@ def class_id_to_idx(D, class_id=None):
 
 
 
-
-
 def get_hypothesis_probability(f_post_h5_arr, T=1):
     """
     Calculate hypothesis probabilities and related statistics from posterior files.

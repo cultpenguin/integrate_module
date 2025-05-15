@@ -204,7 +204,7 @@ print(N_use_arr)
 EV_all = []
 T_all = []
 ic = -1
-T_hyp=5
+T_hyp=20
 
 # if variable f_post_h5_arr_all exists then set H=1
 doInversion = True
@@ -262,7 +262,8 @@ for N_use in N_use_arr:
     # Create boundaries for each hypothesis
     bounds = np.arange(0.5, n_hypothesis + 1.5, 1)
     norm = BoundaryNorm(bounds, cmap.N)
-    scatter = plt.scatter(X, Y, c=MODE_hypothesis+1, s=5, cmap=cmap, alpha=1-ENT_hypothesis, norm=norm)
+    scatter = plt.scatter(X, Y, c=MODE_hypothesis+1, s=5, cmap=cmap, alpha=1-ENT_hypothesis*.95, norm=norm, edgecolors='k', linewidth=0.05)
+    #scatter = plt.scatter(X, Y, c=MODE_hypothesis+1, s=5, cmap=cmap, alpha=1, norm=norm, edgecolors='k', linewidth=0.1)
     plt.xlabel('X coordinate')
     plt.ylabel('Y coordinate')
     plt.grid()
@@ -308,7 +309,7 @@ for i in range(nprior):
 
 # %%
 # The the probability of each hypothrdiod using evidence
-P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr, T=10)
+P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr, T=1)
 
 # Combine posterior arrays using P_hypothesis
 M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis)
@@ -323,7 +324,7 @@ plt.imshow(M_post_arr[0][110], aspect='auto', interpolation='nearest', vmin=1, v
 
 # %%
 
-#%% Comput the mean, median and std of the posterior samples, and save it to a copy a posterior hdf5 file
+#%% Compute the mean, median and std of the posterior samples, and save it to a copy a posterior hdf5 file
 ns, nr, nm = M_post_arr[0].shape
 M_median = np.zeros((ns, nm))
 M_mean = np.zeros((ns, nm))
@@ -339,7 +340,7 @@ with h5py.File(f_post_h5_combined, 'a') as f:
     f['/M1/Median'][:] = M_median
     f['/M1/Std'][:] = M_std
 
-ig.plot_profile(f_post_h5_arr[1], i1=i1, i2=i2, hardcopy=True, im=1)
+ig.plot_profile(f_post_h5_arr[-1], i1=i1, i2=i2, hardcopy=True, im=1)
 ig.plot_profile(f_post_h5_combined, i1=i1, i2=i2, hardcopy=True, im=1)
 
 
