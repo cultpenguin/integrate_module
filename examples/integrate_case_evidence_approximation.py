@@ -126,9 +126,23 @@ NLAY_max=3
 f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_3l_alt.h5', showInfo=showInfo)
+                                    RHO_dist=RHO_dist, RHO_min=30, RHO_max=RHO_max, f_prior_h5 = 'prior_3l_alt.h5', showInfo=showInfo)
 f_prior_h5_arr.append(f_prior_h5)
-hypothesis_name.append('3 layered model - alt')
+hypothesis_name.append('3 layered model - min30')
+
+
+
+## 3 layered model
+NLAY_min=3
+NLAY_max=3
+f_prior_h5 = ig.prior_model_layered(N=N,
+                                    lay_dist='uniform', z_max = z_max, 
+                                    NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
+                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_3l_alt.h5', showInfo=showInfo)
+#f_prior_h5_arr.append(f_prior_h5)
+#hypothesis_name.append('3 layered model - alt')
+
+
 
 
 
@@ -184,7 +198,7 @@ for f_prior_h5 in f_prior_h5_arr:
     f_prior_data_h5_arr.append(f_prior_data_h5)
 
 # %% [markdown]
-# ## Perform inversion for multiuple lookup table sizes
+# ## Perform inversion for multiple lookup table sizes
 
 # %% Invert using the difefrent prior models, using different lookup table sizes
 nprior = len(f_prior_data_h5_arr)
@@ -203,7 +217,7 @@ print(N_use_arr)
 EV_all = []
 T_all = []
 ic = -1
-T_hyp=1
+T_hyp=5
 
 # if variable f_post_h5_arr_all exists then set H=1
 doInversion = True
