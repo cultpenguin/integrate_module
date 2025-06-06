@@ -76,15 +76,21 @@ def is_notebook():
 def use_parallel(**kwargs):
     """
     Determine if parallel processing can be used based on the environment.
+    
     This function checks if the code is running in a Jupyter notebook or on a 
     POSIX system (e.g., Linux). If either condition is met, parallel processing 
-    is considered OK. Otherwise, it is not recommended unless the primary script 
+    is considered safe. Otherwise, it is not recommended unless the primary script 
     is embedded in an `if __name__ == "__main__":` block.
-    :param kwargs: Additional keyword arguments.
-        - showInfo (int): If greater than 0, prints information about the 
-          environment and parallel processing status. Default is 0.
-    :return: 
-        bool: True if parallel processing is OK, False otherwise.
+    
+    :param kwargs: Additional keyword arguments including showInfo for verbosity control
+    :type kwargs: dict
+    
+    :returns: True if parallel processing is safe, False otherwise
+    :rtype: bool
+    
+    .. note::
+        showInfo parameter: If greater than 0, prints information about the 
+        environment and parallel processing status. Default is 0.
     """
     import os
     showInfo = kwargs.get('showInfo', 0)
@@ -1641,7 +1647,25 @@ def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **
 
 
 def create_shared_memory(arrays):
-    """Create shared memory segments for arrays."""
+    """
+    Create shared memory segments for arrays.
+    
+    This function creates shared memory segments for a list of numpy arrays,
+    allowing them to be accessed efficiently across multiple processes without
+    copying data. Returns both memory references and objects for cleanup.
+    
+    :param arrays: List of numpy arrays to place in shared memory
+    :type arrays: list
+    
+    :returns: Tuple containing (shared_memories, shm_objects) where shared_memories 
+              is a list of (name, shape, dtype) tuples and shm_objects is a list 
+              of SharedMemory objects for cleanup
+    :rtype: tuple
+    
+    .. note::
+        The returned shm_objects must be cleaned up using cleanup_shared_memory()
+        to prevent memory leaks. This should be done in a finally block.
+    """
     shared_memories = []
     shm_objects = []
     
@@ -1663,7 +1687,24 @@ def create_shared_memory(arrays):
         raise
 
 def reconstruct_shared_arrays(shared_memory_refs):
-    """Reconstruct arrays from shared memory references."""
+    """
+    Reconstruct arrays from shared memory references.
+    
+    This function takes shared memory references (created by create_shared_memory)
+    and reconstructs the original numpy arrays by accessing the shared memory
+    segments. Used by worker processes to access shared data.
+    
+    :param shared_memory_refs: List of (name, shape, dtype) tuples identifying shared memory segments
+    :type shared_memory_refs: list
+    
+    :returns: List of numpy arrays reconstructed from shared memory
+    :rtype: list
+    
+    .. warning::
+        The reconstructed arrays are views into shared memory. Modifications
+        will affect the shared data across all processes. Use .copy() if
+        independent copies are needed.
+    """
     reconstructed_arrays = []
     for shm_name, shape, dtype in shared_memory_refs:
         try:
@@ -1677,7 +1718,27 @@ def reconstruct_shared_arrays(shared_memory_refs):
     return reconstructed_arrays
 
 def cleanup_shared_memory(shm_objects):
-    """Clean up shared memory segments."""
+    """
+    Clean up shared memory segments.
+    
+    This function properly closes and unlinks shared memory objects created during
+    parallel processing to prevent memory leaks and system resource exhaustion.
+    It handles cleanup gracefully by catching and ignoring errors for objects
+    that may have already been cleaned up.
+    
+    :param shm_objects: List of shared memory objects to clean up
+    :type shm_objects: list
+    
+    :returns: None
+    :rtype: None
+    
+    .. note::
+        This function should always be called in a finally block or similar
+        error-safe context to ensure cleanup occurs even if exceptions are raised.
+        
+        Each shared memory object is both closed (to release the local reference)
+        and unlinked (to remove it from the system).
+    """
     if not shm_objects:
         return
     
@@ -2465,21 +2526,21 @@ def select_subset_for_inversion(dd, N_app):
 def likelihood_gaussian_diagonal(D, d_obs, d_std, N_app=0):
     """
     Compute the Gaussian likelihood for a diagonal covariance matrix.
-    This function calculates the likelihood of observed data `d_obs` given 
-    a set of predicted data `D` and standard deviations `d_std` assuming 
-    a Gaussian distribution with a diagonal covariance matrix.
-    Parameters
-    ----------
-    D : numpy.ndarray
-        Predicted data array of shape (n_samples, n_features).
-    d_obs : numpy.ndarray
-        Observed data array of shape (n_features,).
-    d_std : numpy.ndarray
-        Standard deviation array of shape (n_features,).
-    Returns
-    -------
-    numpy.ndarray
-        Likelihood array of shape (n_samples,).
+    
+    This function calculates the likelihood of observed data given a set of predicted data
+    and standard deviations, assuming a Gaussian distribution with a diagonal covariance matrix.
+    
+    :param D: Predicted data array of shape (n_samples, n_features)
+    :type D: numpy.ndarray
+    :param d_obs: Observed data array of shape (n_features,)
+    :type d_obs: numpy.ndarray
+    :param d_std: Standard deviation array of shape (n_features,)
+    :type d_std: numpy.ndarray
+    :param N_app: Number of data points to use for approximation. If 0, uses all data
+    :type N_app: int, optional
+    
+    :returns: Likelihood array of shape (n_samples,)
+    :rtype: numpy.ndarray
     """
     
     # Compute the likelihood
@@ -2504,24 +2565,29 @@ def likelihood_gaussian_diagonal(D, d_obs, d_std, N_app=0):
 
 def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized=False):
     """
-    Calculate the Gaussian likelihood for a given dataset.
-    Parameters
-    ----------
-    D : numpy.ndarray
-        The model predictions, with shape (n_samples, n_features).
-    d_obs : numpy.ndarray
-        The observed data, with shape (n_features,).
-    Cd : numpy.ndarray
-        The covariance matrix of the observed data, with shape (n_features, n_features).
-    checkNaN : bool, optional
-        If True, the function will handle NaN values in `d_obs` by ignoring them in the calculations. 
-        Default is True.
-    Returns
-    -------
-    numpy.ndarray
-        The Gaussian likelihood for each sample, with shape (n_samples,).
-    TODO
-        We need to check that this works when D has NAN value.. (and Why does it ever?)
+    Calculate the Gaussian likelihood with full covariance matrix.
+    
+    This function computes likelihood values for model predictions given observed data
+    and a full covariance matrix, handling NaN values appropriately.
+    
+    :param D: Model predictions with shape (n_samples, n_features)
+    :type D: numpy.ndarray
+    :param d_obs: Observed data with shape (n_features,)
+    :type d_obs: numpy.ndarray
+    :param Cd: Covariance matrix of observed data with shape (n_features, n_features)
+    :type Cd: numpy.ndarray
+    :param N_app: Number of data points to use for approximation. If 0, uses all data
+    :type N_app: int, optional
+    :param checkNaN: If True, handles NaN values in d_obs by ignoring them in calculations
+    :type checkNaN: bool, optional
+    :param useVectorized: If True, uses vectorized computation for better performance
+    :type useVectorized: bool, optional
+    
+    :returns: Gaussian likelihood for each sample with shape (n_samples,)
+    :rtype: numpy.ndarray
+    
+    .. note::
+        **TODO:** Check that this works when D has NaN values and determine why they occur.
     """
     
     if checkNaN:
@@ -2566,38 +2632,29 @@ def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized
 def likelihood_multinomial(D, P_obs, class_id=None, class_is_idx=False, entropyFilter=False, entropyThreshold=0.99):
     """
     Calculate log-likelihood of multinomial distribution for discrete data.
-    This function computes the log-likelihood of multinomial distribution for given 
-    discrete data using direct indexing and optimized array operations.
-    Parameters
-    ----------
-    D : numpy.ndarray
-        Matrix of observed discrete data with shape (N, n_features), where N is the
-        number of samples and each element represents a class ID.
-    P_obs : numpy.ndarray
-        Matrix of probabilities with shape (n_classes, n_features), where each column
-        represents probability distribution over classes for a feature.
-    class_id : numpy.ndarray
-        Array of unique class IDs corresponding to rows in P_obs.
-        If class=None, then the id class id's are extracted from the unique values in D.
-    class_is_idx=False, optional
-        If True, class_id is already an index. 
-        Default is False, and then the id is computed from the class_id array.
-    entropyFilter : bool, optional
-        If True, applies entropy filtering to select features. Default is False.
-    entropyThreshold : float, optional
-        Threshold value for entropy filtering, features with entropy below this value
-        are selected. Default is 0.99.
-        Log-likelihood values for each sample, shape (N,).        
-    Returns
-    -------
-    numpy.ndarray
-        Log-likelihood values for each sample, shape (N, 1).
-    Notes
-    -----
-    The function:
-        1. Creates a mapping from class IDs to indices
-        2. Converts test data to corresponding indices
-        3. Retrieves probabilities using advanced indexing
+    
+    This function computes the log-likelihood of multinomial distribution for discrete data
+    using direct indexing and optimized array operations for efficient computation.
+    
+    :param D: Matrix of observed discrete data with shape (N, n_features), where each element represents a class ID
+    :type D: numpy.ndarray
+    :param P_obs: Matrix of probabilities with shape (n_classes, n_features), where each column represents probability distribution over classes
+    :type P_obs: numpy.ndarray
+    :param class_id: Array of unique class IDs corresponding to rows in P_obs. If None, extracted from unique values in D
+    :type class_id: numpy.ndarray, optional
+    :param class_is_idx: If True, class_id is already an index. If False, computes index from class_id array
+    :type class_is_idx: bool, optional
+    :param entropyFilter: If True, applies entropy filtering to select features
+    :type entropyFilter: bool, optional
+    :param entropyThreshold: Threshold for entropy filtering. Features with entropy below this value are selected
+    :type entropyThreshold: float, optional
+    
+    :returns: Log-likelihood values for each sample with shape (N, 1)
+    :rtype: numpy.ndarray
+    
+    .. note::
+        The function creates a mapping from class IDs to indices, converts test data to
+        corresponding indices, and retrieves probabilities using advanced indexing.
         4. Calculates log likelihood using max normalization for numerical stability
 
     """
@@ -2648,63 +2705,47 @@ def likelihood_multinomial(D, P_obs, class_id=None, class_is_idx=False, entropyF
 def synthetic_case(case='Wedge', **kwargs):
     """
     Generate synthetic geological models for different cases.
-    Parameters
-    ----------
-    case : str, optional
-        The type of synthetic case to generate. Options are 'Wedge' and '3Layer'. Default is 'Wedge'.
-    **kwargs : dict, optional
-        Additional parameters for the synthetic case generation.
-        Common parameters:
-        - showInfo : int, optional
-            If greater than 0, print information about the generated case. Default is 0.
-        Parameters for 'Wedge' case:
-        - x_max : int, optional
-            Maximum x-dimension size. Default is 1000.
-        - dx : float, optional
-            Step size in the x-dimension. Default is 1000./x_max.
-        - z_max : int, optional
-            Maximum z-dimension size. Default is 90.
-        - dz : float, optional
-            Step size in the z-dimension. Default is 1.
-        - z1 : float, optional
-            Depth at which the wedge starts. Default is z_max/10.
-        - rho : list of float, optional
-            Density values for different layers. Default is [100, 200, 120].
-        - wedge_angle : float, optional
-            Angle of the wedge in degrees. Default is 1.
-        Parameters for '3Layer' case:
-        - x_max : int, optional
-            Maximum x-dimension size. Default is 100.
-        - x_range : float, optional
-            Range in the x-dimension for the cosine function. Default is x_max/4.
-        - dx : float, optional
-            Step size in the x-dimension. Default is 1.
-        - z_max : int, optional
-            Maximum z-dimension size. Default is 60.
-        - dz : float, optional
-            Step size in the z-dimension. Default is 1.
-        - z1 : float, optional
-            Depth at which the first layer ends. Default is z_max/3.
-        - z_thick : float, optional
-            Thickness of the second layer. Default is z_max/2.
-        - rho1_1 : float, optional
-            Density at the start of the first layer. Default is 120.
-        - rho1_2 : float, optional
-            Density at the end of the first layer. Default is 10.
-        - rho2_1 : float, optional
-            Density at the start of the second layer. Default is rho1_2.
-        - rho2_2 : float, optional
-            Density at the end of the second layer. Default is rho1_1.
-        - rho3 : float, optional
-            Density of the third layer. Default is 120.
-    Returns
-    -------
-    M : numpy.ndarray
-        The generated synthetic model.
-    x : numpy.ndarray
-        The x-coordinates of the model.
-    z : numpy.ndarray
-        The z-coordinates of the model.
+    
+    This function creates synthetic 2D geological models for testing and validation purposes.
+    Supports 'Wedge' and '3Layer' model types with customizable parameters.
+    
+    :param case: The type of synthetic case to generate. Options are 'Wedge' and '3Layer'
+    :type case: str, optional
+    :param kwargs: Additional parameters for synthetic case generation
+    :type kwargs: dict
+    
+    :returns: Tuple containing (M, x, z) where M is the generated synthetic model, x is x-coordinates, z is z-coordinates
+    :rtype: tuple
+    
+    .. note::
+        **Common Parameters:**
+        
+        - showInfo (int): If greater than 0, print information about the generated case. Default is 0.
+        
+        **Parameters for 'Wedge' case:**
+        
+        - x_max (int): Maximum x-dimension size. Default is 1000.
+        - dx (float): Step size in the x-dimension. Default is 1000./x_max.
+        - z_max (int): Maximum z-dimension size. Default is 90.
+        - dz (float): Step size in the z-dimension. Default is 1.
+        - z1 (float): Depth at which the wedge starts. Default is z_max/10.
+        - rho (list): Density values for different layers. Default is [100, 200, 120].
+        - wedge_angle (float): Angle of the wedge in degrees. Default is 1.
+        
+        **Parameters for '3Layer' case:**
+        
+        - x_max (int): Maximum x-dimension size. Default is 100.
+        - x_range (float): Range in the x-dimension for the cosine function. Default is x_max/4.
+        - dx (float): Step size in the x-dimension. Default is 1.
+        - z_max (int): Maximum z-dimension size. Default is 60.
+        - dz (float): Step size in the z-dimension. Default is 1.
+        - z1 (float): Depth at which the first layer ends. Default is z_max/3.
+        - z_thick (float): Thickness of the second layer. Default is z_max/2.
+        - rho1_1 (float): Density at the start of the first layer. Default is 120.
+        - rho1_2 (float): Density at the end of the first layer. Default is 10.
+        - rho2_1 (float): Density at the start of the second layer. Default is rho1_2.
+        - rho2_2 (float): Density at the end of the second layer. Default is rho1_1.
+        - rho3 (float): Density of the third layer. Default is 120.
     """
     
     showInfo = kwargs.get('showInfo', 0)
@@ -3023,33 +3064,27 @@ def class_id_to_idx(D, class_id=None):
 def get_hypothesis_probability(f_post_h5_arr, T=1):
     """
     Calculate hypothesis probabilities and related statistics from posterior files.
+    
     This function processes an array of HDF5 file paths containing posterior evidences
     to compute normalized probabilities for each hypothesis, along with evidence values,
     mode hypotheses, and entropy measures.
-    Parameters
-    ----------
-    f_post_h5_arr : list of str
-        Array of file paths to HDF5 files containing posterior evidence values.
-        Each file should have an '/EV' dataset.
-    T : float, optional
-        Temperature parameter that applies annealing Default is 1.
-        The higher the temperature, the more uniform the distribution.
-        Can be useful to smooth the distribution using evidence computed from smaller lookuptables.
-    Returns
-    -------
-    P : numpy.ndarray
-        Normalized probabilities for each hypothesis. Shape (n_hypothesis, n_samples).
-    EV_all : numpy.ndarray
-        Evidence values for each hypothesis and sample. Shape (n_hypothesis, n_samples).
-    MODE_hypothesis : numpy.ndarray
-        Index of the most probable hypothesis for each sample. Shape (n_samples,).
-    ENT_hypothesis : numpy.ndarray
-        Entropy of the hypothesis distribution for each sample, normalized by
-        the number of hypotheses. Shape (n_samples,).
-    Notes
-    -----
-    The probability normalization uses the log-sum-exp trick to avoid numerical
-    underflow issues when working with evidence values.
+    
+    :param f_post_h5_arr: Array of file paths to HDF5 files containing posterior evidence values. Each file should have an '/EV' dataset
+    :type f_post_h5_arr: list of str
+    :param T: Temperature parameter that applies annealing. Higher temperatures create more uniform distributions. Useful for smoothing distributions from smaller lookup tables
+    :type T: float, optional
+    
+    :returns: Tuple containing (P, EV_all, MODE_hypothesis, ENT_hypothesis) where:
+        
+        - P: Normalized probabilities for each hypothesis (shape: n_hypothesis, n_samples)
+        - EV_all: Evidence values for each hypothesis and sample (shape: n_hypothesis, n_samples)
+        - MODE_hypothesis: Index of most probable hypothesis per sample (shape: n_samples)
+        - ENT_hypothesis: Entropy of hypothesis distribution per sample, normalized by number of hypotheses (shape: n_samples)
+    :rtype: tuple
+    
+    .. note::
+        The probability normalization uses the log-sum-exp trick to avoid numerical
+        underflow issues when working with evidence values.
     """
 
     from scipy import stats
@@ -3084,28 +3119,24 @@ def get_hypothesis_probability(f_post_h5_arr, T=1):
 
 
 def sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis=None):
-    """Sample posterior models from multiple hypotheses.
+    """
+    Sample posterior models from multiple hypotheses.
+    
     This function samples posterior models from multiple hypotheses stored in HDF5 files,
     according to the given hypothesis probabilities.
-    Parameters
-    ----------
-    f_post_h5_arr : list of str
-        List of paths to HDF5 files containing posterior models for different hypotheses.
-    P_hypothesis : numpy.ndarray, optional
-        Array of shape (n_hypotheses, n_soundings) containing the probability of each hypothesis
-        for each sounding. If None, uniform probabilities are used.
-    Returns
-    -------
-    list of numpy.ndarray
-        List of posterior model arrays. Each array has shape (n_soundings, n_samples, n_parameters),
-        where n_samples is determined by the first hypothesis's number of samples.
-    Notes
-    -----
-    The function combines posterior samples from different hypotheses in proportion to their
-    probabilities. It ensures that the total number of samples used from all hypotheses equals
-    the number of samples in the first hypothesis.
+    
+    :param f_post_h5_arr: List of paths to HDF5 files containing posterior models for different hypotheses
+    :type f_post_h5_arr: list of str
+    :param P_hypothesis: Array of shape (n_hypotheses, n_soundings) containing probability of each hypothesis for each sounding. If None, uniform probabilities are used
+    :type P_hypothesis: numpy.ndarray, optional
+    
+    :returns: List of posterior model arrays. Each array has shape (n_soundings, n_samples, n_parameters), where n_samples is determined by the first hypothesis's number of samples
+    :rtype: list of numpy.ndarray
+    
+    .. note::
+        The function combines posterior samples from different hypotheses in proportion to their
+        probabilities and ensures the total number of samples equals the first hypothesis's sample count.
     """
-
 
     import numpy as np
     import h5py

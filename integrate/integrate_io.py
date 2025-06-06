@@ -64,28 +64,25 @@ def load_prior(f_prior_h5, N_use=0, idx = [], Randomize=False):
 def load_prior_model(f_prior_h5, im_use=[], idx=[], N_use=0, Randomize=False):
     """
     Load prior model data from an HDF5 file.
-    Parameters
-    ----------
-    f_prior_h5 : str
-        Path to the HDF5 file containing the prior model data.
-    im_use : list, optional
-        List of model indices to use. If empty, all models are used. Default is an empty list.
-    idx : list, optional
-        List of indices to select from the data. If empty, indices are generated based on `N_use` and `Randomize`. Default is an empty list.
-    N_use : int, optional
-        Number of samples to use. If 0, all samples are used. Default is 0.
-    Randomize : bool, optional
-        If True, indices are randomized. If False, sequential indices are used. Default is False.
-    Returns
-    -------
-    M : list of numpy.ndarray
-        List of arrays containing the selected data for each model.
-    idx : numpy.ndarray
-        Array of indices used to select the data.
-    Raises
-    ------
-    ValueError
-        If the length of `idx` is not equal to `N_use`.
+    
+    This function loads model parameter arrays from the prior structure with flexible
+    indexing and sampling options.
+    
+    :param f_prior_h5: Path to the HDF5 file containing the prior model data
+    :type f_prior_h5: str
+    :param im_use: List of model indices to use. If empty, all models are used
+    :type im_use: list, optional
+    :param idx: List of indices to select from the data. If empty, indices are generated based on N_use and Randomize
+    :type idx: list, optional
+    :param N_use: Number of samples to use. If 0, all samples are used
+    :type N_use: int, optional
+    :param Randomize: If True, indices are randomized. If False, sequential indices are used
+    :type Randomize: bool, optional
+    
+    :returns: Tuple containing (M, idx) where M is list of arrays containing selected data for each model and idx is array of indices used to select the data
+    :rtype: tuple
+    
+    :raises ValueError: If the length of idx is not equal to N_use
     """
     import h5py
     import numpy as np
@@ -787,19 +784,18 @@ def get_geometry(f_data_h5):
     """
     Retrieve geometry information from an HDF5 file.
 
-    :param str f_data_h5: The path to the HDF5 file.
-    If a posterior hdf5 file is passed, the the corresponding data files is read from the 'h5_data' attribute.   
-
-    :return: A tuple containing the X, Y, LINE, and ELEVATION arrays.
+    :param f_data_h5: The path to the HDF5 file. If a posterior HDF5 file is passed, the corresponding data file is read from the 'h5_data' attribute
+    :type f_data_h5: str
+    
+    :returns: A tuple containing the X, Y, LINE, and ELEVATION arrays
     :rtype: tuple
-
-    :raises IOError: If the HDF5 file cannot be opened or read.
-
-    :example:
-    >>> get_geometry('/path/to/file.h5')
-    >>> X, Y, LINE, ELEVATION = get_geometry('/path/to/file.h5')
     
+    :raises IOError: If the HDF5 file cannot be opened or read
     
+    .. note::
+        Example usage:
+        
+        >>> X, Y, LINE, ELEVATION = get_geometry('/path/to/file.h5')
     """
 
     # if f_data_h5 has a feature called 'f5_prior' then use that file
@@ -1405,39 +1401,43 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
 def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_data_h5='data.h5', **kwargs):
     """
     Write Gaussian noise data to an HDF5 file.
+    
     This function writes observed data and its associated Gaussian noise standard deviations
     to an HDF5 file. It also creates necessary datasets if they do not exist and handles
-    optional attributes.
-    Parameters
-    ----------
-    D_obs : numpy.ndarray
-        Observed data array.
-    D_std : list, optional
-        Standard deviation of the observed data. If not provided, it is calculated using `d_std`.
-    d_std : list, optional
-        Default standard deviation multiplier. Used if `D_std` is not provided. Default is 0.01.
-    Cd : list, optional
-        Covariance data. If provided, it is written to the file.
-    id : int, optional
-        Identifier for the dataset group. Default is 1.
-    is_log : int, optional
-        Flag indicating if the data is in logarithmic scale. Default is 0.
-    f_data_h5 : str, optional
-        Path to the HDF5 file. Default is 'data.h5'.
-    **kwargs : dict
-        Additional keyword arguments:
+    optional attributes for electromagnetic data processing.
+    
+    :param D_obs: Observed data array
+    :type D_obs: numpy.ndarray
+    :param D_std: Standard deviation of the observed data. If not provided, calculated using d_std
+    :type D_std: list, optional
+    :param d_std: Default standard deviation multiplier. Used if D_std is not provided
+    :type d_std: list, optional
+    :param Cd: Covariance data. If provided, it is written to the file
+    :type Cd: list, optional
+    :param id: Identifier for the dataset group
+    :type id: int, optional
+    :param is_log: Flag indicating if the data is in logarithmic scale
+    :type is_log: int, optional
+    :param f_data_h5: Path to the HDF5 file
+    :type f_data_h5: str, optional
+    :param kwargs: Additional keyword arguments
+    :type kwargs: dict
+    
+    :returns: Path to the HDF5 file
+    :rtype: str
+    
+    .. note::
+        **Additional Parameters (kwargs):**
+        
         - showInfo (int): Level of verbosity for printing information. Default is 0.
-        - f_gex (str): Name of the GEX file associated with the data. Default is an empty string.
-    Returns
-    -------
-    str
-        Path to the HDF5 file.
-    Notes
-    -----
-    - If `D_std` is not provided, it is calculated as `d_std * D_obs`.
-    - The function ensures that the datasets 'UTMX', 'UTMY', 'LINE', and 'ELEVATION' exist in the file.
-    - If a group with the name 'D{id}' exists, it is removed before adding the new data.
-    - The function writes attributes 'noise_model' and 'is_log' to the dataset group.
+        - f_gex (str): Name of the GEX file associated with the data. Default is empty string.
+        
+        **Behavior:**
+        
+        - If D_std is not provided, it is calculated as d_std * D_obs
+        - The function ensures that datasets 'UTMX', 'UTMY', 'LINE', and 'ELEVATION' exist
+        - If a group with name 'D{id}' exists, it is removed before adding new data
+        - Writes attributes 'noise_model' and 'is_log' to the dataset group
     """
     
     showInfo = kwargs.get('showInfo', 0)
@@ -1578,23 +1578,35 @@ def write_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='da
 def check_data(f_data_h5='data.h5', **kwargs):
     """
     Check and update INTEGRATE data in an HDF5 file.
-    This function checks for the presence of specific datasets ('UTMX', 'UTMY', 'LINE', 'ELEVATION') 
-    in the given HDF5 file. If any of these datasets are missing, it creates them using the provided 
-    keyword arguments or default values.
-    :param f_data_h5: Path to the HDF5 file to check and update. Default is 'data.h5'.
-    :type f_data_h5: str
-    :param kwargs: Additional keyword arguments to specify dataset values and control verbosity.
-    :keyword showInfo: Verbosity level. If greater than 0, prints information messages. Default is 0.
-    :type showInfo: int, optional
-    :keyword UTMX: Array of UTMX values. If not provided, attempts to read from the file or generates default values.
-    :type UTMX: array-like, optional
-    :keyword UTMY: Array of UTMY values. Default is an array of zeros with the same length as UTMX.
-    :type UTMY: array-like, optional
-    :keyword LINE: Array of LINE values. Default is an array of ones with the same length as UTMX.
-    :type LINE: array-like, optional
-    :keyword ELEVATION: Array of ELEVATION values. Default is an array of zeros with the same length as UTMX.
-    :type ELEVATION: array-like, optional
-    :raises KeyError: If the 'D1/d_obs' dataset is not found in the file and 'UTMX' is not provided.
+    
+    This function validates and ensures the presence of essential geometry datasets
+    (UTMX, UTMY, LINE, ELEVATION) in an HDF5 file. If any datasets are missing,
+    it creates them using provided values or sensible defaults based on existing data.
+    
+    :param f_data_h5: Path to the HDF5 file to check and update
+    :type f_data_h5: str, optional
+    :param kwargs: Additional keyword arguments for dataset values and configuration
+    :type kwargs: dict
+    
+    :returns: None (modifies the HDF5 file in place)
+    :rtype: None
+    
+    :raises KeyError: If the 'D1/d_obs' dataset is not found in the file and 'UTMX' is not provided
+    
+    .. note::
+        **Supported Keyword Arguments:**
+        
+        - showInfo (int): Verbosity level. If greater than 0, prints information messages. Default is 0.
+        - UTMX (array-like): Array of UTMX coordinate values. If not provided, attempts to read from file or generates defaults.
+        - UTMY (array-like): Array of UTMY coordinate values. Default is zeros array with same length as UTMX.
+        - LINE (array-like): Array of survey line identifiers. Default is ones array with same length as UTMX.
+        - ELEVATION (array-like): Array of elevation values. Default is zeros array with same length as UTMX.
+        
+        **Behavior:**
+        
+        - If UTMX is not provided, function attempts to determine array length from existing 'D1/d_obs' dataset
+        - Missing datasets are created with appropriate default values
+        - Existing datasets are preserved and not overwritten
     """
 
     showInfo = kwargs.get('showInfo', 0)
@@ -1731,31 +1743,40 @@ def merge_data(f_data, f_gex='', delta_line=0, f_data_merged_h5='', **kwargs):
 
 def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5=''):
     """
-    Merge multiple posterior HDF5 files and their corresponding data HDF5 files into a single posterior HDF5 file.
-
-    Parameters
-    ----------
-    f_post_h5_files : list of str
-        List of file paths to the posterior HDF5 files to be merged.
-    f_data_h5_files : list of str
-        List of file paths to the data HDF5 files corresponding to the posterior files.
-    f_post_merged_h5 : str, optional
-        File path for the merged posterior HDF5 file. If not provided, a default name will be generated.
-
-    Returns
-    -------
-    array
-        [0] File path of the merged posterior HDF5 file.
-        [1] File path of the merged data HDF5 file.
-
-    Raises
-    ------
-    ValueError
-        If the length of `f_data_h5_files` is not the same as `f_post_h5_files`.
-
-    Notes
-    -----
-    The function assumes that the `merge_data` function from the `ig` module is available for merging data files.
+    Merge multiple posterior HDF5 files and their corresponding data files.
+    
+    This function combines multiple posterior sampling results and their associated
+    observational data files into single merged files for comprehensive analysis.
+    Useful for aggregating results from different survey areas or time periods.
+    
+    :param f_post_h5_files: List of file paths to the posterior HDF5 files to be merged
+    :type f_post_h5_files: list of str
+    :param f_data_h5_files: List of file paths to the data HDF5 files corresponding to the posterior files
+    :type f_data_h5_files: list of str
+    :param f_post_merged_h5: File path for the merged posterior HDF5 file. If empty, generates default name
+    :type f_post_merged_h5: str, optional
+    
+    :returns: Tuple containing (merged_posterior_file_path, merged_data_file_path)
+    :rtype: tuple
+    
+    :raises ValueError: If the length of f_data_h5_files is not the same as f_post_h5_files
+    
+    .. note::
+        **File Naming:**
+        
+        - If f_post_merged_h5 is not provided, uses format: 'POST_merged_N{number_of_files}.h5'
+        - Data file uses format: 'DATA_merged_N{number_of_files}.h5'
+        
+        **Dependencies:**
+        
+        - Requires the merge_data function to be available for merging observational data
+        - Posterior files must have compatible structure for merging
+        
+        **Merging Process:**
+        
+        - Combines posterior sampling results from multiple files
+        - Merges corresponding observational data
+        - Maintains data integrity and structure consistency
     """
     import h5py
     import integrate as ig

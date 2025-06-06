@@ -350,32 +350,29 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
     """
     Plots the geometry data from an INTEGRATE HDF5 file.
 
-    Parameters
-    ----------
-    f_data_h5 : str
-        Path to the HDF5 file containing the geometry data.
-    i1 : int, optional
-        Starting index for the data to be plotted (default is 0).
-    i2 : int, optional
-        Ending index for the data to be plotted (default is 0, which means the end of the data).
-    ii : numpy.ndarray, optional
-        Array of indices to be plotted (default is an empty array, which means all indices between i1 and i2).
-    s : int, optional
-        Size of the scatter plot points (default is 5).
-    pl : str, optional
-        Type of plot to generate. Options are 'all', 'LINE', 'ELEVATION', or 'id' (default is 'all').
-    hardcopy : bool, optional
-        If True, saves the plot as a PNG file (default is False).
-    **kwargs : dict, optional
-        Additional keyword arguments to pass to the scatter plot function.
+    :param f_data_h5: Path to the HDF5 file containing the geometry data
+    :type f_data_h5: str
+    :param i1: Starting index for the data to be plotted
+    :type i1: int, optional
+    :param i2: Ending index for the data to be plotted. If 0, uses the end of the data
+    :type i2: int, optional
+    :param ii: Array of indices to be plotted. If empty, uses all indices between i1 and i2
+    :type ii: numpy.ndarray, optional
+    :param s: Size of the scatter plot points
+    :type s: int, optional
+    :param pl: Type of plot to generate. Options are ``'all'``, ``'LINE'``, ``'ELEVATION'``, or ``'id'``
+    :type pl: str, optional
+    :param hardcopy: If True, saves the plot as a PNG file
+    :type hardcopy: bool, optional
+    :param kwargs: Additional keyword arguments to pass to the scatter plot function
+    :type kwargs: dict
 
-    Returns
-    -------
-    None
+    :returns: None
+    :rtype: None
 
-    Notes
-    -----
-    This function generates scatter plots of the geometry data. If `hardcopy` is True, the plots are saved as PNG files.
+    .. note::
+        This function generates scatter plots of the geometry data. If hardcopy is True, 
+        the plots are saved as PNG files.
     """
     import h5py
     # Test if f_data_h5 is in fact f_post_h5 type file
@@ -1632,34 +1629,33 @@ def get_clim_cmap(f_prior_h5, Mstr='/M1'):
 def plot_cumulative_probability_profile(P_hypothesis, i1=0, i2=0, label=None, colors = None, hardcopy=True, name='cumulative_probability_profile'):
     """
     Plot the cumulative probability profile of different hypotheses.
+    
     This function visualizes how the probability of different hypotheses accumulates
     over a sequence of data points, with each hypothesis represented as a colored
     area in a stacked plot.
-    Parameters
-    ----------
-    P_hypothesis : numpy.ndarray
-        A 2D array where each row represents a hypothesis and each column
-        represents a data point. Values should be probabilities.
-    i1 : int, optional
-        Starting index for the x-axis (data points), default is 0.
-    i2 : int, optional
-        Ending index for the x-axis (data points), default is the number of data points
-        in P_hypothesis.
-    label : list of str, optional
-        List of labels for each hypothesis. If None, generic labels will be created.
-    colors : list or numpy.ndarray, optional
-        List of colors for each hypothesis. If None, colors from the 'hot' colormap will be used.
-    hardcopy : bool, optional
-        If True, saves the figure to a file named 'cumulative_probability_profile.png', default is True.
-    Returns
-    -------
-    None
-        The function displays the plot and optionally saves it to a file.
-    Notes
-    -----
-    The plot shows how probabilities accumulate across hypotheses, with each hypothesis
-    represented as a colored band. The total height of all bands at any x position equals 1.0
-    (or the sum of probabilities for that data point).
+    
+    :param P_hypothesis: A 2D array where each row represents a hypothesis and each column represents a data point. Values should be probabilities
+    :type P_hypothesis: numpy.ndarray
+    :param i1: Starting index for the x-axis (data points)
+    :type i1: int, optional
+    :param i2: Ending index for the x-axis (data points). If 0, uses the number of data points in P_hypothesis
+    :type i2: int, optional
+    :param label: List of labels for each hypothesis. If None, generic labels will be created
+    :type label: list of str, optional
+    :param colors: List of colors for each hypothesis. If None, colors from the 'hot' colormap will be used
+    :type colors: list or numpy.ndarray, optional
+    :param hardcopy: If True, saves the figure to a file
+    :type hardcopy: bool, optional
+    :param name: Base name for the output file when hardcopy is True
+    :type name: str, optional
+    
+    :returns: None (displays the plot and optionally saves it to a file)
+    :rtype: None
+    
+    .. note::
+        The plot shows how probabilities accumulate across hypotheses, with each hypothesis
+        represented as a colored band. The total height of all bands at any x position equals 1.0
+        (or the sum of probabilities for that data point).
     """
 
     import matplotlib.pyplot as plt
