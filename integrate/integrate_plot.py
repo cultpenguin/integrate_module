@@ -1,3 +1,42 @@
+"""
+INTEGRATE Plotting Module - Visualization and Analysis Tools
+
+This module provides comprehensive visualization capabilities for the INTEGRATE
+geophysical data integration package. It creates publication-quality plots for
+data analysis, prior/posterior visualization, and results interpretation.
+
+Key Features:
+    - 1D profile plots for layered earth models
+    - 2D spatial mapping and interpolation
+    - Data-model comparison visualizations
+    - Statistical plots (uncertainty, probability maps)
+    - Geometry and survey layout visualization
+    - Customizable plotting styles and colormaps
+
+Main Function Categories:
+    - plot_profile_*(): 1D vertical profile plotting
+    - plot_data_*(): Observational data visualization
+    - plot_geometry(): Survey geometry and layout
+    - plot_feature_2d(): 2D spatial parameter mapping
+    - plot_T_EV(): Temperature and evidence visualization
+    - plot_*_stats(): Statistical analysis plots
+
+Plot Types:
+    - Discrete categorical models (geological units)
+    - Continuous parameter models (resistivity, conductivity)
+    - Uncertainty and probability distributions
+    - Data fit and residual analysis
+    - Cumulative thickness and property maps
+
+Output Formats:
+    - Interactive matplotlib figures
+    - High-resolution PNG/PDF export
+    - Customizable figure sizing and DPI
+
+Author: Thomas Mejer Hansen
+Email: tmeha@geo.au.dk
+"""
+
 import os
 import numpy as np
 import h5py
@@ -416,18 +455,30 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
 
 def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
     """
-    Plot profile data from a given HDF5 file.
-
-    :param f_post_h5: Path to the HDF5 file.
+    Plot 1D profiles from posterior sampling results.
+    
+    This function creates vertical profile plots showing the posterior distribution
+    of model parameters as a function of depth or model layer. Automatically
+    detects model type (discrete or continuous) and calls appropriate plotting function.
+    
+    :param f_post_h5: Path to the HDF5 file containing posterior sampling results
     :type f_post_h5: str
-    :param i1: Starting index for the profile.
-    :type i1: int
-    :param i2: Ending index for the profile.
-    :type i2: int
-    :param im: Index of the profile to plot.
-    :type im: int
-    :param kwargs: Additional keyword arguments.
-    :returns: None
+    :param i1: Starting index for the data points to plot (1-based indexing)
+    :type i1: int, optional
+    :param i2: Ending index for the data points to plot (1-based indexing)
+    :type i2: int, optional
+    :param im: Model identifier to plot. If 0, automatically detects and plots all models
+    :type im: int, optional
+    :param kwargs: Additional plotting arguments passed to discrete/continuous plotting functions
+    :type kwargs: dict
+    
+    :returns: None (creates matplotlib plots)
+    :rtype: None
+    
+    .. note::
+        The function automatically computes posterior statistics if not present in the file.
+        For discrete models, calls plot_profile_discrete(). For continuous models,
+        calls plot_profile_continuous().
     """
 
     with h5py.File(f_post_h5,'r') as f_post:
@@ -934,21 +985,30 @@ def plot_data_xy(f_data_h5, pl_type='line', **kwargs):
 
 def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
     """
-    Plot the data from an HDF5 file.
-
-    :param f_data_h5: The path to the HDF5 file.
+    Plot observational data from an HDF5 file.
+    
+    This function creates visualizations of electromagnetic data including time-series plots,
+    2D image displays, and other data representations. Supports multiple data types and
+    plotting styles for comprehensive data analysis.
+    
+    :param f_data_h5: Path to the HDF5 file containing observational data
     :type f_data_h5: str
-    :param i_plot: The indices of the data to plot. Default is 0.
-    :type i_plot: int or array-like, optional
-    :param Dkey: The key(s) of the data set(s) to plot. Default is an empty list.
+    :param i_plot: Indices of data points to plot. If empty, plots all available data
+    :type i_plot: list or array-like, optional
+    :param Dkey: Data keys/identifiers to plot. If empty, uses all available datasets
     :type Dkey: str or list, optional
-    :param plType: The type of plot to use ('imshow' or 'plot'). Default is 'imshow'.
+    :param plType: Plotting method - 'imshow' for 2D image display, 'plot' for line plots
     :type plType: str, optional
-    :param kwargs: Additional keyword arguments.
+    :param kwargs: Additional plotting arguments including hardcopy, figsize, colormap options
     :type kwargs: dict
-
-    :returns: None
+    
+    :returns: None (creates matplotlib plots)
     :rtype: None
+    
+    .. note::
+        The function automatically handles different data formats and creates appropriate
+        visualizations based on data dimensions and type. Supports saving plots to file
+        when hardcopy=True is specified in kwargs.
 
     :raises: None
     """

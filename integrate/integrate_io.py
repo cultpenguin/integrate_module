@@ -1,14 +1,41 @@
+"""
+INTEGRATE I/O Module - Data Input/Output and File Management
+
+This module provides comprehensive input/output functionality for the INTEGRATE
+geophysical data integration package. It handles reading and writing of HDF5 files,
+data format conversions, and management of prior/posterior data structures.
+
+Key Features:
+    - HDF5 file I/O for prior models, data, and posterior results
+    - Support for multiple geophysical data formats (GEX, STM, USF)
+    - Automatic data validation and format checking
+    - File conversion utilities between different formats
+    - Data merging and aggregation functions
+    - Checksum verification and file integrity checks
+
+Main Functions:
+    - load_*(): Functions for loading prior models, data, and results
+    - save_*(): Functions for saving prior models and data arrays
+    - read_*(): File format readers (GEX, USF, etc.)
+    - write_*(): File format writers and converters
+    - merge_*(): Data and posterior merging utilities
+
+File Format Support:
+    - HDF5: Primary data storage format
+    - GEX: Geometry and survey configuration files
+    - STM: System transfer function files
+    - USF: Field measurement files
+    - CSV: Export format for GIS integration
+
+Author: Thomas Mejer Hansen
+Email: tmeha@geo.au.dk
+"""
+
 import os
 import numpy as np
 import h5py
 import re
 from typing import Dict, List, Union, Any
-
-
-
-'''
-THIS IS THE NEW MULTI DATA IMPLEMENTATION
-'''
 
 def load_prior(f_prior_h5, N_use=0, idx = [], Randomize=False):
     """
@@ -101,17 +128,31 @@ def save_prior_model(f_prior_h5, M_new,
                      delete_if_exist=False,   
                      **kwargs):
     """
-    Save the new prior model data to a new file.
-    If the key already exists, it will be deleted if force_delete is set to True.
-    If im is None, a new im will be created based on the number of existing keys.
-    If im is provided, it will be used as the key for the new data.
-    Parameters:
-    f_prior_h5 (str): Path to the HDF5 file where the prior model data will be saved.
-    M_new (numpy.ndarray): The new prior model data to be saved.
-    im (int, optional): The im to be used as the key for the new data. If None, a new im will be created.
-    force_replace (bool, optional): If True, the existing key will be deleted before saving the new data. Default is False.
-    Returns:
-    int: The im used for the new data.
+    Save new prior model data to an HDF5 file.
+    
+    This function saves model parameter arrays to the prior structure with automatic
+    or manual model identifier assignment. Supports replacing existing models and
+    optional file deletion for clean saves.
+    
+    :param f_prior_h5: Path to the HDF5 file where the prior model data will be saved
+    :type f_prior_h5: str
+    :param M_new: The new prior model data array to be saved
+    :type M_new: numpy.ndarray
+    :param im: Model identifier to use as the key. If None, auto-generates next available ID
+    :type im: int, optional
+    :param force_replace: If True, replaces existing model data with the same ID
+    :type force_replace: bool, optional
+    :param delete_if_exist: If True, deletes the entire file before saving new data
+    :type delete_if_exist: bool, optional
+    :param kwargs: Additional arguments including showInfo for verbosity control
+    :type kwargs: dict
+    
+    :returns: The model identifier used for saving the data
+    :rtype: int
+    
+    .. note::
+        Model data is stored in HDF5 groups named '/M1', '/M2', etc. The function
+        automatically determines the next available ID if im is None.
     """
     import h5py
     import numpy as np
@@ -207,6 +248,31 @@ def save_prior_model(f_prior_h5, M_new,
 
 
 def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
+    """
+    Load prior data from an HDF5 file.
+    
+    This function loads forward modeled data arrays from the prior structure,
+    supporting selective loading by data identifier, sample indices, and size limits.
+    The data can be optionally randomized for sampling purposes.
+    
+    :param f_prior_h5: Path to the prior HDF5 file containing data arrays
+    :type f_prior_h5: str
+    :param id_use: List of data identifiers to load. If empty, loads all available data types
+    :type id_use: list, optional
+    :param idx: List of sample indices to load. If empty, uses N_use or all samples
+    :type idx: list, optional
+    :param N_use: Number of samples to load. If 0, loads all available samples
+    :type N_use: int, optional
+    :param Randomize: If True, randomizes the order of loaded samples
+    :type Randomize: bool, optional
+    
+    :returns: Tuple containing (D, idx) where D is list of data arrays and idx is array of used indices
+    :rtype: tuple
+    
+    .. note::
+        Data arrays are expected to be stored in HDF5 groups named '/D1', '/D2', etc.
+        The function automatically detects available data types if id_use is empty.
+    """
     import h5py
     import numpy as np
 
@@ -244,17 +310,28 @@ def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
 
 def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False, **kwargs):
     """
-    Save the new prior data to a new file.
-    If the key already exists, it will be deleted if force_delete is set to True.
-    If id is None, a new id will be created based on the number of existing keys.
-    If id is provided, it will be used as the key for the new data.
-    Parameters:
-    f_prior_h5 (str): Path to the HDF5 file where the prior data will be saved.
-    D_new (numpy.ndarray): The new prior data to be saved.
-    id (int, optional): The id to be used as the key for the new data. If None, a new id will be created.
-    force_delete (bool, optional): If True, the existing key will be deleted before saving the new data. Default is False.
-    Returns:
-    int: The id used for the new data.
+    Save new prior data arrays to an HDF5 file.
+    
+    This function saves forward modeled data arrays to the prior structure with automatic
+    or manual data identifier assignment. Supports replacing existing data arrays.
+    
+    :param f_prior_h5: Path to the HDF5 file where the prior data will be saved
+    :type f_prior_h5: str
+    :param D_new: The new prior data array to be saved
+    :type D_new: numpy.ndarray
+    :param id: Data identifier to use as the key. If None, auto-generates next available ID
+    :type id: int, optional
+    :param force_delete: If True, deletes existing data with the same ID before saving
+    :type force_delete: bool, optional
+    :param kwargs: Additional arguments including showInfo for verbosity control
+    :type kwargs: dict
+    
+    :returns: The data identifier used for saving the data
+    :rtype: int
+    
+    .. note::
+        Data arrays are stored in HDF5 groups named '/D1', '/D2', etc. The function
+        automatically determines the next available ID if id is None.
     """
     import h5py
     import numpy as np
@@ -310,36 +387,34 @@ def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False, **kwargs):
 
 def load_data(f_data_h5, id_arr=[1], **kwargs):
     """
-    Load data from an HDF5 file.
-    Parameters
-    ----------
-    f_data_h5 : str
-        Path to the HDF5 file containing the data.
-    id_arr : list of int, optional
-        List of dataset IDs to load from the HDF5 file. Default is [1].
-    Returns
-    -------
-    dict
-        A dictionary containing the following keys:
-        - 'noise_model': list of str
-            Noise models for each dataset.
-        - 'd_obs': list of numpy.ndarray
-            Observed data for each dataset.
-        - 'd_std': list of numpy.ndarray or None
-            Standard deviation of the observed data for each dataset, if available.
-        - 'Cd': list of numpy.ndarray or None
-            Covariance matrix for each dataset, if available.
-        - 'id_arr': list of int
-            List of dataset IDs.
-        - 'i_use': list of numpy.ndarray
-            Indicator array for each dataset.
-        - 'id_use': list of int or numpy.ndarray
-            ID use array for each dataset.
-    Notes
-    -----
-    If 'd_std', 'Cd', 'i_use', or 'id_use' are not available in the HDF5 file for a given dataset,
-    they will be set to None. If 'id_use' is not available, it will be set to the dataset ID.
-    If 'i_use' is not available, it will be set to an array of ones with the same length as 'd_obs'.
+    Load observational data from an HDF5 file.
+    
+    This function loads observed electromagnetic data including measurements, uncertainties,
+    covariance matrices, and associated metadata from structured HDF5 files. Supports
+    multiple data types and automatic handling of missing data components.
+    
+    :param f_data_h5: Path to the HDF5 file containing the observational data
+    :type f_data_h5: str
+    :param id_arr: List of dataset identifiers to load from the file
+    :type id_arr: list of int, optional
+    :param kwargs: Additional arguments including showInfo for verbosity control
+    :type kwargs: dict
+    
+    :returns: Dictionary containing loaded data with the following keys:
+        
+        - 'noise_model': Noise model type for each dataset (list of str)
+        - 'd_obs': Observed data measurements (list of numpy.ndarray)
+        - 'd_std': Standard deviations of observations (list of numpy.ndarray or None)
+        - 'Cd': Full covariance matrices (list of numpy.ndarray or None)
+        - 'id_arr': Dataset identifiers that were loaded (list of int)
+        - 'i_use': Data point usage indicators (list of numpy.ndarray)
+        - 'id_use': Dataset usage identifiers (list of int or numpy.ndarray)
+    :rtype: dict
+    
+    .. note::
+        Missing data components (d_std, Cd, i_use, id_use) are automatically handled:
+        missing id_use defaults to sequential IDs, missing i_use defaults to all ones,
+        missing d_std and Cd remain as None.
     """
 
     showInfo = kwargs.get('showInfo', 1)

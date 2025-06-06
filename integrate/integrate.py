@@ -1,3 +1,30 @@
+"""
+INTEGRATE Core Module - Probabilistic Geophysical Data Integration
+
+This module implements rejection sampling algorithms for Bayesian inversion and
+probabilistic data integration in geophysics, with particular focus on electromagnetic
+(EM) data analysis. The module provides comprehensive tools for prior model generation,
+forward modeling, likelihood computation, and posterior sampling.
+
+Key Features:
+    - Rejection sampling for Bayesian inversion
+    - Parallel processing with shared memory optimization
+    - Temperature annealing for improved sampling efficiency
+    - Support for multiple data types (TDEM, multinomial, etc.)
+    - Integration with GA-AEM electromagnetic forward modeling
+    - Automatic temperature estimation and adaptive sampling
+
+Main Functions:
+    - integrate_rejection(): Main rejection sampling workflow
+    - prior_data(): Integration of forward modeling with prior structure
+    - forward_gaaem(): Electromagnetic forward modeling interface
+    - likelihood_*(): Various likelihood calculation functions
+    - posterior_*(): Posterior analysis and statistics
+
+Author: Thomas Mejer Hansen
+Email: tmeha@geo.au.dk
+"""
+
 import h5py
 import numpy as np
 import os.path
@@ -493,6 +520,35 @@ def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=10000
 
 #%% integrate_prior_data: updates PRIOR strutcure with DATA
 def prior_data(f_prior_in_h5, f_forward_h5, id=1, im=1, doMakePriorCopy=0, parallel=True):
+    """
+    Update prior structure with forward modeled data.
+    
+    This function integrates forward modeling results into the prior data structure,
+    supporting different data types including TDEM (time-domain electromagnetic) data
+    with GA-AEM forward modeling and identity transforms.
+    
+    :param f_prior_in_h5: Path to input prior HDF5 file containing prior models
+    :type f_prior_in_h5: str
+    :param f_forward_h5: Path to forward modeling results HDF5 file
+    :type f_forward_h5: str
+    :param id: Data identifier for the prior structure, defaults to 1
+    :type id: int, optional
+    :param im: Model identifier for the prior structure, defaults to 1
+    :type im: int, optional
+    :param doMakePriorCopy: Flag to create a copy of the prior file (0=no copy, 1=copy), defaults to 0
+    :type doMakePriorCopy: int, optional
+    :param parallel: Enable parallel processing for forward modeling, defaults to True
+    :type parallel: bool, optional
+    
+    :returns: Path to the updated prior HDF5 file containing integrated data
+    :rtype: str
+    
+    :raises: Prints error messages for unsupported data types or methods
+    
+    .. note::
+        The function automatically detects the data type from the forward modeling file
+        and calls appropriate integration methods (GA-AEM for TDEM, identity for direct data).
+    """
     # Check if at least two inputs are provided
     if f_prior_in_h5 is None or f_forward_h5 is None:
         print(f'{__name__}: Use at least two inputs to')
@@ -1681,6 +1737,54 @@ def integrate_rejection(f_prior_h5='prior.h5',
                               parallel=True,
                               use_N_best=0,  
                               **kwargs):
+    """
+    Perform probabilistic inversion using rejection sampling.
+    
+    This is the main function for Bayesian inversion using rejection sampling methodology.
+    It samples the posterior distribution by rejecting prior samples that are inconsistent 
+    with observed data within a temperature-controlled tolerance. Supports parallel processing
+    and automatic temperature estimation for efficient sampling.
+    
+    :param f_prior_h5: Path to HDF5 file containing prior model and data samples
+    :type f_prior_h5: str, optional
+    :param f_data_h5: Path to HDF5 file containing observed data for inversion
+    :type f_data_h5: str, optional
+    :param f_post_h5: Output path for posterior samples. If empty, auto-generated from prior filename
+    :type f_post_h5: str, optional
+    :param N_use: Maximum number of prior samples to use for inversion
+    :type N_use: int, optional
+    :param id_use: List of data identifiers to use for inversion. If empty, uses all available data
+    :type id_use: list, optional
+    :param ip_range: List of data point indices to invert. If empty, inverts all data points
+    :type ip_range: list, optional
+    :param nr: Number of posterior samples to retain per data point
+    :type nr: int, optional
+    :param autoT: Automatic temperature estimation method (1=enabled, 0=disabled)
+    :type autoT: int, optional
+    :param T_base: Base temperature for rejection sampling when autoT=0
+    :type T_base: float, optional
+    :param Nchunks: Number of chunks for parallel processing. If 0, auto-determined
+    :type Nchunks: int, optional
+    :param Ncpu: Number of CPU cores to use. If 0, auto-determined from system
+    :type Ncpu: int, optional
+    :param parallel: Enable parallel processing if environment supports it
+    :type parallel: bool, optional
+    :param use_N_best: Use only the N best-fitting samples (0=disabled)
+    :type use_N_best: int, optional
+    :param kwargs: Additional keyword arguments including showInfo, updatePostStat, post_dir
+    :type kwargs: dict
+    
+    :returns: Path to the output HDF5 file containing posterior samples and statistics
+    :rtype: str
+    
+    .. note::
+        The function automatically determines optimal processing parameters based on data size
+        and system capabilities. Temperature annealing is used to improve sampling efficiency.
+    
+    .. warning::
+        Large datasets may require significant memory and processing time. Monitor system
+        resources during execution.
+    """
     from datetime import datetime   
     #from multiprocessing import Pool
     #import multiprocessing
@@ -1895,6 +1999,42 @@ def integrate_rejection_range(D,
                               autoT=1,
                               T_base = 1,
                               **kwargs):
+    """
+    Perform rejection sampling for a specific range of data points.
+    
+    This function implements the core rejection sampling algorithm for a subset of data points.
+    It evaluates likelihood for each data point in the range and accepts/rejects prior samples
+    based on temperature-controlled criteria. Used internally by integrate_rejection for
+    both serial and parallel processing.
+    
+    :param D: List of forward modeled data arrays for each data type
+    :type D: list
+    :param DATA: Dictionary containing observed data including 'd_obs', 'd_std', and other data arrays
+    :type DATA: dict
+    :param idx: Indices of prior samples to use. If empty, uses sequential indexing
+    :type idx: list, optional
+    :param N_use: Maximum number of prior samples to evaluate
+    :type N_use: int, optional
+    :param id_use: List of data identifiers to use for likelihood calculation
+    :type id_use: list, optional
+    :param ip_range: Range of data point indices to process. If empty, processes all data points
+    :type ip_range: list, optional
+    :param nr: Number of posterior samples to retain per data point
+    :type nr: int, optional
+    :param autoT: Automatic temperature estimation method (1=enabled, 0=disabled)
+    :type autoT: int, optional
+    :param T_base: Base temperature for rejection sampling when autoT=0
+    :type T_base: float, optional
+    :param kwargs: Additional arguments including useRandomData, showInfo, use_N_best
+    :type kwargs: dict
+    
+    :returns: Tuple containing (i_use_all, T_all, EV_all, EV_post_all, N_UNIQUE_all, ip_range)
+    :rtype: tuple
+    
+    .. note::
+        This function is the computational core of the rejection sampling algorithm.
+        It handles temperature annealing and likelihood evaluation for efficient sampling.
+    """
     
 
     from tqdm import tqdm
@@ -2149,6 +2289,43 @@ def integrate_rejection_range(D,
 
 
 def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_base, nr, Ncpu, use_N_best):
+    """
+    Coordinate parallel processing of posterior sampling across multiple chunks.
+    
+    This function manages the parallel execution of rejection sampling by distributing
+    data point chunks across multiple CPU cores. It handles shared memory management
+    for efficient data transfer between processes and aggregates results from all chunks.
+    
+    :param ip_chunks: List of data point index chunks for parallel processing
+    :type ip_chunks: list
+    :param D: List of forward modeled data arrays shared across processes
+    :type D: list
+    :param DATA: Dictionary containing observed data structures
+    :type DATA: dict
+    :param idx: Indices of prior samples to use for inversion
+    :type idx: list
+    :param N_use: Maximum number of prior samples per chunk
+    :type N_use: int
+    :param id_use: List of data identifiers for likelihood calculation
+    :type id_use: list
+    :param autoT: Automatic temperature estimation flag
+    :type autoT: int
+    :param T_base: Base temperature for rejection sampling
+    :type T_base: float
+    :param nr: Number of posterior samples to retain per data point
+    :type nr: int
+    :param Ncpu: Number of CPU cores to use for parallel processing
+    :type Ncpu: int
+    :param use_N_best: Flag to use only the N best-fitting samples
+    :type use_N_best: int
+    
+    :returns: Tuple containing aggregated results from all chunks (i_use_all, T_all, EV_all, EV_post_all, N_UNIQUE_all)
+    :rtype: tuple
+    
+    .. note::
+        This function uses shared memory to minimize data copying overhead during parallel processing.
+        Shared memory is automatically cleaned up after processing completion.
+    """
     #import integrate as ig
     from multiprocessing import Pool, shared_memory
 
@@ -2200,6 +2377,23 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
 
 
 def integrate_posterior_chunk(args):
+    """
+    Process a single chunk of data points for parallel rejection sampling.
+    
+    This function is called by each worker process in the parallel processing pool.
+    It reconstructs shared data arrays, processes the assigned chunk of data points
+    using rejection sampling, and returns results for aggregation by the main process.
+    
+    :param args: Tuple containing chunk parameters (i_chunk, ip_chunks, DATA, idx, N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best)
+    :type args: tuple
+    
+    :returns: Tuple containing chunk results (i_use, T, EV, EV_post, N_UNIQUE)
+    :rtype: tuple
+    
+    .. note::
+        This function runs in a separate process and communicates with the main process
+        through shared memory for data arrays and return values through the process pool.
+    """
     #import integrate as ig
     
     # New implementation with shared memory
