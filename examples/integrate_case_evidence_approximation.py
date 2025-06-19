@@ -97,8 +97,7 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_1l.h5', showInfo=showInfo)
-#f_prior_h5_arr.append(f_prior_h5)
-#hypothesis_name.append('1 layer model')
+#f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('1 layer model')
 
 ## 2 layered model
 NLAY_min=2
@@ -107,8 +106,7 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_2l.h5', showInfo=showInfo)
-#f_prior_h5_arr.append(f_prior_h5)
-#hypothesis_name.append('2 layered model')
+f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('2 layered model')
 
 ## 3 layered model
 NLAY_min=3
@@ -117,8 +115,7 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_3l.h5', showInfo=showInfo)
-f_prior_h5_arr.append(f_prior_h5)
-hypothesis_name.append('3 layered model')
+f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('3 layered model')
 
 ## 3 layered model
 NLAY_min=3
@@ -127,10 +124,7 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=30, RHO_max=RHO_max, f_prior_h5 = 'prior_3l_alt.h5', showInfo=showInfo)
-f_prior_h5_arr.append(f_prior_h5)
-hypothesis_name.append('3 layered model - min30')
-
-
+#f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('3 layered model - min30')
 
 ## 3 layered model
 NLAY_min=3
@@ -139,12 +133,7 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_3l_alt.h5', showInfo=showInfo)
-#f_prior_h5_arr.append(f_prior_h5)
-#hypothesis_name.append('3 layered model - alt')
-
-
-
-
+#f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('3 layered model - alt')
 
 ## 4 layered model
 NLAY_min=4
@@ -153,8 +142,7 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_4l.h5', showInfo=showInfo)
-#f_prior_h5_arr.append(f_prior_h5)
-#hypothesis_name.append('4 layered model')
+f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('4 layered model')
 
 ## 6 layered model
 NLAY_min=6
@@ -163,8 +151,7 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_6l.h5', showInfo=showInfo)
-#f_prior_h5_arr.append(f_prior_h5)
-#hypothesis_name.append('6 layered model')
+#f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('6 layered model')
 
 
 ## 4 layered model
@@ -172,17 +159,15 @@ f_prior_h5 = ig.prior_model_layered(N=N,
 #f_prior_h5 = ig.prior_model_layered(N=N,
 #                                    lay_dist='chi2', z_max = z_max, NLAY_deg=NLAY_deg, 
 #                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_chi4.h5', showInfo=showInfo)
-#f_prior_h5_arr.append(f_prior_h5)
-#hypothesis_name.append('4 layered model (chi2)')
+#f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('4 layered model (chi2)')
 
 # ## 4 layered model
 # NLAY_deg = 4
-# #RHO_min = 10
+# RHO_min = 10
 # f_prior_h5 = ig.prior_model_layered(N=N,
 #                                     lay_dist='chi2', z_max = z_max, NLAY_deg=NLAY_deg, 
 #                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_chi4_10.h5', showInfo=showInfo)
-# f_prior_h5_arr.append(f_prior_h5)
-
+# f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('4 layered model (chi2-10ohmm)')
 
 for f_prior_h5 in f_prior_h5_arr:
     ig.plot_prior_stats(f_prior_h5)
