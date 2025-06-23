@@ -1697,25 +1697,29 @@ def reconstruct_shared_arrays(shared_memory_refs):
     :param shared_memory_refs: List of (name, shape, dtype) tuples identifying shared memory segments
     :type shared_memory_refs: list
     
-    :returns: List of numpy arrays reconstructed from shared memory
-    :rtype: list
+    :returns: Tuple of (reconstructed arrays, shared memory objects)
+    :rtype: tuple
     
     .. warning::
         The reconstructed arrays are views into shared memory. Modifications
-        will affect the shared data across all processes. Use .copy() if
-        independent copies are needed.
+        will affect the shared data across all processes. Do NOT modify these arrays.
+        The shared memory objects must be closed after use to prevent leaks.
     """
     reconstructed_arrays = []
+    shm_objects = []
     for shm_name, shape, dtype in shared_memory_refs:
         try:
             shm = shared_memory.SharedMemory(name=shm_name)
             array = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
-            reconstructed_arrays.append(array.copy())
-            shm.close()
+            reconstructed_arrays.append(array)
+            shm_objects.append(shm)
         except Exception as e:
             logger.error(f"Error reconstructing array: {e}")
+            # Clean up any successfully opened shared memory objects
+            for opened_shm in shm_objects:
+                opened_shm.close()
             raise
-    return reconstructed_arrays
+    return reconstructed_arrays, shm_objects
 
 def cleanup_shared_memory(shm_objects):
     """
@@ -2462,30 +2466,41 @@ def integrate_posterior_chunk(args):
     # Old implementation where D was copied to each process
     #i_chunk, ip_chunks, D, DATA, idx, N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best = args
     #D=reconstruct_shared_arrays(shared_memory_refs)
-    D=reconstruct_shared_arrays(shared_memory_refs)
+    
+    # Reconstruct shared arrays without copying - returns tuple (arrays, shm_objects)
+    D, worker_shm_objects = reconstruct_shared_arrays(shared_memory_refs)
 
-    # Perhaps truncat according to N_use
-    #for i in len(D)
-    #    D[i] = D[i][:N_use]
+    try:
+        # Perhaps truncat according to N_use
+        #for i in len(D)
+        #    D[i] = D[i][:N_use]
 
-    ip_range = ip_chunks[i_chunk]
+        ip_range = ip_chunks[i_chunk]
 
-    #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
+        #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
 
-    i_use, T, EV, EV_post, N_UNIQUE, ip_range = integrate_rejection_range(
-        D,
-        DATA,
-        idx,
-        N_use=N_use,
-        id_use=id_use,
-        ip_range=ip_range,
-        autoT=autoT,
-        T_base=T_base,
-        nr=nr,     
-        use_N_best=use_N_best, 
-    )
+        i_use, T, EV, EV_post, N_UNIQUE, ip_range = integrate_rejection_range(
+            D,
+            DATA,
+            idx,
+            N_use=N_use,
+            id_use=id_use,
+            ip_range=ip_range,
+            autoT=autoT,
+            T_base=T_base,
+            nr=nr,     
+            use_N_best=use_N_best, 
+        )
 
-    return i_use, T, EV, EV_post, N_UNIQUE, ip_range
+        return i_use, T, EV, EV_post, N_UNIQUE, ip_range
+    
+    finally:
+        # Clean up worker's shared memory references
+        for shm in worker_shm_objects:
+            try:
+                shm.close()
+            except Exception as e:
+                logger.debug(f"Error closing shared memory in worker: {e}")
 
 
 # END OF REJECTION SAMPLING
