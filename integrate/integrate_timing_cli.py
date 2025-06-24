@@ -233,6 +233,7 @@ def timing_plot(f_timing=''):
     plt.ylim(1,1e+8)
     plt.tight_layout()
     plt.savefig('%s_total_sec' % file_out)
+    plt.close()
 
     plt.figure(figsize=(6,6)) 
     plt.loglog(N_arr, T_total, 'o-', label=[f'{int(x)}' for x in Nproc_arr])
@@ -246,6 +247,7 @@ def timing_plot(f_timing=''):
     #plt.xticks(ticks=N_arr, labels=[str(int(x)) for x in Nproc_arr])
     plt.ylim(1,1e+8)
     plt.savefig('%s_total_sec' % file_out)
+    plt.close()
 
 
     #### Plot timing results for forward modeling - GAAEM
@@ -278,6 +280,7 @@ def timing_plot(f_timing=''):
     plt.xlim(Nproc_arr[0], Nproc_arr[-1])
     plt.tight_layout()
     plt.savefig('%s_forward_sec_CPU' % file_out)
+    plt.close()
 
     ## Forward time per sounding - Nproc
     plt.figure(figsize=(6,6))    
@@ -301,6 +304,7 @@ def timing_plot(f_timing=''):
     #plt.xlim(Nproc_arr[0], Nproc_arr[-1])
     plt.tight_layout()
     plt.savefig('%s_forward_sec_N' % file_out)
+    plt.close()
 
 
     #
@@ -314,6 +318,7 @@ def timing_plot(f_timing=''):
     plt.legend(N_arr)
     plt.tight_layout()
     plt.savefig('%s_forward_sounding_per_sec' % file_out)
+    plt.close()
 
     #
     plt.figure(figsize=(6,6))    
@@ -327,6 +332,7 @@ def timing_plot(f_timing=''):
     plt.xlim(Nproc_arr[0], Nproc_arr[-1])
     plt.legend(N_arr)
     plt.savefig('%s_forward_sounding_per_sec_per_cpu' % file_out)
+    plt.close()
     #
 
     plt.figure(figsize=(6,6))    
@@ -341,6 +347,7 @@ def timing_plot(f_timing=''):
     plt.grid()
     plt.legend(N_arr)
     plt.savefig('%s_forward_speedup' % file_out)
+    plt.close()
 
 
 
@@ -382,6 +389,7 @@ def timing_plot(f_timing=''):
     plt.tight_layout()
     plt.ylim(1e-1, 2e+3)
     plt.savefig('%s_rejection_sec_CPU' % file_out)
+    plt.close()
 
 
     ## Rejection total sec - per process
@@ -404,6 +412,7 @@ def timing_plot(f_timing=''):
     plt.tight_layout()
     plt.ylim(1e-1, 2e+3)
     plt.savefig('%s_rejection_sec_N' % file_out)
+    plt.close()
 
 
     ## Rejection speedup
@@ -419,6 +428,7 @@ def timing_plot(f_timing=''):
     plt.grid()
     plt.legend(N_arr)
     plt.savefig('%s_rejection_speedup' % file_out)
+    plt.close()
 
 
     ## Rejection sound per sec
@@ -433,6 +443,7 @@ def timing_plot(f_timing=''):
     plt.tight_layout()
     plt.ylim(1e-3, 1e+5)
     plt.savefig('%s_rejection_sound_per_sec' % file_out)
+    plt.close()
 
     ## Rejection sec per sounding
     plt.figure(figsize=(6,6))
@@ -447,6 +458,7 @@ def timing_plot(f_timing=''):
     plt.tight_layout()
     plt.ylim(1e-5, 1e+3)
     plt.savefig('%s_rejection_sec_per_sound' % file_out)
+    plt.close()
 
     ## Rejection sound per sec - N
     plt.figure(figsize=(6,6))
@@ -457,6 +469,7 @@ def timing_plot(f_timing=''):
     plt.grid()
     plt.legend(Nproc_arr)
     plt.savefig('%s_rejection_sound_per_sec_N' % file_out)
+    plt.close()
 
     ## Rejection sound per sec - per CPU
     plt.figure(figsize=(6,6))
@@ -467,6 +480,7 @@ def timing_plot(f_timing=''):
     plt.grid()
     plt.legend(N_arr)
     plt.savefig('%s_rejection_sound_per_sec_CPU' % file_out)
+    plt.close()
 
     ##  Sound per sec per CPU - N  
     plt.figure(figsize=(6,6))
@@ -479,6 +493,7 @@ def timing_plot(f_timing=''):
     plt.grid()
     plt.legend(Nproc_arr)
     plt.savefig('%s_rejection_sound_per_sec_per_cpu_N' % file_out)
+    plt.close()
 
 
     ##  Sound per sec per CPU - CPU 
@@ -490,6 +505,7 @@ def timing_plot(f_timing=''):
     plt.grid()
     plt.legend(N_arr)
     plt.savefig('%s_rejection_sound_per_sec_per_cpu_CPU' % file_out)
+    plt.close()
 
 
 
@@ -509,6 +525,7 @@ def timing_plot(f_timing=''):
     plt.legend(N_arr)
     plt.tight_layout()
     plt.savefig('%s_poststat_sounding_per_sec' % file_out)
+    plt.close()
 
     # plt.figure(figsize=(6,6))
     # plt.plot(Nproc_arr, T_poststat_sounding_speedup.T, 'o-')
@@ -546,6 +563,7 @@ def timing_plot(f_timing=''):
         plt.grid(True, which="both", ls="--")
         plt.tight_layout()
         plt.savefig('%s_Ncpu%d_cumT' % (file_out,Nproc_arr[i_proc]))
+        plt.close()
 
         # The same as thea area plot but normalized to the total time
         plt.figure(figsize=(6,6))
@@ -558,6 +576,7 @@ def timing_plot(f_timing=''):
         plt.tight_layout()
         plt.title('Normalized time, using %d processors' % Nproc_arr[i_proc])
         plt.savefig('%s_Ncpu%d_cumT_norm' % (file_out,Nproc_arr[i_proc]))
+        plt.close()
 
 
 
