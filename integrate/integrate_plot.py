@@ -1452,7 +1452,12 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
     else:
         z = f_prior['/%s'%Mkey].attrs['z']
 
-    
+
+    # update nr if it is larger than the number of realizations in f_prior[Mkey]
+    if len(f_prior[Mkey][:])<nr:
+        nr = np.min([nr, len(f_prior[Mkey][:])])
+        print('plot_prior_stats: Using %d realizations' % nr)
+
     M = f_prior[Mkey][:]
     N, Nm = M.shape
     clim,cmap = ig.get_clim_cmap(f_prior_h5, Mstr=Mkey)
@@ -1467,8 +1472,16 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
         m0 = ax[0,0].hist(M.flatten(),101)
         ax[0,0].set_xlabel(name)
         ax[0,0].set_ylabel('Distribution')
-        m1 = ax[0,1].hist(np.log10(M.flatten()),101)
-        ax[0,1].set_xlabel(name)
+
+        # Handle log(0) by filtering out zeros and negative values
+        M_log = M.flatten()
+        M_log = M_log[M_log > 0]  # Remove zeros and negative values
+        if len(M_log) > 0:
+            m1 = ax[0,1].hist(np.log10(M_log), 101)
+        else:
+            # If no positive values, create empty histogram
+            m1 = ax[0,1].hist([], 101)
+        ax[0,1].set_xlabel('log10(%s)' % name)
 
         # set xtcik labels as 10^x where x i the xtick valye
         ax[0,1].set_xticks(ax[0,1].get_xticks())  # Ensure ticks are set
@@ -1496,7 +1509,7 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
             #m2.set_clim(clim[0]-.5,clim[1]+.5)      
             fig.colorbar(m2, ax=ax[1,0], label=Mkey[1::])
         else:
-            m2 = ax[1,0].plot(np.arange(1,101),M[0:nr,:].flatten()) 
+            m2 = ax[1,0].plot(np.arange(1,nr+1),M[0:nr,:].flatten()) 
             ax[1,0].set_xlim(1,nr)
 
         ax[1,0].set_xlabel('Realization #')

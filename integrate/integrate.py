@@ -1221,6 +1221,7 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
         NLAY = np.ceil(NLAY).astype(int)    
         if len(f_prior_h5)<1:
             f_prior_h5 = 'PRIOR_CHI2_NF_%d_%s_N%d.h5' % (NLAY_deg, RHO_dist, N)
+        NLAY_max = np.max(NLAY)
 
     # Force NLAY to be a 2 dimensional numpy array
     NLAY = NLAY[:, np.newaxis]
@@ -1229,11 +1230,21 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     z = np.arange(z_min, z_max, dz)
     nz= len(z)
     M_rho = np.zeros((N, nz))
+    nm_sparse = NLAY_max+NLAY_max-1
+    M_rho_sparse = np.ones((N, nm_sparse))*np.nan
+    
 
     #% simulate the number of layers as in integer
     for i in tqdm(range(N), mininterval=1, disable=(showInfo<0), desc='prior_layered', leave=False):
     
-        i_boundaries = np.sort(np.random.choice(nz, NLAY[i]-1, replace=False))        
+
+        ## z_boundaries is the depth boundaries of the base of NLAY[i]-1 layers in meters. The values should be between 0 and z_max.
+        z_boundaires = np.random.random(NLAY[i]-1)*z_max
+        ## Compute i_boundaries as the nearest position of the nearest intefer in z
+        i_boundaries = np.searchsorted(z, z_boundaires)
+        ## Ensure indices don't exceed array bounds
+        i_boundaries = np.minimum(i_boundaries, nz - 1)
+        #print("i_boundaries", i_boundaries, "z_boundaires", z_boundaires, "NLAY[i]", NLAY[i])
 
         ### simulate the resistivity in each layer
         if RHO_dist=='log-normal':
@@ -1245,11 +1256,20 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
         elif RHO_dist=='uniform':
             rho_all=np.random.uniform(RHO_min, RHO_max, NLAY[i])
 
+
+
         rho = np.zeros(nz)+rho_all[0]
         for j in range(len(i_boundaries)):
             rho[i_boundaries[j]:] = rho_all[j+1]
 
         M_rho[i]=rho        
+
+
+        # m_current should be the concatenation of z_boundaires and rho_alls
+        m_current = np.concatenate((z_boundaires, rho_all))
+        #print("m_current", m_current)
+        M_rho_sparse[i,0:len(m_current)] = m_current
+
 
     if (showInfo>0):
         print("prior_model_layered: Saving prior model to %s" % f_prior_h5)
@@ -1258,7 +1278,6 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     
     if (showInfo>1):
         print("Saving '/M1' prior model  %s" % f_prior_h5)
-
     ig.save_prior_model(f_prior_h5,M_rho.astype(np.float32),
                 im=1,
                 name='resistivity',
@@ -1272,8 +1291,21 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
 
     if (showInfo>1):
         print("Saving '/M2' prior model  %s" % f_prior_h5)
+    ig.save_prior_model(f_prior_h5,M_rho_sparse.astype(np.float32),
+                im=2,
+                name='sparse - depth-resistivity',
+                is_discrete = 0, 
+                x = np.arange(0,nm_sparse),
+                z = np.arange(0,nm_sparse),
+                force_replace=True,
+                showInfo=showInfo,
+                )
+
+
+    if (showInfo>1):
+        print("Saving '/M3' prior model  %s" % f_prior_h5)
     ig.save_prior_model(f_prior_h5,NLAY.astype(np.float32),
-                        im=2,
+                        im=3,
                         name = 'Number of layers',
                         is_discrete=0, 
                         x=np.array([0]), 
@@ -1360,7 +1392,6 @@ def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 
     
     if (showInfo>0):
         print("prior_model_workbench_direct: Saving prior model to %s" % f_prior_h5)
-
 
     if (showInfo>1):
         print("Saving '/M1' prior model  %s" % f_prior_h5)
@@ -1466,26 +1497,38 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
         print('z_min, z_max, dz, nz = %g, %g, %g, %d' % (z_min, z_max, dz, nz))
     M_rho = np.zeros((N, nz))
 
+    nm_sparse = NLAY_max+NLAY_max-1
+    if (showInfo>0):
+        print("nm_sparse", nm_sparse)
+    M_rho_sparse = np.ones((N, nm_sparse))*np.nan
+    
+
     for i in tqdm(range(N), mininterval=1, disable=(showInfo<0), desc='prior_workbench', leave=False):
         nlayers = NLAY[i][0]
         #print(nlayers)
         z2=z_max
         z_single= z1 + (z2 - z1) * np.linspace(0, 1, nlayers) ** p
-
+        
         if RHO_dist=='uniform':
-            M_rho_single = np.random.uniform(low=RHO_min, high = RHO_max, size=(1, nz))
+            M_rho_single = np.random.uniform(low=RHO_min, high = RHO_max, size=(1, nlayers))
         elif RHO_dist=='log-uniform':
-            M_rho_single = np.exp(np.random.uniform(low=np.log(RHO_min), high = np.log(RHO_max), size=(1, nz)))
+            M_rho_single = np.exp(np.random.uniform(low=np.log(RHO_min), high = np.log(RHO_max), size=(1, nlayers)))
         elif RHO_dist=='normal':
-            M_rho_single = np.random.normal(loc=RHO_mean, scale = RHO_std, size=(1, nz))
+            M_rho_single = np.random.normal(loc=RHO_mean, scale = RHO_std, size=(1, nlayers))
         elif RHO_dist=='log-normal':
-            M_rho_single = np.random.lognormal(mean=np.log(RHO_mean), sigma = RHO_std/RHO_mean, size=(1, nz))
+            M_rho_single = np.random.lognormal(mean=np.log(RHO_mean), sigma = RHO_std/RHO_mean, size=(1, nlayers))
         elif RHO_dist=='chi2':
-            M_rho_single = np.random.chisquare(df = chi2_deg, size=(1, nz))
+            M_rho_single = np.random.chisquare(df = chi2_deg, size=(1, nlayers))
 
         for j in range(nlayers):
             ind = np.where(z>=z_single[j])[0]
             M_rho[i,ind]= M_rho_single[0,j]
+
+
+        m_current = np.concatenate((z_single[0:-1].flatten(), M_rho_single.flatten()))
+        M_rho_sparse[i,0:len(m_current)] = m_current
+
+
 
     if (showInfo>0):
         print("prior_model_workbench: Saving prior model to %s" % f_prior_h5)
@@ -1505,8 +1548,20 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
 
     if (showInfo>1):
         print("Saving '/M2' prior model  %s" % f_prior_h5)
+    ig.save_prior_model(f_prior_h5,M_rho_sparse.astype(np.float32),
+                im=2,
+                name='sparse - depth-resistivity',
+                is_discrete = 0, 
+                x = np.arange(0,nm_sparse),
+                z = np.arange(0,nm_sparse),
+                force_replace=True,
+                showInfo=showInfo,
+                )
+
+    if (showInfo>1):
+        print("Saving '/M3' prior model  %s" % f_prior_h5)
     ig.save_prior_model(f_prior_h5,NLAY.astype(np.float32),
-                        im=2,
+                        im=3,
                         name = 'Number of layers',
                         is_discrete=0, 
                         x=np.array([0]), 
