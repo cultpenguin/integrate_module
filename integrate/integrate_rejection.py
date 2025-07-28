@@ -47,45 +47,68 @@ def integrate_rejection(f_prior_h5='prior.h5',
     with observed data within a temperature-controlled tolerance. Supports parallel processing
     and automatic temperature estimation for efficient sampling.
     
-    :param f_prior_h5: Path to HDF5 file containing prior model and data samples
-    :type f_prior_h5: str, optional
-    :param f_data_h5: Path to HDF5 file containing observed data for inversion
-    :type f_data_h5: str, optional
-    :param f_post_h5: Output path for posterior samples. If empty, auto-generated from prior filename
-    :type f_post_h5: str, optional
-    :param N_use: Maximum number of prior samples to use for inversion
-    :type N_use: int, optional
-    :param id_use: List of data identifiers to use for inversion. If empty, uses all available data
-    :type id_use: list, optional
-    :param ip_range: List of data point indices to invert. If empty, inverts all data points
-    :type ip_range: list, optional
-    :param nr: Number of posterior samples to retain per data point
-    :type nr: int, optional
-    :param autoT: Automatic temperature estimation method (1=enabled, 0=disabled)
-    :type autoT: int, optional
-    :param T_base: Base temperature for rejection sampling when autoT=0
-    :type T_base: float, optional
-    :param Nchunks: Number of chunks for parallel processing. If 0, auto-determined
-    :type Nchunks: int, optional
-    :param Ncpu: Number of CPU cores to use. If 0, auto-determined from system
-    :type Ncpu: int, optional
-    :param parallel: Enable parallel processing if environment supports it
-    :type parallel: bool, optional
-    :param use_N_best: Use only the N best-fitting samples (0=disabled)
-    :type use_N_best: int, optional
-    :param kwargs: Additional keyword arguments including showInfo, updatePostStat, post_dir
-    :type kwargs: dict
+    Parameters
+    ----------
+    f_prior_h5 : str, optional
+        Path to HDF5 file containing prior model and data samples.
+        Default is 'prior.h5'.
+    f_data_h5 : str, optional
+        Path to HDF5 file containing observed data for inversion.
+        Default is 'DAUGAAD_AVG_inout.h5'.
+    f_post_h5 : str, optional
+        Output path for posterior samples. If empty, auto-generated from prior filename.
+        Default is empty string.
+    N_use : int, optional
+        Maximum number of prior samples to use for inversion.
+        Default is 100000000000.
+    id_use : list, optional
+        List of data identifiers to use for inversion. If empty, uses all available data.
+        Default is empty list.
+    ip_range : list, optional
+        List of data point indices to invert. If empty, inverts all data points.
+        Default is empty list.
+    nr : int, optional
+        Number of posterior samples to retain per data point.
+        Default is 400.
+    autoT : int, optional
+        Automatic temperature estimation method (1=enabled, 0=disabled).
+        Default is 1.
+    T_base : float, optional
+        Base temperature for rejection sampling when autoT=0.
+        Default is 1.
+    Nchunks : int, optional
+        Number of chunks for parallel processing. If 0, auto-determined.
+        Default is 0.
+    Ncpu : int, optional
+        Number of CPU cores to use. If 0, auto-determined from system.
+        Default is 0.
+    parallel : bool, optional
+        Enable parallel processing if environment supports it.
+        Default is True.
+    use_N_best : int, optional
+        Use only the N best-fitting samples (0=disabled).
+        Default is 0.
+    **kwargs : dict
+        Additional keyword arguments including showInfo, updatePostStat, post_dir.
     
-    :returns: Path to the output HDF5 file containing posterior samples and statistics
-    :rtype: str
+    Returns
+    -------
+    str
+        Path to the output HDF5 file containing posterior samples and statistics.
     
-    .. note::
-        The function automatically determines optimal processing parameters based on data size
-        and system capabilities. Temperature annealing is used to improve sampling efficiency.
+    Notes
+    -----
+    The function automatically determines optimal processing parameters based on data size
+    and system capabilities. Temperature annealing is used to improve sampling efficiency.
     
-    .. warning::
-        Large datasets may require significant memory and processing time. Monitor system
-        resources during execution.
+    Large datasets may require significant memory and processing time. Monitor system
+    resources during execution.
+    
+    Examples
+    --------
+    >>> import integrate as ig
+    >>> f_post = ig.integrate_rejection('prior.h5', 'data.h5', N_use=10000)
+    >>> print(f"Results saved to: {f_post}")
     """
     import integrate as ig
     
@@ -304,33 +327,62 @@ def integrate_rejection_range(D,
     based on temperature-controlled criteria. Used internally by integrate_rejection for
     both serial and parallel processing.
     
-    :param D: List of forward modeled data arrays for each data type
-    :type D: list
-    :param DATA: Dictionary containing observed data including 'd_obs', 'd_std', and other data arrays
-    :type DATA: dict
-    :param idx: Indices of prior samples to use. If empty, uses sequential indexing
-    :type idx: list, optional
-    :param N_use: Maximum number of prior samples to evaluate
-    :type N_use: int, optional
-    :param id_use: List of data identifiers to use for likelihood calculation
-    :type id_use: list, optional
-    :param ip_range: Range of data point indices to process. If empty, processes all data points
-    :type ip_range: list, optional
-    :param nr: Number of posterior samples to retain per data point
-    :type nr: int, optional
-    :param autoT: Automatic temperature estimation method (1=enabled, 0=disabled)
-    :type autoT: int, optional
-    :param T_base: Base temperature for rejection sampling when autoT=0
-    :type T_base: float, optional
-    :param kwargs: Additional arguments including useRandomData, showInfo, use_N_best
-    :type kwargs: dict
+    Parameters
+    ----------
+    D : list
+        List of forward modeled data arrays for each data type.
+    DATA : dict
+        Dictionary containing observed data including 'd_obs', 'd_std', and other data arrays.
+    idx : list, optional
+        Indices of prior samples to use. If empty, uses sequential indexing.
+        Default is empty list.
+    N_use : int, optional
+        Maximum number of prior samples to evaluate.
+        Default is 1000.
+    id_use : list, optional
+        List of data identifiers to use for likelihood calculation.
+        Default is [1, 2].
+    ip_range : list, optional
+        Range of data point indices to process. If empty, processes all data points.
+        Default is empty list.
+    nr : int, optional
+        Number of posterior samples to retain per data point.
+        Default is 400.
+    autoT : int, optional
+        Automatic temperature estimation method (1=enabled, 0=disabled).
+        Default is 1.
+    T_base : float, optional
+        Base temperature for rejection sampling when autoT=0.
+        Default is 1.
+    **kwargs : dict
+        Additional arguments including useRandomData, showInfo, use_N_best.
     
-    :returns: Tuple containing (i_use_all, T_all, EV_all, EV_post_all, N_UNIQUE_all, ip_range)
-    :rtype: tuple
+    Returns
+    -------
+    tuple
+        Tuple containing (i_use_all, T_all, EV_all, EV_post_all, N_UNIQUE_all, ip_range)
+        where:
+        - i_use_all : ndarray, shape (nump, nr)
+            Indices of accepted posterior samples for each data point
+        - T_all : ndarray, shape (nump,)
+            Temperature values used for each data point
+        - EV_all : ndarray, shape (nump,)
+            Evidence values for each data point
+        - EV_post_all : ndarray, shape (nump,)
+            Posterior evidence values for each data point
+        - N_UNIQUE_all : ndarray, shape (nump,)
+            Number of unique samples for each data point
+        - ip_range : ndarray
+            Range of data point indices that were processed
     
-    .. note::
-        This function is the computational core of the rejection sampling algorithm.
-        It handles temperature annealing and likelihood evaluation for efficient sampling.
+    Notes
+    -----
+    This function is the computational core of the rejection sampling algorithm.
+    It handles temperature annealing and likelihood evaluation for efficient sampling.
+    
+    The algorithm evaluates the likelihood of observed data given forward modeled data
+    for each prior sample, then uses temperature-controlled acceptance criteria to
+    select posterior samples that are consistent with observations.
     """
     
     import integrate as ig
@@ -588,35 +640,54 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
     data point chunks across multiple CPU cores. It handles shared memory management
     for efficient data transfer between processes and aggregates results from all chunks.
     
-    :param ip_chunks: List of data point index chunks for parallel processing
-    :type ip_chunks: list
-    :param D: List of forward modeled data arrays shared across processes
-    :type D: list
-    :param DATA: Dictionary containing observed data structures
-    :type DATA: dict
-    :param idx: Indices of prior samples to use for inversion
-    :type idx: list
-    :param N_use: Maximum number of prior samples per chunk
-    :type N_use: int
-    :param id_use: List of data identifiers for likelihood calculation
-    :type id_use: list
-    :param autoT: Automatic temperature estimation flag
-    :type autoT: int
-    :param T_base: Base temperature for rejection sampling
-    :type T_base: float
-    :param nr: Number of posterior samples to retain per data point
-    :type nr: int
-    :param Ncpu: Number of CPU cores to use for parallel processing
-    :type Ncpu: int
-    :param use_N_best: Flag to use only the N best-fitting samples
-    :type use_N_best: int
+    Parameters
+    ----------
+    ip_chunks : list
+        List of data point index chunks for parallel processing.
+    D : list
+        List of forward modeled data arrays shared across processes.
+    DATA : dict
+        Dictionary containing observed data structures.
+    idx : list
+        Indices of prior samples to use for inversion.
+    N_use : int
+        Maximum number of prior samples per chunk.
+    id_use : list
+        List of data identifiers for likelihood calculation.
+    autoT : int
+        Automatic temperature estimation flag.
+    T_base : float
+        Base temperature for rejection sampling.
+    nr : int
+        Number of posterior samples to retain per data point.
+    Ncpu : int
+        Number of CPU cores to use for parallel processing.
+    use_N_best : int
+        Flag to use only the N best-fitting samples.
     
-    :returns: Tuple containing aggregated results from all chunks (i_use_all, T_all, EV_all, EV_post_all, N_UNIQUE_all)
-    :rtype: tuple
+    Returns
+    -------
+    tuple
+        Tuple containing aggregated results from all chunks:
+        - i_use_all : ndarray, shape (Ndp, nr)
+            Indices of accepted posterior samples for all data points
+        - T_all : ndarray, shape (Ndp,)
+            Temperature values used for all data points
+        - EV_all : ndarray, shape (Ndp,)
+            Evidence values for all data points
+        - EV_post_all : ndarray, shape (Ndp,)
+            Posterior evidence values for all data points
+        - N_UNIQUE_all : ndarray, shape (Ndp,)
+            Number of unique samples for all data points
     
-    .. note::
-        This function uses shared memory to minimize data copying overhead during parallel processing.
-        Shared memory is automatically cleaned up after processing completion.
+    Notes
+    -----
+    This function uses shared memory to minimize data copying overhead during parallel processing.
+    Shared memory is automatically cleaned up after processing completion.
+    
+    The function creates a process pool with the specified number of CPUs and distributes
+    the work chunks across them. Each worker process operates on a subset of data points
+    and returns its results, which are then aggregated by the main process.
     """
     #import integrate as ig
     from multiprocessing import Pool
@@ -676,15 +747,58 @@ def integrate_posterior_chunk(args):
     It reconstructs shared data arrays, processes the assigned chunk of data points
     using rejection sampling, and returns results for aggregation by the main process.
     
-    :param args: Tuple containing chunk parameters (i_chunk, ip_chunks, DATA, idx, N_use, id_use, shared_memory_refs, autoT, T_base, nr, use_N_best)
-    :type args: tuple
+    Parameters
+    ----------
+    args : tuple
+        Tuple containing chunk parameters:
+        - i_chunk : int
+            Index of the current chunk being processed
+        - ip_chunks : list
+            List of all data point index chunks
+        - DATA : dict
+            Dictionary containing observed data structures
+        - idx : list
+            Indices of prior samples to use for inversion
+        - N_use : int
+            Maximum number of prior samples to evaluate
+        - id_use : list
+            List of data identifiers for likelihood calculation
+        - shared_memory_refs : list
+            References to shared memory segments containing forward modeled data
+        - autoT : int
+            Automatic temperature estimation flag
+        - T_base : float
+            Base temperature for rejection sampling
+        - nr : int
+            Number of posterior samples to retain per data point
+        - use_N_best : int
+            Flag to use only the N best-fitting samples
     
-    :returns: Tuple containing chunk results (i_use, T, EV, EV_post, N_UNIQUE)
-    :rtype: tuple
+    Returns
+    -------
+    tuple
+        Tuple containing chunk results:
+        - i_use : ndarray, shape (nump, nr)
+            Indices of accepted posterior samples for the chunk
+        - T : ndarray, shape (nump,)
+            Temperature values used for the chunk
+        - EV : ndarray, shape (nump,)
+            Evidence values for the chunk
+        - EV_post : ndarray, shape (nump,)
+            Posterior evidence values for the chunk
+        - N_UNIQUE : ndarray, shape (nump,)
+            Number of unique samples for the chunk
+        - ip_range : ndarray
+            Range of data point indices that were processed
     
-    .. note::
-        This function runs in a separate process and communicates with the main process
-        through shared memory for data arrays and return values through the process pool.
+    Notes
+    -----
+    This function runs in a separate process and communicates with the main process
+    through shared memory for data arrays and return values through the process pool.
+    
+    The function first reconstructs the shared data arrays from memory references,
+    then calls integrate_rejection_range to perform the actual rejection sampling
+    on the assigned chunk of data points.
     """
     #import integrate as ig
     
@@ -769,17 +883,31 @@ def likelihood_gaussian_diagonal(D, d_obs, d_std, N_app=0):
     This function calculates the likelihood of observed data given a set of predicted data
     and standard deviations, assuming a Gaussian distribution with a diagonal covariance matrix.
     
-    :param D: Predicted data array of shape (n_samples, n_features)
-    :type D: numpy.ndarray
-    :param d_obs: Observed data array of shape (n_features,)
-    :type d_obs: numpy.ndarray
-    :param d_std: Standard deviation array of shape (n_features,)
-    :type d_std: numpy.ndarray
-    :param N_app: Number of data points to use for approximation. If 0, uses all data
-    :type N_app: int, optional
+    Parameters
+    ----------
+    D : ndarray, shape (n_samples, n_features)
+        Predicted data array containing forward model predictions.
+    d_obs : ndarray, shape (n_features,)
+        Observed data array containing measured values.
+    d_std : ndarray, shape (n_features,)
+        Standard deviation array containing measurement uncertainties.
+    N_app : int, optional
+        Number of data points to use for approximation. If 0, uses all data.
+        Default is 0.
     
-    :returns: Likelihood array of shape (n_samples,)
-    :rtype: numpy.ndarray
+    Returns
+    -------
+    ndarray, shape (n_samples,)
+        Log-likelihood values for each sample, computed as:
+        L[i] = -0.5 * sum((D[i] - d_obs)**2 / d_std**2)
+    
+    Notes
+    -----
+    The function assumes independent Gaussian errors with diagonal covariance matrix.
+    The log-likelihood is computed using vectorized operations for efficiency.
+    
+    When N_app > 0, only the N_app samples with smallest residuals are evaluated,
+    and the remaining samples are assigned a very low likelihood (-1e15).
     """
     
     # Compute the likelihood
@@ -809,24 +937,39 @@ def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized
     This function computes likelihood values for model predictions given observed data
     and a full covariance matrix, handling NaN values appropriately.
     
-    :param D: Model predictions with shape (n_samples, n_features)
-    :type D: numpy.ndarray
-    :param d_obs: Observed data with shape (n_features,)
-    :type d_obs: numpy.ndarray
-    :param Cd: Covariance matrix of observed data with shape (n_features, n_features)
-    :type Cd: numpy.ndarray
-    :param N_app: Number of data points to use for approximation. If 0, uses all data
-    :type N_app: int, optional
-    :param checkNaN: If True, handles NaN values in d_obs by ignoring them in calculations
-    :type checkNaN: bool, optional
-    :param useVectorized: If True, uses vectorized computation for better performance
-    :type useVectorized: bool, optional
+    Parameters
+    ----------
+    D : ndarray, shape (n_samples, n_features)
+        Model predictions containing forward model results.
+    d_obs : ndarray, shape (n_features,)
+        Observed data containing measured values.
+    Cd : ndarray, shape (n_features, n_features)
+        Full covariance matrix of observed data uncertainties.
+    N_app : int, optional
+        Number of data points to use for approximation. If 0, uses all data.
+        Default is 0.
+    checkNaN : bool, optional
+        If True, handles NaN values in d_obs by ignoring them in calculations.
+        Default is True.
+    useVectorized : bool, optional
+        If True, uses vectorized computation for better performance.
+        Default is False.
     
-    :returns: Gaussian likelihood for each sample with shape (n_samples,)
-    :rtype: numpy.ndarray
+    Returns
+    -------
+    ndarray, shape (n_samples,)
+        Log-likelihood values for each sample, computed as:
+        L[i] = -0.5 * (D[i] - d_obs)^T * Cd^(-1) * (D[i] - d_obs)
     
-    .. note::
-        **TODO:** Check that this works when D has NaN values and determine why they occur.
+    Notes
+    -----
+    The function handles full covariance matrices accounting for correlated errors.
+    When checkNaN=True, only non-NaN data points are used in the likelihood calculation.
+    
+    The vectorized implementation uses einsum for efficient matrix operations.
+    When N_app > 0, only the N_app samples with smallest residuals are evaluated.
+    
+    TODO: Check that this works when D has NaN values and determine why they occur.
     """
     
     if checkNaN:
@@ -875,27 +1018,49 @@ def likelihood_multinomial(D, P_obs, class_id=None, class_is_idx=False, entropyF
     This function computes the log-likelihood of multinomial distribution for discrete data
     using direct indexing and optimized array operations for efficient computation.
     
-    :param D: Matrix of observed discrete data with shape (N, n_features), where each element represents a class ID
-    :type D: numpy.ndarray
-    :param P_obs: Matrix of probabilities with shape (n_classes, n_features), where each column represents probability distribution over classes
-    :type P_obs: numpy.ndarray
-    :param class_id: Array of unique class IDs corresponding to rows in P_obs. If None, extracted from unique values in D
-    :type class_id: numpy.ndarray, optional
-    :param class_is_idx: If True, class_id is already an index. If False, computes index from class_id array
-    :type class_is_idx: bool, optional
-    :param entropyFilter: If True, applies entropy filtering to select features
-    :type entropyFilter: bool, optional
-    :param entropyThreshold: Threshold for entropy filtering. Features with entropy below this value are selected
-    :type entropyThreshold: float, optional
+    Parameters
+    ----------
+    D : ndarray, shape (N, n_features)
+        Matrix of observed discrete data, where each element represents a class ID.
+    P_obs : ndarray, shape (n_classes, n_features)
+        Matrix of probabilities, where each column represents probability distribution over classes.
+    class_id : ndarray, optional
+        Array of unique class IDs corresponding to rows in P_obs. 
+        If None, extracted from unique values in D.
+        Default is None.
+    class_is_idx : bool, optional
+        If True, class_id is already an index. If False, computes index from class_id array.
+        Default is False.
+    entropyFilter : bool, optional
+        If True, applies entropy filtering to select features.
+        Default is False.
+    entropyThreshold : float, optional
+        Threshold for entropy filtering. Features with entropy below this value are selected.
+        Default is 0.99.
     
-    :returns: Log-likelihood values for each sample with shape (N, 1)
-    :rtype: numpy.ndarray
+    Returns
+    -------
+    ndarray, shape (N,)
+        Log-likelihood values for each sample, computed using log base 10 with
+        normalization by maximum probability for numerical stability.
     
-    .. note::
-        The function creates a mapping from class IDs to indices, converts test data to
-        corresponding indices, and retrieves probabilities using advanced indexing.
-        4. Calculates log likelihood using max normalization for numerical stability
-
+    Notes
+    -----
+    The function creates a mapping from class IDs to indices, converts test data to
+    corresponding indices, and retrieves probabilities using advanced indexing.
+    
+    The log-likelihood is calculated using max normalization for numerical stability:
+    logL[i] = sum(log10(p[i] / p_max))
+    
+    When entropyFilter is True, only features with entropy below the threshold
+    are used in the likelihood calculation, which can improve computational efficiency
+    for datasets with many uninformative features.
+    
+    Examples
+    --------
+    >>> D = np.array([[1, 2], [2, 1]])  # Sample data with class IDs
+    >>> P_obs = np.array([[0.3, 0.7], [0.7, 0.3]])  # Class probabilities
+    >>> logL = likelihood_multinomial(D, P_obs)
     """
     
     from scipy.stats import entropy
@@ -948,17 +1113,27 @@ def create_shared_memory(arrays):
     allowing them to be accessed efficiently across multiple processes without
     copying data. Returns both memory references and objects for cleanup.
     
-    :param arrays: List of numpy arrays to place in shared memory
-    :type arrays: list
+    Parameters
+    ----------
+    arrays : list
+        List of numpy arrays to place in shared memory.
     
-    :returns: Tuple containing (shared_memories, shm_objects) where shared_memories 
-              is a list of (name, shape, dtype) tuples and shm_objects is a list 
-              of SharedMemory objects for cleanup
-    :rtype: tuple
+    Returns
+    -------
+    tuple
+        Tuple containing (shared_memories, shm_objects) where:
+        - shared_memories : list
+            List of (name, shape, dtype) tuples identifying shared memory segments
+        - shm_objects : list
+            List of SharedMemory objects for cleanup
     
-    .. note::
-        The returned shm_objects must be cleaned up using cleanup_shared_memory()
-        to prevent memory leaks. This should be done in a finally block.
+    Notes
+    -----
+    The returned shm_objects must be cleaned up using cleanup_shared_memory()
+    to prevent memory leaks. This should be done in a finally block.
+    
+    If an error occurs during creation, any successfully created memory segments
+    are automatically cleaned up before raising the exception.
     """
     shared_memories = []
     shm_objects = []
@@ -988,16 +1163,30 @@ def reconstruct_shared_arrays(shared_memory_refs):
     and reconstructs the original numpy arrays by accessing the shared memory
     segments. Used by worker processes to access shared data.
     
-    :param shared_memory_refs: List of (name, shape, dtype) tuples identifying shared memory segments
-    :type shared_memory_refs: list
+    Parameters
+    ----------
+    shared_memory_refs : list
+        List of (name, shape, dtype) tuples identifying shared memory segments.
     
-    :returns: Tuple of (reconstructed arrays, shared memory objects)
-    :rtype: tuple
+    Returns
+    -------
+    tuple
+        Tuple containing:
+        - reconstructed_arrays : list
+            List of numpy arrays reconstructed from shared memory
+        - shm_objects : list
+            List of shared memory objects that must be closed after use
     
-    .. warning::
-        The reconstructed arrays are views into shared memory. Modifications
-        will affect the shared data across all processes. Do NOT modify these arrays.
-        The shared memory objects must be closed after use to prevent leaks.
+    Warnings
+    --------
+    The reconstructed arrays are views into shared memory. Modifications
+    will affect the shared data across all processes. Do NOT modify these arrays.
+    The shared memory objects must be closed after use to prevent leaks.
+    
+    Notes
+    -----
+    If an error occurs during reconstruction, any successfully opened shared memory
+    objects are automatically closed before raising the exception.
     """
     reconstructed_arrays = []
     shm_objects = []
@@ -1024,18 +1213,32 @@ def cleanup_shared_memory(shm_objects):
     It handles cleanup gracefully by catching and ignoring errors for objects
     that may have already been cleaned up.
     
-    :param shm_objects: List of shared memory objects to clean up
-    :type shm_objects: list
+    Parameters
+    ----------
+    shm_objects : list
+        List of shared memory objects to clean up.
     
-    :returns: None
-    :rtype: None
+    Returns
+    -------
+    None
     
-    .. note::
-        This function should always be called in a finally block or similar
-        error-safe context to ensure cleanup occurs even if exceptions are raised.
-        
-        Each shared memory object is both closed (to release the local reference)
-        and unlinked (to remove it from the system).
+    Notes
+    -----
+    This function should always be called in a finally block or similar
+    error-safe context to ensure cleanup occurs even if exceptions are raised.
+    
+    Each shared memory object is both closed (to release the local reference)
+    and unlinked (to remove it from the system). Errors during cleanup are
+    silently ignored to prevent cascading failures.
+    
+    Examples
+    --------
+    >>> shared_memories, shm_objects = create_shared_memory(arrays)
+    >>> try:
+    ...     # Use shared memory
+    ...     pass
+    ... finally:
+    ...     cleanup_shared_memory(shm_objects)
     """
     if not shm_objects:
         return
