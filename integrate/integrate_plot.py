@@ -46,21 +46,44 @@ import matplotlib.pyplot as plt
 
 def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='median', usePrior=False, **kwargs):
     """
-    Plots the posterior cumulative thickness.
+    Plot posterior cumulative thickness for specified categories.
 
-    :param f_post_h5: The file path to the posterior data in HDF5 format.
-    :type f_post_h5: str
-    :param im: The index of the image.
-    :type im: int
-    :param icat: The index or list of indices of the categories.
-    :type icat: int or list
-    :param property: The property to plot ('median', 'mean', 'std', 'relstd').
-    :type property: str
-    :param usePrior: Whether to use prior data.
-    :type usePrior: bool
-    :param kwargs: Additional keyword arguments.
-    :returns: fig -- The matplotlib figure object.
-    :rtype: matplotlib.figure.Figure
+    Creates a scatter plot showing the spatial distribution of cumulative thickness
+    statistics (median, mean, standard deviation, or relative standard deviation)
+    for selected geological categories from posterior sampling results.
+
+    Parameters
+    ----------
+    f_post_h5 : str
+        Path to the HDF5 file containing posterior sampling results.
+    im : int, optional
+        Model index for thickness calculation (default is 2).
+    icat : int or list of int, optional
+        Category index or list of category indices to include in thickness calculation
+        (default is [0]).
+    property : {'median', 'mean', 'std', 'relstd'}, optional
+        Statistical property to plot (default is 'median'):
+        - 'median': median thickness
+        - 'mean': mean thickness  
+        - 'std': standard deviation of thickness
+        - 'relstd': relative standard deviation (std/median)
+    usePrior : bool, optional
+        Whether to use prior data instead of posterior data (default is False).
+    **kwargs : dict
+        Additional keyword arguments:
+        - hardcopy : bool, save plot as PNG file (default False)
+        - s : float, scatter point size (default 10)
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The matplotlib figure object containing the plot.
+
+    Notes
+    -----
+    The function calls ig.posterior_cumulative_thickness() to compute thickness
+    statistics and creates a 2D scatter plot with equal aspect ratio and colorbar.
+    Output files are saved with descriptive names when hardcopy=True.
     """
 
     if isinstance(icat, int):
@@ -115,33 +138,54 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
 
 def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, title_text='', hardcopy=False, cmap=[], clim=[], **kwargs):
     """
-    Plot a 2D feature from a given HDF5 file.
+    Create 2D spatial scatter plot of model parameter features.
 
-    :param f_post_h5: Path to the HDF5 file.
-    :type f_post_h5: str
-    :param key: Key of the feature to plot. If not provided, the first key found in the file will be used.
-    :type key: str
-    :param i1: Start index of the feature to plot.
-    :type i1: int
-    :param i2: End index of the feature to plot.
-    :type i2: int
-    :param im: Index of the feature.
-    :type im: int
-    :param iz: Index of the z-coordinate.
-    :type iz: int
-    :param uselog: Flag indicating whether to apply logarithmic scaling to the data.
-    :type uselog: int
-    :param title_text: Additional text to include in the plot title.
-    :type title_text: str
-    :param hardcopy: Whether to save the plot as a PNG file.
-    :type hardcopy: bool
-    :param cmap: Colormap to use for the plot.
-    :type cmap: list
-    :param clim: Color limits for the plot.
-    :type clim: list
-    :param kwargs: Additional keyword arguments to be passed to the scatter plot.
-    :returns: int -- 1 if the plot is successful.
-    :rtype: int
+    Generates a 2D scatter plot showing the spatial distribution of a specific
+    model parameter feature from posterior sampling results. Supports both
+    logarithmic and linear scaling with customizable colormaps and limits.
+
+    Parameters
+    ----------
+    f_post_h5 : str
+        Path to the HDF5 file containing posterior sampling results.
+    key : str, optional
+        Dataset key within the model group to plot. If empty string, uses
+        the first available key in the model group (default is '').
+    i1 : int, optional
+        Starting data point index for plotting (1-based indexing, default is 1).
+    i2 : float, optional
+        Ending data point index for plotting. If larger than data size,
+        uses all available data (default is 1e+9).
+    im : int, optional
+        Model index to plot from (e.g., 1 for M1, 2 for M2, default is 1).
+    iz : int, optional
+        Feature/layer index within the model parameter array (default is 0).
+    uselog : int, optional
+        Apply logarithmic normalization to color scale (1=True, 0=False, default is 1).
+    title_text : str, optional
+        Additional text to append to the plot title (default is '').
+    hardcopy : bool, optional
+        Save the plot as a PNG file (default is False).
+    cmap : list or str, optional
+        Colormap specification. If empty list, uses colormap from prior file
+        attributes (default is []).
+    clim : list, optional
+        Color scale limits as [min, max]. If empty list, uses limits from
+        prior file attributes (default is []).
+    **kwargs : dict
+        Additional keyword arguments passed to matplotlib scatter function.
+        Common options include showInfo for debug output level.
+
+    Returns
+    -------
+    None
+        Function creates and displays the plot but does not return a value.
+
+    Notes
+    -----
+    The function automatically retrieves geometry data and colormap/limit
+    information from linked prior and data files. Plot files are saved with
+    descriptive names including indices and feature information when hardcopy=True.
     """
     from matplotlib.colors import LogNorm
 
@@ -228,26 +272,48 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
 
 def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardcopy=False, **kwargs):
     """
-    Plot temperature and evidence field values from a given HDF5 file.
+    Plot temperature and evidence field values from posterior sampling results.
 
-    :param f_post_h5: Path to the HDF5 file.
-    :type f_post_h5: str
-    :param i1: Start index for the data to plot.
-    :type i1: int
-    :param i2: End index for the data to plot.
-    :type i2: int
-    :param s: Size of the scatter plot points.
-    :type s: int
-    :param T_min: Minimum temperature value.
-    :type T_min: int
-    :param T_max: Maximum temperature value.
-    :type T_max: int
-    :param pl: Type of plot to generate ('all', 'T', 'EV', 'ND').
-    :type pl: str
-    :param hardcopy: Whether to save the plot as a PNG file.
-    :type hardcopy: bool
-    :param kwargs: Additional keyword arguments.
-    :returns: None
+    Creates 2D spatial scatter plots showing the distribution of temperature (T),
+    evidence (EV), and number of data points across the survey area. Temperature
+    indicates sampling efficiency while evidence shows data fit quality.
+
+    Parameters
+    ----------
+    f_post_h5 : str
+        Path to the HDF5 file containing posterior sampling results.
+    i1 : int, optional
+        Starting data point index for plotting (1-based indexing, default is 1).
+    i2 : float, optional
+        Ending data point index for plotting. If larger than data size,
+        uses all available data (default is 1e+9).
+    s : int, optional
+        Size of scatter plot markers in points (default is 5).
+    T_min : int, optional
+        Minimum temperature value for color scale normalization (default is 1).
+    T_max : int, optional
+        Maximum temperature value for color scale normalization (default is 100).
+    pl : {'all', 'T', 'EV', 'ND'}, optional
+        Type of plot to generate (default is 'all'):
+        - 'all': plot all three types
+        - 'T': temperature field only
+        - 'EV': evidence field only  
+        - 'ND': number of data points only
+    hardcopy : bool, optional
+        Save plots as PNG files with descriptive names (default is False).
+    **kwargs : dict
+        Additional keyword arguments passed to matplotlib scatter function.
+
+    Returns
+    -------
+    None
+        Function creates and displays plots but does not return values.
+
+    Notes
+    -----
+    Temperature values are displayed on log10 scale. Evidence values are
+    clamped to reasonable ranges (1st to 99th percentile) for better visualization.
+    The number of data plot shows non-NaN data count per location.
     """
 
     with h5py.File(f_post_h5,'r') as f_post:
@@ -348,31 +414,48 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
 
 def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcopy=False, **kwargs):
     """
-    Plots the geometry data from an INTEGRATE HDF5 file.
+    Plot survey geometry data from INTEGRATE HDF5 files.
 
-    :param f_data_h5: Path to the HDF5 file containing the geometry data
-    :type f_data_h5: str
-    :param i1: Starting index for the data to be plotted
-    :type i1: int, optional
-    :param i2: Ending index for the data to be plotted. If 0, uses the end of the data
-    :type i2: int, optional
-    :param ii: Array of indices to be plotted. If empty, uses all indices between i1 and i2
-    :type ii: numpy.ndarray, optional
-    :param s: Size of the scatter plot points
-    :type s: int, optional
-    :param pl: Type of plot to generate. Options are ``'all'``, ``'LINE'``, ``'ELEVATION'``, or ``'id'``
-    :type pl: str, optional
-    :param hardcopy: If True, saves the plot as a PNG file
-    :type hardcopy: bool, optional
-    :param kwargs: Additional keyword arguments to pass to the scatter plot function
-    :type kwargs: dict
+    Creates 2D scatter plots showing the spatial distribution of survey lines,
+    elevation data, and data point indices. Useful for visualizing survey
+    layout and data coverage.
 
-    :returns: None
-    :rtype: None
+    Parameters
+    ----------
+    f_data_h5 : str
+        Path to the HDF5 file containing geometry data. Can be either a data
+        file or posterior file (function automatically detects and uses correct file).
+    i1 : int, optional
+        Starting index for data points to plot (0-based indexing, default is 0).
+    i2 : int, optional
+        Ending index for data points to plot. If 0, uses all available data
+        (default is 0).
+    ii : numpy.ndarray, optional
+        Specific array of indices to plot. If provided, overrides i1 and i2
+        (default is empty array).
+    s : int, optional
+        Size of scatter plot markers in points (default is 5).
+    pl : {'all', 'LINE', 'ELEVATION', 'id'}, optional
+        Type of geometry plot to generate (default is 'all'):
+        - 'all': plot all geometry types
+        - 'LINE': survey line numbers only
+        - 'ELEVATION': elevation data only
+        - 'id': data point indices only
+    hardcopy : bool, optional
+        Save plots as PNG files with descriptive names (default is False).
+    **kwargs : dict
+        Additional keyword arguments passed to matplotlib scatter function.
 
-    .. note::
-        This function generates scatter plots of the geometry data. If hardcopy is True, 
-        the plots are saved as PNG files.
+    Returns
+    -------
+    None
+        Function creates and displays plots but does not return values.
+
+    Notes
+    -----
+    The function automatically extracts geometry data (X, Y, LINE, ELEVATION)
+    and creates equal-aspect plots with appropriate colorbars and grid lines.
+    All data points are shown as light gray background with selected points highlighted.
     """
     import h5py
     # Test if f_data_h5 is in fact f_post_h5 type file
@@ -518,18 +601,46 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
 
 def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
-    Plot discrete profiles from a given HDF5 file.
+    Create vertical profile plots for discrete categorical model parameters.
 
-    :param f_post_h5: Path to the HDF5 file.
-    :type f_post_h5: str
-    :param i1: Starting index for the profile.
-    :type i1: int
-    :param i2: Ending index for the profile.
-    :type i2: int
-    :param im: Index of the profile to plot.
-    :type im: int
-    :param kwargs: Additional keyword arguments.
-    :returns: None
+    Generates a 4-panel plot showing discrete model parameter distributions
+    with depth, including mode, entropy, and combined mode-entropy views,
+    plus temperature and evidence curves. Designed for geological unit
+    classification results.
+
+    Parameters
+    ----------
+    f_post_h5 : str
+        Path to the HDF5 file containing posterior sampling results.
+    i1 : int, optional
+        Starting data point index for profile plotting (1-based indexing, default is 1).
+    i2 : float, optional
+        Ending data point index for profile plotting. If larger than data size,
+        uses all available data (default is 1e+9).
+    im : int, optional
+        Model index to plot (e.g., 1 for M1, 2 for M2, default is 1).
+    **kwargs : dict
+        Additional keyword arguments:
+        - hardcopy : bool, save plot as PNG file (default False)
+        - txt : str, additional text for filename
+        - showInfo : int, level of debug output (0=none, >0=verbose)
+        - clim : list, color scale limits for discrete classes
+
+    Returns
+    -------
+    None
+        Function creates and displays the plot but does not return values.
+
+    Notes
+    -----
+    The plot consists of four vertically stacked panels:
+    1. Mode: most probable class at each depth/location
+    2. Entropy: uncertainty measure (0=certain, 1=maximum uncertainty) 
+    3. Mode with transparency: mode colored by entropy (transparent=uncertain)
+    4. Temperature and evidence curves
+    
+    Class names and colors are automatically retrieved from prior file attributes.
+    Depth coordinates are computed relative to surface elevation.
     """
     from matplotlib.colors import LogNorm
 
@@ -702,23 +813,54 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
 def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
-    Plot continuous profiles from a given HDF5 file.
+    Create vertical profile plots for continuous model parameters.
 
-    :param f_post_h5: Path to the HDF5 file.
-    :type f_post_h5: str
-    :param i1: Starting index for the profile.
-    :type i1: int
-    :param i2: Ending index for the profile.
-    :type i2: int
-    :param im: Index of the profile to plot.
-    :type im: int
-    :param key: 'Mean'm or 'Median'[def] profile
-    :type key: str
-    :param alpha: Set the transparency realtove to the STD values. alpha=0 means no transparency, alpha=.8 means full transparency when std>0.8.
-    :type alpha: float
-        :type alpha: float
-    :param kwargs: Additional keyword arguments.
-    :returns: None
+    Generates a 4-panel plot showing continuous parameter distributions with depth,
+    including mean/median values, standard deviation, and temperature/evidence curves.
+    Supports transparency based on uncertainty for better visualization.
+
+    Parameters
+    ----------
+    f_post_h5 : str
+        Path to the HDF5 file containing posterior sampling results.
+    i1 : int, optional
+        Starting data point index for profile plotting (1-based indexing, default is 1).
+    i2 : float, optional
+        Ending data point index for profile plotting. If larger than data size,
+        uses all available data (default is 1e+9).
+    im : int, optional
+        Model index to plot (e.g., 1 for M1, 2 for M2, default is 1).
+    **kwargs : dict
+        Additional keyword arguments:
+        - hardcopy : bool, save plot as PNG file (default False)
+        - cmap : str or colormap, color scheme for plotting (default 'jet')
+        - key : {'Mean', 'Median'}, statistic to plot (default 'Median')
+        - alpha : float, transparency scaling factor relative to standard deviation.
+          alpha=0 means no transparency, alpha=0.8 means full transparency when std>0.8
+        - txt : str, additional text for filename
+        - showInfo : int, level of debug output (0=none, >0=verbose)
+        - clim : list, color scale limits [min, max]
+
+    Returns
+    -------
+    None
+        Function creates and displays the plot but does not return values.
+
+    Notes
+    -----
+    The plot layout adapts based on data dimensionality:
+    
+    For multi-layer models (nm > 1):
+    - Panel 1: Mean or median values with logarithmic color scale
+    - Panel 2: Standard deviation with grayscale colormap  
+    - Panel 3: Temperature and evidence curves
+    
+    For single-parameter models (nm = 1):
+    - Panel 1: Line plot with mean ± 2*std confidence bounds
+    - Panel 2: Temperature and evidence curves
+    
+    Transparency can be applied based on uncertainty levels when alpha > 0.
+    Depth coordinates are computed relative to surface elevation.
     """
     from matplotlib.colors import LogNorm
 
@@ -939,15 +1081,36 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
 def plot_data_xy(f_data_h5, pl_type='line', **kwargs):
     """
-    Plot the XY geometry data from an HDF5 file.
+    Create 2D spatial plot of survey geometry and elevation data.
 
-    :param f_data_h5: Path to the HDF5 file.
-    :type f_data_h5: str
-    :param pl_type: Type of plot to generate ('line', 'elevation', 'all').
-    :type pl_type: str
-    :param kwargs: Additional keyword arguments.
-    :returns: fig -- The matplotlib figure object.
-    :rtype: matplotlib.figure.Figure
+    Generates a scatter plot showing the spatial distribution of survey data
+    points with color-coding for survey lines, elevation, or both. Useful for
+    visualizing survey layout and topographic variations.
+
+    Parameters
+    ----------
+    f_data_h5 : str
+        Path to the HDF5 file containing geometry data.
+    pl_type : {'line', 'elevation', 'all'}, optional
+        Type of geometry plot to generate (default is 'line'):
+        - 'line': color by survey line numbers only
+        - 'elevation': color by elevation data only
+        - 'all': show both line and elevation information
+    **kwargs : dict
+        Additional keyword arguments:
+        - hardcopy : bool, save plot as PNG file (default False)
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The matplotlib figure object containing the plot.
+
+    Notes
+    -----
+    Coordinates are automatically scaled to kilometers for better readability.
+    The plot uses equal aspect ratio and includes grid lines and appropriate
+    colorbars for the selected data type. Figure size is automatically adjusted
+    based on the aspect ratio of the survey area.
     """
     #import integrate as ig
     import matplotlib.pyplot as plt
@@ -1139,26 +1302,45 @@ def plot_data_prior(f_prior_data_h5,
                     ylim=None, 
                     **kwargs):
     """
-    Plot the prior data on top of prior data realizations.
+    Compare observed data with prior model predictions.
 
-    :param f_prior_data_h5: Path to the HDF5 file containing the prior data.
-    :type f_prior_data_h5: str
-    :param f_data_h5: Path to the HDF5 file containing the observed data.
-    :type f_data_h5: str
-    :param nr: Number of realizations to plot.
-    :type nr: int
-    :param id: Data set ID.
-    :type id: int
-    :param id_data: Data set ID for the observed data.
-    :type id_data: int (if not set, is_data is set to id)
-    :param d_str: Data string key.
-    :type d_str: str
-    :param alpha: Transparency level for the plot.
-    :type alpha: float
-    :param ylim: Y-axis limits for the plot.
-    :type ylim: tuple or list
-    :param kwargs: Additional keyword arguments.
-    :returns: None
+    Creates a logarithmic plot showing prior data realizations (model predictions)
+    overlaid with observed data. Useful for validating forward models and
+    assessing prior-data compatibility before inversion.
+
+    Parameters
+    ----------
+    f_prior_data_h5 : str
+        Path to the HDF5 file containing prior data realizations from forward modeling.
+    f_data_h5 : str
+        Path to the HDF5 file containing observed data.
+    nr : int, optional
+        Maximum number of prior realizations to plot (default is 1000).
+    id : int, optional
+        Data set identifier for prior data (default is 1).
+    id_data : int, optional
+        Data set identifier for observed data. If None, uses same as id (default is None).
+    d_str : str, optional
+        Data array key within the dataset (default is 'd_obs').
+    alpha : float, optional
+        Transparency level for prior realization lines, range 0-1 (default is 0.5).
+    ylim : tuple or list, optional
+        Y-axis limits as (ymin, ymax). If None, uses automatic scaling (default is None).
+    **kwargs : dict
+        Additional keyword arguments:
+        - hardcopy : bool, save plot as PNG file (default True)
+
+    Returns
+    -------
+    bool
+        True if plotting was successful.
+
+    Notes
+    -----
+    Prior realizations are plotted as thin black lines with specified transparency.
+    Observed data is plotted as thin red lines. The number of plotted realizations
+    is limited by both the nr parameter and available data. Random sampling is
+    used when more realizations are available than requested.
     """
     import h5py
     import numpy as np
@@ -1232,20 +1414,50 @@ def plot_data_prior(f_prior_data_h5,
 
 def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[], **kwargs):
     """
-    Plot the prior and posterior data for a given dataset.
+    Compare prior predictions, posterior predictions, and observed data.
 
-    :param f_post_h5: The path to the post data file.
-    :type f_post_h5: str
-    :param i_plot: The index of the observation to plot.
-    :type i_plot: int
-    :param nr: Number of realizations to plot.
-    :type nr: int
-    :param id: Data set ID.
-    :type id: int
-    :param Dkey: String of the HDF5 key for the data set.
-    :type Dkey: str
-    :param kwargs: Additional keyword arguments.
-    :returns: None
+    Creates logarithmic plots showing the evolution from prior to posterior
+    predictions compared to observed data. Displays data fit quality and
+    sampling results with temperature and evidence information.
+
+    Parameters
+    ----------
+    f_post_h5 : str
+        Path to the HDF5 file containing posterior sampling results.
+    i_plot : int, optional
+        Index of specific observation to plot. If -1, plots random selection
+        of data points (default is -1).
+    nr : int, optional
+        Maximum number of realizations to plot for each type (default is 200).
+    id : int or list of int, optional
+        Data set identifier(s) to plot. If 0, plots all available datasets.
+        If list, plots each dataset separately (default is 0).
+    ylim : tuple or list, optional
+        Y-axis limits as (ymin, ymax). If None, uses automatic scaling (default is None).
+    Dkey : list or str, optional
+        Explicit data key specification. If empty, automatically detects
+        available datasets (default is []).
+    **kwargs : dict
+        Additional keyword arguments:
+        - showInfo : int, level of debug output (0=none, >0=verbose)
+        - is_log : bool, use linear instead of logarithmic y-axis (default False)
+        - hardcopy : bool, save plot as PNG file (default False)
+
+    Returns
+    -------
+    None
+        Function creates and displays plots but does not return values.
+
+    Notes
+    -----
+    The plot shows three data types:
+    - Prior realizations (wheat/gray lines): model predictions before inversion
+    - Posterior realizations (black lines): model predictions after inversion 
+    - Observed data (red dots with error bars): actual measurements
+    
+    For specific observations (i_plot >= 0), temperature and log evidence
+    values are displayed. Random subsets are used when more realizations
+    are available than requested.
     """
     import numpy as np
     import matplotlib.pyplot as plt
@@ -1406,16 +1618,45 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
 
 def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
     """
-    Plot the prior statistics for a given dataset.
+    Visualize prior model parameter distributions and sample realizations.
 
-    :param f_prior_h5: The path to the prior data file.
-    :type f_prior_h5: str
-    :param Mkey: Key of the model to plot.
-    :type Mkey: str or list
-    :param nr: Number of realizations to plot.
-    :type nr: int
-    :param kwargs: Additional keyword arguments.
-    :returns: None
+    Creates comprehensive plots showing parameter histograms, logarithmic
+    distributions, and spatial/temporal realizations for prior model
+    parameters. Useful for validating prior distributions before inversion.
+
+    Parameters
+    ----------
+    f_prior_h5 : str
+        Path to the HDF5 file containing prior model realizations.
+    Mkey : str or list, optional
+        Model parameter key(s) to plot (e.g., 'M1', 'M2'). If empty list,
+        plots statistics for all available model parameters (default is []).
+    nr : int, optional
+        Maximum number of realizations to display in realization plots.
+        Actual number used is minimum of nr and available realizations (default is 100).
+    **kwargs : dict
+        Additional keyword arguments:
+        - hardcopy : bool, save plots as PNG files (default True)
+
+    Returns
+    -------
+    None
+        Function creates and displays plots but does not return values.
+
+    Notes
+    -----
+    For continuous parameters, creates a 2x2 subplot layout:
+    - Top left: Linear histogram of parameter values
+    - Top right: Log10 histogram with scientific notation tick labels
+    - Bottom: Realizations plot showing parameter variation
+    
+    For discrete parameters, creates similar layout but with:
+    - Class-based histograms with appropriate colormaps
+    - Categorical realizations with class names and colors
+    
+    Color limits and colormaps are automatically retrieved from file attributes.
+    Multi-dimensional parameters show spatial patterns, while single parameters
+    show temporal variation.
     """
     from matplotlib.colors import LogNorm
     
@@ -1614,14 +1855,34 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
 # function that reads cmap and clim if they are set
 def get_clim_cmap(f_prior_h5, Mstr='/M1'):
     """
-    Get the color limits and colormap for a given model.
+    Retrieve color scale limits and colormap from prior model attributes.
 
-    :param f_prior_h5: Path to the HDF5 file containing the prior data.
-    :type f_prior_h5: str
-    :param Mstr: Model string key.
-    :type Mstr: str
-    :returns: clim, cmap -- Color limits and colormap.
-    :rtype: tuple
+    Extracts visualization parameters stored in HDF5 file attributes,
+    providing default values when attributes are not present. Used by
+    plotting functions for consistent color scaling across visualizations.
+
+    Parameters
+    ----------
+    f_prior_h5 : str
+        Path to the HDF5 file containing prior model data.
+    Mstr : str, optional
+        Model parameter key string (e.g., '/M1', '/M2', default is '/M1').
+
+    Returns
+    -------
+    clim : list
+        Color scale limits as [min_value, max_value]. Returns [10, 500]
+        as default if 'clim' attribute is not found.
+    cmap : matplotlib.colors.ListedColormap or str  
+        Colormap object created from stored colormap array, or 'jet'
+        string as default if 'cmap' attribute is not found.
+
+    Notes
+    -----
+    The function automatically converts stored colormap arrays to matplotlib
+    ListedColormap objects with proper transposition. Color limits and
+    colormaps are typically set during prior model generation to ensure
+    consistent visualization across different plotting functions.
     """
     with h5py.File(f_prior_h5,'r') as f_prior:
         if 'clim' in f_prior[Mstr].attrs.keys():

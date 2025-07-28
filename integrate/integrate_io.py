@@ -39,18 +39,40 @@ from typing import Dict, List, Union, Any
 
 def load_prior(f_prior_h5, N_use=0, idx = [], Randomize=False):
     """
-    Load prior data from an HDF5 file.
+    Load prior model parameters and data from HDF5 file.
 
-    :param f_prior_h5: Path to the prior HDF5 file.
-    :type f_prior_h5: str
-    :param N_use: Number of samples to use. Default is 0, which means all samples.
-    :type N_use: int, optional
-    :param idx: List of indices to use. If empty, all indices are used.
-    :type idx: list, optional
-    :param Randomize: Flag indicating whether to randomize the order of the samples. Default is False.
-    :type Randomize: bool, optional
-    :return: Dictionary containing the loaded prior data.
-    :rtype: dict
+    Loads both model parameters and forward-modeled data from a prior HDF5 file,
+    with options for sample selection, indexing, and randomization. This is a
+    convenience function that combines model and data loading operations.
+
+    Parameters
+    ----------
+    f_prior_h5 : str
+        Path to the HDF5 file containing prior model realizations and data.
+    N_use : int, optional
+        Number of samples to load. If 0, loads all available samples (default is 0).
+    idx : list, optional
+        Specific indices to load. If empty, uses N_use or loads all samples
+        (default is []).
+    Randomize : bool, optional
+        Whether to randomize the order of loaded samples (default is False).
+
+    Returns
+    -------
+    D : dict
+        Dictionary containing forward-modeled data arrays, with keys corresponding
+        to data types (e.g., 'D1', 'D2').
+    M : dict
+        Dictionary containing model parameter arrays, with keys corresponding
+        to model types (e.g., 'M1', 'M2').
+    idx : numpy.ndarray
+        Array of indices corresponding to the loaded samples.
+
+    Notes
+    -----
+    This function internally calls load_prior_data() and load_prior_model()
+    with consistent indexing to ensure data and model correspondence.
+    Sample selection priority: explicit idx > N_use > all samples.
     """
     if len(idx)==0:
         D, idx = load_prior_data(f_prior_h5, N_use=N_use, Randomize=Randomize)
@@ -63,26 +85,46 @@ def load_prior(f_prior_h5, N_use=0, idx = [], Randomize=False):
 
 def load_prior_model(f_prior_h5, im_use=[], idx=[], N_use=0, Randomize=False):
     """
-    Load prior model data from an HDF5 file.
+    Load model parameter arrays from prior HDF5 file.
+
+    Loads model parameter arrays (e.g., resistivity, layer thickness, geological units)
+    from a prior HDF5 file with flexible model selection and sample indexing options.
+    Supports loading specific model types and sample subsets.
+
+    Parameters
+    ----------
+    f_prior_h5 : str
+        Path to the HDF5 file containing prior model parameter realizations.
+    im_use : list of int, optional
+        Model parameter indices to load (e.g., [1, 2] for M1 and M2).
+        If empty, loads all available model parameters (default is []).
+    idx : list or array-like, optional
+        Specific sample indices to load. If empty, uses N_use and Randomize
+        to determine samples (default is []).
+    N_use : int, optional
+        Number of samples to load. If 0, loads all available samples.
+        Ignored if idx is provided (default is 0).
+    Randomize : bool, optional
+        Whether to randomly select samples when idx is empty.
+        If False, uses sequential selection (default is False).
+
+    Returns
+    -------
+    M : list of numpy.ndarray
+        List of model parameter arrays, one for each requested model type.
+        Each array has shape (N_samples, N_model_parameters).
+    idx : numpy.ndarray
+        Array of sample indices that were loaded, useful for consistent
+        indexing across related datasets.
+
+    Notes
+    -----
+    The function automatically detects available model parameters (M1, M2, ...)
+    and loads the requested subset. Sample selection priority follows:
+    explicit idx > N_use random/sequential > all samples.
     
-    This function loads model parameter arrays from the prior structure with flexible
-    indexing and sampling options.
-    
-    :param f_prior_h5: Path to the HDF5 file containing the prior model data
-    :type f_prior_h5: str
-    :param im_use: List of model indices to use. If empty, all models are used
-    :type im_use: list, optional
-    :param idx: List of indices to select from the data. If empty, indices are generated based on N_use and Randomize
-    :type idx: list, optional
-    :param N_use: Number of samples to use. If 0, all samples are used
-    :type N_use: int, optional
-    :param Randomize: If True, indices are randomized. If False, sequential indices are used
-    :type Randomize: bool, optional
-    
-    :returns: Tuple containing (M, idx) where M is list of arrays containing selected data for each model and idx is array of indices used to select the data
-    :rtype: tuple
-    
-    :raises ValueError: If the length of idx is not equal to N_use
+    When idx length differs from N_use, the function uses len(idx) and
+    issues a warning message.
     """
     import h5py
     import numpy as np
@@ -125,31 +167,47 @@ def save_prior_model(f_prior_h5, M_new,
                      delete_if_exist=False,   
                      **kwargs):
     """
-    Save new prior model data to an HDF5 file.
+    Save model parameter arrays to prior HDF5 file.
+
+    Saves model parameter realizations (e.g., resistivity, layer thickness) to an
+    HDF5 file with automatic model identifier assignment and data type optimization.
+    Supports overwriting existing models and file management options.
+
+    Parameters
+    ----------
+    f_prior_h5 : str
+        Path to the HDF5 file where model data will be saved.
+    M_new : numpy.ndarray
+        Model parameter array to save. Can be 1D or 2D; 1D arrays are
+        automatically converted to column vectors.
+    im : int, optional
+        Model identifier for the dataset key (creates '/M{im}'). If None,
+        automatically assigns the next available ID (default is None).
+    force_replace : bool, optional
+        Whether to overwrite existing model data with the same identifier.
+        If False, raises error when key exists (default is False).
+    delete_if_exist : bool, optional
+        Whether to delete the entire HDF5 file before saving. Use with
+        caution as this removes all existing data (default is False).
+    **kwargs : dict
+        Additional arguments:
+        - showInfo : int, verbosity level (0=silent, >0=verbose)
+
+    Returns
+    -------
+    im : int
+        The model identifier used for saving the data.
+
+    Notes
+    -----
+    Model data is stored as HDF5 datasets with keys '/M1', '/M2', etc.
+    Data type optimization is performed automatically:
+    - Floating-point arrays are converted to float32 for memory efficiency
+    - Integer arrays are preserved as appropriate integer types
+    - All datasets use gzip compression (level 9) for storage efficiency
     
-    This function saves model parameter arrays to the prior structure with automatic
-    or manual model identifier assignment. Supports replacing existing models and
-    optional file deletion for clean saves.
-    
-    :param f_prior_h5: Path to the HDF5 file where the prior model data will be saved
-    :type f_prior_h5: str
-    :param M_new: The new prior model data array to be saved
-    :type M_new: numpy.ndarray
-    :param im: Model identifier to use as the key. If None, auto-generates next available ID
-    :type im: int, optional
-    :param force_replace: If True, replaces existing model data with the same ID
-    :type force_replace: bool, optional
-    :param delete_if_exist: If True, deletes the entire file before saving new data
-    :type delete_if_exist: bool, optional
-    :param kwargs: Additional arguments including showInfo for verbosity control
-    :type kwargs: dict
-    
-    :returns: The model identifier used for saving the data
-    :rtype: int
-    
-    .. note::
-        Model data is stored in HDF5 groups named '/M1', '/M2', etc. The function
-        automatically determines the next available ID if im is None.
+    The function ensures 2D array format with shape (N_samples, N_parameters)
+    where 1D arrays are converted to column vectors.
     """
     import h5py
     import numpy as np
@@ -246,29 +304,47 @@ def save_prior_model(f_prior_h5, M_new,
 
 def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
     """
-    Load prior data from an HDF5 file.
+    Load forward-modeled data arrays from prior HDF5 file.
+
+    Loads electromagnetic or other geophysical data predictions from forward
+    modeling runs stored in the prior file. Supports selective loading by
+    data type, sample indices, and randomization for sampling purposes.
+
+    Parameters
+    ----------
+    f_prior_h5 : str
+        Path to the HDF5 file containing forward-modeled data arrays.
+    id_use : list of int, optional
+        Data type identifiers to load (e.g., [1, 2] for D1 and D2).
+        If empty, loads all available data types (default is []).
+    idx : list or array-like, optional
+        Specific sample indices to load. If empty, uses N_use and Randomize
+        to determine samples (default is []).
+    N_use : int, optional
+        Number of samples to load. If 0, loads all available samples.
+        Automatically limited to available data size (default is 0).
+    Randomize : bool, optional
+        Whether to randomly select samples when idx is empty.
+        If False, uses sequential selection (default is False).
+
+    Returns
+    -------
+    D : list of numpy.ndarray
+        List of forward-modeled data arrays, one for each requested data type.
+        Each array has shape (N_samples, N_data_points).
+    idx : numpy.ndarray
+        Array of sample indices that were loaded, useful for consistent
+        indexing with corresponding model parameters.
+
+    Notes
+    -----
+    Data arrays are stored as HDF5 datasets with keys '/D1', '/D2', etc.,
+    representing different data types (e.g., different measurement systems,
+    frequencies, or processing stages). The function automatically detects
+    available data types and loads the requested subset.
     
-    This function loads forward modeled data arrays from the prior structure,
-    supporting selective loading by data identifier, sample indices, and size limits.
-    The data can be optionally randomized for sampling purposes.
-    
-    :param f_prior_h5: Path to the prior HDF5 file containing data arrays
-    :type f_prior_h5: str
-    :param id_use: List of data identifiers to load. If empty, loads all available data types
-    :type id_use: list, optional
-    :param idx: List of sample indices to load. If empty, uses N_use or all samples
-    :type idx: list, optional
-    :param N_use: Number of samples to load. If 0, loads all available samples
-    :type N_use: int, optional
-    :param Randomize: If True, randomizes the order of loaded samples
-    :type Randomize: bool, optional
-    
-    :returns: Tuple containing (D, idx) where D is list of data arrays and idx is array of used indices
-    :rtype: tuple
-    
-    .. note::
-        Data arrays are expected to be stored in HDF5 groups named '/D1', '/D2', etc.
-        The function automatically detects available data types if id_use is empty.
+    Sample selection follows the same priority as load_prior_model():
+    explicit idx > N_use random/sequential > all samples.
     """
     import h5py
     import numpy as np
@@ -307,28 +383,46 @@ def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
 
 def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False, **kwargs):
     """
-    Save new prior data arrays to an HDF5 file.
+    Save forward-modeled data arrays to prior HDF5 file.
+
+    Saves electromagnetic or other geophysical data predictions from forward
+    modeling to an HDF5 file with automatic data identifier assignment and
+    data type optimization. Supports overwriting existing data arrays.
+
+    Parameters
+    ----------
+    f_prior_h5 : str
+        Path to the HDF5 file where forward-modeled data will be saved.
+    D_new : numpy.ndarray
+        Forward-modeled data array to save. Should have shape
+        (N_samples, N_data_points) for consistency.
+    id : int, optional
+        Data identifier for the dataset key (creates '/D{id}'). If None,
+        automatically assigns the next available ID (default is None).
+    force_delete : bool, optional
+        Whether to delete existing data with the same identifier before
+        saving. If False, raises error when key exists (default is False).
+    **kwargs : dict
+        Additional arguments:
+        - showInfo : int, verbosity level (0=silent, >0=verbose)
+
+    Returns
+    -------
+    id : int
+        The data identifier used for saving the data.
+
+    Notes
+    -----
+    Forward-modeled data is stored as HDF5 datasets with keys '/D1', '/D2', etc.,
+    representing different data types (e.g., electromagnetic frequencies,
+    measurement systems, or processing variants).
     
-    This function saves forward modeled data arrays to the prior structure with automatic
-    or manual data identifier assignment. Supports replacing existing data arrays.
+    Data type optimization is performed automatically:
+    - Floating-point arrays are converted to float32 for memory efficiency
+    - Integer arrays are preserved as appropriate integer types
+    - All datasets use gzip compression (level 9) for storage efficiency
     
-    :param f_prior_h5: Path to the HDF5 file where the prior data will be saved
-    :type f_prior_h5: str
-    :param D_new: The new prior data array to be saved
-    :type D_new: numpy.ndarray
-    :param id: Data identifier to use as the key. If None, auto-generates next available ID
-    :type id: int, optional
-    :param force_delete: If True, deletes existing data with the same ID before saving
-    :type force_delete: bool, optional
-    :param kwargs: Additional arguments including showInfo for verbosity control
-    :type kwargs: dict
-    
-    :returns: The data identifier used for saving the data
-    :rtype: int
-    
-    .. note::
-        Data arrays are stored in HDF5 groups named '/D1', '/D2', etc. The function
-        automatically determines the next available ID if id is None.
+    The function ensures 2D array format with shape (N_samples, N_data_points).
     """
     import h5py
     import numpy as np
@@ -384,34 +478,60 @@ def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False, **kwargs):
 
 def load_data(f_data_h5, id_arr=[1], **kwargs):
     """
-    Load observational data from an HDF5 file.
-    
-    This function loads observed electromagnetic data including measurements, uncertainties,
-    covariance matrices, and associated metadata from structured HDF5 files. Supports
-    multiple data types and automatic handling of missing data components.
-    
-    :param f_data_h5: Path to the HDF5 file containing the observational data
-    :type f_data_h5: str
-    :param id_arr: List of dataset identifiers to load from the file
-    :type id_arr: list of int, optional
-    :param kwargs: Additional arguments including showInfo for verbosity control
-    :type kwargs: dict
-    
-    :returns: Dictionary containing loaded data with the following keys:
+    Load observational electromagnetic data from HDF5 file.
+
+    Loads observed electromagnetic measurements, uncertainties, covariance matrices,
+    and associated metadata from structured HDF5 files. Handles multiple data types
+    and noise models with automatic fallback for missing data components.
+
+    Parameters
+    ----------
+    f_data_h5 : str
+        Path to the HDF5 file containing observational electromagnetic data.
+    id_arr : list of int, optional
+        Dataset identifiers to load (e.g., [1, 2] for D1 and D2).
+        Each ID corresponds to a different measurement system or processing
+        stage (default is [1]).
+    **kwargs : dict
+        Additional arguments:
+        - showInfo : int, verbosity level (0=silent, 1=normal, >1=verbose)
+
+    Returns
+    -------
+    dict
+        Dictionary containing loaded observational data with keys:
         
-        - 'noise_model': Noise model type for each dataset (list of str)
-        - 'd_obs': Observed data measurements (list of numpy.ndarray)
-        - 'd_std': Standard deviations of observations (list of numpy.ndarray or None)
-        - 'Cd': Full covariance matrices (list of numpy.ndarray or None)
-        - 'id_arr': Dataset identifiers that were loaded (list of int)
-        - 'i_use': Data point usage indicators (list of numpy.ndarray)
-        - 'id_use': Dataset usage identifiers (list of int or numpy.ndarray)
-    :rtype: dict
+        - 'noise_model' : list of str
+            Noise model type for each dataset ('gaussian', 'multinomial', etc.)
+        - 'd_obs' : list of numpy.ndarray
+            Observed data measurements, shape (N_stations, N_channels) per dataset
+        - 'd_std' : list of numpy.ndarray or None
+            Standard deviations of observations, same shape as d_obs
+        - 'Cd' : list of numpy.ndarray or None
+            Full covariance matrices for each dataset
+        - 'id_arr' : list of int
+            Dataset identifiers that were successfully loaded
+        - 'i_use' : list of numpy.ndarray
+            Data point usage indicators (1=use, 0=ignore)
+        - 'id_use' : list of int or numpy.ndarray
+            Dataset usage identifiers for cross-referencing
+
+    Notes
+    -----
+    The function gracefully handles missing data components:
+    - Missing 'id_use' defaults to sequential dataset IDs (1, 2, 3, ...)
+    - Missing 'i_use' defaults to ones array (use all data points)
+    - Missing 'd_std' and 'Cd' remain as None (diagonal noise assumed)
     
-    .. note::
-        Missing data components (d_std, Cd, i_use, id_use) are automatically handled:
-        missing id_use defaults to sequential IDs, missing i_use defaults to all ones,
-        missing d_std and Cd remain as None.
+    Data structure follows INTEGRATE standard format:
+    - '/D{id}/d_obs': observed measurements
+    - '/D{id}/d_std': measurement uncertainties  
+    - '/D{id}/Cd': full covariance matrix (optional)
+    - '/D{id}/i_use': data usage flags (optional)
+    - '/D{id}/id_use': cross-reference IDs (optional)
+    
+    Each dataset can have a different noise model specified in the 'noise_model'
+    attribute, enabling mixed data types in the same file.
     """
 
     showInfo = kwargs.get('showInfo', 1)
@@ -456,14 +576,49 @@ def load_data(f_data_h5, id_arr=[1], **kwargs):
 #def write_stm_files(GEX, Nhank=140, Nfreq=6, Ndig=7, **kwargs):
 def write_stm_files(GEX, **kwargs):
     """
-    Write STM (System Transfer Matrix) files based on the provided GEX system data file.
+    Generate STM (System Transfer Matrix) files from GEX system configuration.
 
-    :param GEX: The GEX data containing the system information.
-    :type GEX: dict
-    :param kwargs: Additional keyword arguments for customization.
-    :type kwargs: dict
-    :return: A list of file paths for the generated STM files.
-    :rtype: list
+    Creates system transfer matrix files required for electromagnetic forward modeling
+    using GA-AEM. Processes both high-moment (HM) and low-moment (LM) configurations
+    with customizable frequency content and Hankel transform parameters.
+
+    Parameters
+    ----------
+    GEX : dict
+        Dictionary containing GEX system configuration data with keys:
+        - 'General': System description and waveform information
+        - Waveform and timing parameters for electromagnetic modeling
+    **kwargs : dict
+        Additional configuration parameters:
+        - Nhank : int, number of Hankel transform coefficients (default 280)
+        - Nfreq : int, number of frequencies for transform (default 12)
+        - Ndig : int, number of digital filters (default 7)
+        - showInfo : int, verbosity level (0=silent, >0=verbose)
+        - WindowWeightingScheme : str, weighting scheme ('AreaUnderCurve', 'BoxCar')
+        - NumAbsHM : int, number of abscissae for high moment (default Nhank)
+        - NumAbsLM : int, number of abscissae for low moment (default Nhank)
+        - NumFreqHM : int, number of frequencies for high moment (default Nfreq)
+        - NumFreqLM : int, number of frequencies for low moment (default Nfreq)
+
+    Returns
+    -------
+    list of str
+        List of file paths for the generated STM files (typically HM and LM variants).
+
+    Notes
+    -----
+    STM files contain system transfer functions that describe the electromagnetic
+    system response characteristics needed for accurate forward modeling. The
+    function generates separate files for high-moment and low-moment configurations
+    when applicable.
+    
+    The generated STM files follow GA-AEM format specifications and include:
+    - Frequency domain transfer functions
+    - Hankel transform coefficients
+    - Digital filter parameters
+    - System timing and waveform information
+    
+    File naming convention follows: {system_description}_{moment_type}.stm
     """
     system_name = GEX['General']['Description']
 
@@ -652,18 +807,59 @@ def write_stm_files(GEX, **kwargs):
 
 def read_gex(file_gex, **kwargs):
     """
-    Read a GEX file and parse its contents into a dictionary.
+    Parse GEX (Geometry Exchange) file into structured dictionary.
 
-    :param str file_gex: The path to the GEX file.
-    :param kwargs: Additional keyword arguments for customization.
-    :type kwargs: dict
-    :keyword int Nhank: The number of Hankel transform abscissae for both low and high frequency windows.
-    :keyword int Nfreq: The number of frequencies per decade for both low and high frequency windows.
-    :keyword int Ndig: The number of digits for waveform digitizing frequency.
-    :keyword int showInfo: Flag to control the display of information. Default is 0.
-    :return: A dictionary containing the parsed contents of the GEX file.
-    :rtype: dict
-    :raises FileNotFoundError: If the specified GEX file does not exist.
+    Reads and parses electromagnetic system configuration files in GEX format,
+    which contain survey geometry, system parameters, waveforms, and timing
+    information required for electromagnetic forward modeling.
+
+    Parameters
+    ----------
+    file_gex : str
+        Path to the GEX file containing electromagnetic system configuration.
+    **kwargs : dict
+        Additional parsing parameters:
+        - Nhank : int, number of Hankel transform abscissae for both frequency
+          windows (used in processing, not directly from file)
+        - Nfreq : int, number of frequencies per decade for both frequency
+          windows (used in processing, not directly from file)
+        - Ndig : int, number of digits for waveform digitizing frequency
+          (used in processing, not directly from file)
+        - showInfo : int, verbosity level (0=silent, >0=verbose, default 0)
+
+    Returns
+    -------
+    dict
+        Dictionary containing parsed GEX file contents with structure:
+        - 'filename' : str, original file path
+        - 'General' : dict, system description and general parameters
+        - Section-specific dictionaries containing parameters grouped by
+          functionality (e.g., timing, waveforms, filters)
+        - 'WaveformLM' : numpy.ndarray, low-moment waveform points
+        - 'WaveformHM' : numpy.ndarray, high-moment waveform points  
+        - 'GateArray' : numpy.ndarray, measurement gate timing
+
+    Raises
+    ------
+    FileNotFoundError
+        If the specified GEX file does not exist or cannot be accessed.
+
+    Notes
+    -----
+    GEX files use a section-based format with key=value pairs:
+    - [Section] headers define parameter groups
+    - Numeric values are automatically converted to numpy arrays
+    - String values are preserved as text
+    - Waveform and gate timing data are consolidated into arrays
+    
+    The parser automatically handles:
+    - Multi-point waveform definitions (WaveformLMPoint*, WaveformHMPoint*)
+    - Gate timing arrays (GateTime*)
+    - Numeric array conversion with space-separated values
+    - Comments and formatting variations
+    
+    Output dictionary structure matches INTEGRATE conventions for
+    electromagnetic system configuration and GA-AEM compatibility.
     """
     showInfo = kwargs.get('showInfo', 0)
     
@@ -738,18 +934,50 @@ def read_gex(file_gex, **kwargs):
 # gex_to_stm: convert a GEX file to a set of STM files
 def gex_to_stm(file_gex, **kwargs):
     """
-    Convert a GEX file to STM files.
+    Convert GEX system configuration to STM files for electromagnetic modeling.
 
-    :param file_gex: The path to the GEX file or a GEX dictionary.
-    :type file_gex: str or dict
-    :param kwargs: Additional keyword arguments to be passed to the write_stm_files function.
-    :return: A tuple containing the STM files and the GEX dictionary.
-    :rtype: tuple
-    :raises TypeError: If the file_gex argument is not a string or a dictionary.
-    :notes:
-        - If the file_gex argument is a string, it is assumed to be the path to the GEX file, which will be read using the read_gex function.
-        - If the file_gex argument is a dictionary, it is assumed to be a GEX dictionary.
-        - The write_stm_files function is called to generate the STM files based on the GEX data.
+    Convenience function that combines GEX file reading and STM file generation
+    into a single operation. Handles both file paths and pre-loaded GEX dictionaries
+    to create system transfer matrix files required for GA-AEM forward modeling.
+
+    Parameters
+    ----------
+    file_gex : str or dict
+        GEX system configuration. Can be either:
+        - str: Path to GEX file to be read and processed
+        - dict: Pre-loaded GEX dictionary from previous read_gex() call
+    **kwargs : dict
+        Additional parameters passed to write_stm_files():
+        - Nhank : int, number of Hankel transform coefficients
+        - Nfreq : int, number of frequencies for transform
+        - showInfo : int, verbosity level
+        - Other STM generation parameters
+
+    Returns
+    -------
+    tuple
+        Tuple containing (stm_files, GEX) where:
+        - stm_files : list of str, paths to generated STM files
+        - GEX : dict, processed GEX dictionary used for STM generation
+
+    Raises
+    ------
+    TypeError
+        If file_gex is neither a string nor a dictionary.
+    FileNotFoundError
+        If file_gex is a string pointing to a non-existent file.
+
+    Notes
+    -----
+    This function provides a streamlined workflow for electromagnetic system
+    setup by automating the GEX→STM conversion process. The generated STM files
+    contain system transfer functions needed for accurate forward modeling
+    with GA-AEM.
+    
+    When file_gex is a string, the function calls read_gex() internally.
+    When file_gex is a dictionary, it's assumed to be a valid GEX structure.
+    The write_stm_files() function handles the actual STM file generation
+    with the provided or default parameters.
     """
     if isinstance(file_gex, str):
         GEX = read_gex(file_gex)
@@ -782,20 +1010,49 @@ def get_gex_file_from_data(f_data_h5, id=1):
 
 def get_geometry(f_data_h5):
     """
-    Retrieve geometry information from an HDF5 file.
+    Extract survey geometry data from HDF5 file.
 
-    :param f_data_h5: The path to the HDF5 file. If a posterior HDF5 file is passed, the corresponding data file is read from the 'h5_data' attribute
-    :type f_data_h5: str
+    Retrieves spatial coordinates, survey line identifiers, and elevation data
+    from an INTEGRATE data file. Automatically handles both direct data files
+    and posterior files that reference data files.
+
+    Parameters
+    ----------
+    f_data_h5 : str
+        Path to the HDF5 file containing geometry data. Can be either a data
+        file or posterior file (function automatically detects and uses correct file).
+
+    Returns
+    -------
+    X : numpy.ndarray
+        UTM X coordinates in meters, shape (N_points,).
+    Y : numpy.ndarray  
+        UTM Y coordinates in meters, shape (N_points,).
+    LINE : numpy.ndarray
+        Survey line identifiers, shape (N_points,).
+    ELEVATION : numpy.ndarray
+        Ground surface elevation in meters, shape (N_points,).
+
+    Raises
+    ------
+    IOError
+        If the HDF5 file cannot be opened or required datasets are missing.
+
+    Examples
+    --------
+    >>> X, Y, LINE, ELEVATION = get_geometry('data.h5')
+    >>> print(f"Survey covers {X.max()-X.min():.0f}m x {Y.max()-Y.min():.0f}m")
+
+    Notes
+    -----
+    The function expects geometry data to be stored in standard INTEGRATE format:
+    - '/UTMX': UTM X coordinates
+    - '/UTMY': UTM Y coordinates  
+    - '/LINE': Survey line numbers
+    - '/ELEVATION': Ground elevation
     
-    :returns: A tuple containing the X, Y, LINE, and ELEVATION arrays
-    :rtype: tuple
-    
-    :raises IOError: If the HDF5 file cannot be opened or read
-    
-    .. note::
-        Example usage:
-        
-        >>> X, Y, LINE, ELEVATION = get_geometry('/path/to/file.h5')
+    When passed a posterior file, automatically extracts the reference to the
+    original data file from the 'f5_data' attribute.
     """
 
     # if f_data_h5 has a feature called 'f5_prior' then use that file
@@ -815,18 +1072,48 @@ def get_geometry(f_data_h5):
 
 def post_to_csv(f_post_h5='', Mstr='/M1'):
     """
-    Convert a post-processing HDF5 file to a CSV file containing XYZ data.
+    Export posterior results to CSV format for GIS integration.
 
-    :param f_post_h5: Path to the post-processing HDF5 file. If not provided, the last used file will be used.
-    :type f_post_h5: str
-    :param Mstr: The dataset path within the HDF5 file. Default is '/M1'.
-    :type Mstr: str
+    Converts posterior sampling results to CSV files containing spatial coordinates
+    and model parameter statistics. Creates files suitable for import into GIS
+    software or other analysis tools.
 
-    :return: Path to the generated CSV file.
-    :rtype: str
+    Parameters
+    ----------
+    f_post_h5 : str, optional
+        Path to the HDF5 file containing posterior results. If empty string,
+        uses a default example file (default is '').
+    Mstr : str, optional
+        Model parameter dataset path within the HDF5 file (e.g., '/M1', '/M2').
+        Specifies which model parameter to export (default is '/M1').
 
-    :raises KeyError: If the specified dataset path does not exist in the HDF5 file.
-    :raises FileNotFoundError: If the specified HDF5 file does not exist.
+    Returns
+    -------
+    str
+        Path to the generated CSV file.
+
+    Raises
+    ------
+    KeyError
+        If the specified model parameter dataset does not exist in the HDF5 file.
+    FileNotFoundError
+        If the specified HDF5 file does not exist or cannot be accessed.
+
+    Notes
+    -----
+    The exported CSV file contains:
+    - X, Y: UTM coordinates
+    - ELEVATION: Ground surface elevation
+    - Model statistics: Mean, Median, Mode, Standard deviation
+    - For discrete models: probability distributions across classes
+    - For continuous models: quantile values and uncertainty measures
+    
+    The function automatically handles both discrete and continuous model types
+    based on the 'is_discrete' attribute in the prior file. Output format is
+    optimized for GIS applications with appropriate coordinate reference systems.
+    
+    TODO: Future enhancements planned for LINE number export and separate
+    functions for grid vs. point data export.
     """
     
     # TODO: Would be nice if also the LINE number was exported (to allow filter by LINE)
@@ -1400,31 +1687,55 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
 
 def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_data_h5='data.h5', **kwargs):
     """
-    Write Gaussian noise data to an HDF5 file.
+    Write observational data with Gaussian noise model to HDF5 file.
+
+    Creates HDF5 datasets for electromagnetic or other geophysical measurements
+    assuming Gaussian-distributed uncertainties. Handles both diagonal and full
+    covariance representations of measurement errors.
+
+    Parameters
+    ----------
+    D_obs : numpy.ndarray
+        Observed data measurements with shape (N_stations, N_channels).
+        Each row represents a measurement location, each column a data channel.
+    D_std : list, optional
+        Standard deviations of observed data, same shape as D_obs.
+        If empty, computed from d_std parameter (default is []).
+    d_std : list, optional
+        Default standard deviation values or multipliers for uncertainty
+        calculation when D_std is not provided (default is []).
+    Cd : list, optional
+        Full covariance matrices for measurement uncertainties.
+        If provided, takes precedence over D_std (default is []).
+    id : int, optional
+        Dataset identifier for HDF5 group naming ('/D{id}', default is 1).
+    is_log : int, optional
+        Flag indicating logarithmic data scaling (0=linear, 1=log, default is 0).
+    f_data_h5 : str, optional
+        Path to output HDF5 file (default is 'data.h5').
+    **kwargs : dict
+        Additional metadata parameters:
+        - showInfo : int, verbosity level
+        - Other dataset attributes for electromagnetic processing
+
+    Returns
+    -------
+    str
+        Path to the HDF5 file where data was written.
+
+    Notes
+    -----
+    The function creates HDF5 structure following INTEGRATE conventions:
+    - '/D{id}/d_obs': observed measurements
+    - '/D{id}/d_std': measurement standard deviations (if available)
+    - '/D{id}/Cd': full covariance matrix (if provided)
+    - Dataset attributes include 'noise_model'='gaussian'
     
-    This function writes observed data and its associated Gaussian noise standard deviations
-    to an HDF5 file. It also creates necessary datasets if they do not exist and handles
-    optional attributes for electromagnetic data processing.
+    Uncertainty handling priority: Cd > D_std > computed from d_std
+    The Gaussian noise model assumes independent, normally distributed
+    measurement errors with specified standard deviations or covariances.
     
-    :param D_obs: Observed data array
-    :type D_obs: numpy.ndarray
-    :param D_std: Standard deviation of the observed data. If not provided, calculated using d_std
-    :type D_std: list, optional
-    :param d_std: Default standard deviation multiplier. Used if D_std is not provided
-    :type d_std: list, optional
-    :param Cd: Covariance data. If provided, it is written to the file
-    :type Cd: list, optional
-    :param id: Identifier for the dataset group
-    :type id: int, optional
-    :param is_log: Flag indicating if the data is in logarithmic scale
-    :type is_log: int, optional
-    :param f_data_h5: Path to the HDF5 file
-    :type f_data_h5: str, optional
-    :param kwargs: Additional keyword arguments
-    :type kwargs: dict
-    
-    :returns: Path to the HDF5 file
-    :rtype: str
+    All datasets use float32 precision and gzip compression for efficiency.
     
     .. note::
         **Additional Parameters (kwargs):**
@@ -1577,24 +1888,52 @@ def write_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='da
 
 def check_data(f_data_h5='data.h5', **kwargs):
     """
-    Check and update INTEGRATE data in an HDF5 file.
+    Validate and complete INTEGRATE data file structure.
+
+    Ensures HDF5 data files contain required geometry datasets (UTMX, UTMY, LINE,
+    ELEVATION) for electromagnetic surveys. Creates missing datasets using provided
+    values or sensible defaults based on existing data dimensions.
+
+    Parameters
+    ----------
+    f_data_h5 : str, optional
+        Path to the HDF5 data file to validate and update (default is 'data.h5').
+    **kwargs : dict
+        Dataset values and configuration options:
+        - UTMX : array-like, UTM X coordinates
+        - UTMY : array-like, UTM Y coordinates  
+        - LINE : array-like, survey line identifiers
+        - ELEVATION : array-like, ground elevation values
+        - showInfo : int, verbosity level (0=silent, >0=verbose)
+
+    Returns
+    -------
+    None
+        Function modifies the HDF5 file in place, adding missing datasets.
+
+    Raises
+    ------
+    KeyError
+        If 'D1/d_obs' dataset is missing and geometry dimensions cannot be determined.
+    FileNotFoundError
+        If the specified HDF5 file does not exist.
+
+    Notes
+    -----
+    The function ensures INTEGRATE data files have complete geometry information:
+    - UTMX, UTMY: Spatial coordinates (required for mapping and modeling)
+    - LINE: Survey line identifiers (required for data organization) 
+    - ELEVATION: Ground surface elevation (required for depth calculations)
     
-    This function validates and ensures the presence of essential geometry datasets
-    (UTMX, UTMY, LINE, ELEVATION) in an HDF5 file. If any datasets are missing,
-    it creates them using provided values or sensible defaults based on existing data.
+    Default value generation when datasets are missing:
+    - UTMX: Sequential values 0, 1, 2, ... (placeholder coordinates)
+    - UTMY: Sequential values 0, 1, 2, ... (placeholder coordinates)
+    - LINE: All values set to 1 (single survey line)
+    - ELEVATION: All values set to 0 (sea level reference)
     
-    :param f_data_h5: Path to the HDF5 file to check and update
-    :type f_data_h5: str, optional
-    :param kwargs: Additional keyword arguments for dataset values and configuration
-    :type kwargs: dict
-    
-    :returns: None (modifies the HDF5 file in place)
-    :rtype: None
-    
-    :raises KeyError: If the 'D1/d_obs' dataset is not found in the file and 'UTMX' is not provided
-    
-    .. note::
-        **Supported Keyword Arguments:**
+    Dataset dimensions are inferred from existing 'D1/d_obs' observations.
+    All geometry datasets are created with consistent length matching
+    the number of measurement locations.
         
         - showInfo (int): Verbosity level. If greater than 0, prints information messages. Default is 0.
         - UTMX (array-like): Array of UTMX coordinate values. If not provided, attempts to read from file or generates defaults.
@@ -1743,25 +2082,52 @@ def merge_data(f_data, f_gex='', delta_line=0, f_data_merged_h5='', **kwargs):
 
 def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5=''):
     """
-    Merge multiple posterior HDF5 files and their corresponding data files.
+    Merge multiple posterior sampling results into unified datasets.
+
+    Combines posterior results from separate electromagnetic survey areas or
+    time periods into single merged files for comprehensive regional analysis.
+    Handles both model parameter statistics and observational data consolidation.
+
+    Parameters
+    ----------
+    f_post_h5_files : list of str
+        List of paths to posterior HDF5 files containing sampling results
+        from different survey areas or processing runs.
+    f_data_h5_files : list of str
+        List of paths to corresponding observational data HDF5 files.
+        Must have same length as f_post_h5_files with matching order.
+    f_post_merged_h5 : str, optional
+        Output path for merged posterior file. If empty, generates default
+        name based on input files (default is '').
+
+    Returns
+    -------
+    tuple
+        Tuple containing (merged_posterior_path, merged_data_path) where:
+        - merged_posterior_path : str, path to merged posterior HDF5 file
+        - merged_data_path : str, path to merged observational data HDF5 file
+
+    Raises
+    ------
+    ValueError
+        If f_data_h5_files and f_post_h5_files have different lengths.
+    FileNotFoundError
+        If any input files do not exist or cannot be accessed.
+
+    Notes
+    -----
+    The merging process combines:
+    - Model parameter statistics (Mean, Median, Mode, Std, Entropy)
+    - Temperature and evidence fields from sampling
+    - Geometry and observational data from all survey areas
+    - Metadata and file references for traceability
     
-    This function combines multiple posterior sampling results and their associated
-    observational data files into single merged files for comprehensive analysis.
-    Useful for aggregating results from different survey areas or time periods.
+    Spatial coordinates are preserved to maintain geographic relationships
+    between different survey areas. The merged files retain full compatibility
+    with INTEGRATE analysis and visualization functions.
     
-    :param f_post_h5_files: List of file paths to the posterior HDF5 files to be merged
-    :type f_post_h5_files: list of str
-    :param f_data_h5_files: List of file paths to the data HDF5 files corresponding to the posterior files
-    :type f_data_h5_files: list of str
-    :param f_post_merged_h5: File path for the merged posterior HDF5 file. If empty, generates default name
-    :type f_post_merged_h5: str, optional
-    
-    :returns: Tuple containing (merged_posterior_file_path, merged_data_file_path)
-    :rtype: tuple
-    
-    :raises ValueError: If the length of f_data_h5_files is not the same as f_post_h5_files
-    
-    .. note::
+    File naming convention for merged outputs follows pattern:
+    'MERGED_{timestamp}_{description}.h5' when automatic naming is used.
         **File Naming:**
         
         - If f_post_merged_h5 is not provided, uses format: 'POST_merged_N{number_of_files}.h5'
@@ -1830,13 +2196,42 @@ def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5=''):
 
 def read_usf(file_path: str) -> Dict[str, Any]:
     """
-    Read a Universal Sounding Format (USF) file and parse its contents.
+    Parse Universal Sounding Format (USF) electromagnetic data file.
+
+    Reads and parses USF files containing electromagnetic survey data including
+    measurement sweeps, timing information, and system parameters. USF is a
+    standard format for time-domain electromagnetic data exchange.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the USF file to be parsed.
+
+    Returns
+    -------
+    Dict[str, Any]
+        Dictionary containing parsed USF file contents with keys:
+        - 'sweeps' : list of dict, measurement sweep data with timing and values
+        - 'header' : dict, file header information and metadata
+        - 'parameters' : dict, system and acquisition parameters
+        - 'dummy_value' : float, placeholder value for missing data
+        - Additional keys for file-specific parameters and settings
+
+    Notes
+    -----
+    USF files contain structured electromagnetic data with sections for:
+    - Header information (file version, date, system type)
+    - Acquisition parameters (timing, frequencies, coordinates)
+    - Measurement sweeps with data points and uncertainties
+    - System configuration and processing parameters
     
-    Args:
-        file_path: Path to the USF file
-        
-    Returns:
-        Dictionary containing all parsed parameters from the USF file
+    The parser handles various USF format variations and automatically
+    converts numeric data while preserving text metadata. Sweep data
+    includes timing gates, measured values, and quality indicators.
+    
+    This function is compatible with USF files from various electromagnetic
+    systems and processing software, following standard format specifications
+    for time-domain electromagnetic data exchange.
     """
     # Initialize result dictionary
     usf_data = {}
