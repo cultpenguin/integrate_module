@@ -20,6 +20,8 @@ except:
 # %%
 import integrate as ig
 parallel = ig.use_parallel(showInfo=1)
+parallel = False
+
 
 # %% Get tTEM data from DAUGAARD
 case = 'DAUGAARD'

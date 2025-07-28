@@ -1,4 +1,17 @@
-from integrate.integrate import integrate_rejection
+# Import rejection sampling functions from new module
+from integrate.integrate_rejection import integrate_rejection
+from integrate.integrate_rejection import integrate_rejection_range
+from integrate.integrate_rejection import integrate_posterior_chunk
+from integrate.integrate_rejection import integrate_posterior_main
+from integrate.integrate_rejection import likelihood_gaussian_diagonal
+from integrate.integrate_rejection import likelihood_gaussian_full
+from integrate.integrate_rejection import likelihood_multinomial
+from integrate.integrate_rejection import select_subset_for_inversion
+from integrate.integrate_rejection import cleanup_shared_memory
+from integrate.integrate_rejection import reconstruct_shared_arrays
+from integrate.integrate_rejection import create_shared_memory
+
+# Import other functions from main module
 from integrate.integrate import integrate_update_prior_attributes   
 from integrate.integrate import integrate_posterior_stats
 from integrate.integrate import logl_T_est
@@ -13,17 +26,7 @@ from integrate.integrate import prior_model_workbench
 from integrate.integrate import prior_model_workbench_direct
 from integrate.integrate import posterior_cumulative_thickness
 #from integrate.integrate import integrate_rejection_multi  
-from integrate.integrate import integrate_rejection_range
-from integrate.integrate import integrate_posterior_chunk
-from integrate.integrate import integrate_posterior_main
-from integrate.integrate import likelihood_gaussian_diagonal
-from integrate.integrate import likelihood_gaussian_full
-from integrate.integrate import likelihood_multinomial
-from integrate.integrate import select_subset_for_inversion
 from integrate.integrate import use_parallel
-from integrate.integrate import cleanup_shared_memory
-from integrate.integrate import reconstruct_shared_arrays
-from integrate.integrate import create_shared_memory
 from integrate.integrate import get_weight_from_position
 from integrate.integrate import entropy
 from integrate.integrate import class_id_to_idx
