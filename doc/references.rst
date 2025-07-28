@@ -12,9 +12,10 @@ References
 .. [FALK2025] Falk, Frederik Alexander, Anders Vest Christiansen, and Thomas Mejer Hansen. "Comparison of three one-dimensional time-domain electromagnetic forward algorithms." Applied Computing and Geosciences (2025): 100243. [https://doi.org/10.1016/j.acags.2025.100243]
 
 
-..
-    .. [SimPEG] Cockett, Rowan, Seogi Kang, Lindsey J. Heagy, Adam Pidlisecky, and Douglas W. Oldenburg. "SimPEG: An open source framework for simulation and gradient based parameter estimation in geophysical applications." Computers & Geosciences 85 (2015): 142-154. [https://simpeg.xyz/]
-    .. [AarhusInv] Kirkegaard, Casper, Kristoffer Andersen, Tue Boesen, Anders V. Christiansen, Esben Auken, and Gianluca Fiandaca. "Utilizing massively parallel co-processors in the AarhusInv 1D forward and inverse AEM modelling code." ASEG Extended Abstracts 2015, no. 1 (2015): 1-3.
 
 .. [GA-AEM] https://github.com/GeoscienceAustralia/ga-aem
+
+.. [SimPEG] Cockett, Rowan, Seogi Kang, Lindsey J. Heagy, Adam Pidlisecky, and Douglas W. Oldenburg. "SimPEG: An open source framework for simulation and gradient based parameter estimation in geophysical applications." Computers & Geosciences 85 (2015): 142-154. [https://simpeg.xyz/]
+
+.. [AarhusInv] Kirkegaard, Casper, Kristoffer Andersen, Tue Boesen, Anders V. Christiansen, Esben Auken, and Gianluca Fiandaca. "Utilizing massively parallel co-processors in the AarhusInv 1D forward and inverse AEM modelling code." ASEG Extended Abstracts 2015, no. 1 (2015): 1-3.
 

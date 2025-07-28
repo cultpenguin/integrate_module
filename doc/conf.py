@@ -8,11 +8,26 @@
 
 import os
 import sys
-#sys.path.insert(0, os.path.abspath('../src/python/'))
-#sys.path.insert(0, os.path.abspath('../src/python/integrate_python/'))
-#sys.path.insert(0, os.path.abspath('../../integrate_module'))
-sys.path.insert(0, os.path.abspath('../../integrate_module/integrate/'))
-sys.path.insert(0, os.path.abspath('../integrate_module/integrate/'))
+
+# Add the parent directory (where the integrate package is located)
+sys.path.insert(0, os.path.abspath('..'))
+
+# Try to import integrate to ensure it's available
+try:
+    import integrate
+    print(f"Successfully imported integrate from {integrate.__file__}")
+except ImportError as e:
+    print(f"Failed to import integrate: {e}")
+
+# Set up the environment for Sphinx autodoc
+autodoc_mock_imports = []
+
+# Mock problematic imports if needed
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'show-inheritance': True,
+}
 
 project = 'INTEGRATE'
 copyright = '2023,2024,2025 INTEGRATE WORKING GROUP'

@@ -6,5 +6,6 @@ Modules (documentation)
    :caption: Contents:
 
    modules/integrate
-   modules/integrate_plot
+   modules/integrate_rejection
    modules/integrate_io
+   modules/integrate_plot

@@ -19,9 +19,9 @@ Prior modeling
 Forward modeling
    For each type of data considered a forward model must be available. 
 
-   For EM type data we consider using GA-AEM (https://github.com/GeoscienceAustralia/ga-aem), simPEG [SimPEG]_, and AarhusInv [AarhusInv]_ as forward modeling engines.
+   For EM type data use GA-AEM (https://github.com/GeoscienceAustralia/ga-aem), based on [FALK2025]_.
 
-   
+  
 Probabilistic Inversion
    An implementation of the 1D probabilistic localized inversion using the **Localized Rejection Sampler** [HANSEN2021]_ and **Machine Learning** [HANSENFINLAY2022]_.
 
