@@ -343,7 +343,7 @@ The attribute ``/method`` refer to a specific choice of forward method.
 ot can be ``identity`` for an identity mapping (useful to represent log data).
 
 TDEM: Time domain EM, method='tdem'.
-------------------------------------
+----------------------------------------
 
 ``/method='TDEM'`` make use of time-domain EM forward modeling. 
 The following three types of forward models will (eventually) be available:

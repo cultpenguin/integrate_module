@@ -2,41 +2,48 @@
 Workflows
 =========
 
-DIfferent examples of workflows using INTEGRATE.
-
+Different examples of workflows using INTEGRATE.
 
 INTEGRATE workflows - a simple (resistivity only) prior, tTEM data
-====================================================================
+===================================================================
 
+Create realizations from the prior and store in PRIOR.h5
+---------------------------------------------------------
 
-
-## Create realizations from the prior and store in PRIOR.h5
-
-The Duagaard type prior results in 3 types of model parameters stored as 
+The Daugaard type prior results in 3 types of model parameters stored as::
 
     PRIOR.h5:/M1
     PRIOR.h5:/M2
-    PRIOR.h5:/M2
+    PRIOR.h5:/M3
 
-## Compute prior data and store in PRIOR.h5
+Compute prior data and store in PRIOR.h5
+-----------------------------------------
 
-### Compute prior EM data 
+Compute prior EM data
+~~~~~~~~~~~~~~~~~~~~~
 
-Setup af 'forward' type hdf5 that defines the type of forward
+Setup a 'forward' type HDF5 file that defines the type of forward modeling::
 
     FORWARD.h5:/type:'tdem'
     FORWARD.h5:/method:'ga-aem'
     FORWARD.h5:/gex:'filename.gex'
-    FORWARD.h5:/im:1 --> points to the resistivity parameter in PRIOR.h5, gere '/M1'
-    
-    >> intergrate_update_prior_data(prior_h5, forward_h5, im, id)
+    FORWARD.h5:/im:1 --> points to the resistivity parameter in PRIOR.h5, here '/M1'
+
+Execute the integration::
+
+    >> integrate_update_prior_data(prior_h5, forward_h5, im, id)
+
+Resulting in::
 
     PRIOR.h5:/M1
     PRIOR.h5:/M2
-    PRIOR.h5:/M2
+    PRIOR.h5:/M3
     PRIOR.h5:/D1 --> EM data
 
-## Setup data
+Setup data
+----------
+
+The data file should contain::
 
     DATA.h5:/UTMX
     DATA.h5:/UTMY
@@ -45,13 +52,18 @@ Setup af 'forward' type hdf5 that defines the type of forward
     DATA.h5:/D1/d_obs
     DATA.h5:/D1/d_std
 
-## Perform inversion 
+Perform inversion
+-----------------
+
+Execute the rejection sampling and compute posterior statistics::
 
     >> integrate_rejection()
     >> integrate_posterior_statistics()
 
+Make some plots
+---------------
 
-## Make some plots    
+*[Plot generation section to be added]*
 
 
 

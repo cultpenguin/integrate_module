@@ -53,8 +53,10 @@ def is_notebook():
     """
     Check if the code is running in a Jupyter notebook or IPython shell.
 
-    Returns:
-        bool: True if running in a Jupyter notebook or IPython shell, False otherwise.
+    Returns
+    -------
+    bool
+        True if running in a Jupyter notebook or IPython shell, False otherwise.
     """
     try:
         # Get the shell type from IPython
@@ -82,15 +84,18 @@ def use_parallel(**kwargs):
     is considered safe. Otherwise, it is not recommended unless the primary script 
     is embedded in an `if __name__ == "__main__":` block.
     
-    :param kwargs: Additional keyword arguments including showInfo for verbosity control
-    :type kwargs: dict
+    Parameters
+    ----------
+    **kwargs : dict
+        Additional keyword arguments including showInfo for verbosity control.
+        showInfo : int, optional
+            If greater than 0, prints information about the environment and 
+            parallel processing status. Default is 0.
     
-    :returns: True if parallel processing is safe, False otherwise
-    :rtype: bool
-    
-    .. note::
-        showInfo parameter: If greater than 0, prints information about the 
-        environment and parallel processing status. Default is 0.
+    Returns
+    -------
+    bool
+        True if parallel processing is safe, False otherwise.
     """
     import os
     showInfo = kwargs.get('showInfo', 0)
@@ -132,19 +137,28 @@ def logl_T_est(logL, N_above=10, P_acc_lev=0.2):
     Estimate a temperature (T_est) based on a given logarithmic likelihood (logL), 
     a number (N_above), and an acceptance level (P_acc_lev).
 
-    :param logL: An array of logarithmic likelihoods.
-    :type logL: numpy.ndarray
-    :param N_above: The number of elements above which to consider in the sorted logL array. Default is 10.
-    :type N_above: int, optional
-    :param P_acc_lev: The acceptance level for the calculation. Default is 0.2.
-    :type P_acc_lev: float, optional
-    :return: The estimated temperature. It's either a positive number or infinity.
-    :rtype: float
+    Parameters
+    ----------
+    logL : numpy.ndarray
+        An array of logarithmic likelihoods.
+    N_above : int, optional
+        The number of elements above which to consider in the sorted logL array. 
+        Default is 10.
+    P_acc_lev : float, optional
+        The acceptance level for the calculation. Default is 0.2.
+    
+    Returns
+    -------
+    float
+        The estimated temperature. It's either a positive number or infinity.
 
-    note: The function sorts the logL array in ascending order after normalizing the data by subtracting the maximum value from each element.
-    It then removes any NaN values from the sorted array.
-    If the sorted array is not empty, it calculates T_est based on the N_above+1th last element in the sorted array and the natural logarithm of P_acc_lev.
-    If the sorted array is empty, it sets T_est to infinity.
+    Notes
+    -----
+    The function sorts the logL array in ascending order after normalizing the data 
+    by subtracting the maximum value from each element. It then removes any NaN values 
+    from the sorted array. If the sorted array is not empty, it calculates T_est based 
+    on the N_above+1th last element in the sorted array and the natural logarithm of 
+    P_acc_lev. If the sorted array is empty, it sets T_est to infinity.
     """
     sorted_logL = np.sort(logL - np.nanmax(logL))
     sorted_logL = sorted_logL[~np.isnan(sorted_logL)]
@@ -163,17 +177,24 @@ def lu_post_sample_logl(logL, ns=1, T=1):
     """
     Perform LU post-sampling log-likelihood calculation.
 
-    :param logL: Array of log-likelihood values.
-    :type logL: array-like
-    :param ns: Number of samples to generate. Defaults to 1.
-    :type ns: int, optional
-    :param T: Temperature parameter. Defaults to 1.
-    :type T: float, optional
+    Parameters
+    ----------
+    logL : array-like
+        Array of log-likelihood values.
+    ns : int, optional
+        Number of samples to generate. Defaults to 1.
+    T : float, optional
+        Temperature parameter. Defaults to 1.
 
-    :return: A tuple containing the generated samples and the acceptance probabilities.
-    :rtype: tuple
-        - i_use_all (numpy darray): Array of indices of the selected samples.
-        - P_acc (numpy array): Array of acceptance probabilities.
+    Returns
+    -------
+    tuple
+        A tuple containing the generated samples and the acceptance probabilities.
+        
+        i_use_all : numpy.ndarray
+            Array of indices of the selected samples.
+        P_acc : numpy.ndarray
+            Array of acceptance probabilities.
     """
 
     N = len(logL)
@@ -205,8 +226,14 @@ def integrate_update_prior_attributes(f_prior_h5, **kwargs):
     it sets 'is_discrete' to 1; otherwise, it sets 'is_discrete' to 0. 
     The 'is_discrete' attribute is then added to the dataset.
 
-    :param f_prior_h5: The path to the HDF5 file to process.
-    :type f_prior_h5: str
+    Parameters
+    ----------
+    f_prior_h5 : str
+        The path to the HDF5 file to process.
+    **kwargs : dict
+        Additional keyword arguments.
+        showInfo : int, optional
+            Level of verbosity for output (default is 0).
     """
     
     showInfo = kwargs.get('showInfo', 0)
@@ -276,16 +303,27 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
     """
     Compute posterior statistics for datasets in an HDF5 file.
 
-    This function computes various statistics for datasets in an HDF5 file based on the posterior samples.
-    The statistics include mean, median, standard deviation for continuous datasets, and mode, entropy, and class probabilities for discrete datasets.
-    The computed statistics are stored in the same HDF5 file.
+    This function computes various statistics for datasets in an HDF5 file based 
+    on the posterior samples. The statistics include mean, median, standard 
+    deviation for continuous datasets, and mode, entropy, and class probabilities 
+    for discrete datasets. The computed statistics are stored in the same HDF5 file.
 
-    :param f_post_h5: The path to the HDF5 file to process.
-    :type f_post_h5: str
-    :param usePrior: Flag indicating whether to use the prior samples. Default is False.
-    :type usePrior: bool
-    :param kwargs: Additional keyword arguments.
-    :type kwargs: dict
+    Parameters
+    ----------
+    f_post_h5 : str, optional
+        The path to the HDF5 file to process. Default is 'POST.h5'.
+    **kwargs : dict
+        Additional keyword arguments.
+        usePrior : bool, optional
+            Flag indicating whether to use the prior samples. Default is False.
+        showInfo : int, optional
+            Level of verbosity for output.
+        updateGeometryFromData : bool, optional
+            Whether to update geometry from data file. Default is True.
+    
+    Returns
+    -------
+    None
     """
     import h5py
     import numpy as np
@@ -474,22 +512,37 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
 
 
 def sample_from_posterior(is_, d_sim, f_data_h5='tTEM-Djursland.h5', N_use=1000000, autoT=1, ns=400):
-    r"""
+    """
     Sample from the posterior distribution.
 
-    Parameters:
-    - is\_ (int): Index of data f_data_h5.
-    - d_sim (ndarray): Simulated data.
-    - f_data_h5 (str): Filepath of the data file (default: 'tTEM-Djursland.h5').
-    - N_use (int): Number of samples to use (default: 1000000).
-    - autoT (int): Flag indicating whether to estimate temperature (default: 1).
-    - ns (int): Number of samples to draw from the posterior (default: 400).
+    Parameters
+    ----------
+    is_ : int
+        Index of data f_data_h5.
+    d_sim : ndarray
+        Simulated data.
+    f_data_h5 : str, optional
+        Filepath of the data file. Default is 'tTEM-Djursland.h5'.
+    N_use : int, optional
+        Number of samples to use. Default is 1000000.
+    autoT : int, optional
+        Flag indicating whether to estimate temperature. Default is 1.
+    ns : int, optional
+        Number of samples to draw from the posterior. Default is 400.
 
-    Returns:
-    - i_use (ndarray): Indices of the samples used.
-    - T (float): Temperature.
-    - EV (float): Expected value.
-    - is\_ (int): Index of the posterior sample.
+    Returns
+    -------
+    tuple
+        A tuple containing the following elements:
+        
+        i_use : ndarray
+            Indices of the samples used.
+        T : float
+            Temperature.
+        EV : float
+            Expected value.
+        is_ : int
+            Index of the posterior sample.
     """
     with h5py.File(f_data_h5, 'r') as f:
         d_obs = f['/D1/d_obs'][is_,:]
@@ -533,27 +586,31 @@ def prior_data(f_prior_in_h5, f_forward_h5, id=1, im=1, doMakePriorCopy=0, paral
     supporting different data types including TDEM (time-domain electromagnetic) data
     with GA-AEM forward modeling and identity transforms.
     
-    :param f_prior_in_h5: Path to input prior HDF5 file containing prior models
-    :type f_prior_in_h5: str
-    :param f_forward_h5: Path to forward modeling results HDF5 file
-    :type f_forward_h5: str
-    :param id: Data identifier for the prior structure, defaults to 1
-    :type id: int, optional
-    :param im: Model identifier for the prior structure, defaults to 1
-    :type im: int, optional
-    :param doMakePriorCopy: Flag to create a copy of the prior file (0=no copy, 1=copy), defaults to 0
-    :type doMakePriorCopy: int, optional
-    :param parallel: Enable parallel processing for forward modeling, defaults to True
-    :type parallel: bool, optional
+    Parameters
+    ----------
+    f_prior_in_h5 : str
+        Path to input prior HDF5 file containing prior models.
+    f_forward_h5 : str
+        Path to forward modeling results HDF5 file.
+    id : int, optional
+        Data identifier for the prior structure. Default is 1.
+    im : int, optional
+        Model identifier for the prior structure. Default is 1.
+    doMakePriorCopy : int, optional
+        Flag to create a copy of the prior file (0=no copy, 1=copy). Default is 0.
+    parallel : bool, optional
+        Enable parallel processing for forward modeling. Default is True.
     
-    :returns: Path to the updated prior HDF5 file containing integrated data
-    :rtype: str
+    Returns
+    -------
+    str
+        Path to the updated prior HDF5 file containing integrated data.
     
-    :raises: Prints error messages for unsupported data types or methods
-    
-    .. note::
-        The function automatically detects the data type from the forward modeling file
-        and calls appropriate integration methods (GA-AEM for TDEM, identity for direct data).
+    Notes
+    -----
+    The function automatically detects the data type from the forward modeling file
+    and calls appropriate integration methods (GA-AEM for TDEM, identity for direct data).
+    Prints error messages for unsupported data types or methods.
     """
     # Check if at least two inputs are provided
     if f_prior_in_h5 is None or f_forward_h5 is None:
@@ -616,21 +673,41 @@ def forward_gaaem(C=np.array(()),
                     showtime=False, 
                     **kwargs):
     """
-    Perform forward modeling using the **GAAEM** method.
+    Perform forward modeling using the GA-AEM method.
 
-    :param C: Conductivity array, defaults to np.array(())
-    :type C: numpy.ndarray, optional
-    :param thickness: Thickness array, defaults to np.array(())
-    :type thickness: numpy.ndarray, optional
-    :param GEX: GEX dictionary, defaults to {}
-    :type GEX: dict, optional
-    :param file_gex: Path to GEX file, defaults to ''
-    :type file_gex: str, optional
-    :param stmfiles: List of STM files, defaults to []
-    :type stmfiles: list, optional
-    :param tx_height: Transmitter height array, defaults to np.array(())
-    :type tx_height: numpy.ndarray, optional
-    :param showtime: Flag to display execution time, defaults to False
+    Parameters
+    ----------
+    C : numpy.ndarray, optional
+        Conductivity array. Default is np.array(()).
+    thickness : numpy.ndarray, optional
+        Thickness array. Default is np.array(()).
+    stmfiles : list, optional
+        List of STM files. Default is [].
+    tx_height : numpy.ndarray, optional
+        Transmitter height array. Default is np.array(()).
+    txrx_dx : float, optional
+        X-distance between transmitter and receiver. Default is -13.
+    txrx_dy : float, optional
+        Y-distance between transmitter and receiver. Default is 0.
+    txrx_dz : float, optional
+        Z-distance between transmitter and receiver. Default is 0.1.
+    GEX : dict, optional
+        GEX dictionary. Default is {}.
+    file_gex : str, optional
+        Path to GEX file. Default is ''.
+    showtime : bool, optional
+        Flag to display execution time. Default is False.
+    **kwargs : dict
+        Additional keyword arguments.
+        showInfo : int, optional
+            Level of verbosity for output.
+        doCompress : bool, optional
+            Flag to enable layer compression. Default is True.
+    
+    Returns
+    -------
+    numpy.ndarray
+        Forward modeled data array.
     """
     
     from gatdaem1d import Earth;
@@ -828,27 +905,31 @@ def forward_gaaem(C=np.array(()),
 
 def forward_gaaem_chunk(C_chunk, tx_height_chunk, thickness, stmfiles, file_gex, Nhank, Nfreq, **kwargs):
     """
-    Perform forward modeling using the GAAEM method on a chunk of data.
+    Perform forward modeling using the GA-AEM method on a chunk of data.
 
-    :param C_chunk: The chunk of data to be processed.
-    :type C_chunk: numpy.ndarray
-    :param tx_height_chunk: The transmitter heights for this chunk.
-    :type tx_height_chunk: numpy.ndarray 
-    :param thickness: The thickness of the model.
-    :type thickness: float
-    :param stmfiles: A list of STM files.
-    :type stmfiles: list
-    :param file_gex: The path to the GEX file.
-    :type file_gex: str
-    :param Nhank: The number of Hankel functions.
-    :type Nhank: int
-    :param Nfreq: The number of frequencies.
-    :type Nfreq: int
-    :param kwargs: Additional keyword arguments.
-    :type kwargs: dict
+    Parameters
+    ----------
+    C_chunk : numpy.ndarray
+        The chunk of data to be processed.
+    tx_height_chunk : numpy.ndarray
+        The transmitter heights for this chunk.
+    thickness : float
+        The thickness of the model.
+    stmfiles : list
+        A list of STM files.
+    file_gex : str
+        The path to the GEX file.
+    Nhank : int
+        The number of Hankel functions.
+    Nfreq : int
+        The number of frequencies.
+    **kwargs : dict
+        Additional keyword arguments.
 
-    :return: The result of the forward modeling.
-    :rtype: numpy.ndarray
+    Returns
+    -------
+    numpy.ndarray
+        The result of the forward modeling.
     """
     return forward_gaaem(C=C_chunk, 
                         thickness=thickness, 
@@ -864,44 +945,57 @@ def forward_gaaem_chunk(C_chunk, tx_height_chunk, thickness, stmfiles, file_gex,
 
 # Add this function to check current handle count (Windows only)
 def get_process_handle_count():
-    """Return the number of handles used by the current process (Windows only)"""
+    """
+    Return the number of handles used by the current process (Windows only).
+    
+    Returns
+    -------
+    int
+        The number of handles used by the current process.
+    """
     import psutil
     import os
     return psutil.Process(os.getpid()).num_handles()
 
 def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1, im_height=0, Nhank=280, Nfreq=12, is_log=False, parallel=True, **kwargs):
     """
-    Generate prior data for the ga-aem method.
+    Generate prior data for the GA-AEM method.
 
-    :param f_prior_h5: Path to the prior data file in HDF5 format.
-    :type f_prior_h5: str
-    :param file_gex: Path to the file containing geophysical exploration data.
-    :type file_gex: str
-    :param N: Number of soundings to consider (default: 0).
-    :type N: int
-    :param doMakePriorCopy: Flag indicating whether to make a copy of the prior file (default: True).
-    :type doMakePriorCopy: bool
-    :param im: Index of the model (default: 1).
-    :type im: int
-    :param id: Index of the data (default: 1).
-    :type id: int
-    :param Nhank: Number of Hankel transform quadrature points (default: 280).
-    :type Nhank: int
-    :param Nfreq: Number of frequencies (default: 12).
-    :type Nfreq: int
-    :param parallel: Flag indicating whether multiprocessing is used (default: True).
-    :type parallel: bool
-    :param Ncpu: Number of cpus/threads used (default: 0 - all).
-    :type Ncpu: int
-    :param im_height: Index of the model for height (default: 0).
-    :type im_height: int
-    :param kwargs: Additional keyword arguments.
-    :type kwargs: dict
-    :param Ncpu: Number of CPUs to use (default: 0->all).
-    :type Ncpu: int
+    Parameters
+    ----------
+    f_prior_h5 : str
+        Path to the prior data file in HDF5 format.
+    file_gex : str
+        Path to the file containing geophysical exploration data.
+    N : int, optional
+        Number of soundings to consider. Default is 0 (use all).
+    doMakePriorCopy : bool, optional
+        Flag indicating whether to make a copy of the prior file. Default is True.
+    im : int, optional
+        Index of the model. Default is 1.
+    id : int, optional
+        Index of the data. Default is 1.
+    im_height : int, optional
+        Index of the model for height. Default is 0.
+    Nhank : int, optional
+        Number of Hankel transform quadrature points. Default is 280.
+    Nfreq : int, optional
+        Number of frequencies. Default is 12.
+    is_log : bool, optional
+        Flag to apply logarithmic scaling to data. Default is False.
+    parallel : bool, optional
+        Flag indicating whether multiprocessing is used. Default is True.
+    **kwargs : dict
+        Additional keyword arguments.
+        Ncpu : int, optional
+            Number of CPUs to use (default is 0 for all available).
+        showInfo : int, optional
+            Level of verbosity for output.
     
-    :return: Filename of the HDF5 file containing the updated prior data.
-    :rtype: str
+    Returns
+    -------
+    str
+        Filename of the HDF5 file containing the updated prior data.
     """
     import integrate as ig
     import os 
@@ -1075,23 +1169,33 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
 
 
 def prior_data_identity(f_prior_h5, id=0, im=1, N=0, doMakePriorCopy=False, **kwargs):
-    '''
-    Generate data D%id from model M%im in the prior file f_prior_h5 as an identity of M%im.
+    """
+    Generate data D{id} from model M{im} in the prior file f_prior_h5 as an identity of M{im}.
 
-    :param f_prior_h5: Path to the prior data file in HDF5 format.
-    :type f_prior_h5: str
-    :param id: Index of the data (default: 0). if id=0, the next available data id is used
-    :type id: int
-    :param im: Index of the model (default: 1).
-    :type im: int
-    :param N: Number of soundings to consider (default: 0).
-    :type N: int
-    :param doMakePriorCopy: Flag indicating whether to make a copy of the prior file (default: False).
-    :type doMakePriorCopy: bool
-    :param kwargs: Additional keyword arguments.
-    :type kwargs: dict
-
-    '''
+    Parameters
+    ----------
+    f_prior_h5 : str
+        Path to the prior data file in HDF5 format.
+    id : int, optional
+        Index of the data. If id=0, the next available data id is used. Default is 0.
+    im : int, optional
+        Index of the model. Default is 1.
+    N : int, optional
+        Number of soundings to consider. Default is 0 (use all).
+    doMakePriorCopy : bool, optional
+        Flag indicating whether to make a copy of the prior file. Default is False.
+    **kwargs : dict
+        Additional keyword arguments.
+        showInfo : int, optional
+            Level of verbosity for output.
+        forceDeleteExisting : bool, optional
+            Flag to force deletion of existing data. Default is True.
+    
+    Returns
+    -------
+    str
+        Path to the HDF5 file containing the updated prior data.
+    """
     import integrate as ig
     import time
     
@@ -1170,31 +1274,48 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     """
     Generate a prior model with layered structure.
 
-    :param lay_dist: Distribution of the number of layers. Options are 'chi2' and 'uniform'. Default is 'chi2'.
-    :type lay_dist: str
-    :param NLAY_min: Minimum number of layers. Default is 3.
-    :type NLAY_min: int
-    :param NLAY_max: Maximum number of layers. Default is 6.
-    :type NLAY_max: int
-    :param NLAY_deg: Degrees of freedom for chi-square distribution. Only applicable if lay_dist is 'chi2'. Default is 6.
-    :type NLAY_deg: int
-    :param RHO_dist: Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', and 'lognormal'. Default is 'log-uniform'.
-    :type RHO_dist: str
-    :param RHO_min: Minimum resistivity value. Default is 0.1.
-    :type RHO_min: float
-    :param RHO_max: Maximum resistivity value. Default is 100.
-    :type RHO_max: float
-    :param RHO_MEAN: Mean resistivity value. Only applicable if RHO_dist is 'normal' or 'lognormal'. Default is 100.
-    :type RHO_MEAN: float
-    :param RHO_std: Standard deviation of resistivity value. Only applicable if RHO_dist is 'normal' or 'lognormal'. Default is 80.
-    :type RHO_std: float
-    :param N: Number of prior models to generate. Default is 100000.
-    :type N: int
-    :param f_prior_h5: Path to the prior model file in HDF5 format. Default is ''.
-    :type f_prior_h5: str
+    Parameters
+    ----------
+    lay_dist : str, optional
+        Distribution of the number of layers. Options are 'chi2' and 'uniform'. 
+        Default is 'uniform'.
+    dz : float, optional
+        Depth discretization step. Default is 1.
+    z_max : float, optional
+        Maximum depth. Default is 90.
+    NLAY_min : int, optional
+        Minimum number of layers. Default is 3.
+    NLAY_max : int, optional
+        Maximum number of layers. Default is 6.
+    NLAY_deg : int, optional
+        Degrees of freedom for chi-square distribution. Only applicable if 
+        lay_dist is 'chi2'. Default is 6.
+    RHO_dist : str, optional
+        Distribution of resistivity within each layer. Options are 'log-uniform', 
+        'uniform', 'normal', and 'lognormal'. Default is 'log-uniform'.
+    RHO_min : float, optional
+        Minimum resistivity value. Default is 0.1.
+    RHO_max : float, optional
+        Maximum resistivity value. Default is 100.
+    RHO_MEAN : float, optional
+        Mean resistivity value. Only applicable if RHO_dist is 'normal' or 
+        'lognormal'. Default is 100.
+    RHO_std : float, optional
+        Standard deviation of resistivity value. Only applicable if RHO_dist is 
+        'normal' or 'lognormal'. Default is 80.
+    N : int, optional
+        Number of prior models to generate. Default is 100000.
+    **kwargs : dict
+        Additional keyword arguments.
+        f_prior_h5 : str, optional
+            Path to the prior model file in HDF5 format. Default is ''.
+        showInfo : int, optional
+            Level of verbosity for output.
 
-    :return: Filepath of the saved prior model.
-    :rtype: str
+    Returns
+    -------
+    str
+        Filepath of the saved prior model.
     """
     
     from tqdm import tqdm
@@ -1321,36 +1442,52 @@ def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 
                           RHO_min = 1, RHO_max= 300, RHO_mean=180, RHO_std=80, chi2_deg= 100, **kwargs):
     """
     Generate a prior model with increasingly thick layers.
-    ALl models have the same number of layers!
-    See also: prior_model_workbench
+    
+    All models have the same number of layers! See also: prior_model_workbench.
  
-    :param N: Number of prior models to generate. Default is 100000.
-    :type N: int
-    :param RHO_dist: Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', 'lognormal', and 'chi2'. Default is 'log-uniform'.
-    :type RHO_dist: str
-    :param z1: Minimum depth value. Default is 0.
-    :type z1: float
-    :param z2: Maximum depth value. Default is 100.
-    :type z2: float
-    :param nlayers: Number of layers. Default is 30.
-    :type nlayers: int
-    :param p: Power parameter for thickness increase. Default is 2.
-    :type p: int
-    :param RHO_min: Minimum resistivity value. Default is 1.
-    :type RHO_min: float
-    :param RHO_max: Maximum resistivity value. Default is 300.
-    :type RHO_max: float
-    :param RHO_mean: Mean resistivity value. Only applicable if RHO_dist is 'normal' or 'lognormal'. Default is 180.
-    :type RHO_mean: float
-    :param RHO_std: Standard deviation of resistivity value. Only applicable if RHO_dist is 'normal' or 'lognormal'. Default is 80.
-    :type RHO_std: float
-    :param chi2_deg: Degrees of freedom for chi2 distribution. Only applicable if RHO_dist is 'chi2'. Default is 100.
-    :type chi2_deg: int
-    :param f_prior_h5: Path to the prior model file in HDF5 format. Default is ''.
-    :type f_prior_h5: str
+    Parameters
+    ----------
+    N : int, optional
+        Number of prior models to generate. Default is 100000.
+    RHO_dist : str, optional
+        Distribution of resistivity within each layer. Options are 'log-uniform', 
+        'uniform', 'normal', 'lognormal', and 'chi2'. Default is 'log-uniform'.
+    z1 : float, optional
+        Minimum depth value. Default is 0.
+    z_max : float, optional
+        Maximum depth value. Default is 100.
+    nlayers : int, optional
+        Number of layers. Default is 0 (uses 30 if less than 1).
+    p : int, optional
+        Power parameter for thickness increase. Default is 2.
+    NLAY_min : int, optional
+        Minimum number of layers. Default is 3.
+    NLAY_max : int, optional
+        Maximum number of layers. Default is 6.
+    RHO_min : float, optional
+        Minimum resistivity value. Default is 1.
+    RHO_max : float, optional
+        Maximum resistivity value. Default is 300.
+    RHO_mean : float, optional
+        Mean resistivity value. Only applicable if RHO_dist is 'normal' or 
+        'lognormal'. Default is 180.
+    RHO_std : float, optional
+        Standard deviation of resistivity value. Only applicable if RHO_dist is 
+        'normal' or 'lognormal'. Default is 80.
+    chi2_deg : int, optional
+        Degrees of freedom for chi2 distribution. Only applicable if RHO_dist is 
+        'chi2'. Default is 100.
+    **kwargs : dict
+        Additional keyword arguments.
+        f_prior_h5 : str, optional
+            Path to the prior model file in HDF5 format. Default is ''.
+        showInfo : int, optional
+            Level of verbosity for output.
 
-    :return: Filepath of the saved prior model.
-    :rtype: str
+    Returns
+    -------
+    str
+        Filepath of the saved prior model.
     """
 
     import integrate as ig
@@ -1415,42 +1552,60 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
                           RHO_dist='log-uniform', 
                           RHO_min = 1, RHO_max= 300, RHO_mean=180, RHO_std=80, chi2_deg= 100, **kwargs):
     """
-    Generate a prior model with increasingly thick layers
+    Generate a prior model with increasingly thick layers.
  
-    :param lay_dist: Distribution of the number of layers. Options are 'chi2' and 'uniform'. Default is 'chi2'.
-    :type lay_dist: str:param N: Number of prior models to generate. Default is 100000.
-    :type N: int
-    :param RHO_dist: Distribution of resistivity within each layer. Options are 'log-uniform', 'uniform', 'normal', 'lognormal', and 'chi2'. Default is 'log-uniform'.
-    :type RHO_dist: str
-    :param z1: Minimum depth value. Default is 0.
-    :type z1: float
-    :param z2: Maximum depth value. Default is 100.
-    :type z2: float
-    :param nlayers: Number of layers. Default is 30.
-    :type nlayers: int
-    :param NLAY_min: Minimum number of layers. Default is 3.
-    :type NLAY_min: int
-    :param NLAY_max: Maximum number of layers. Default is 6.
-    :type NLAY_max: int
-    :param NLAY_deg: Degrees of freedom for chi-square distribution. Only applicable if lay_dist is 'chi2'. Default is 6.
-    :type NLAY_deg: int
-    :param p: Power parameter for thickness increase. Default is 2.
-    :type p: int
-    :param RHO_min: Minimum resistivity value. Default is 1.
-    :type RHO_min: float
-    :param RHO_max: Maximum resistivity value. Default is 300.
-    :type RHO_max: float
-    :param RHO_mean: Mean resistivity value. Only applicable if RHO_dist is 'normal' or 'lognormal'. Default is 180.
-    :type RHO_mean: float
-    :param RHO_std: Standard deviation of resistivity value. Only applicable if RHO_dist is 'normal' or 'lognormal'. Default is 80.
-    :type RHO_std: float
-    :param chi2_deg: Degrees of freedom for chi2 distribution. Only applicable if RHO_dist is 'chi2'. Default is 100.
-    :type chi2_deg: int
-    :param f_prior_h5: Path to the prior model file in HDF5 format. Default is ''.
-    :type f_prior_h5: str    
+    Parameters
+    ----------
+    N : int, optional
+        Number of prior models to generate. Default is 100000.
+    p : int, optional
+        Power parameter for thickness increase. Default is 2.
+    z1 : float, optional
+        Minimum depth value. Default is 0.
+    z_max : float, optional
+        Maximum depth value. Default is 100.
+    dz : float, optional
+        Depth discretization step. Default is 1.
+    lay_dist : str, optional
+        Distribution of the number of layers. Options are 'chi2' and 'uniform'. 
+        Default is 'uniform'.
+    nlayers : int, optional
+        Number of layers. If greater than 0, sets both NLAY_min and NLAY_max 
+        to this value. Default is 0.
+    NLAY_min : int, optional
+        Minimum number of layers. Default is 3.
+    NLAY_max : int, optional
+        Maximum number of layers. Default is 6.
+    NLAY_deg : int, optional
+        Degrees of freedom for chi-square distribution. Only applicable if 
+        lay_dist is 'chi2'. Default is 5.
+    RHO_dist : str, optional
+        Distribution of resistivity within each layer. Options are 'log-uniform', 
+        'uniform', 'normal', 'lognormal', and 'chi2'. Default is 'log-uniform'.
+    RHO_min : float, optional
+        Minimum resistivity value. Default is 1.
+    RHO_max : float, optional
+        Maximum resistivity value. Default is 300.
+    RHO_mean : float, optional
+        Mean resistivity value. Only applicable if RHO_dist is 'normal' or 
+        'lognormal'. Default is 180.
+    RHO_std : float, optional
+        Standard deviation of resistivity value. Only applicable if RHO_dist is 
+        'normal' or 'lognormal'. Default is 80.
+    chi2_deg : int, optional
+        Degrees of freedom for chi2 distribution. Only applicable if RHO_dist is 
+        'chi2'. Default is 100.
+    **kwargs : dict
+        Additional keyword arguments.
+        f_prior_h5 : str, optional
+            Path to the prior model file in HDF5 format. Default is ''.
+        showInfo : int, optional
+            Level of verbosity for output.
 
-    :return: Filepath of the saved prior model.
-    :rtype: str
+    Returns
+    -------
+    str
+        Filepath of the saved prior model.
     """
     from tqdm import tqdm
     import integrate as ig
@@ -1579,23 +1734,36 @@ def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **
     """
     Calculate the posterior cumulative thickness based on the given inputs.
 
-    :param f_post_h5: Path to the input h5 file.
-    :type f_post_h5: str
-    :param im: Index of model parameter number, M[im].
-    :type im: int
-    :param icat: List of category indices.
-    :type icat: list
-    :param usePrior: Flag indicating whether to use prior.
-    :type usePrior: bool
-    :param kwargs: Additional keyword arguments.
-    :returns: 
-        - thick_mean (ndarray): Array of mean cumulative thickness.
-        - thick_median (ndarray): Array of median cumulative thickness.
-        - thick_std (ndarray): Array of standard deviation of cumulative thickness.
-        - class_out (list): List of class names.
-        - X (ndarray): Array of X values.
-        - Y (ndarray): Array of Y values.
-    :rtype: tuple
+    Parameters
+    ----------
+    f_post_h5 : str
+        Path to the input h5 file.
+    im : int, optional
+        Index of model parameter number, M[im]. Default is 2.
+    icat : list, optional
+        List of category indices. Default is [0].
+    usePrior : bool, optional
+        Flag indicating whether to use prior. Default is False.
+    **kwargs : dict
+        Additional keyword arguments.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the following elements:
+        
+        thick_mean : ndarray
+            Array of mean cumulative thickness.
+        thick_median : ndarray
+            Array of median cumulative thickness.
+        thick_std : ndarray
+            Array of standard deviation of cumulative thickness.
+        class_out : list
+            List of class names.
+        X : ndarray
+            Array of X values.
+        Y : ndarray
+            Array of Y values.
     """
 
     import h5py
@@ -1759,46 +1927,71 @@ def synthetic_case(case='Wedge', **kwargs):
     """
     Generate synthetic geological models for different cases.
     
-    This function creates synthetic 2D geological models for testing and validation purposes.
-    Supports 'Wedge' and '3Layer' model types with customizable parameters.
+    This function creates synthetic 2D geological models for testing and validation 
+    purposes. Supports 'Wedge' and '3Layer' model types with customizable parameters.
     
-    :param case: The type of synthetic case to generate. Options are 'Wedge' and '3Layer'
-    :type case: str, optional
-    :param kwargs: Additional parameters for synthetic case generation
-    :type kwargs: dict
-    
-    :returns: Tuple containing (M, x, z) where M is the generated synthetic model, x is x-coordinates, z is z-coordinates
-    :rtype: tuple
-    
-    .. note::
-        **Common Parameters:**
+    Parameters
+    ----------
+    case : str, optional
+        The type of synthetic case to generate. Options are 'Wedge' and '3Layer'. 
+        Default is 'Wedge'.
+    **kwargs : dict
+        Additional parameters for synthetic case generation.
         
-        - showInfo (int): If greater than 0, print information about the generated case. Default is 0.
+        Common Parameters
+        -----------------
+        showInfo : int, optional
+            If greater than 0, print information about the generated case. Default is 0.
         
-        **Parameters for 'Wedge' case:**
+        Parameters for 'Wedge' case
+        ---------------------------
+        x_max : int, optional
+            Maximum x-dimension size. Default is 1000.
+        dx : float, optional
+            Step size in the x-dimension. Default is 1000./x_max.
+        z_max : int, optional
+            Maximum z-dimension size. Default is 90.
+        dz : float, optional
+            Step size in the z-dimension. Default is 1.
+        z1 : float, optional
+            Depth at which the wedge starts. Default is z_max/10.
+        rho : list, optional
+            Density values for different layers. Default is [100, 200, 120].
+        wedge_angle : float, optional
+            Angle of the wedge in degrees. Default is 1.
         
-        - x_max (int): Maximum x-dimension size. Default is 1000.
-        - dx (float): Step size in the x-dimension. Default is 1000./x_max.
-        - z_max (int): Maximum z-dimension size. Default is 90.
-        - dz (float): Step size in the z-dimension. Default is 1.
-        - z1 (float): Depth at which the wedge starts. Default is z_max/10.
-        - rho (list): Density values for different layers. Default is [100, 200, 120].
-        - wedge_angle (float): Angle of the wedge in degrees. Default is 1.
-        
-        **Parameters for '3Layer' case:**
-        
-        - x_max (int): Maximum x-dimension size. Default is 100.
-        - x_range (float): Range in the x-dimension for the cosine function. Default is x_max/4.
-        - dx (float): Step size in the x-dimension. Default is 1.
-        - z_max (int): Maximum z-dimension size. Default is 60.
-        - dz (float): Step size in the z-dimension. Default is 1.
-        - z1 (float): Depth at which the first layer ends. Default is z_max/3.
-        - z_thick (float): Thickness of the second layer. Default is z_max/2.
-        - rho1_1 (float): Density at the start of the first layer. Default is 120.
-        - rho1_2 (float): Density at the end of the first layer. Default is 10.
-        - rho2_1 (float): Density at the start of the second layer. Default is rho1_2.
-        - rho2_2 (float): Density at the end of the second layer. Default is rho1_1.
-        - rho3 (float): Density of the third layer. Default is 120.
+        Parameters for '3Layer' case
+        ----------------------------
+        x_max : int, optional
+            Maximum x-dimension size. Default is 100.
+        x_range : float, optional
+            Range in the x-dimension for the cosine function. Default is x_max/4.
+        dx : float, optional
+            Step size in the x-dimension. Default is 1.
+        z_max : int, optional
+            Maximum z-dimension size. Default is 60.
+        dz : float, optional
+            Step size in the z-dimension. Default is 1.
+        z1 : float, optional
+            Depth at which the first layer ends. Default is z_max/3.
+        z_thick : float, optional
+            Thickness of the second layer. Default is z_max/2.
+        rho1_1 : float, optional
+            Density at the start of the first layer. Default is 120.
+        rho1_2 : float, optional
+            Density at the end of the first layer. Default is 10.
+        rho2_1 : float, optional
+            Density at the start of the second layer. Default is rho1_2.
+        rho2_2 : float, optional
+            Density at the end of the second layer. Default is rho1_1.
+        rho3 : float, optional
+            Density of the third layer. Default is 120.
+
+    Returns
+    -------
+    tuple
+        A tuple containing (M, x, z) where M is the generated synthetic model, 
+        x is x-coordinates, z is z-coordinates.
     """
     
     showInfo = kwargs.get('showInfo', 0)
@@ -2090,15 +2283,25 @@ def class_id_to_idx(D, class_id=None):
     corresponding indices. If no class identifiers are provided, it will 
     automatically determine the unique class identifiers from the input array.
 
-    :param D: numpy.ndarray
+    Parameters
+    ----------
+    D : numpy.ndarray
         Array containing class identifiers.
-    :param class_id: numpy.ndarray, optional
+    class_id : numpy.ndarray, optional
         Array of unique class identifiers. If None, unique class identifiers 
-        will be determined from the input array `D`.
-    :return: tuple
-        A tuple containing:
-        - D_idx (numpy.ndarray): Array with class identifiers converted to indices.
-        - class_id (numpy.ndarray): Array of unique class identifiers.
+        will be determined from the input array `D`. Default is None.
+    
+    Returns
+    -------
+    tuple
+        A tuple containing the following elements:
+        
+        D_idx : numpy.ndarray
+            Array with class identifiers converted to indices.
+        class_id : numpy.ndarray
+            Array of unique class identifiers.
+        class_id_out : numpy.ndarray
+            Array of unique output class identifiers.
     """
 
     if class_id is None:
@@ -2122,22 +2325,35 @@ def get_hypothesis_probability(f_post_h5_arr, T=1):
     to compute normalized probabilities for each hypothesis, along with evidence values,
     mode hypotheses, and entropy measures.
     
-    :param f_post_h5_arr: Array of file paths to HDF5 files containing posterior evidence values. Each file should have an '/EV' dataset
-    :type f_post_h5_arr: list of str
-    :param T: Temperature parameter that applies annealing. Higher temperatures create more uniform distributions. Useful for smoothing distributions from smaller lookup tables
-    :type T: float, optional
+    Parameters
+    ----------
+    f_post_h5_arr : list of str
+        Array of file paths to HDF5 files containing posterior evidence values. 
+        Each file should have an '/EV' dataset.
+    T : float, optional
+        Temperature parameter that applies annealing. Higher temperatures create 
+        more uniform distributions. Useful for smoothing distributions from smaller 
+        lookup tables. Default is 1.
     
-    :returns: Tuple containing (P, EV_all, MODE_hypothesis, ENT_hypothesis) where:
+    Returns
+    -------
+    tuple
+        A tuple containing the following elements:
         
-        - P: Normalized probabilities for each hypothesis (shape: n_hypothesis, n_samples)
-        - EV_all: Evidence values for each hypothesis and sample (shape: n_hypothesis, n_samples)
-        - MODE_hypothesis: Index of most probable hypothesis per sample (shape: n_samples)
-        - ENT_hypothesis: Entropy of hypothesis distribution per sample, normalized by number of hypotheses (shape: n_samples)
-    :rtype: tuple
+        P : numpy.ndarray
+            Normalized probabilities for each hypothesis (shape: n_hypothesis, n_samples).
+        EV_all : numpy.ndarray
+            Evidence values for each hypothesis and sample (shape: n_hypothesis, n_samples).
+        MODE_hypothesis : numpy.ndarray
+            Index of most probable hypothesis per sample (shape: n_samples).
+        ENT_hypothesis : numpy.ndarray
+            Entropy of hypothesis distribution per sample, normalized by number 
+            of hypotheses (shape: n_samples).
     
-    .. note::
-        The probability normalization uses the log-sum-exp trick to avoid numerical
-        underflow issues when working with evidence values.
+    Notes
+    -----
+    The probability normalization uses the log-sum-exp trick to avoid numerical
+    underflow issues when working with evidence values.
     """
 
     from scipy import stats
@@ -2178,17 +2394,27 @@ def sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis=None):
     This function samples posterior models from multiple hypotheses stored in HDF5 files,
     according to the given hypothesis probabilities.
     
-    :param f_post_h5_arr: List of paths to HDF5 files containing posterior models for different hypotheses
-    :type f_post_h5_arr: list of str
-    :param P_hypothesis: Array of shape (n_hypotheses, n_soundings) containing probability of each hypothesis for each sounding. If None, uniform probabilities are used
-    :type P_hypothesis: numpy.ndarray, optional
+    Parameters
+    ----------
+    f_post_h5_arr : list of str
+        List of paths to HDF5 files containing posterior models for different hypotheses.
+    P_hypothesis : numpy.ndarray, optional
+        Array of shape (n_hypotheses, n_soundings) containing probability of each 
+        hypothesis for each sounding. If None, uniform probabilities are used. 
+        Default is None.
     
-    :returns: List of posterior model arrays. Each array has shape (n_soundings, n_samples, n_parameters), where n_samples is determined by the first hypothesis's number of samples
-    :rtype: list of numpy.ndarray
+    Returns
+    -------
+    list of numpy.ndarray
+        List of posterior model arrays. Each array has shape (n_soundings, n_samples, 
+        n_parameters), where n_samples is determined by the first hypothesis's number 
+        of samples.
     
-    .. note::
-        The function combines posterior samples from different hypotheses in proportion to their
-        probabilities and ensures the total number of samples equals the first hypothesis's sample count.
+    Notes
+    -----
+    The function combines posterior samples from different hypotheses in proportion to their
+    probabilities and ensures the total number of samples equals the first hypothesis's 
+    sample count.
     """
 
     import numpy as np
