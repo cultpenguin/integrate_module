@@ -1,6 +1,6 @@
 # INTEGRATE Python Module
 
-[![PyPI version](https://badge.fury.io/py/integrate_module.svg)](https://badge.fury.io/py/integrate_module)
+[![PyPI version](https://badge.fury.io/py/integrate-module.svg)](https://badge.fury.io/py/integrate-module)
 [![Test PyPI](https://img.shields.io/badge/Test%20PyPI-integrate__module-orange.svg)](https://test.pypi.org/project/integrate-module/)
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://cultpenguin.github.io/integrate_module/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
