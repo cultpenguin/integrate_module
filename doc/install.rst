@@ -2,101 +2,152 @@
 Installation
 ============
 
-Python integrate module
-=======================
+INTEGRATE Python Module
+========================
 
-Once a stable version is released, the module will be available on PyPI (https://test.pypi.org/project/integrate/), and it should be installed using 
+Assuming you already have Python 3.10+ installed:
 ::
     
-        # pip install integrate_module
-        pip install -i https://test.pypi.org/simple/ integrate
+        pip install integrate_module
 
-Until then, the module can be installed from the source code. 
-The following steps will install the module, optionally in a virtual environment called 'integrate'
+On Windows, this will also install the Python wrapper for GA-AEM (1D EM forward modeling - GPL v2 code).
 
-:: 
+On Linux/macOS, you will need to install GA-AEM manually.
 
-        # Clone the repository
-        git clone git@github.com:cultpenguin/integrate_module.git
+Using pip (from PyPI)
+=====================
 
-        # [otionally] create a virtual environment
-        sudo apt-get install python3-venv
-        python3 -m venv ~/integrate
-        source ~/integrate/bin/activate
+::
 
-        
-        # Install the module
-        cd /path/to/integrate_module
-        pip install --upgrade -r requirements.txt
-        pip install .
+    # Install python3 venv
+    sudo apt install python3-venv
+    
+    # Create virtual environment
+    python3 -m venv ~/integrate
+    source ~/integrate/bin/activate
+    pip install --upgrade pip
+    
+    # Install integrate module
+    pip install integrate_module
+    
+Using pip (from source)
+=======================
+
+::
+
+    # Install python3 venv
+    sudo apt install python3-venv
+    
+    # Create virtual environment
+    python3 -m venv ~/integrate
+    source ~/integrate/bin/activate
+    pip install --upgrade pip
+    
+    # Install integrate module
+    cd path/to/integrate_module
+    pip install -e .
+
+Using Conda + pip (from PyPI)
+==============================
+
+Create a Conda environment (called integrate) and install the required modules:
+
+::
+
+    conda create --name integrate python=3.10 numpy pandas matplotlib scipy tqdm requests h5py psutil
+    conda activate integrate
+    pip install integrate_module
+    
+Using Conda + pip (from source)
+================================
+
+Create a Conda environment (called integrate) and install the required modules:
+
+::
+
+    conda create --name integrate python=3.10 numpy pandas matplotlib scipy tqdm requests h5py psutil
+    conda activate integrate
+    pip install -e .
 
 
-FORWARD MODELING
-================
+GA-AEM
+======
 
-GA-AEM [GA-AEM]
----------------
-GA-AEM can be downloaded from [https://github.com/GeoscienceAustralia/ga-aem].
+In order to use GA-AEM for forward EM modeling, the 'gatdaem1d' Python module must be installed. Follow instructions at https://github.com/GeoscienceAustralia/ga-aem or use the information below.
 
-**On Windows:** 
+PyPI package for Windows
+------------------------
 
-The forward EM codes from GA-AEM should be installed automatically on Windows when installing the `integrate_module` package, but if you want to install it separately, you can run the following command:
+On Windows, the ga-aem-forward-win package will be automatically installed, providing access to the GA-AEM forward code. It can be installed manually using:
 
-GA-AEM can be installed using on Windows using 
 ::
 
     pip install ga-aem-forward-win
 
+Pre-compiled Python module for Windows
+---------------------------------------
 
+1. Download the pre-compiled version of GA-AEM for Windows from the latest release: https://github.com/GeoscienceAustralia/ga-aem/releases (GA-AEM.zip)
 
-if you install it manually, for the GA-AEM source code, you need to:
+2. Download precompiled FFTW3 Windows DLLs from https://www.fftw.org/install/windows.html (fftw-3.3.5-dll64.zip)
 
-A: Add `path_to_ga-aem/third_party/fftw3.2.2.dlls/64bit/` to the Windows path `$PATH` under
-environment variables. 
+3. Extract both archives:
+   - ``unzip GA-AEM.zip`` to get GA-AEM
+   - ``unzip fftw-3.3.5-dll64.zip`` to get fftw-3.3.5-dll64
 
-B: add `path_to_ga-aem/matlab/gatdaem1d_functions/` and `path_to_ga-aem/matlab/bin/x64/` to the Matlab path
-::
-
-    addpath path_to_ga-aem/matlab/gatdaem1d_functions/
-    addpath path_to_ga-aem//matlab/bin/x64/
-
-
-**On Linux/OSX:**
-
-MEX files need to be compiled after downloading the source. The following script will download and compile the GA-AEM source code on Ubuntu 24.04 --> (https://github.com/cultpenguin/integrate_module/blob/main/scripts/cmake_build_script_ubuntu_gatdaem1d.sh).
- 
+4. Copy FFTW3 DLLs to GA-AEM Python directory:
 
 ::
 
-    chmod +x cmake_build_script_ubuntu_gatdaem1d.sh
-    ./cmake_build_script_ubuntu_gatdaem1d.sh
+    cp fftw-3.3.5-dll64/*.dll GA-AEM/python/gatdaem1d/
 
-Then, to install the GA-AEM Python module, navigate to the `ga-aem` directory and run
+5. Install the Python gatdaem1d module:
 
-:: 
+::
 
-    cd path_to_ga-aem/install_ubuntu/python
+    cd GA-AEM/python/
+    pip install -e .
+
+    # Test the installation
+    cd examples
+    python skytem_example.py
+
+Compile GA-AEM Python module on Ubuntu/Linux
+---------------------------------------------
+
+A script that downloads and installs GA-AEM is located in ``scripts/cmake_build_script_ubuntu_gatdaem1d.sh``. Be sure to use the appropriate Python environment and then run:
+
+::
+
+    sh scripts/cmake_build_script_ubuntu_gatdaem1d.sh
+    cd ga-aem/install-ubuntu/python
+    pip install .
+    
+Compile GA-AEM Python module on macOS/Homebrew
+-----------------------------------------------
+
+First install Homebrew, then run:
+
+::
+
+    sh ./scripts/cmake_build_script_homebrew_gatdaem1d.sh
+    cd ga-aem/install-homebrew/python
     pip install .
 
-Then add 
-`path_to_ga-aem/install-ubuntu/matlab/gatdaem1d_functions/` and 
-`path_to_ga-aem/install-ubuntu/matlab/bin/` and 
-to the Matlab path
+
+.. SimPEG (Python only)
+.. ---------------------
+.. SimPEG can be installed using pip:
+
+.. ::
+
+..     pip install simpeg
 
 
-SimPEG [Python only]
---------------------
-[SimPEG]_ can be installed using pip:
-
-::
-
-    pip install simpeg
-
-
-AarhusInv [Windows only]
-------------------------
-To use AarhusInv [AarhusInv]_ it must be installed and the path to the executable must be added to the path variable.
-In addition a valid license must be associated with the installation.
+.. AarhusInv (Windows only)
+.. -------------------------
+.. To use AarhusInv, it must be installed and the path to the executable must be added to the PATH variable.
+.. In addition, a valid license must be associated with the installation.
 
 
 .. MATLAB
