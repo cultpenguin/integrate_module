@@ -3,10 +3,10 @@ Data format
 =============
 
 The HDF5_ file format is used as a container for all data in INTEGRATE. 
-Each HDF5 file can contain multiple data sets (typically arranged in matrix format) with associated attributes that describe the data. `HDF View`_ is usefull to inspect the content of HDF5 files.
+Each HDF5 file can contain multiple data sets (typically arranged in matrix format) with associated attributes that describe the data. `HDF View`_ is useful to inspect the content of HDF5 files.
 
 .. _HDF View: https://www.hdfgroup.org/downloads/hdfview/
-.. _HDf5: https://www.hdfgroup.org/solutions/hdf5/
+.. _HDF5: https://www.hdfgroup.org/solutions/hdf5/
 
 
 The following HDF files are used for any INTEGRATE project 
@@ -15,7 +15,7 @@ The following HDF files are used for any INTEGRATE project
 
 **PRIOR.h5**: Stores realizations of the prior model, and corresponding forward response
 
-**FORWARD.h5**: Stores information need to solved the forward, problem, and/or needed to describe the observed data in DATA.h5
+**FORWARD.h5**: Stores information needed to solve the forward problem, and/or needed to describe the observed data in DATA.h5
 
 **POST.h5**: stores index of posterior realizations, as well as posterior statistics 
 
@@ -80,12 +80,12 @@ The attribute ``D1/noise_model`` is mandatory for all data types, and describes 
      - [integer]
      - 
      - 
-     - The prior data if A string describing the noise model used for the data. If not set it will the same id as the data id 
+     - The prior data id. If not set it will be the same id as the data id 
    * - /D1/i_use
      - [NP,1] int [0/1]
      - 
      - 
-     - Determines wether a data point should be used or not. All data are used by default
+     - Determines whether a data point should be used or not. All data are used by default
 
 The format of the observed data, and the associate uncertainty, depends on the type of data, and the choice of noise model.
 
@@ -97,7 +97,7 @@ Gaussian noise  - continuous data
 
 For continuous data and the multivariate Gaussian noise model can be chosen by setting the attribute ``D1/noise_model=gaussian`` 
 
-.. list-table:: Data and attributes om DATA.h5 for continuous data and multivariate Gaussian noise model
+.. list-table:: Data and attributes in DATA.h5 for continuous data and multivariate Gaussian noise model
    :widths: 10 10 5 5 70 
    :header-rows: 1
 
@@ -156,9 +156,9 @@ For continuous data and the multivariate Gaussian noise model can be chosen by s
 Multinomial noise - discrete data
 """""""""""""""""""""""""""""""""
 
-For discrete data the multinomial distribution can use as likelihhood by setting the attribute ``D1/noise_model=multinomial`` 
+For discrete data the multinomial distribution can be used as likelihood by setting the attribute ``D1/noise_model=multinomial`` 
 
-.. list-table:: Data and attributes om DATA.h5 for  data and multinomial noise model
+.. list-table:: Data and attributes in DATA.h5 for data and multinomial noise model
    :widths: 10 10 5 5 70 
    :header-rows: 1
 
@@ -313,7 +313,7 @@ f_forward_h5 [string]: Defines the name of the HDF5 file that contains informati
 
 FORWARD.h5
 ==========
-The FORWARD.h5 needs to hold' as much information as needed to define the use fo a specific forward model.
+The FORWARD.h5 needs to hold as much information as needed to define the use of a specific forward model.
 
 The attribute ``/method`` refer to a specific choice of forward method.
 
@@ -340,7 +340,7 @@ The attribute ``/method`` refer to a specific choice of forward method.
      
 
 ``/method`` can, for example, be ``TDEM`` for Time Domain EM (The default in INTEGRATE),
-ot can be ``identity`` for an identity mapping (useful to represent log data).
+or can be ``identity`` for an identity mapping (useful to represent log data).
 
 TDEM: Time domain EM, method='tdem'.
 ----------------------------------------
@@ -412,7 +412,7 @@ At the very minimum POST.h5 needs to contain the index (in PRIOR.h5) of realizat
 
 
 
-Continious parameters
+Continuous parameters
 ---------------------
 
 For continuous model parameters the following generic posterior statistics are computed
