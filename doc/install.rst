@@ -9,7 +9,7 @@ Once a stable version is released, the module will be available on PyPI (https:/
 ::
     
         # pip install integrate_module
-        pip install -i https://test.pypi.org/simple/ integrate
+        pip install -i https://test.pypi.org/simple/ integrate_module
 
 Until then, the module can be installed from the source code. 
 The following steps will install the module, optionally in a virtual environment called 'integrate'
