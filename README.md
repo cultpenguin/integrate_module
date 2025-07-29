@@ -1,5 +1,6 @@
 # INTEGRATE Python Module
 
+[![Build Status](https://github.com/cultpenguin/integrate_module/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/cultpenguin/integrate_module/actions/workflows/docs.yml)
 [![PyPI](https://badge.fury.io/py/integrate-module.svg)](https://badge.fury.io/py/integrate-module)
 [![Test PyPI](https://img.shields.io/badge/Test%20PyPI-integrate__module-orange.svg)](https://test.pypi.org/project/integrate-module/)
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://cultpenguin.github.io/integrate_module/)
