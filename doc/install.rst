@@ -135,19 +135,19 @@ First install Homebrew, then run:
     pip install .
 
 
-SimPEG (Python only)
----------------------
-SimPEG can be installed using pip:
+.. SimPEG (Python only)
+.. ---------------------
+.. SimPEG can be installed using pip:
 
-::
+.. ::
 
-    pip install simpeg
+..     pip install simpeg
 
 
-AarhusInv (Windows only)
--------------------------
-To use AarhusInv, it must be installed and the path to the executable must be added to the PATH variable.
-In addition, a valid license must be associated with the installation.
+.. AarhusInv (Windows only)
+.. -------------------------
+.. To use AarhusInv, it must be installed and the path to the executable must be added to the PATH variable.
+.. In addition, a valid license must be associated with the installation.
 
 
 .. MATLAB
