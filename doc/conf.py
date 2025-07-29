@@ -76,3 +76,24 @@ master_doc = 'index'
 
 html_theme = 'sphinx_rtd_theme'
 #html_static_path = ['_static']
+
+# GitHub Pages compatibility
+html_baseurl = 'https://cultpenguin.github.io/integrate_mockup/'
+html_copy_source = False
+html_show_sourcelink = False
+
+# Ensure proper handling of notebooks and static files
+nbsphinx_allow_errors = True
+nbsphinx_execute = 'never'  # Don't execute notebooks during build
+
+def setup(app):
+    """Custom setup function to add .nojekyll file to output."""
+    import os
+    
+    def add_nojekyll_file(app, exception):
+        if exception is None:  # Build was successful
+            nojekyll_path = os.path.join(app.outdir, '.nojekyll')
+            with open(nojekyll_path, 'w') as f:
+                f.write('')
+    
+    app.connect('build-finished', add_nojekyll_file)
