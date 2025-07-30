@@ -4,3 +4,4 @@ sphinx-gallery
 pandoc
 myst_parser
 sphinx_rtd_theme
+furo
