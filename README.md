@@ -20,7 +20,7 @@ On Windows, this will also install the Python wrapper for GA-AEM (1D EM forward 
 
 On Linux/macOS, you will need to install GA-AEM manually.
 
-### Using pip (from PyPI)
+### Using pip (from PyPI, on Ubuntu)
 
     # Install python3 venv
     sudo apt install python3-venv
@@ -33,7 +33,7 @@ On Linux/macOS, you will need to install GA-AEM manually.
     # Install integrate module
     pip install integrate_module
     
-### Using pip (from source)
+### Using pip (from source, on Ubuntu)
 
     # Install python3 venv
     sudo apt install python3-venv
@@ -45,7 +45,7 @@ On Linux/macOS, you will need to install GA-AEM manually.
     
     # Install integrate module
     cd path/to/integrate_module
-    pip install -e .
+    pip install -r requirements.txt -e .
 
 ### Using Conda + pip (from PyPI)
 
