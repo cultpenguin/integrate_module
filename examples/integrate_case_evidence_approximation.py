@@ -5,7 +5,7 @@
 # This notebook demonstrates howto compute an estimate of the evidence using the INTEGRATE package. 
 #
 
-# %% Imports
+# %%
 try:
     # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
     get_ipython()
@@ -40,13 +40,11 @@ hardcopy=True
 # * HALD
 #
 
-# %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
-case = 'GRUSGRAV'; i1=0; i2=800
-case = 'DAUGAARD'; i1=7600;i2=8600
-#case = 'FANGEL'
-#case = 'HALD'
-#case = 'HADERUP; i1=7600;i2=8600
-
+# %%
+case = 'DAUGAARD'
+case = 'FANGEL'
+case = 'HALD'
+case = 'HADERUP' # NOT YET AVAILABLE
 
 files = ig.get_case_data(case=case)
 f_data_h5_org = files[0]
@@ -55,7 +53,7 @@ file_gex= ig.get_gex_file_from_data(f_data_h5_org)
 if not os.path.isfile(file_gex):
     print("file_gex=%s does not exist in the current folder." % file_gex)
 
-# %% Inflating noise
+# %%
 # Read 'D1/d_std' from f_data_h5, increase it by 100% and write it back to f_data_h5
 f_data_h5 = f_data_h5_org
 f_data_h5 = '%s_data.h5' % case
@@ -79,9 +77,9 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 #
 
 
-# %% SELECT THE PRIOR MODEL
+# %%
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=5000000
+N=100000
 z_max = 80
 RHO_min = 1
 RHO_max = 1000
@@ -97,7 +95,8 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_1l.h5', showInfo=showInfo)
-#f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('1 layer model')
+f_prior_h5_arr.append(f_prior_h5)
+hypothesis_name.append('1 layer model')
 
 ## 2 layered model
 NLAY_min=2
@@ -106,34 +105,8 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_2l.h5', showInfo=showInfo)
-f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('2 layered model')
-
-## 3 layered model
-NLAY_min=3
-NLAY_max=3
-f_prior_h5 = ig.prior_model_layered(N=N,
-                                    lay_dist='uniform', z_max = z_max, 
-                                    NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_3l.h5', showInfo=showInfo)
-f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('3 layered model')
-
-## 3 layered model
-NLAY_min=3
-NLAY_max=3
-f_prior_h5 = ig.prior_model_layered(N=N,
-                                    lay_dist='uniform', z_max = z_max, 
-                                    NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                    RHO_dist=RHO_dist, RHO_min=30, RHO_max=RHO_max, f_prior_h5 = 'prior_3l_alt.h5', showInfo=showInfo)
-#f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('3 layered model - min30')
-
-## 3 layered model
-NLAY_min=3
-NLAY_max=3
-f_prior_h5 = ig.prior_model_layered(N=N,
-                                    lay_dist='uniform', z_max = z_max, 
-                                    NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_3l_alt.h5', showInfo=showInfo)
-#f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('3 layered model - alt')
+f_prior_h5_arr.append(f_prior_h5)
+hypothesis_name.append('2 layered model')
 
 ## 4 layered model
 NLAY_min=4
@@ -142,7 +115,8 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_4l.h5', showInfo=showInfo)
-f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('4 layered model')
+f_prior_h5_arr.append(f_prior_h5)
+hypothesis_name.append('4 layered model')
 
 ## 6 layered model
 NLAY_min=6
@@ -151,7 +125,8 @@ f_prior_h5 = ig.prior_model_layered(N=N,
                                     lay_dist='uniform', z_max = z_max, 
                                     NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_6l.h5', showInfo=showInfo)
-#f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('6 layered model')
+f_prior_h5_arr.append(f_prior_h5)
+hypothesis_name.append('6 layered model')
 
 
 ## 4 layered model
@@ -159,15 +134,17 @@ f_prior_h5 = ig.prior_model_layered(N=N,
 #f_prior_h5 = ig.prior_model_layered(N=N,
 #                                    lay_dist='chi2', z_max = z_max, NLAY_deg=NLAY_deg, 
 #                                    RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_chi4.h5', showInfo=showInfo)
-#f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('4 layered model (chi2)')
+#f_prior_h5_arr.append(f_prior_h5)
+#hypothesis_name.append('4 layered model (chi2)')
 
 # ## 4 layered model
 # NLAY_deg = 4
-# RHO_min = 10
+# #RHO_min = 10
 # f_prior_h5 = ig.prior_model_layered(N=N,
 #                                     lay_dist='chi2', z_max = z_max, NLAY_deg=NLAY_deg, 
 #                                     RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_chi4_10.h5', showInfo=showInfo)
-# f_prior_h5_arr.append(f_prior_h5);hypothesis_name.append('4 layered model (chi2-10ohmm)')
+# f_prior_h5_arr.append(f_prior_h5)
+
 
 for f_prior_h5 in f_prior_h5_arr:
     ig.plot_prior_stats(f_prior_h5)
@@ -183,11 +160,13 @@ for f_prior_h5 in f_prior_h5_arr:
     f_prior_data_h5_arr.append(f_prior_data_h5)
 
 # %% [markdown]
-# ## Perform inversion for multiple lookup table sizes
+# ## Perform inversion for multiuple lookup table sizes
 
-# %% Invert using the difefrent prior models, using different lookup table sizes
+# %%
 nprior = len(f_prior_data_h5_arr)
 
+i1=7600
+i2=8600
     
 # # Narr should an array from 10 to N, in nstep in logspace
 N1=100
@@ -201,45 +180,26 @@ print(N_use_arr)
 
 EV_all = []
 T_all = []
-ic = -1
-T_hyp=5
-
-# if variable f_post_h5_arr_all exists then set H=1
-doInversion = True
-if 'f_post_h5_arr_all' in locals():
-    doInversion = False
-    print("f_post_h5_arr_all exists, set doInversion=False")
-
-if doInversion:
-    f_post_h5_arr_all = []
-
+f_post_h5_all_arr = []
 for N_use in N_use_arr:
-    ic += 1
+    EV_arr = []
+    f_post_h5_arr = []
     # Loop over the prior models, and perform the inversion
-    if doInversion:
-        EV_arr = []
-        f_post_h5_arr = []
-        for f_prior_data_h5 in  f_prior_data_h5_arr:
-            print("N_use=%d" % N_use)
-            f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8, N_use = N_use, updatePostStat=False)
-            ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=True, im=1)
-            f_post_h5_arr.append(f_post_h5)
-    
-            # read T
-            with h5py.File(f_post_h5, 'r') as f:
-                T = f['T'][:]
-                T_all.append(T)
-        
-        f_post_h5_arr_all.append(f_post_h5_arr)
+    for f_prior_data_h5 in  f_prior_data_h5_arr:
+        print("N_use=%d" % N_use)
+        f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8, N_use = N_use, updatePostStat=False)
+        ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=True, im=1)
+        f_post_h5_arr.append(f_post_h5)
+        f_post_h5_all_arr.append(f_post_h5)
 
-    else:
-        f_post_h5_arr = f_post_h5_arr_all[ic]
-        f_post_h5 = f_post_h5_arr[0]
-
+        # read T
+        with h5py.File(f_post_h5, 'r') as f:
+            T = f['T'][:]
+            T_all.append(T)
 
     # Get the probability (and log-evidence) for each of the four hypothesis
-    #P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr)
-    P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr, T=T_hyp)
+    P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr)
+    #P_hypothesis, EV_hypothesis = get_hypothesis_probability(f_post_h5_arr)
     # Plot a cumulative probability profile for the hypothesis
     ig.plot_cumulative_probability_profile(P_hypothesis, i1=i1, i2=i2,label=hypothesis_name, name ='hyp_prob_N%d' %(N_use))
     #ig.plot_cumulative_probability_profile(P_hypothesis, i1=i1, i2=i2)
@@ -260,8 +220,7 @@ for N_use in N_use_arr:
     # Create boundaries for each hypothesis
     bounds = np.arange(0.5, n_hypothesis + 1.5, 1)
     norm = BoundaryNorm(bounds, cmap.N)
-    scatter = plt.scatter(X, Y, c=MODE_hypothesis+1, s=5, cmap=cmap, alpha=1-ENT_hypothesis*.95, norm=norm, edgecolors='k', linewidth=0.05)
-    #scatter = plt.scatter(X, Y, c=MODE_hypothesis+1, s=5, cmap=cmap, alpha=1, norm=norm, edgecolors='k', linewidth=0.1)
+    scatter = plt.scatter(X, Y, c=MODE_hypothesis+1, s=5, cmap=cmap, alpha=1-ENT_hypothesis, norm=norm)
     plt.xlabel('X coordinate')
     plt.ylabel('Y coordinate')
     plt.grid()
@@ -269,36 +228,19 @@ for N_use in N_use_arr:
     cbar = plt.colorbar(scatter, ticks=range(1, n_hypothesis+1))
     cbar.set_label('Hypothesis')
     plt.title('Posterior mode of hypotheses')
-    plt.savefig('hypothesis_mode_N%d_T%d.png' % (N_use,T_hyp), dpi=300)
+    plt.savefig('hypothesis_mode_N%d.png' % (N_use), dpi=300)
     # Plot teh entorpy of the sigma(m|d,Hypothesis)
-    #plt.figure(figsize=(12, 12))
-    
-    # Set the default font size for all plot elements
-    plt.rcParams.update({'font.size': 12})
-    
-    plt.figure(figsize=(8,8), facecolor='w', dpi=300, edgecolor='k')
-    scatter = plt.scatter(X, Y, c=ENT_hypothesis, s=5, vmin = 0, vmax=1.0, alpha=1, cmap='hot', edgecolors='k', linewidth=0.1)
-    plt.xlabel('X coordinate', fontsize=14)
-    plt.ylabel('Y coordinate', fontsize=14)
-    cbar = plt.colorbar(scatter, label='Hypothesis Entropy')
-    cbar.ax.tick_params(labelsize=12)
-    cbar.set_label('Hypothesis Entropy', fontsize=14)
-    
-    # Set font size for all tick labels (equivalent to MATLAB's set(gca,'FontSize',10))
-    plt.tick_params(axis='both', which='major', labelsize=12)
-    
+    plt.figure(figsize=(12, 12))
+    scatter = plt.scatter(X, Y, c=ENT_hypothesis, s=5, vmin = -.05, vmax=1.0, alpha=1, cmap='hot_r')
+    plt.xlabel('X coordinate')
+    plt.ylabel('Y coordinate')
+    plt.colorbar(scatter, label='Hypotheisis Entropy')
     plt.grid()
-    plt.title('Hypothesis Entropy', fontsize=16)
-    plt.tight_layout()
-    plt.savefig('hypothesis_entropy_N%d_T%d.png' % (N_use,T_hyp), dpi=300)
+    plt.savefig('hypothesis_entropy_N%d.png' % (N_use), dpi=300)
 
     plt.show()
     
 
-
-# %% 
-for i in range(nprior):
-    ig.plot_data_prior_post(f_post_h5_arr[i], i_plot=i1, ylim=[1e-13,1e-5], hardcopy=hardcopy)
 
 
 # %% [markdown]
@@ -307,7 +249,7 @@ for i in range(nprior):
 
 # %%
 # The the probability of each hypothrdiod using evidence
-P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr, T=1)
+P_hypothesis, EV_hypothesis,  MODE_hypothesis, ENT_hypothesis  = ig.get_hypothesis_probability(f_post_h5_arr)
 
 # Combine posterior arrays using P_hypothesis
 M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis)
@@ -315,31 +257,7 @@ M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr, P_hypothesis
 # M_post_arr = ig.sample_posterior_multiple_hypotheses(f_post_h5_arr)
 
 
-#plt.imshow(M_post_arr[1], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
-plt.imshow(M_post_arr[0][110], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
-
-
-
-# %%
-
-#%% Compute the mean, median and std of the posterior samples, and save it to a copy a posterior hdf5 file
-ns, nr, nm = M_post_arr[0].shape
-M_median = np.zeros((ns, nm))
-M_mean = np.zeros((ns, nm))
-M_std = np.zeros((ns, nm))
-for i in range(ns):
-    M_median[i] = np.median(M_post_arr[0][i], axis=0)
-    M_mean[i] = np.mean(M_post_arr[0][i], axis=0)
-    M_std[i] = np.std(np.log10(M_post_arr[0][i]), axis=0)
-f_post_h5_combined = 'posterior_combined.h5'
-ig.copy_hdf5_file(f_post_h5_arr[0], f_post_h5_combined, compress = True)
-with h5py.File(f_post_h5_combined, 'a') as f:
-    f['/M1/Mean'][:] = M_mean
-    f['/M1/Median'][:] = M_median
-    f['/M1/Std'][:] = M_std
-
-ig.plot_profile(f_post_h5_arr[-1], i1=i1, i2=i2, hardcopy=True, im=1)
-ig.plot_profile(f_post_h5_combined, i1=i1, i2=i2, hardcopy=True, im=1)
-
+plt.imshow(M_post_arr[1], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
+#plt.imshow(M_post_arr[0][110], aspect='auto', interpolation='nearest', vmin=1, vmax=3)
 
 # %%

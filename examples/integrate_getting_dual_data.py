@@ -26,7 +26,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 hardcopy=True
-# %% Get tTEM data from DAUGAARD
+# %%
 case = 'DAUGAARD'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -44,14 +44,14 @@ print("Using GEX file: %s" % file_gex)
 # %% [markdown]
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
-# %% A. CONSTRUCT PRIOR MODEL AND DATA
+# %%
 N=1000000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
 ig.integrate_update_prior_attributes(f_prior_data_h5)
 
-# %% Split the prior data and observed data
+# %%
 # into TWO data sets, LOW and HIGH moment.
 
 ig.plot_data_prior(f_prior_data_h5, f_data_h5)
@@ -91,9 +91,9 @@ plt.semilogy(D[0],'k:');
 plt.semilogy(D_low[0],'r:');
 plt.semilogy(D_high[0],'g:');
 
-# %% WRITE THE DUAL PRIOR AND OBSERVED DATA TO HDF5 FILES
+# %%
 
-# %% WRITE DUAL OBSERVED DATA
+# %%
 f_data_dual_h5 = 'DAUGAARD_AVG_dual.h5'
 ig.copy_hdf5_file(f_data_h5,f_data_dual_h5)
 # Delete D1
@@ -112,7 +112,7 @@ with h5py.File(f_data_dual_h5, 'a') as f:
     f.create_dataset('D2/d_std', data=D_std_high)
     f['D2'].attrs['noise_model'] = 'gaussian'
 
-# %% WRITE DUAL PRIOR DATA
+# %%
 f_prior_data_dual_h5 = 'PRIOR_dual.h5'
 ig.copy_hdf5_file(f_prior_data_h5,f_prior_data_dual_h5)
 
@@ -124,7 +124,7 @@ with h5py.File(f_prior_data_dual_h5, 'a') as f:
     f.create_dataset('D2', data=D_high)
 
 
-# %% WRITE DUAL PRIOR DATA
+# %%
 ig.plot_data_prior(f_prior_data_dual_h5, f_data_dual_h5, id=1)
 ig.plot_data_prior(f_prior_data_dual_h5, f_data_dual_h5, id=2)
 
@@ -134,7 +134,7 @@ ig.plot_data_prior(f_prior_data_dual_h5, f_data_dual_h5, id=2)
 #
 # The posterior distribution is sampling using the extended rejection sampler.
 
-# %% SAMPLE THE FULL POSTERIOR
+# %%
 N_use = 1000000 #%N
 N_cpu = 6
 f_post_arr = []
@@ -181,7 +181,7 @@ for itype in [0,1,2,3]:
 
 
 
-# %% Update posterior stats
+# %%
 for f_post_h5 in f_post_arr:
     ig.integrate_posterior_stats(f_post_h5)
 
@@ -250,5 +250,5 @@ plt.ylabel('N_UNIQUE')
 
 
 
-# %% Export to CSV
+# %%
 #ig.post_to_csv(f_post_h5)

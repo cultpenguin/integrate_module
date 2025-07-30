@@ -3,7 +3,7 @@
 # # INTEGRATE - synthetic prior models and prior data
 #
 
-# %% Imports
+# %%
 try:
     # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
     get_ipython()
@@ -36,7 +36,7 @@ hardcopy=True
 # * HALD
 #
 
-# %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
+# %%
 case = 'DAUGAARD'
 
 files = ig.get_case_data(case=case)
@@ -62,7 +62,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 #
 #
 
-# %% SELECT THE PRIOR MODEL
+# %%
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
 N=2000000
 RHO_min = 1
@@ -81,7 +81,7 @@ f_prior_h5 = ig.prior_model_layered(N=N,
 
 
 
-# %% Make a few forward realizations
+# %%
 # Compute Prior Data
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
 ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy) 

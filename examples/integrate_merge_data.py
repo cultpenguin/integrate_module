@@ -46,7 +46,7 @@ parallel = ig.use_parallel(showInfo=1)
 # %% [markdown]
 # ## GET The raw data, and merge surveys
 
-# %% Get data from Esbjerg, before merging.
+# %%
 # 8 DATA files are available, corresponding to 8 different surveys obtained with 4 different GEX files
 case = 'ESBJERG'
 files = ig.get_case_data(case=case, loadType='premerge')
@@ -54,7 +54,7 @@ files = ig.get_case_data(case=case, loadType='premerge')
 # %% [markdown]
 # ### Case A: Treat each area individually
 
-# %% Specify the data files and the corresponding GEX file
+# %%
 # Define the surveys with the same systemfile (gex)
 
 f_gex1 ='TX07_20230906_2x4_RC20-33.gex'
@@ -77,7 +77,7 @@ f_gex4 = 'TX07_20240125_2x4_RC20-33.gex'
 f_data4 = []
 f_data4.append('20240313_AVG_export.h5')
 
-# %% Merge DATA with the same GEX file into a single file
+# %%
 # Merge the data
 f_data_merged1 = ig.merge_data(f_data1, f_gex1, f_data_merged_h5='ESBJERG_1.h5')
 f_data_merged2 = ig.merge_data(f_data2, f_gex2, f_data_merged_h5='ESBJERG_2.h5')
@@ -94,7 +94,7 @@ ig.plot_geometry(f_data_merged1, pl='LINE')
 # %% [markdown]
 # #### Run multiple inversions
 
-# %% Invert each area one by one
+# %%
 
 # Set PRIOR model: The prior is the same for all sets of data
 N=100000
@@ -125,17 +125,17 @@ for f_data_h5 in f_data_all:
 # %% [markdown]
 # #### Merge the posterior data into one posterior
 
-# %% MERGE POSTERIOR DATA
+# %%
 f_post_merged_h5, f_data_merged_h5  = ig.merge_posterior(f_post_all[0:-2], f_data_all[0:-2], f_post_merged_h5='POST_ESBJERG_MERGED.h5')
 ig.integrate_posterior_stats(f_post_merged_h5)
 ig.plot_feature_2d(f_post_merged_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=1)
 plt.show()
 
 
-# %% Now, for comparison we invert [markdown]
+# %% [markdown]
 # ### Case B: Combine all data, and use a single system GEX file
 
-# %% MERGE ALL DATA INTO A SINGLE FILE, using the first GEX file as reference
+# %%
 # Combine f_data1, f_data2, and f_data3 into a single data set, and use a single system GEX file (this leads to an error)
 ## Cannot used the last dataset witjh rest as it has a different form!!!
 # f_data = f_data1 + f_data2 + f_data3 + f_data4
@@ -154,7 +154,7 @@ f_post_all_h5 = ig.integrate_rejection(f_prior_data_all_h5,
                                 parallel=parallel,
                                 updatePostStat=True)
 
-# %% Plot the results
+# %%
 ig.plot_feature_2d(f_post_all_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=1)
 plt.show()
 

@@ -4,7 +4,7 @@
 #
 # This notebook contains an example of inverison of the DAUGAARD tTEM data using three different geology-resistivity prior models
 
-# %% Imports
+# %%
 try:
     # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
     get_ipython()
@@ -29,7 +29,7 @@ hardcopy=True
 # ## Download the data DAUGAARD data including non-trivial prior data
 
 
-# %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
+# %%
 #files = ig.get_case_data(case='DAUGAARD') # Load only data
 #files = ig.get_case_data(case='DAUGAARD', loadType='prior') # Load data and prior realizations
 files = ig.get_case_data(case='DAUGAARD', loadType='prior_data') # Load data and prior+data realizations
@@ -45,7 +45,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 
 
-# %% SELECT THE PRIOR MODEL
+# %%
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
 doComputePriorData = False
 if doComputePriorData:
@@ -60,7 +60,7 @@ if doComputePriorData:
         print('Using prior model file %s' % f_prior_h5)
 
         #% plot some 1D statistics of the prior
-        ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
+        ig.plot_prior_stats(f_prior_h5)
 
         #% Compute prior data
         f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, N=N_use)
@@ -81,17 +81,13 @@ N_use = 2000000
 for f_prior_data_h5 in f_prior_data_h5_list:
     print('Using prior model file %s' % f_prior_data_h5)
 
-    #% plot some 1D statistics of the prior
-    ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
-
     #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
     updatePostStat =True
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
                                        N_use = N_use, 
                                        parallel=1, 
                                        updatePostStat=updatePostStat, 
-                                       showInfo=1,
-                                       Nproc=32)
+                                       showInfo=1)
     f_post_h5_list.append(f_post_h5)
 
 
@@ -101,7 +97,7 @@ for f_post_h5 in f_post_h5_list:
     #% Posterior analysis
     # Plot the Temperature used for inversion
     #ig.plot_T_EV(f_post_h5, pl='T')
-    ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
+    ig.plot_T_EV(f_post_h5, pl='EV')
     #ig.plot_T_EV(f_post_h5, pl='ND')
 
     #% Plot Profiles
@@ -111,7 +107,7 @@ for f_post_h5 in f_post_h5_list:
     #ig.post_to_csv(f_post_h5)
     plt.show()
 
-# %% COMPUTE RELAGTIOVE EVIDENCE AND PLOT PROBABILITY OF PRIOR HYPOTHESIS
+# %%
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
 nd=len(X)
@@ -137,7 +133,7 @@ for iev in range(nev):
     EV_P[iev] = np.exp(EV_mul[iev]-E_max)
 
 # Use annealing to flaten prob
-T_EV = 4
+T_EV = 10
 EV_P = EV_P**(1/T_EV)
 
 EV_P_sum = np.sum(EV_P,axis=0)
@@ -166,13 +162,11 @@ EV_P_max = np.max(EV_P, axis=0)
 psize = (EV_P_max-0.5)*20+0.001
 plt.subplot(2,1,2)
 #plt.plot(X, Y, 'k.', markersize=.1)
-#plt.scatter(X, Y, c=EV_mode, cmap='Set1', s=psize)
-plt.scatter(X, Y, c=EV_mode, cmap='summer', s=psize)
+plt.scatter(X, Y, c=EV_mode, cmap='Set1', s=psize)
 plt.axis('equal')
 plt.tight_layout()
 cbar = plt.colorbar(ticks=[0, 1])
 cbar.set_ticklabels(['In', 'Out'])
-plt.savefig('IN_EV_P_N%d.png' % (N_use), dpi=300)
 # %%
 
 

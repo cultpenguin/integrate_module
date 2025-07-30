@@ -22,7 +22,8 @@ import matplotlib.pyplot as plt
 # check if parallel computations can be performed
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True
-# %% Get tTEM data from DAUGAARD
+# %%
+N=5000000
 N=50000
 case = 'ESBJERG'
 files = ig.get_case_data(case=case)
@@ -43,11 +44,11 @@ X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 # %% [markdown]
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
-# %% A. CONSTRUCT PRIOR MODEL OR USE EXISTING
+# %%
 
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=500)
-#f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', NLAY_min=1, NLAY_max=8, RHO_min=1, RHO_max=500)
+f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', NLAY_min=1, NLAY_max=8, RHO_min=1, RHO_max=500)
 
 # Plot some summary statistics of the prior model
 #ig.plot_prior_stats(f_prior_h5)
@@ -55,18 +56,18 @@ f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, 
 # %% [markdown]
 # ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
 
-# %% Compute prior DATA
+# %%
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
 
 
-# %% Plot observed data on top of prior data
+# %%
 ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy)
 # %% [markdown]
 # ## Sample the posterior $\sigma(\mathbf{m})$
 #
 # The posterior distribution is sampling using the extended rejection sampler.
 
-# %% READY FOR INVERSION
+# %%
 N_use = N
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                    f_data_h5, 
@@ -78,17 +79,17 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$
 
-# %% Plot prior, posterior, and observed  data
+# %%
 ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
 ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
 
-# %% Posterior analysis
+# %%
 # Plot the Temperature used for inversion
 ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
 # Plot the evidnence (prior likelihood) estimated as part of inversion
 ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
 
-# %% Plot Profiles
+# %%
 # find index id of data points wher LINE==1000
 #i_plot= np.where( np.abs(LINE-1200)<1  )[0]
 #ig.plot_profile(f_post_h5, i1=i_plot[0], i2=i_plot[-1], im=1)
@@ -113,6 +114,6 @@ try:
 except:
     pass
 
-# %% Export to CSV
+# %%
 # f_csv, f_point_csv = ig.post_to_csv(f_post_h5)
 

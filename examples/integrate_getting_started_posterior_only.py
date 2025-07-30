@@ -23,7 +23,7 @@ import h5py
 parallel = ig.use_parallel(showInfo=1)
 
 
-# %% Get tTEM data from DAUGAARD
+# %%
 case = 'DAUGAARD'
 files = ig.get_case_data(case=case,  loadType='post')
 
@@ -48,7 +48,7 @@ ig.plot_prior_stats(f_prior_h5)
 #
 # The posterior distribution is sampling using the extended rejection sampler.
 
-# %% READY FOR INVERSION
+# %%
 # The posterior distribution has already been sampled. To apply the rejection sampler again, uncomment below
 
 #
@@ -58,16 +58,16 @@ ig.plot_prior_stats(f_prior_h5)
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$
 
-# %% Plot prior, posterior, and observed  data
+# %%
 ig.plot_data_prior_post(f_post_h5, i_plot=100)
 ig.plot_data_prior_post(f_post_h5, i_plot=0)
 
-# %% Posterior analysis
+# %%
 # Plot the Temperature used for inversion
 ig.plot_T_EV(f_post_h5, pl='EV')
 ig.plot_T_EV(f_post_h5, pl='T')
 
-# %% Plot Profiles
+# %%
 # Plot profile of model parameter type 1 (resistivity)
 ig.plot_profile(f_post_h5, i1=1000, i2=2000, im=1)
 # %%

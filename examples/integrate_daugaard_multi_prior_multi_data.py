@@ -4,7 +4,7 @@
 #
 # This notebook contains an example of inversion of the DAUGAARD tTEM data using three different geology-resistivity prior models
 
-# %% Imports
+# %%
 try:
     # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
     get_ipython()
@@ -32,7 +32,7 @@ parallel = ig.use_parallel(showInfo=1)
 # %% [markdown]
 # ## Download the data DAUGAARD data including non-trivial prior data
 
-# %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
+# %%
 # For this case, we use a ready to use prior model and data set form DAUGAARD
 files = ig.get_case_data(case='DAUGAARD', loadType='inout') # Load data and prior+data realizations
 #files = ig.get_case_data(case='DAUGAARD', loadType='post') # # Load data and posterior realizations
@@ -63,7 +63,7 @@ fig=ig.plot_data_xy(f_data_h5)
 # %%
 # Lets first make a small copy of the large data set available
 f_prior_org_h5 = 'prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
-N_small = 5000# 000000
+N_small = 50000000000
 f_prior_h5 = ig.copy_hdf5_file(f_prior_org_h5, 'prior_test.h5',N=N_small,showInfo=3)
 
 print("Keys in DATA")
@@ -148,7 +148,7 @@ with h5py.File(f_data_h5, 'r') as f:
     print(f.keys()) 
 
 
-# %% Then, lets update the the prior data with an
+# %%
 # identity copy of the prior model type for "Scenario", M3
 
 

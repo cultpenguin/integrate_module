@@ -3,7 +3,7 @@
 # # INTEGRATE Synthetic Case Study example
 # An example using inverting data obtained from synthetic reference model
 #
-# %% Imports
+# %%
 try:
     # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
     get_ipython()
@@ -31,25 +31,19 @@ hardcopy=True
 # %% [markdown]
 # # Create The reference model and data
 
-#%% 
-N=500000 # sample size 
+# %%
+# Create reference model
+
+# select the type of referenc model
 case = 'wedge'
 case = '3layer'
 
-# select the type of referenc model
 z_max = 60
-rho = [150,75,150]
-#rho = [300,150,300];N=N+1
-#rho = [600,300,600];N=N+2
-rho = [1000,300,1000];N=N+2
-#rho = [120,10,120]
-#rho = [10,120,10];N=N+1
-#rho = [120,10,10];N=N+2
-#rho = [8000,5,520];N=N+3
-#rho = [520,5,1000];N=N+3
-
-
-dx=.1
+rho = [120,10,120]
+#rho = [10,120,10]
+rho = [120,10,10]
+#rho = [720,10,520]
+dx=0.1
 if case.lower() == 'wedge':
     # Make Wedge MODEL
     M_ref, x_ref, z_ref = ig.synthetic_case(case='Wedge', wedge_angle=10, dx=dx, z_max=z_max, dz=.5, x_max=100, z1=15, rho = rho)
@@ -64,7 +58,7 @@ thickness = np.diff(z_ref)
 file_gex = ig.get_case_data(case='DAUGAARD', filelist=['TX07_20231016_2x4_RC20-33.gex'])[0]
 D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
 
-#% Initialize random number generator to sample from noise model!
+# Initialize random number generator to sample from noise model!
 rng = np.random.default_rng()
 d_std = 0.05
 d_std_base = 1e-12
@@ -89,16 +83,15 @@ plt.title('Reference model')
 plt.subplot(2,1,2)
 plt.semilogy(x_ref,D_ref);
 plt.title('Reference data')
-plt.savefig('Synthetic_%s_%s_z%d_rho%d-%d-%d' % (case.upper(),'REF',z_max, rho[0],rho[1],rho[2]))
 
-ig.plot_data(f_data_h5, hardcopy=hardcopy)
+ig.plot_data(f_data_h5)
 
 
 # %% [markdown]
 # ## Create prior model and data
 
-# %% make prior
-
+# %%
+N=500000 # sample size 
 RHO_dist='log-uniform'
 #RHO_dist='uniform'
 RHO_min=0.8*min(rho)
@@ -112,7 +105,7 @@ f_prior_h5 = ig.prior_model_layered(N=N,
 
 ig.plot_prior_stats(f_prior_h5)
 
-# %% MAKE PRIOR DATA
+# %%
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
 # plot prior and observed data to chech that the prior data span the same range as the observed data
@@ -121,32 +114,26 @@ ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5],
 # %% [markdown]
 # ## Perform inversion
 
-# %% INVERT
+# %%
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
                                     parallel=parallel, 
                                     Ncpu=8,
                                     use_N_best=0
                                     )
 
-# %% Plot some stats
+# %%
 clim = [0.8*min(rho), 1.2*max(rho)]
 ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim)
-#ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  im=2)
+ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  im=2)
 
 # %%
-ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy, nr=400)
-i1 = np.ceil((M_ref.shape[0]-1)/2).astype(int)-1
-ig.plot_data_prior_post(f_post_h5, i_plot=i1, hardcopy=hardcopy, nr=400)
-i2 = M_ref.shape[0]-1
-ig.plot_data_prior_post(f_post_h5, i_plot=i2, hardcopy=hardcopy, nr=400)
+ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
 
-# %% 
-ig.plot_profile(f_post_h5, hardcopy=hardcopy)
 
 # %% [markdown]
 # ## Compare reference model to posterior median
 
-# %% Compare posterior median to reference model
+# %%
 # Read 'M1/Median' from f_post_h5
 with h5py.File(f_post_h5, 'r') as f_post:
     M_median = f_post['/M1/Median'][:]

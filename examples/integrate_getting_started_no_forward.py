@@ -23,7 +23,7 @@ parallel = ig.use_parallel(showInfo=1)
 parallel = False
 
 
-# %% Get tTEM data from DAUGAARD
+# %%
 case = 'DAUGAARD'
 files = ig.get_case_data(case=case,  loadType='prior_data')
 f_data_h5 = files[0]
@@ -47,7 +47,7 @@ ig.plot_prior_stats(f_prior_h5)
 #
 # The posterior distribution is sampling using the extended rejection sampler.
 
-# %% READY FOR INVERSION
+# %%
 if parallel:
     N_use = 1000000 # Use all data in prior lookup table
 else:
@@ -63,15 +63,15 @@ if __name__ == '__main__':
 # %% [markdown]
 # ### Plot some statistic from $\sigma(\mathbf{m})$
 
-# %% Plot prior, posterior, and observed  data
+# %%
 ig.plot_data_prior_post(f_post_h5, i_plot=100)
 ig.plot_data_prior_post(f_post_h5, i_plot=0)
 
-# %% Posterior analysis
+# %%
 # Plot the Temperature used for inversion
 ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=True)
 
-# %% Plot Profiles
+# %%
 # Plot profile of model parameter type 1 (resistivity)
 ig.plot_profile(f_post_h5, i1=1000, i2=2000, im=1)
 # %%

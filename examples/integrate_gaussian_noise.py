@@ -5,7 +5,7 @@
 # using an example using inverting data obtained from synthetic reference model
 #
 #
-# %% Imports
+# %%
 try:
     # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
     get_ipython()
@@ -44,7 +44,7 @@ file_gex = ig.get_case_data(case='DAUGAARD', filelist=['TX07_20231016_2x4_RC20-3
 #
 
 # %%
-N=25000 # sample size 
+N=250000 # sample size 
 NLAY_min=3
 NLAY_max=3
 f_prior_data_h5='PRIOR_UNIFORM_NL_%d-%d_uniform_N%d_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5' % (NLAY_min, NLAY_max, N)
@@ -65,7 +65,7 @@ ig.plot_prior_stats(f_prior_h5)
 # %% [markdown]
 # # Create The reference model and data
 
-# %% Generate Synthetic Case model and data
+# %%
 # Create reference model
 
 # select the type of referenc model
@@ -83,7 +83,7 @@ thickness = np.diff(z_ref)
 # Get an exampele of a GEX file
 D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
 
-# %% plot reference data
+# %%
 plt.subplot(2,1,1)
 xx_ref, zz_ref = np.meshgrid(x_ref, z_ref)
 plt.pcolormesh(xx_ref, zz_ref, M_ref.T)
@@ -105,7 +105,7 @@ plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 # %% [markdown]
 # ## Different types of uncorrelated and correlated noise
 
-# %% Initialize random number generator to sample from noise model!
+# %%
 rng = np.random.default_rng()
 d_std = 0.03 # standard deviation of the noise
 d_std_base = 1e-12 # base noise
@@ -114,7 +114,7 @@ D_noise = rng.normal(0, D_std, D_ref.shape)
 D_obs = D_ref + D_noise
 # Cd is a diagnoal matrix with the standard deviation of the data
 
-# %% d_std repesents the standard deviation of the uncorrrelated Gausian noise
+# %%
 
 # If a single correlated noise model is used, 
 # it can represented by be the mean of the standard deviation of the data.
@@ -148,7 +148,7 @@ f_data_h5_arr.append(f_out)
 name_arr.append('Correlated noise - individual')
 
 
-# %% Optionally run a test to compare likelihood of using different noise models.
+# %%
 import time as time
 # test likelhood
 doTest = False
@@ -185,7 +185,7 @@ if doTest:
     plt.ylabel('-log(L)')
     plt.show()
 
-# %% INVERT
+# %%
 import time as time
 f_post_h5_arr = []
 T_arr = []
@@ -212,7 +212,7 @@ for f_data_h5 in f_data_h5_arr:
 print(t_elapsed)
 
 # %%
-# %% Post stats
+# %%
 for i in range(len(f_post_h5_arr)):
     ig.plot_profile(f_post_h5_arr[i],hardcopy=hardcopy,  clim = clim, im=1)
 for i in range(len(f_post_h5_arr)):
@@ -277,7 +277,7 @@ f_data_log_3_h5_f_out = ig.write_data_gaussian(lD_obs, Cd = lCd_mul, f_data_h5 =
 f_data_arr = [f_data_log_1_h5_f_out,f_data_log_2_h5_f_out,f_data_log_3_h5_f_out]
 
 
-# %% MAKE PRIOR DATA
+# %%
 f_prior_log_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, N=N-1, is_log=True)
 
 
@@ -294,7 +294,7 @@ for i in range(len(f_data_arr)):
     f_post_log_h5_arr.append(f_post_h5)
 
 
-# %% Post stats
+# %%
 for i in range(len(f_post_log_h5_arr)):
     ig.plot_profile(f_post_log_h5_arr[i],hardcopy=hardcopy,  clim = clim, im=1)
 for i in range(len(f_post_log_h5_arr)):

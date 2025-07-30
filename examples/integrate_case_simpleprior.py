@@ -5,7 +5,7 @@
 # This notebook contains an examples of the simplest use of INTEGRATE, on which tTEM data from various caswe study areas, will be be inverted using simple generic, resistivity only, prior models.
 #
 
-# %% Imports
+# %%
 try:
     # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
     get_ipython()
@@ -20,13 +20,9 @@ except:
     pass
 
 import integrate as ig
-# check if parallel computations can be performed
-parallel = ig.use_parallel(showInfo=1)
-
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-showInfo = 1
 hardcopy=True
 
 # %% [markdown]
@@ -39,11 +35,11 @@ hardcopy=True
 # * HALD
 #
 
-# %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
+# %%
 case = 'DAUGAARD'
-case = 'FANGEL'
-case = 'HALD'
-case = 'HADERUP' # NOT YET AVAILABLE
+#case = 'FANGEL'
+#case = 'HALD'
+#case = 'GRUSGRAV' # NOT YET AVAILABLE
 
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -55,18 +51,24 @@ if not os.path.isfile(file_gex):
 print('CASE: %s' % case)
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
+# print all filename in files
+for f in files:
+    print(f)
+
+    
+
 # %% [markdown]
 # ### Plot the geometry of the observed data
 
-# %% plot the data
-#fig = ig.plot_data_xy(f_data_h5)
+# %%
+fig = ig.plot_data_xy(f_data_h5)
 
 # %% [markdown]
 # ### Plot the observed data
 
-# %% Plot the observed data
+# %%
 #ig.plot_data(f_data_h5)
-#ig.plot_data(f_data_h5, plType='plot', hardcopy=hardcopy)
+ig.plot_data(f_data_h5, plType='plot', hardcopy=hardcopy)
 
 # %% [markdown]
 # ## Setup up the prior , $\rho(m,d)$
@@ -81,9 +83,9 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 #
 #
 
-# %% SELECT THE PRIOR MODEL
+# %%
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N=20000
+N=2000000
 RHO_min = 1
 RHO_max = 2500
 RHO_dist='log-uniform'
@@ -91,106 +93,94 @@ NLAY_min=1
 NLAY_max=9 
 z_max = 90
 
-showInfo = 1
-
-useP_arr  = [1,2,3,4,5,6]
-#useP_arr  = [5]
-f_prior_h5_arr=[]
-
-for useP in useP_arr:
-
-    if useP==1:
-        ## Layered model
-        f_prior_h5 = ig.prior_model_layered(N=N,
-                                            lay_dist='uniform', z_max = z_max, 
-                                            NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                            RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_1.h5', showInfo=showInfo)
-        f_prior_h5_arr.append(f_prior_h5)
-    elif useP==2:
-        ## 10 Layered model
-        nlay=4
-        f_prior_h5 = ig.prior_model_layered(N=N,
-                                            lay_dist='uniform', z_max = z_max, 
-                                            NLAY_min=1, NLAY_max=nlay, 
-                                            RHO_dist=RHO_dist, RHO_min=10, RHO_max=500, f_prior_h5 = 'prior_2.h5', showInfo=showInfo)
-        f_prior_h5_arr.append(f_prior_h5)
-    elif useP==3:
-        ## 20 layer model with increasing thickness
-        f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max,
-                                            RHO_mean=45, RHO_std=45, RHO_dist='log-normal', 
-                                            RHO_min = RHO_min, RHO_max = RHO_max, f_prior_h5 = 'prior_3.h5', showInfo=showInfo)
-        f_prior_h5_arr.append(f_prior_h5)
-    elif useP==4:
-        ## NLAY_max-layer model with increasing thickness
-        f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max, 
-                                              nlayers=NLAY_max, 
-                                              RHO_dist=RHO_dist, RHO_min = RHO_min, RHO_max = RHO_max, f_prior_h5 = 'prior_4.h5', showInfo=showInfo)
-        f_prior_h5_arr.append(f_prior_h5)
-    elif useP==5:
-        ## 10 Layered model
-        ## 1-9 layer model with increasing thickness
-        RHO_dist = 'log-uniform'
-        LAY_dist='chi2'
-        f_prior_h5 = ig.prior_model_workbench(N=N, dz = 1,
-                                            lay_dist='chi2', z_max = z_max, 
-                                            NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                            RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_5.h5', showInfo=showInfo)        
-        f_prior_h5_arr.append(f_prior_h5)
-    elif useP==6:
-        ## 10 Layered model
-        ## 1-9 layer model with increasing thickness
-        RHO_dist = 'log-uniform'
-        LAY_dist='chi2'
-        f_prior_h5 = ig.prior_model_workbench_direct(N=N, dz = 1,
-                                            lay_dist='chi2', z_max = z_max, 
-                                            NLAY_min=NLAY_min, NLAY_max=NLAY_max, 
-                                            RHO_dist=RHO_dist, RHO_min=RHO_min, RHO_max=RHO_max, f_prior_h5 = 'prior_6.h5', showInfo=showInfo)        
-        f_prior_h5_arr.append(f_prior_h5)
+useP=1
+if useP==1:
+    ## Layered model
+    #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=5, z_max = z_max, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+    #f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', z_max = z_max, NLAY_min=1, NLAY_max=3, RHO_dist='log-uniform', RHO_min=RHO_min, RHO_max=RHO_max)
+    f_prior_h5 = ig.prior_model_layered(N=N,
+                                        lay_dist='uniform', 
+                                        z_max = z_max, 
+                                        NLAY_min=NLAY_min, 
+                                        NLAY_max=NLAY_max, 
+                                        RHO_dist=RHO_dist, 
+                                        RHO_min=RHO_min, 
+                                        RHO_max=RHO_max)
+elif useP==2:
+    ## N layer model with increasing thickness
+    f_prior_h5 = ig.prior_model_workbench(N=N, 
+                                          RHO_mean=45, 
+                                          RHO_std=45, 
+                                          RHO_dist='log-normal', 
+                                          z_max = z_max,                                           
+                                          RHO_min = RHO_min, 
+                                          RHO_max = RHO_max)
+    #f_prior_h5 = ig.prior_model_workbench(N=N, z_max= 30, nlayers=20, RHO_min = RHO_min, RHO_max = RHO_max)
+    f_prior_h5 = ig.prior_model_workbench(N=N, z_max = z_max, nlayers=NLAY_max, RHO_dist=RHO_dist, RHO_min = RHO_min, RHO_max = RHO_max)
     
-    ig.plot_prior_stats(f_prior_h5)
-
-# %% Make a few forward realizations
-makeForwardTest = False
-if makeForwardTest:
-    # Generate a few forward models and plot them against the observed data
-    f_prior_data_h5_arr=[]
-    for f_prior_h5 in f_prior_h5_arr:
-
-        f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=0, N=1001)
-        ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy) 
-        plt.show()
-
-        #f_prior_data_h5_arr.append(f_prior_data_h5)
-        
-# %% Perform inversion and compare
-f_prior_data_h5_arr=[]
-f_post_h5_arr=[]
-for f_prior_h5 in f_prior_h5_arr:
-
-    f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, Ncpu=0, N=N)
-    
-    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, parallel=parallel, Ncpu=8)
-
-    f_post_h5_arr.append(f_post_h5)
-    f_prior_data_h5_arr.append(f_prior_data_h5)
-
-    ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
-    ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
-    
-    ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
-    plt.show()
-
-    ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy)
-
-    ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
-    ig.plot_data_prior_post(f_post_h5, i_plot=1000, hardcopy=hardcopy)
-
-#%%
-for f_post_h5 in f_post_h5_arr:
-    ig.plot_feature_2d(f_post_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy)
-    plt.show()
-
-
-
+else:
+    f_prior_h5 = 'existing_prior.h5'
 
 # %%
+ig.plot_prior_stats(f_prior_h5)
+
+# %% [markdown]
+# ### Prior data, $\rho(d)$
+# The prior data, i.e. the forwward response of of the realizations of the prior needs to be computed. Here we use only tTEM data, so onæy on type (tTEM) of data is computed.
+
+# %%
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
+
+
+# %% [markdown]
+# ## Sample the posterior $\sigma(\mathbf{m})$
+#
+# The posterior distribution is sampling using the extended rejection sampler.
+
+# %%
+
+N_use = N
+nr=1000
+#f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
+updatePostStat =False
+#f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, N_use = N_use, parallel=1, updatePostStat=updatePostStat, showInfo=1)
+f_post_h5 = ig.integrate_rejection_multi(f_prior_data_h5, f_data_h5, N_use = N_use, nr=nr, updatePostStat=updatePostStat )
+
+# %% [markdown]
+# ## Plot some statistics from $\sigma(\mathbf{m})$
+
+# %% [markdown]
+# ### The temperature refer to the annealing temperature used by the extended rejection sampler, in order to get 'enough' realizations.
+# T=1, implies no anealing has occurred. Higher values of T implies increasingly difficulty of fitting the data within the noise, suggesting either that the lookup table size is too small and/or that the prior is not consistent with the data.
+
+# %%
+# Plot the Temperature used for inversion
+ig.plot_T_EV(f_post_h5, pl='T')
+ig.plot_T_EV(f_post_h5, pl='EV')
+ig.plot_T_EV(f_post_h5, pl='ND')
+#
+
+# %%
+import h5py
+with h5py.File(f_data_h5,'r') as f_prior:
+    nd=len(f_prior['UTMX'][:].flatten())
+
+i1 = np.linspace(0,nd-1,4).astype(int)
+for i in i1:
+    ig.plot_data_prior_post(f_post_h5, i_plot = i)
+    #ig.plot_data_prior_post(f_post_h5, i_plot = 1199)
+
+# %%
+ig.plot_profile(f_post_h5, i1=1000, i2=np.min([1400,nd]), cmap='jet', hardcopy=hardcopy);
+
+# %%
+try:
+    for iz in range(0,z_max,5):
+        ig.plot_feature_2d(f_post_h5,im=1,iz=iz,key='Mean', title_text = 'XX', cmap='jet', s=12, vmin=10, vmax=100, hardcopy=hardcopy)
+except:
+    pass
+
+# %%
+ig.post_to_csv(f_post_h5)
+# %%
+
