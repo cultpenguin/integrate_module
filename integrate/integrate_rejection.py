@@ -281,10 +281,8 @@ def integrate_rejection(f_prior_h5='prior.h5',
     t_elapsed = (t_end - t_start).total_seconds()
     t_per_sounding = t_elapsed / Ndp_invert
     if (showInfo>-1):
-        print('integrate_rejection: Time=%5.1fs/%d soundings, %4.1fms/sounding, %3.1fit/s' % (t_elapsed,Ndp_invert,t_per_sounding*1000,Ndp_invert/t_elapsed))
-    if (showInfo>-1):
-        print('integrate_rejection: T_av=%3.1f' % (np.nanmean(T_all)))
-        print('integrate_rejection: EV_av=%3.1f' % (np.nanmean(EV_all)))
+        print('integrate_rejection: Time=%5.1fs/%d soundings, %4.1fms/sounding, %3.1fit/s' % (t_elapsed,Ndp_invert,t_per_sounding*1000,Ndp_invert/t_elapsed), end='')
+        print('integrate_rejection: T_av=%3.1f, EV_av=%3.1f' % (np.nanmean(T_all), np.nanmean(EV_all)))
 
     # SAVE THE RESULTS to f_post_h5
     with h5py.File(f_post_h5, 'w') as f_post:

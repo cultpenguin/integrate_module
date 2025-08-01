@@ -1035,10 +1035,10 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
             f_prior_data_h5 = '%s_%s_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex_basename)[0], Nhank, Nfreq)
             
         
-        if (showInfo>-1):
+        if (showInfo>0):
             print("Creating a copy of %s" % (f_prior_h5))
             print("                as %s" % (f_prior_data_h5))
-        if (showInfo>0):
+        if (showInfo>1):
                 print('  using N=%d of N_in=%d data' % (N,N_in))
         
         # make a copy of the prior file
@@ -1116,7 +1116,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         if os.name == 'nt':  # Windows
             # Log handle count before creating pool
             handle_count_before = get_process_handle_count()
-            print(f"Handle count before pool: {handle_count_before}")
+            #print(f"Handle count before pool: {handle_count_before}")
 
         # 3: Compute the chunks in parallel
         forward_gaaem_chunk_partial = partial(forward_gaaem_chunk, thickness=thickness, stmfiles=stmfiles, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
@@ -1141,7 +1141,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         if os.name == 'nt' and 'get_process_handle_count' in globals():
             # Log handle count after pool is closed
             handle_count_after = get_process_handle_count()
-            print(f"Handle count after pool: {handle_count_after}")
+            # print(f"Handle count after pool: {handle_count_after}")
 
 
         # D = ig.forward_gaaem(C=C, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)

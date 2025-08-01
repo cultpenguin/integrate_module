@@ -72,11 +72,12 @@ def timing_compute(N_arr=[], Nproc_arr=[]):
     logical_cores = psutil.cpu_count(logical=True)
     Ncpu = physical_cores
 
+    print("# TIMING TEST")
     print("Hostname (system): %s (%s) " % (hostname, system))
     print("Number of processors: %d" % Ncpu)
     
     # SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
-    files = ig.get_case_data()
+    files = ig.get_case_data(showInfo=-1)
     f_data_h5 = files[0]
     file_gex= ig.get_gex_file_from_data(f_data_h5)
 
@@ -100,10 +101,8 @@ def timing_compute(N_arr=[], Nproc_arr=[]):
     n1 = len(N_arr)
     n2 = len(Nproc_arr)    
 
-    print("Testing on %d data sets of sizes" % len(N_arr))
-    print(N_arr)
-    print("Testing on %d sets of cores" %  len(Nproc_arr))
-    print(Nproc_arr)
+    print("Testing on %d data sets of size(s):" % len(N_arr), N_arr)
+    print("Testing on %d sets of core(s):" % len(Nproc_arr), Nproc_arr)
 
 
     file_out  = 'timing_%s-%s-%dcore_Nproc%d_N%d.npz' % (hostname,system,Ncpu,len(Nproc_arr), len(N_arr))
@@ -442,7 +441,7 @@ def timing_plot(f_timing=''):
     plt.legend(loc='lower left')
     plt.tight_layout()
     plt.ylim(1e-3, 1e+5)
-    plt.savefig('%s_rejection_sound_per_sec' % file_out)
+    plt.savefig('%s_rejection_sounding_per_sec' % file_out)
     plt.close()
 
     ## Rejection sec per sounding
@@ -468,7 +467,7 @@ def timing_plot(f_timing=''):
     plt.xlabel('Lookup table size')
     plt.grid()
     plt.legend(Nproc_arr)
-    plt.savefig('%s_rejection_sound_per_sec_N' % file_out)
+    plt.savefig('%s_rejection_sounding_per_sec_N' % file_out)
     plt.close()
 
     ## Rejection sound per sec - per CPU
@@ -479,7 +478,7 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(N_arr)
-    plt.savefig('%s_rejection_sound_per_sec_CPU' % file_out)
+    plt.savefig('%s_rejection_sounding_per_sec_CPU' % file_out)
     plt.close()
 
     ##  Sound per sec per CPU - N  
@@ -492,7 +491,7 @@ def timing_plot(f_timing=''):
     plt.xlabel('Lookup table size')
     plt.grid()
     plt.legend(Nproc_arr)
-    plt.savefig('%s_rejection_sound_per_sec_per_cpu_N' % file_out)
+    plt.savefig('%s_rejection_sounding_per_sec_per_cpu_N' % file_out)
     plt.close()
 
 
@@ -504,7 +503,7 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(N_arr)
-    plt.savefig('%s_rejection_sound_per_sec_per_cpu_CPU' % file_out)
+    plt.savefig('%s_rejection_sounding_per_sec_per_cpu_CPU' % file_out)
     plt.close()
 
 
@@ -663,21 +662,17 @@ def main():
     
     elif args.command == 'time':
         Ncpu = psutil.cpu_count(logical=False)
-        import os
-        if os.name == 'nt':  # Windows
-            # use max 32 Cpus
-            Ncpu = min(Ncpu, 32)
-                
+        
         k = int(np.floor(np.log2(Ncpu)))
         Nproc_arr = 2**np.linspace(0,k,(k)+1)
         Nproc_arr = np.append(Nproc_arr, Ncpu)
         Nproc_arr = np.unique(Nproc_arr)
-        Nproc_arr = np.unique(Nproc_arr)
-        
+        Nproc_arr = Nproc_arr[5::]
+
         if args.size == 'small':
             # Small benchmark
             N_arr = np.ceil(np.logspace(2,4,3))
-            N_arr = np.array([10000])
+            N_arr = np.array([25000])
             f_timing = timing_compute(
                 N_arr = N_arr,
                 Nproc_arr = Nproc_arr
