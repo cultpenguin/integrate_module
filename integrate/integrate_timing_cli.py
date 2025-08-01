@@ -50,20 +50,80 @@ def main():
     
 
     # Create argument parser
-    parser = argparse.ArgumentParser(description='INTEGRATE timing benchmark tool')
+    parser = argparse.ArgumentParser(
+        description='INTEGRATE timing benchmark tool',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+INTEGRATE Timing Benchmark Tool
+
+This tool benchmarks the performance of the complete INTEGRATE workflow including:
+1. Prior model generation (layered geological models)
+2. Forward modeling using GA-AEM electromagnetic simulation  
+3. Rejection sampling for Bayesian inversion
+4. Posterior statistics computation
+
+USAGE EXAMPLES:
+
+Basic benchmarks:
+  integrate_timing time small                    # Quick test with default settings
+  integrate_timing time medium                   # Balanced benchmark  
+  integrate_timing time large                    # Comprehensive benchmark
+
+Custom dataset sizes:
+  integrate_timing time small --Nmin 5000        # Test with 5000 models
+  integrate_timing time small --N 100000         # Test with exactly 100000 models
+  integrate_timing time medium --Nmin 10000      # Medium test starting from 10000 models
+
+Custom CPU configurations:
+  integrate_timing time small --Ncpu 16          # Test with exactly 16 CPUs
+  integrate_timing time medium --cpu-scale linear # Test all CPU counts [1,2,3,...,64]
+  integrate_timing time large --cpu-scale log    # Test log scale [1,2,4,8,16,32,64]
+
+Combined options:
+  integrate_timing time small --Ncpu 32 --Nmin 50000    # 50k models on 32 CPUs
+  integrate_timing time medium --N 25000 --cpu-scale linear  # 25k models, all CPU counts
+
+Plotting results:
+  integrate_timing plot timing_results.npz       # Plot specific results file
+  integrate_timing plot --all                    # Plot all .npz files in directory
+
+PARAMETER PRIORITY:
+- Dataset sizes: --N (highest) > --Nmin > default
+- CPU counts: --Ncpu (highest) > --cpu-scale/--Nmin > default
+
+BENCHMARK SIZES:
+- small:  ~1,000 models, quick test
+- medium: 1,000-100,000 models, balanced test  
+- large:  10,000-1,000,000 models, comprehensive test
+
+Results are saved as .npz files and automatically plotted with performance analysis.
+        """
+    )
     
     # Create subparsers for different command groups
     subparsers = parser.add_subparsers(dest='command', help='Command to run')
     
     # Plot command
-    plot_parser = subparsers.add_parser('plot', help='Plot timing results')
-    plot_parser.add_argument('file', nargs='?', default='time', help='NPZ file to plot')
-    plot_parser.add_argument('--all', action='store_true', help='Plot all NPZ files in the current directory')
+    plot_parser = subparsers.add_parser('plot', help='Plot timing results from benchmark files')
+    plot_parser.add_argument('file', nargs='?', default='time', 
+                           help='NPZ file containing timing results to plot')
+    plot_parser.add_argument('--all', action='store_true', 
+                           help='Plot all NPZ timing files in the current directory')
     
     # Time command
-    time_parser = subparsers.add_parser('time', help='Run timing benchmark')
+    time_parser = subparsers.add_parser('time', help='Run performance benchmark of INTEGRATE workflow')
     time_parser.add_argument('size', choices=['small', 'medium', 'large'], 
-                            default='medium', nargs='?', help='Size of the benchmark')
+                            default='medium', nargs='?', 
+                            help='Benchmark size: small (~1k models, quick), medium (1k-100k models), large (10k-1M models)')
+    time_parser.add_argument('--cpu-scale', choices=['linear', 'log'], 
+                            default='log', 
+                            help='CPU scaling method: linear tests [1,2,3,...,Ncpu], log tests [1,2,4,8,...,Ncpu] (default: log)')
+    time_parser.add_argument('--Nmin', type=int, default=0,
+                            help='Dataset size control: For small benchmark, use exactly this many models. For medium/large, use as starting point in range (default: use benchmark defaults)')
+    time_parser.add_argument('--Ncpu', type=int, default=0,
+                            help='Use exactly this many CPU cores, overriding all other CPU options (default: 0, use scaling)')
+    time_parser.add_argument('--N', type=int, default=0,
+                            help='Use exactly this dataset size (number of models), overriding size and Nmin options (default: 0, use size-based defaults)')
     
     # Add special case handling for '-time' without size argument
     if '-time' in sys.argv and len(sys.argv) == 2:
@@ -109,36 +169,49 @@ def main():
     elif args.command == 'time':
         Ncpu = psutil.cpu_count(logical=False)
         
-        k = int(np.floor(np.log2(Ncpu)))
-        Nproc_arr = 2**np.linspace(0,k,(k)+1)
-        Nproc_arr = np.append(Nproc_arr, Ncpu)
-        Nproc_arr = np.unique(Nproc_arr)
-        Nproc_arr = Nproc_arr[5::]
+        # Handle Ncpu option for processors
+        if args.Ncpu > 0:
+            # Use only the specified number of CPUs
+            Nproc_arr = np.array([args.Ncpu])
+        else:
+            # Determine CPU scaling based on command line option
+            if args.cpu_scale == 'linear':
+                Nproc_arr = np.arange(1, Ncpu+1)
+            else:  # log scaling
+                k = int(np.floor(np.log2(Ncpu)))
+                Nproc_arr = 2**np.linspace(0,k,(k)+1)
+                Nproc_arr = np.append(Nproc_arr, Ncpu)
+                Nproc_arr = np.unique(Nproc_arr)
 
-        if args.size == 'small':
-            # Small benchmark
-            N_arr = np.ceil(np.logspace(2,4,3))
-            N_arr = np.array([25000])
-            f_timing = timing_compute(
-                N_arr = N_arr,
-                Nproc_arr = Nproc_arr
-            )
+        # Handle dataset sizes
+        if args.N > 0:
+            # Use only the specified dataset size
+            N_arr = np.array([args.N])
+        elif args.Nmin > 0 and args.size == 'small':
+            # For small benchmark with Nmin: use only that value for dataset size
+            N_arr = np.array([args.Nmin])
+        elif args.size == 'small':
+            # Small benchmark default
+            N_arr = np.array([1000])
         elif args.size == 'medium':
             # Medium benchmark
-            N_arr=np.ceil(np.logspace(3,5,9)) 
-            Nproc_arr = np.arange(1,Ncpu+1)
-
-            f_timing = timing_compute(
-                N_arr=np.ceil(np.logspace(3, 5, 9)), 
-                Nproc_arr=Nproc_arr
-            )
+            if args.Nmin > 0:
+                # Use Nmin as starting point for medium benchmark
+                N_arr = np.ceil(np.logspace(np.log10(args.Nmin), 5, 9))
+            else:
+                N_arr = np.ceil(np.logspace(3,5,9))
         elif args.size == 'large':
             # Large benchmark
-            N_arr = np.ceil(np.logspace(4,6,7))
-            f_timing = timing_compute(                
-                N_arr=N_arr,
-                Nproc_arr=Nproc_arr
-            )
+            if args.Nmin > 0:
+                # Use Nmin as starting point for large benchmark
+                N_arr = np.ceil(np.logspace(np.log10(args.Nmin), 6, 7))
+            else:
+                N_arr = np.ceil(np.logspace(4,6,7))
+
+        f_timing = timing_compute(
+            N_arr=N_arr,
+            Nproc_arr=Nproc_arr
+        )
         
         # Always plot the results
         timing_plot(f_timing)
