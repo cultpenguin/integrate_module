@@ -139,8 +139,9 @@ Results are saved as .npz files and automatically plotted with performance analy
     
     # Set default command if none is provided
     if args.command is None:
-        args.command = 'time'
-        args.size = 'small'
+        # Show help when no command is specified
+        parser.print_help()
+        sys.exit(0)
    
     # Execute command
     if args.command == 'plot':
