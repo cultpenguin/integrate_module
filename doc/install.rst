@@ -5,17 +5,20 @@ Installation
 INTEGRATE Python Module
 ========================
 
+This repository contains the INTEGRATE Python module for localized probabilistic data integration in geophysics.
+
 Assuming you already have Python 3.10+ installed:
+
 ::
     
-        pip install integrate_module
+    pip install integrate_module
 
-On Windows, this will also install the Python wrapper for GA-AEM (1D EM forward modeling - GPL v2 code).
+On Windows, this will also install the Python wrapper for GA-AEM (1D EM forward modeling - GPL v2 code): `ga-aem-forward-win <https://pypi.org/project/ga-aem-forward-win/>`_.
 
 On Linux/macOS, you will need to install GA-AEM manually.
 
-Using pip (from PyPI)
-=====================
+Using pip (from PyPI, on Ubuntu)
+=================================
 
 ::
 
@@ -30,8 +33,8 @@ Using pip (from PyPI)
     # Install integrate module
     pip install integrate_module
     
-Using pip (from source)
-=======================
+Using pip (from source, on Ubuntu)
+===================================
 
 ::
 
@@ -45,7 +48,7 @@ Using pip (from source)
     
     # Install integrate module
     cd path/to/integrate_module
-    pip install -e .
+    pip install -r requirements.txt -e .
 
 Using Conda + pip (from PyPI)
 ==============================
@@ -73,12 +76,12 @@ Create a Conda environment (called integrate) and install the required modules:
 GA-AEM
 ======
 
-In order to use GA-AEM for forward EM modeling, the 'gatdaem1d' Python module must be installed. Follow instructions at https://github.com/GeoscienceAustralia/ga-aem or use the information below.
+In order to use GA-AEM for forward EM modeling, the 'gatdaem1d' Python module must be installed. Follow instructions at `https://github.com/GeoscienceAustralia/ga-aem <https://github.com/GeoscienceAustralia/ga-aem>`_ or use the information below.
 
 PyPI package for Windows
-------------------------
+-------------------------
 
-On Windows, the ga-aem-forward-win package will be automatically installed, providing access to the GA-AEM forward code. It can be installed manually using:
+On Windows, the `ga-aem-forward-win <https://pypi.org/project/ga-aem-forward-win/>`_ package will be automatically installed, providing access to the GA-AEM forward code. It can be installed manually using:
 
 ::
 
@@ -135,37 +138,9 @@ First install Homebrew, then run:
     pip install .
 
 
-.. SimPEG (Python only)
-.. ---------------------
-.. SimPEG can be installed using pip:
+Development
+===========
 
-.. ::
+The ``main`` branch is the most stable, with less frequent updates but larger changes.
 
-..     pip install simpeg
-
-
-.. AarhusInv (Windows only)
-.. -------------------------
-.. To use AarhusInv, it must be installed and the path to the executable must be added to the PATH variable.
-.. In addition, a valid license must be associated with the installation.
-
-
-.. MATLAB
-.. ======
-
-
-.. A Matlab version of the INTEGRATE module is available. It is not guarantied to be up to date with the Python version.
-
-.. The following packages are required using INTEGRATE with MATLAB:
-
-.. - `sippi <https://github.com/cultpenguin/sippi>`_
-.. - `mgstat <https://github.com/cultpenguin/mgstat>`_
-.. - `sippi-abc <https://github.com/cultpenguin/sippi-abc>`_
-
-.. In addition you will need to install one of the EM forward codes described below. 
-
-..
-    Julia
-    =====
-
-
+The ``develop`` branch contains the current development code and may be updated frequently. Some functions and examples may be broken.
