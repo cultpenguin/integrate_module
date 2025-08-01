@@ -1141,7 +1141,7 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
         if os.name == 'nt' and 'get_process_handle_count' in globals():
             # Log handle count after pool is closed
             handle_count_after = get_process_handle_count()
-            # print(f"Handle count after pool: {handle_count_after}")
+            #   print(f"Handle count after pool: {handle_count_after}")
 
 
         # D = ig.forward_gaaem(C=C, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)
