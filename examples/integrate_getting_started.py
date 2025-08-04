@@ -202,8 +202,6 @@ try:
 except:
     pass
 
-
-
 #%%
 try:
     # Plot a 2D feature: The number of layers
