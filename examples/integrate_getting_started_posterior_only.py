@@ -142,7 +142,7 @@ try:
     plt.show()
 except:
     pass
-    
+
 # %% [markdown]
 # ## Export to CSV format
 
