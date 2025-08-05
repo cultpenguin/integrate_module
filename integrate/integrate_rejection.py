@@ -143,29 +143,62 @@ def integrate_rejection(f_prior_h5='prior.h5',
             print('Overwriting...')    
 
     
-    # Load observed data from f_data_h5
+    # Load ALL observed data from f_data_h5, mostly to find out how many data types there are
+    # This could be more efficient.
     DATA = ig.load_data(f_data_h5, showInfo=showInfo)
     Ndt = len(DATA['d_obs']) # Number of data types
+    
+    # if if_use is not a list, convert it to a list
+    if not isinstance(id_use, list):
+        id_use = [id_use]
+
     if len(id_use)==0:
-        id_use = np.arange(1,Ndt+1) 
-    Ndt = len(id_use) # Number of data types used        
+        id_use = np.arange(1,Ndt+1).tolist()
+
+    if showInfo>-1:
+        print('--Number of data types: %d' % Ndt)
+        print('--Using these data types: %s' % str(id_use))
+
+    # Print a lot of verbose information to screen in showInfo>2
+    if showInfo>22:
+        print(' f_prior_h5=%s\nf_data_h5=%s\nf_post_h5=%s' % (f_prior_h5, f_data_h5, f_post_h5))
+        print(' N_use = %d' % (N_use))
+        print(' use_N_best=%d' % use_N_best)
+        print(' Number of data types: %d' % Ndt)
+        print(' Using these data types: %s' % str(id_use))
+
+
     # Perhaps load only the data types that are used
     DATA = ig.load_data(f_data_h5, id_arr=id_use, showInfo=showInfo)
 
     if (showInfo>0):    
-        for i in range(Ndt):
-            print('Data type %d: %s, Using %d/%d data' % (id_use[i], DATA['noise_model'][i], np.sum(DATA['i_use'][i]), len(DATA['i_use'][i])))
+        #for i in range(Ndt):
+        for i in range(len(id_use)):            
+            #len(DATA['d_obs'])
+            print('Data type %d: %s, Using %d/%d data' % (id_use[i], DATA['noise_model'][i], DATA['d_obs'][i].shape[0], DATA['d_obs'][i].shape[1]))
 
+    print('Loading prior data from %s' % f_prior_h5)
     # Load the prior data from the h5 files
     #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
     id_data_use = 1+np.arange(np.max(DATA['id_use']))
+    id_data_use = DATA['id_use']
     D, idx = ig.load_prior_data(f_prior_h5, id_use = id_data_use, N_use = N_use, Randomize=True)
-    # Convert D to 32 bit float
-    #D = [d.astype(np.float32) for d in D]
-    #D = [d.astype(np.float128) for d in D]
-    # Pritn the memory size of D
+    print(len(D))
+    print(id_use)
     if showInfo>0:
-        print('Memory size of D: %s' % str(np.array(D).nbytes))   
+        for i in range(len(D)):
+            print('Memory size of D%d: %s' % (id_use[i], str(np.array(D[i]).nbytes)))
+
+    # Print infomration about DATA and D, and make sure the same data types are used in both D and DATA
+    print('--Number of data types in DATA: %d' % len(DATA['d_obs']))
+    print('--Number of data types in D: %d' % len(D))
+    for i in range(len(id_use)):
+        print(i)
+        print('Size of data in DATA/D%d: (%d, %d)' % (id_use[i], DATA['d_obs'][i].shape[0], DATA['d_obs'][i].shape[1]))
+        print('Size of prior data PRIOR/D%d: (%d, %d)' % (id_use[i], D[i].shape[0], D[i].shape[1]))
+
+
+    print('..................')
 
     #D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
     # M, idx = load_prior_model(f_prior_h5, idx=idx, N_use=N_use, Randomize=True)
@@ -175,8 +208,6 @@ def integrate_rejection(f_prior_h5='prior.h5',
     if N_use>N:
         N_use = N
 
-
-
     # Get number of data points from, f_data_h5
     Ndp = DATA['d_obs'][0].shape[0]
     
@@ -184,11 +215,9 @@ def integrate_rejection(f_prior_h5='prior.h5',
     if len(ip_range)==0:
         ip_range = np.arange(Ndp)
     Ndp_invert = len(ip_range)
-            
         
     if Ncpu ==1:
         parallel = False
-
     
     if showInfo>0:
         print('<--INTEGRATE_REJECTION-->')
@@ -201,7 +230,6 @@ def integrate_rejection(f_prior_h5='prior.h5',
         print('Number of data types: %d' % Ndt)
         print('Using these data types: %s' % str(id_use))
         print('Loading these prior data model types:', str(id_data_use))
-    
     
     # set i_use_all to be a 2d Matrie of size (nump,nr) of random integers in range(N)
     i_use_all = np.random.randint(0, N, (Ndp, nr))
