@@ -4,7 +4,7 @@
 #
 # This notebook contains an example of inversion of the DAUGAARD tTEM data using three different geology-resistivity prior models
 
-# %% Imports
+# %%
 try:
     # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
     get_ipython()
@@ -29,7 +29,7 @@ hardcopy=True
 # ## Download the data DAUGAARD data including non-trivial prior data
 
 
-# %% SELECT THE CASE TO CONSIDER AND DOWNLOAD THE DATA
+# %%
 files = ig.get_case_data(case='DAUGAARD', loadType='prior') # Load data and prior realizations
 f_data_h5 = files[0]
 file_gex= ig.get_gex_file_from_data(f_data_h5)
@@ -39,7 +39,7 @@ if not os.path.isfile(file_gex):
 
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
-# %% SELECT THE PRIOR MODEL
+# %%
 # A1. Compute prior data from existing prior model
 f_prior_h5='prior_detailed_general_N2000000_dmax90.h5'
 #% plot some 1D statistics of the prior
@@ -51,7 +51,7 @@ N_use = 50000
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, N=N_use)
 
 
-#%%
+# %%
 
 updatePostStat =True
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
@@ -61,7 +61,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5,
                                     showInfo=1)
 
 
-# %% Plot some statistics of the posterior
+# %%
 ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
 ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
 #% Plot Profiles

@@ -27,30 +27,18 @@ import matplotlib.pyplot as plt
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True
 
-# %% Get tTEM data from ESBJERG
+# %%
 f_data_h5_files = ig.get_case_data(case='ESBJERG',loadType='gex' )
 nf=4
 f_data_h5_files = f_data_h5_files[:nf]
 
 
 
-N=1000000
-N=10000
+N=5000000
 # All surveys are inverted with the same prior model
-lay_dist='chi2'
-lay_dist='uniform'
-lay_dist='wb'
-if lay_dist=='chi2':
-    NLAY_deg=3
-    f_prior_h5 = ig.prior_model_layered(N=N,lay_dist=lay_dist, NLAY_deg=NLAY_deg, RHO_min=1, RHO_max=500)
-elif lay_dist=='uniform':
-    NLAY_min=1
-    NLAY_max=8
-    f_prior_h5 = ig.prior_model_layered(N=N,lay_dist=lay_dist, NLAY_min=NLAY_min, NLAY_max=NLAY_max, RHO_min=1, RHO_max=500)
-elif lay_dist=='wb':
-    nlayers=11
-    nlayers=30
-    f_prior_h5 = ig.prior_model_workbench(N=N, z_max=90, nlayers=nlayers,  RHO_min=1, RHO_max=500)
+f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=500)
+f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='uniform', NLAY_min=1, NLAY_max=8, RHO_min=1, RHO_max=500)
+
 plFigs = True
 
 f_post_h5_files = []
@@ -79,7 +67,7 @@ for i in range(nf):
                                    f_data_h5, 
                                    N_use = N_use, 
                                    showInfo=1, 
-                                   Ncpu = 8,
+                                   Ncpu = 10,
                                    parallel=parallel)
 
     f_post_h5_files.append(f_post_h5)
@@ -99,39 +87,33 @@ for i in range(nf):
         # Plot Profiles
         ig.plot_profile(f_post_h5, im=1, hardcopy=hardcopy)
 
-    # %% Export to CSV
+    # %%
     # f_csv, f_point_csv = ig.post_to_csv(f_post_h5)
 
 
 
-# %% Merge the posterior data and compute posterior basic statistics'
-    
-prior_txt = f_prior_h5.split('.')[0]
-
-f_post_merged_h5 = 'POST_ESBJERG_MERGE%d_%s.h5' % (nf,prior_txt)
-f_post_merged_h5, f_data_merged_h5 = ig.merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5=f_post_merged_h5)
+# %%
+f_post_merged_h5 = ig.merge_posterior(f_post_h5_files, f_data_h5_files)
 ig.integrate_posterior_stats(f_post_merged_h5)
 
 # %%
 f_post_merged_h5
 
 # %%
-ig.plot_geometry(f_data_merged_h5)
-plt.show()
+ig.plot_geometry('ESBJERG_DATA_merged.h5')
 ig.plot_T_EV(f_post_merged_h5, pl='T', hardcopy=hardcopy)
-plt.show()
 ig.plot_profile(f_post_merged_h5, im=1, i1=0, i2=1000, hardcopy=hardcopy)
-plt.show()
 ig.plot_feature_2d(f_post_merged_h5,im=1,iz=20, key='Median', uselog=1, cmap='jet', s=1, hardcopy=hardcopy);
-plt.show()
 
 
 
 # %%
-try:
-    ig.plot_feature_2d(f_post_merged_h5,im=2,iz=0, key='Mean', uselog=0, cmap='jet', s=1, clim=[1,8], hardcopy=hardcopy);
-except:
-    pass
+ig.plot_feature_2d(f_post_merged_h5,im=2,iz=0, key='Mean', uselog=0, cmap='jet', s=1, clim=[1,8], hardcopy=hardcopy);
 
-# %% Export 
-f_csv, f_point_csv = ig.post_to_csv(f_post_merged_h5)
+# %%
+f_prior_h5
+
+# %%
+f_post_merged_h5
+
+# %%
