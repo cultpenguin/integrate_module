@@ -170,7 +170,7 @@ for itype in [2]:
                                    N_use = N_use, Ncpu=N_cpu,
                                    showInfo=1, 
                                    updatePostStat=updatePostStat)
-    elif itype == 1:
+    # elif itype == 1:
         # LOW MOMENT ONLY
         f_post_h5 = ig.integrate_rejection(f_prior_data_dual_h5, 
                                    f_data_dual_h5, 
@@ -187,7 +187,7 @@ for itype in [2]:
                                    N_use = N_use, Ncpu=N_cpu,
                                    showInfo=4, 
                                    updatePostStat=updatePostStat,  
-                                   id_use = [2])
+                                   id_use = [2], parallel = False)
     elif itype == 3:
         # JOINT INVERSION USING BOTH LOW AND HIGH MOMENT
         f_post_h5 = ig.integrate_rejection(f_prior_data_dual_h5, 
