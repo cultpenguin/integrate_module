@@ -301,8 +301,8 @@ def integrate_rejection(f_prior_h5='prior.h5',
     t_elapsed = (t_end - t_start).total_seconds()
     t_per_sounding = t_elapsed / Ndp_invert
     if (showInfo>-1):
-        print('integrate_rejection: Time=%5.1fs/%d soundings, %4.1fms/sounding, %3.1fit/s' % (t_elapsed,Ndp_invert,t_per_sounding*1000,Ndp_invert/t_elapsed), end='')
-        print('integrate_rejection: T_av=%3.1f, EV_av=%3.1f' % (np.nanmean(T_all), np.nanmean(EV_all)))
+        print('integrate_rejection: Time=%5.1fs/%d soundings, %4.1fms/sounding, %3.1fit/s. ' % (t_elapsed,Ndp_invert,t_per_sounding*1000,Ndp_invert/t_elapsed), end='')
+        print('T_av=%3.1f, EV_av=%3.1f' % (np.nanmean(T_all), np.nanmean(EV_all)))
 
     # SAVE THE RESULTS to f_post_h5
     with h5py.File(f_post_h5, 'w') as f_post:
@@ -861,11 +861,11 @@ def integrate_posterior_chunk(args):
 
 def select_subset_for_inversion(dd, N_app):
     """
-    Select a subset of indices for inversion based on the sum of absolute values.
+    Select a subset of indices for inversion based on the sum of squared residuals.
 
-    This function calculates the sum of absolute values along the specified axis
+    This function calculates the sum of squared values along the specified axis
     for each row in the input array `dd`. It then selects the indices of the 
-    `N_app` smallest sums.
+    `N_app` smallest sums for fastest performance.
 
     Parameters
     ----------
@@ -877,18 +877,17 @@ def select_subset_for_inversion(dd, N_app):
     Returns
     -------
     idx : numpy.ndarray
-        An array of indices corresponding to the `N_app` smallest sums.
-    nsum : numpy.ndarray
-        An array containing the sum of absolute values for each row in `dd`.
+        An array of indices corresponding to the `N_app` smallest L2 norms.
 
     Notes
     -----
-    This function uses `np.nansum` to ignore NaNs in the summation and 
-    `np.argpartition` for efficient selection of the smallest sums.
+    This function uses squared residuals (L2 norm) for optimal performance,
+    avoiding expensive absolute value operations. Uses `np.argpartition` 
+    for efficient selection of the smallest sums.
     """
-    nsum = np.nansum(np.abs(dd), axis=1)
-    idx = np.argpartition(nsum, N_app)[:N_app]
-    return idx, nsum
+    norms = np.sum(dd**2, axis=1)
+    idx = np.argpartition(norms, N_app)[:N_app]
+    return idx
 
 
 def likelihood_gaussian_diagonal(D, d_obs, d_std, N_app=0):
@@ -935,7 +934,7 @@ def likelihood_gaussian_diagonal(D, d_obs, d_std, N_app=0):
     
     if N_app > 0:
        L = np.ones(D.shape[0])*-1e+15
-       idx = select_subset_for_inversion(dd, N_app)[0] 
+       idx = select_subset_for_inversion(dd, N_app) 
        #L_small = -0.5 * np.nansum(dd[idx]**2 / d_std**2, axis=1)
        L_small = likelihood_gaussian_diagonal(D[idx], d_obs, d_std,0)
        L[idx]=L_small
@@ -945,7 +944,7 @@ def likelihood_gaussian_diagonal(D, d_obs, d_std, N_app=0):
 
     return L
 
-def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized=False):
+def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized=True):
     """
     Calculate the Gaussian likelihood with full covariance matrix.
     
@@ -1001,8 +1000,9 @@ def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized
             
     if N_app > 0:
         L = np.ones(D.shape[0])*-1e+15
-        idx = select_subset_for_inversion(dd, N_app)[0] 
+        idx = select_subset_for_inversion(dd, N_app) 
         if useVectorized:
+            #print('Using vectorized likelihood calculation -approximation')
             L_small = -.5 * np.einsum('ij,ij->i', dd[idx] @ iCd, dd[idx])
         else:
             L_small = np.zeros(idx.shape[0])
@@ -1014,6 +1014,7 @@ def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized
     
     if useVectorized:
         # vectorized    
+        #print('Using vectorized likelihood calculation')
         L = -.5 * np.einsum('ij,ij->i', dd @ iCd, dd)        
     else:   
         # non-vectorized

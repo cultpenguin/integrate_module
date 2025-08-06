@@ -19,5 +19,5 @@ help:
 %: Makefile
 	@mkdir -p notebooks
 	@rm -f notebooks/*.ipynb  # Remove old symlinks first to avoid errors
-# 	@cp ../examples/*.ipynb notebooks/.
+	@cp ../examples/*.ipynb notebooks/.
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
