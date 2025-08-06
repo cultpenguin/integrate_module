@@ -11,9 +11,8 @@ Getting Started
    notebooks/integrate_getting_started.ipynb
    notebooks/integrate_getting_started_no_forward.ipynb
    notebooks/integrate_getting_started_posterior_only.ipynb
-   notebooks/integrate_getting_dual_data.ipynb  
-   notebooks/integrate_getting_started_posterior_only.ipynb
-   
+   notebooks/integrate_dual_data.ipynb  
+
 
 Noise
 ================
