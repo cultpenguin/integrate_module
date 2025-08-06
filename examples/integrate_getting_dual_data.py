@@ -160,44 +160,50 @@ N_use = 10000 #%N
 N_cpu = 8
 f_post_arr = []
 updatePostStat=False
-for itype in [2]:
-#for itype in [3]:
+showInfo = 1
+
+import time
+t_inversion = []
+
+for itype in [0,1,2,3]:
+    t_start = time.time()
     if itype == 0:
         # LOW AND HIGH MOMENT AS ONE DATA SET - THE ORIGINAL METHOD
         f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
-                                   f_data_h5, 
-                                f_post_h5='POST_type%d.h5' % itype,
-                                   N_use = N_use, Ncpu=N_cpu,
-                                   showInfo=1, 
-                                   updatePostStat=updatePostStat)
-    # elif itype == 1:
+                                    f_data_h5, 
+                                    f_post_h5='POST_type%d.h5' % itype,
+                                    N_use = N_use, Ncpu=N_cpu,
+                                    showInfo=showInfo, 
+                                    updatePostStat=updatePostStat)
+    elif itype == 1:
         # LOW MOMENT ONLY
         f_post_h5 = ig.integrate_rejection(f_prior_data_dual_h5, 
                                    f_data_dual_h5, 
                                    f_post_h5='POST_type%d.h5' % itype,
                                    N_use = N_use, Ncpu=N_cpu,
-                                   showInfo=0, 
+                                   showInfo=showInfo, 
                                    updatePostStat=updatePostStat,
                                    id_use = [1])
     elif itype == 2:
         # HIGH MOMENT ONLY
         f_post_h5 = ig.integrate_rejection(f_prior_data_dual_h5, 
                                    f_data_dual_h5, 
-                                   f_post_h5='POST_type%d.h5' % itype,
+                                #    f_post_h5='POST_type%d.h5' % itype,
                                    N_use = N_use, Ncpu=N_cpu,
-                                   showInfo=4, 
+                                   showInfo=showInfo, 
                                    updatePostStat=updatePostStat,  
-                                   id_use = [2], parallel = False)
+                                   id_use = [2])
     elif itype == 3:
         # JOINT INVERSION USING BOTH LOW AND HIGH MOMENT
         f_post_h5 = ig.integrate_rejection(f_prior_data_dual_h5, 
                                    f_data_dual_h5, 
                                    f_post_h5='POST_type%d.h5' % itype,
                                    N_use = N_use, Ncpu=N_cpu,
-                                   showInfo=1, 
+                                   showInfo=showInfo, 
                                    updatePostStat=updatePostStat,  
                                    id_use = [1,2])
 
+    t_inversion.append(time.time() - t_start)
     f_post_arr.append(f_post_h5)
 
 

@@ -145,60 +145,47 @@ def integrate_rejection(f_prior_h5='prior.h5',
     
     # Load ALL observed data from f_data_h5, mostly to find out how many data types there are
     # This could be more efficient.
-    DATA = ig.load_data(f_data_h5, showInfo=showInfo)
-    Ndt = len(DATA['d_obs']) # Number of data types
+    #DATA = ig.load_data(f_data_h5, showInfo=showInfo)
+    #Ndt = len(DATA['d_obs']) # Number of data types
+    Ndt_total = ig.get_number_of_datasets(f_data_h5)
+    Ndt = ig.get_number_of_datasets(f_data_h5)
+
     
     # if if_use is not a list, convert it to a list
     if not isinstance(id_use, list):
         id_use = [id_use]
 
     if len(id_use)==0:
-        id_use = np.arange(1,Ndt+1).tolist()
-
-    if showInfo>-1:
-        print('--Number of data types: %d' % Ndt)
-        print('--Using these data types: %s' % str(id_use))
-
-    # Print a lot of verbose information to screen in showInfo>2
-    if showInfo>22:
-        print(' f_prior_h5=%s\nf_data_h5=%s\nf_post_h5=%s' % (f_prior_h5, f_data_h5, f_post_h5))
-        print(' N_use = %d' % (N_use))
-        print(' use_N_best=%d' % use_N_best)
-        print(' Number of data types: %d' % Ndt)
-        print(' Using these data types: %s' % str(id_use))
+        id_use = np.arange(1,Ndt_total+1).tolist()
 
 
-    # Perhaps load only the data types that are used
+    Ndt = len(id_use) # Number of data types used
+
+    if showInfo>1:
+        print('-- Number of data types: %d' % Ndt_total)
+        
+        print('-- Using these data types: %s' % str(id_use))
+
+    
+    # Load the observed data from the h5 files
     DATA = ig.load_data(f_data_h5, id_arr=id_use, showInfo=showInfo)
-
-    if (showInfo>0):    
-        #for i in range(Ndt):
-        for i in range(len(id_use)):            
-            #len(DATA['d_obs'])
-            print('Data type %d: %s, Using %d/%d data' % (id_use[i], DATA['noise_model'][i], DATA['d_obs'][i].shape[0], DATA['d_obs'][i].shape[1]))
-
-    print('Loading prior data from %s' % f_prior_h5)
+    
     # Load the prior data from the h5 files
-    #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
-    id_data_use = 1+np.arange(np.max(DATA['id_use']))
     id_data_use = DATA['id_use']
-    D, idx = ig.load_prior_data(f_prior_h5, id_use = id_data_use, N_use = N_use, Randomize=True)
-    print(len(D))
-    print(id_use)
-    if showInfo>0:
+    D, idx = ig.load_prior_data(f_prior_h5, id_use = id_data_use, N_use = N_use, Randomize=True, showInfo=showInfo)
+    
+    
+    if showInfo>1:
         for i in range(len(D)):
-            print('Memory size of D%d: %s' % (id_use[i], str(np.array(D[i]).nbytes)))
+            print('Memory size of /D%d: %s' % (id_use[i], str(np.array(D[i]).nbytes)))
 
-    # Print infomration about DATA and D, and make sure the same data types are used in both D and DATA
-    print('--Number of data types in DATA: %d' % len(DATA['d_obs']))
-    print('--Number of data types in D: %d' % len(D))
-    for i in range(len(id_use)):
-        print(i)
-        print('Size of data in DATA/D%d: (%d, %d)' % (id_use[i], DATA['d_obs'][i].shape[0], DATA['d_obs'][i].shape[1]))
-        print('Size of prior data PRIOR/D%d: (%d, %d)' % (id_use[i], D[i].shape[0], D[i].shape[1]))
+        # Print infomration about DATA and D, and make sure the same data types are used in both D and DATA
+        print('  Number of data types in DATA: %d' % len(DATA['d_obs']))
+        print('  Number of data types in D: %d' % len(D))
+        for i in range(len(id_use)):
+            print('  Size of data in DATA:/D%d: (%d, %d)' % (id_use[i], DATA['d_obs'][i].shape[0], DATA['d_obs'][i].shape[1]))
+            print('  Size of prior data PRIOR:/D%d: (%d, %d)' % (id_use[i], D[i].shape[0], D[i].shape[1]))
 
-
-    print('..................')
 
     #D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
     # M, idx = load_prior_model(f_prior_h5, idx=idx, N_use=N_use, Randomize=True)
@@ -221,17 +208,18 @@ def integrate_rejection(f_prior_h5='prior.h5',
     
     if showInfo>0:
         print('<--INTEGRATE_REJECTION-->')
-        print('f_prior_h5=%s\nf_data_h5=%s\nf_post_h5=%s' % (f_prior_h5, f_data_h5, f_post_h5))
+        print('f_prior_h5=%s, f_data_h5=%s\nf_post_h5=%s' % (f_prior_h5, f_data_h5, f_post_h5))
     
     if showInfo>1:
         print('Number of data points: %d (available), %d (used). Nchunks=%s, Ncpu=%d,use_N_best=%d' % (Ndp,Ndp_invert,Nchunks,Ncpu,use_N_best))    
         print('N_use = %d' % (N_use))
+        print('Ndp to invert = %d, ip_range=%s' % (len(ip_range),str(ip_range)))
         print('use_N_best=%d' % use_N_best)
         print('Number of data types: %d' % Ndt)
         print('Using these data types: %s' % str(id_use))
-        print('Loading these prior data model types:', str(id_data_use))
-    
-    # set i_use_all to be a 2d Matrie of size (nump,nr) of random integers in range(N)
+        print('Loaded these prior data model types:', str(id_data_use))
+        
+    # set i_use_all to be a 2d Matrix of size (nump,nr) of random integers in range(N)
     i_use_all = np.random.randint(0, N, (Ndp, nr))
     N_UNIQUE_all = np.zeros(Ndp)*np.nan
     T_all = np.zeros(Ndp)*np.nan
@@ -242,6 +230,10 @@ def integrate_rejection(f_prior_h5='prior.h5',
     date_start = str(datetime.now())
     t_start = datetime.now()
     
+    #print(i_use_all.shape)
+    #print(T_all.shape)
+    #print(Ndp)
+
     # PERFORM INVERSION PERHAPS IN PARALLEL
 
     if parallel:
@@ -458,12 +450,8 @@ def integrate_rejection_range(D,
     #i=0
     
     noise_model = DATA['noise_model']
-    id_prior_use = DATA['id_use']
     i_use_data = DATA['i_use']
-    #print(noise_model)
-    #print(id_prior_use)
-    #print(i_use_data)
-
+    
     # Convert class id to index
     # The class_id_list, could /should be loaded prior_h5:/M1/class_id !!
 
@@ -475,8 +463,8 @@ def integrate_rejection_range(D,
 
     class_id_list = []
     updated_data_ids = []
-    for i in range(Ndt):
-        i_prior = id_prior_use[i]-1 
+    for i in range(Ndt):        
+        i_prior = i
         if (noise_model[i]=='multinomial'):
             Di, class_id, class_id_out = ig.class_id_to_idx(D[i_prior])
             #print(class_id_out)
@@ -494,7 +482,7 @@ def integrate_rejection_range(D,
         else:    
             class_id_list.append([])
 
-    if showInfo>1:
+    if showInfo>2:
         print('class_id_list',class_id_list)
         print('len(class_id_list)',len(class_id_list))
 
@@ -508,7 +496,10 @@ def integrate_rejection_range(D,
         NDsets = len(id_use)
         L = np.zeros((NDsets, N))
 
-        
+        if showInfo>3:
+            print('Ndt=%d, ip=%d/%d, N=%d' % (Ndt, ip, nump, N))
+
+
         # Loop over the number of data types Ndt
         for i in range(Ndt):
             use_data_point = i_use_data[i][ip]
@@ -528,10 +519,8 @@ def integrate_rejection_range(D,
                 # ONLY PERFORM CALUCATION IF I_USE_DATA = 1.. UPDATE LOAD_DATA, TO ALWAY PROVIDE I_USE 
                 # Select the proper data types. It is give, the integer in 'D1/', 'D2/' etc, so we need to subtract 1
                 # as D1 is the first data types D[0]
-                i_prior = id_prior_use[i]-1 
                 
-                if showInfo>3:    
-                    print("--Using id_prior_use",str(i_prior))
+                i_prior = i 
                 
                 t0=time.time()
                 #id = id_use[i_prior]
