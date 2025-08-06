@@ -44,7 +44,7 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %%
-N=10000
+N=100000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
@@ -156,7 +156,7 @@ ig.plot_data_prior(f_prior_data_dual_h5, f_data_dual_h5, id=2)
 # The posterior distribution is sampling using the extended rejection sampler.
 
 # %%
-N_use = 10000 #%N
+N_use = 100000 #%N
 N_cpu = 8
 f_post_arr = []
 updatePostStat=False
