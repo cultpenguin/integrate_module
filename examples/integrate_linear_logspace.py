@@ -15,8 +15,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # #%load_ext autoreload
-    # # # # # #%autoreload 2
+    # # # # # # #%load_ext autoreload
+    # # # # # # #%autoreload 2
     pass
 # %%
 import integrate as ig
@@ -47,7 +47,7 @@ ig.plot_geometry(f_data_h5, pl='LINE')
 ig.plot_data(f_data_h5, hardcopy=hardcopy)
 
 
-#%% 
+# %%
 # ## Create a dataset in log-space
 f_data_log_h5 = 'DATA_LOGSPACE.h5'
 ig.copy_hdf5_file(f_data_h5, f_data_log_h5)
@@ -59,7 +59,7 @@ lD_obs = np.log10(D_obs)
 
 lD_std_up = np.abs(np.log10(D_obs+D_std)-lD_obs)
 lD_std_down = np.abs(np.log10(D_obs-D_std)-lD_obs)
-corr_std =  = 0.02
+corr_std = 0.02
 lD_std = np.abs((lD_std_up+lD_std_down)/2) + corr_std
 
 ig.write_data_gaussian(lD_obs, D_std = lD_std, f_data_h5 = f_data_log_h5, id=1, showInfo=0, is_log=1)
@@ -113,7 +113,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                    N_use = N_use,
                                    )
 
-#%% Rejection sampling in log-space
+# %%
 f_post_log_h5 = ig.integrate_rejection(f_prior_data_log_h5, 
                                    f_data_log_h5, 
                                    f_post_h5 = 'POST_log.h5', 
@@ -145,7 +145,7 @@ ig.plot_T_EV(f_post_log_h5, pl='T',hardcopy=hardcopy)
 # Plot a profile of posterior statistics of model parameters 1 (resistivity)
 
 # %%
-ig.plot_profile(f_post_h5, i1=16000, i2=17000, im=1, hardcopy=hardcopy)
-ig.plot_profile(f_post_log_h5, i1=16000, i2=17000, im=1, hardcopy=hardcopy)
+ig.plot_profile(f_post_h5, i1=6000, i2=10000, im=1, hardcopy=hardcopy)
+ig.plot_profile(f_post_log_h5, i1=6000, i2=8000, im=1, hardcopy=hardcopy)
 
 # %%
