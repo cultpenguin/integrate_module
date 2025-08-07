@@ -2,13 +2,14 @@
 # %% [markdown]
 # # Getting started with INTEGRATE
 #
-# This notebook contains a simple example of getting started with INTEGRATE
+# This notebook contains a simple example for getting started with INTEGRATE.
 #
-# 0. Load some data (DAUGAARD.h5)
-# 1a. Setup a prior leading to the file PRIOR.h5
-# 1b. Update the prior model parameters with prior data in PRIOR.h5
-# 2. Perform probabilistic inversion using integrate_rejection leading to the file POST.h5
-# 3. Plot some results
+# The workflow follows these main steps:
+# 0. Load electromagnetic data (DAUGAARD.h5)
+# 1a. Set up a prior model, creating the file PRIOR.h5
+# 1b. Update the prior model with forward-modeled data in PRIOR.h5
+# 2. Perform probabilistic inversion using integrate_rejection, creating POST.h5
+# 3. Plot and analyze the results
 
 # %%
 try:
@@ -20,25 +21,25 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # #%load_ext autoreload
-    # # # # # #%autoreload 2
+    # # # # # # #%load_ext autoreload
+    # # # # # # #%autoreload 2
     pass
 # %%
 import integrate as ig
-# check if parallel computations can be performed
+# Check if parallel computations can be performed
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True 
 import matplotlib.pyplot as plt
 
 # %% [markdown]
-# ## 0. Get some TTEM data
-# A number of test cases are available in the INTEGRATE package
-# To see which cases are available, check the `get_case_data` function
+# ## 0. Get TTEM data
+# Several test cases are available in the INTEGRATE package.
+# To see which cases are available, check the `get_case_data` function.
 #
-# The code below will download the file DAUGAARD_AVG.h5 that contains 
-# a number of TTEM soundings from DAUGAARD, Denmark.
-# It will also download the corresponding GEX file, TX07_20231016_2x4_RC20-33.gex, 
-# that contains information about the TTEM system used.
+# The code below downloads the file DAUGAARD_AVG.h5 that contains 
+# TTEM (time-domain electromagnetic) soundings from Daugaard, Denmark.
+# It also downloads the corresponding GEX file, TX07_20231016_2x4_RC20-33.gex, 
+# which contains information about the TTEM system configuration and parameters.
 #
 
 
@@ -52,41 +53,47 @@ print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
 
 # %% [markdown]
-# ### Plot the geometry and the data
-# ig.plot_geometry plots the geometry of the data, i.e. the locations of the soundings.
-# ig.plot_data plots the data, i.e. the measured data for each sounding.
+# ### Plot the geometry and data
+# `ig.plot_geometry` plots the spatial geometry of the data (i.e., the locations of the soundings).
+# `ig.plot_data` plots the measured electromagnetic data for each sounding.
 
 # %%
-# The next line plots LINE, ELEVATION and data id, as three scatter plots
+# The commented line below would plot LINE, ELEVATION and data id as three scatter plots:
 # ig.plot_geometry(f_data_h5)
-# Each of these plots can be plotted separately by specifying the pl argument
+# Each plot can be generated separately by specifying the 'pl' argument:
 ig.plot_geometry(f_data_h5, pl='LINE')
 ig.plot_geometry(f_data_h5, pl='ELEVATION')
 ig.plot_geometry(f_data_h5, pl='id')
 
 # %%
-# The data, d_obs and d_std, can be plotted using ig.plot_data
+# The electromagnetic data (d_obs and d_std) can be plotted using ig.plot_data:
 ig.plot_data(f_data_h5, hardcopy=hardcopy)
 
 # %% [markdown]
-# ## 1. Setup the prior model ($\rho(\mathbf{m},\mathbf{d})$
+# ## 1. Set up the prior model ($\rho(\mathbf{m},\mathbf{d})$)
 #
-# In this example a simple layered prior model will be considered
+# In this example, a simple layered prior model will be considered.
+# The prior represents our initial beliefs about subsurface resistivity structure.
 # %% [markdown]
-# ### 1a. First, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
+# ### 1a. Generate prior model parameters
+# First, we generate a sample of the prior model parameters, $\rho(\mathbf{m})$.
 
 # %% [markdown]
-# As an example, we choose a simple layered model. 
-# The number of layers follow a chi-squared distribution with 4 degrees of freedom, and the resistivity in each layer is log-uniform between [1,3000].
-# This will create N realizations of 3 types of model parameters: 
+# As an example, we choose a simple layered Earth model. 
+# The number of layers follows a chi-squared distribution with 4 degrees of freedom, 
+# and the resistivity in each layer is log-uniformly distributed between [1,3000] Ωm.
 #
-#     PRIOR:/M1: 1D resistivity values in layers of 1m thickness down to 90m depth
-#     PRIOR:/M2: 1D resistivity values in discrete sets of [Nlayer,Nlayer-1] parameters where the first Nlayer parameters are resistivities, and the last Nlayer-1 parameters are depths to the base of each layer.
-#     PRIOR:/M3: The number of layers in each model
+# This creates N realizations of 3 types of model parameters: 
+#
+#     PRIOR:/M1: 1D resistivity values in 1m thick layers down to 90m depth
+#     PRIOR:/M2: 1D resistivity values in discrete parameter sets where the first 
+#                Nlayer parameters are resistivities, and the last Nlayer-1 
+#                parameters are depths to the base of each layer
+#     PRIOR:/M3: The number of layers in each model realization
 #
 
 # %%
-# Select how many, N, prior realizations should be generated
+# Select how many prior model realizations (N) should be generated
 N=1000000
 
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR.h5')
@@ -96,47 +103,52 @@ print('%s is used to hold prior realizations' % (f_prior_h5))
 
 
 # %%
-# Plot some summary statistics of the prior model, to QC the prior choice
+# Plot summary statistics of the prior model for quality control of the prior choice
 ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 
 
 # %% [markdown]
-# ### 1b. Then, a corresponding sample of $\rho(\mathbf{d})$, will be generated
+# ### 1b. Generate corresponding prior data
+# Next, we generate a corresponding sample of $\rho(\mathbf{d})$ (prior data distribution).
 #
-# Then the prior data, corresponding to the prior model parameters, are computed, using the GA-AEM code and the GEX file (from the DATA).
-#
+# The prior data, corresponding to the prior model parameters, are computed using 
+# the GA-AEM electromagnetic forward modeling code and the GEX system configuration file.
 #
 
 # %%
-# To update the PRIOR.h5
+# Option 1: Update the existing PRIOR.h5 file with forward-modeled data
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=False, parallel=parallel)
-# To create a COPY of PRIOR.h5 and update that
+# Option 2: Create a copy of PRIOR.h5 and update the copy (uncomment to use)
 # f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel)
 
-print('Updated %s to hold prior DATA' % (f_prior_data_h5))
+print('Updated %s to hold prior data (forward-modeled responses)' % (f_prior_data_h5))
 
 # %%
 D = ig.load_prior_data(f_prior_data_h5)[0][0]
 # %% [markdown]
-# It can be useful to compare the prior data to the observed data before inversion. If there is little to no overlap of the observed data with the prior data, there is little chance that the inversion will go well. This would be an indication of inconsistency.
-# In the figure below, one can see that the observed data (red) is clearly within the space of the prior data.
+# It is useful to compare the prior data to the observed data before inversion. 
+# If there is little to no overlap between observed and prior data, the inversion 
+# is unlikely to succeed, indicating inconsistency between the prior model and observations.
+# In the figure below, you can see that the observed data (red) falls clearly within 
+# the range of the prior data distribution.
 
 # %%
 ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,hardcopy=hardcopy)
 # %% [markdown]
-# ## 2. Sample the posterior $\sigma(\mathbf{m})$
+# ## 2. Sample the posterior distribution $\sigma(\mathbf{m})$
 #
 # The posterior distribution is sampled using the extended rejection sampler.
 
 # %%
-# Rejection sampling of the posterior can be done using
+# Rejection sampling of the posterior can be done with default settings using:
 #f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5)
 
-# One can also control a number of options.
-# One can choose to make use of only a subset of the prior data. Decreasing the sample size used makes the inversion faster, but increasingly approximate
-N_use = N
-T_base = 1 # The base annealing temperature. 
-autoT = 1  # Automatically set the annealing temperature
+# However, you can control several important options.
+# You can choose to use only a subset of the prior data. Decreasing the sample 
+# size makes the inversion faster but increasingly approximate.
+N_use = N   # Number of prior samples to use (use all available)
+T_base = 1  # Base annealing temperature for rejection sampling
+autoT = 1   # Automatically estimate optimal annealing temperature
 f_post_h5 = ig.integrate_rejection(f_prior_h5, 
                                    f_data_h5, 
                                    f_post_h5 = 'POST.h5', 
@@ -147,43 +159,49 @@ f_post_h5 = ig.integrate_rejection(f_prior_h5,
                                    parallel=parallel)
 
 # %%
-# This is typically done after the inversion
+# Posterior statistics computation (typically done after inversion)
+# This computes summary statistics like mean, median, standard deviation
 # ig.integrate_posterior_stats(f_post_h5)
 
 # %% [markdown]
-# ## 3. Plot some statistics from $\sigma(\mathbf{m})$
+# ## 3. Plot statistics from the posterior $\sigma(\mathbf{m})$
 #
-# ### Prior and posterior data
-# First, compare prior (beige) to posterior (black) data, as well as observed data (red), for two specific data IDs.
+# ### Compare prior and posterior data
+# First, compare prior (beige) to posterior (black) data, along with observed data (red), 
+# for specific measurement locations (data IDs).
 
 # %%
 ig.plot_data_prior_post(f_post_h5, i_plot=100,hardcopy=hardcopy)
 ig.plot_data_prior_post(f_post_h5, i_plot=0,hardcopy=hardcopy)
 
 # %% [markdown]
-# ### Evidence and Temperature
+# ### Evidence and annealing temperature
+# The evidence quantifies how well the data fits the model,
+# while temperature controls the acceptance rate in rejection sampling.
 
 # %%
-# Plot the Temperature used for inversion
+# Plot the annealing temperature used for inversion
 ig.plot_T_EV(f_post_h5, pl='T',hardcopy=hardcopy)
-# Plot the evidence (prior likelihood) estimated as part of inversion
+# Plot the evidence (log-likelihood) estimated during inversion
 ig.plot_T_EV(f_post_h5, pl='EV',hardcopy=hardcopy)
 
 # %% [markdown]
-# ### Profile
+# ### Resistivity profiles
 #
-# Plot a profile of posterior statistics of model parameters 1 (resistivity)
+# Plot a profile showing posterior statistics of model parameter M1 (resistivity)
+# along a section of the survey line.
 
 # %%
 ig.plot_profile(f_post_h5, i1=1, i2=2000, im=1, hardcopy=hardcopy)
 # %% [markdown]
-# ### Plot 2d Features
+# ### Plot 2D spatial features
 #
-# First plot the median resistivity in layers 5, 30, and 50
+# Plot the median resistivity at specific depths (layers 5, 30, and 50)
+# to show lateral variations in subsurface structure.
 
 # %%
 
-# Plot a 2D feature: Resistivity in layer 10
+# Plot 2D features: Resistivity at different depths
 try:
     ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
     plt.show()
@@ -204,27 +222,29 @@ except:
 
 # %%
 try:
-    # Plot a 2D feature: The number of layers
+    # Plot a 2D feature: The estimated number of layers
     ig.plot_feature_2d(f_post_h5,im=3,iz=0,key='Median', uselog=0, clim=[1,6], cmap='jet', s=12,hardcopy=hardcopy)
     plt.show()
 except:
     pass
 
 # %% [markdown]
-# ## Export to CSV format
+# ## Export results to CSV format
+# Export the posterior results to CSV files for use in GIS software or further analysis.
 
 # %%
 f_csv, f_point_csv = ig.post_to_csv(f_post_h5)
 
 # %%
-# Read the CSV file
+# Read the exported CSV file for inspection
+# Example filename (actual filename will be generated automatically):
 #f_point_csv = 'POST_DAUGAARD_AVG_PRIOR_CHI2_NF_3_log-uniform_N100000_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu100000_aT1_M1_point.csv'
 import pandas as pd
 df = pd.read_csv(f_point_csv)
 df.head()
 
 # %%
-# Use Pyvista to plot X,Y,Z,Median
+# Optional: Use PyVista for 3D visualization of X,Y,Z coordinates with median resistivity
 plPyVista = False
 if plPyVista:
     import pyvista as pv
