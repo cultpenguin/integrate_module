@@ -29,7 +29,7 @@ hardcopy=True
 
 
 # %% [markdown]
-# # Create The reference model and data
+# ## Create The reference model and data
 
 # %%
 # Create reference model

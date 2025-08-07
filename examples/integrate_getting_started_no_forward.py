@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # %% [markdown]
-# # Getting started with INTEGRATE
+# # Getting started with INTEGRATE - with no forward code
 #
 # This notebook contains a simple example of getting started with INTEGRATE - with no forward code
 #
@@ -11,20 +11,20 @@
 # GA-AEM is not need to run this example.
 #
 #
-#
-# # %%
-# try:
-#     # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
-#     get_ipython()
-#     # If the above line doesn't raise an error, it means we are in a Jupyter environment
-#     # Execute the magic commands using IPython's run_line_magic function
-#     get_ipython().run_line_magic('load_ext', 'autoreload')
-#     get_ipython().run_line_magic('autoreload', '2')
-# except:
-#     # If get_ipython() raises an error, we are not in a Jupyter environment
-#     # # # # #%load_ext autoreload
-#     # # # # #%autoreload 2
-#     pass
+# %%
+try:
+    # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
+    get_ipython()
+    # If the above line doesn't raise an error, it means we are in a Jupyter environment
+    # Execute the magic commands using IPython's run_line_magic function
+    get_ipython().run_line_magic('load_ext', 'autoreload')
+    get_ipython().run_line_magic('autoreload', '2')
+except:
+    # If get_ipython() raises an error, we are not in a Jupyter environment
+    # # # # # #%load_ext autoreload
+    # # # # # #%autoreload 2
+    pass
+
 # %%
 import integrate as ig
 # check if parallel computations can be performed

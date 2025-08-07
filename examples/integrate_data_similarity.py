@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # %% [markdown]
-# # Weights based in distance and data similarity
+# # Distance based wights
+# Weights based on distance and data similarity
 #
 
 # %%

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # %% [markdown]
-# # Dual data
+# # Dual data types (low and high moment seperately)
 #
 
 # %%
