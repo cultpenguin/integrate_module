@@ -40,14 +40,17 @@ hardcopy=True
 # select the type of referenc model
 z_max = 60
 rho = [120,10,120]
-dx=.5
-case = '3layer' # 'Wedge', '3layer', 'Wedge2', 'Wedge3'
+dx=1
+case = '3layer'
+#case = 'wedge'
 if case.lower() == 'wedge':
     # Make Wedge MODEL
     M_ref, x_ref, z_ref = ig.synthetic_case(case='Wedge', wedge_angle=10, z_max=z_max, dz=.5, x_max=100, dx=dx, z1=15, rho = rho)
+    M_ref, x_ref, z_ref = ig.synthetic_case(case='Wedge', wedge_angle=10, z_max=z_max, dz=.5, x_max=200, dx=dx, z1=15, rho = rho)
 elif case.lower() == '3layer':
     # Make 3 layer MODEL
     M_ref, x_ref, z_ref = ig.synthetic_case(case='3layer', dx=dx, rho1_1 = rho[0], rho1_2 = rho[1], x_max = 100, x_range = 10)
+    M_ref, x_ref, z_ref = ig.synthetic_case(case='3layer', dx=dx, rho1_1 = rho[0], rho1_2 = rho[1], x_max = 200, x_range = 20)
 
 # Create reference data
 f_data_h5 = '%s_%d' % (case,z_max)    
@@ -67,7 +70,8 @@ D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
 
 plt.subplot(2,1,1)
 xx_ref, zz_ref = np.meshgrid(x_ref, z_ref)
-plt.pcolormesh(xx_ref, zz_ref, M_ref.T)
+#plt.pcolormesh(xx_ref, zz_ref, M_ref.T, cmap='jet', vmin=clim[0], vmax=clim[1])
+plt.pcolormesh(xx_ref, zz_ref, np.log10(M_ref.T), cmap='jet', vmin=np.log10(clim[0]), vmax=np.log10(clim[1]))
 plt.xlim([x_ref.min(), x_ref.max()])
 plt.xlabel('Distance (m)')
 plt.ylabel('Depth (m)')
@@ -91,7 +95,7 @@ plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 #
 
 # %%
-N=200000 # sample size 
+N=1000000 # sample size 
 NLAY_min=3
 NLAY_max=3
 
@@ -282,6 +286,7 @@ plt.ylabel('EV_post')
 # %%
 
 # Add constant covariance to Cd -->
+# A simple way to introduce correlated noise
 corrlev = 0.01**2
 
 lD_obs = np.log10(D_ref)
