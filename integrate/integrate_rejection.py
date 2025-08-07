@@ -143,29 +143,49 @@ def integrate_rejection(f_prior_h5='prior.h5',
             print('Overwriting...')    
 
     
-    # Load observed data from f_data_h5
-    DATA = ig.load_data(f_data_h5, showInfo=showInfo)
-    Ndt = len(DATA['d_obs']) # Number of data types
+    # Load ALL observed data from f_data_h5, mostly to find out how many data types there are
+    # This could be more efficient.
+    #DATA = ig.load_data(f_data_h5, showInfo=showInfo)
+    #Ndt = len(DATA['d_obs']) # Number of data types
+    Ndt_total = ig.get_number_of_datasets(f_data_h5)
+    Ndt = ig.get_number_of_datasets(f_data_h5)
+
+    
+    # if if_use is not a list, convert it to a list
+    if not isinstance(id_use, list):
+        id_use = [id_use]
+
     if len(id_use)==0:
-        id_use = np.arange(1,Ndt+1) 
-    Ndt = len(id_use) # Number of data types used        
-    # Perhaps load only the data types that are used
+        id_use = np.arange(1,Ndt_total+1).tolist()
+
+
+    Ndt = len(id_use) # Number of data types used
+
+    if showInfo>1:
+        print('-- Number of data types: %d' % Ndt_total)
+        
+        print('-- Using these data types: %s' % str(id_use))
+
+    
+    # Load the observed data from the h5 files
     DATA = ig.load_data(f_data_h5, id_arr=id_use, showInfo=showInfo)
-
-    if (showInfo>0):    
-        for i in range(Ndt):
-            print('Data type %d: %s, Using %d/%d data' % (id_use[i], DATA['noise_model'][i], np.sum(DATA['i_use'][i]), len(DATA['i_use'][i])))
-
+    
     # Load the prior data from the h5 files
-    #D = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)[0]
-    id_data_use = 1+np.arange(np.max(DATA['id_use']))
-    D, idx = ig.load_prior_data(f_prior_h5, id_use = id_data_use, N_use = N_use, Randomize=True)
-    # Convert D to 32 bit float
-    #D = [d.astype(np.float32) for d in D]
-    #D = [d.astype(np.float128) for d in D]
-    # Pritn the memory size of D
-    if showInfo>0:
-        print('Memory size of D: %s' % str(np.array(D).nbytes))   
+    id_data_use = DATA['id_use']
+    D, idx = ig.load_prior_data(f_prior_h5, id_use = id_data_use, N_use = N_use, Randomize=True, showInfo=showInfo)
+    
+    
+    if showInfo>1:
+        for i in range(len(D)):
+            print('Memory size of /D%d: %s' % (id_use[i], str(np.array(D[i]).nbytes)))
+
+        # Print infomration about DATA and D, and make sure the same data types are used in both D and DATA
+        print('  Number of data types in DATA: %d' % len(DATA['d_obs']))
+        print('  Number of data types in D: %d' % len(D))
+        for i in range(len(id_use)):
+            print('  Size of data in DATA:/D%d: (%d, %d)' % (id_use[i], DATA['d_obs'][i].shape[0], DATA['d_obs'][i].shape[1]))
+            print('  Size of prior data PRIOR:/D%d: (%d, %d)' % (id_use[i], D[i].shape[0], D[i].shape[1]))
+
 
     #D, idx = load_prior_data(f_prior_h5, id_use = id_use, N_use = N_use, Randomize=True)
     # M, idx = load_prior_model(f_prior_h5, idx=idx, N_use=N_use, Randomize=True)
@@ -175,8 +195,6 @@ def integrate_rejection(f_prior_h5='prior.h5',
     if N_use>N:
         N_use = N
 
-
-
     # Get number of data points from, f_data_h5
     Ndp = DATA['d_obs'][0].shape[0]
     
@@ -184,26 +202,24 @@ def integrate_rejection(f_prior_h5='prior.h5',
     if len(ip_range)==0:
         ip_range = np.arange(Ndp)
     Ndp_invert = len(ip_range)
-            
         
     if Ncpu ==1:
         parallel = False
-
     
     if showInfo>0:
         print('<--INTEGRATE_REJECTION-->')
-        print('f_prior_h5=%s\nf_data_h5=%s\nf_post_h5=%s' % (f_prior_h5, f_data_h5, f_post_h5))
+        print('f_prior_h5=%s, f_data_h5=%s\nf_post_h5=%s' % (f_prior_h5, f_data_h5, f_post_h5))
     
     if showInfo>1:
         print('Number of data points: %d (available), %d (used). Nchunks=%s, Ncpu=%d,use_N_best=%d' % (Ndp,Ndp_invert,Nchunks,Ncpu,use_N_best))    
         print('N_use = %d' % (N_use))
+        print('Ndp to invert = %d, ip_range=%s' % (len(ip_range),str(ip_range)))
         print('use_N_best=%d' % use_N_best)
         print('Number of data types: %d' % Ndt)
         print('Using these data types: %s' % str(id_use))
-        print('Loading these prior data model types:', str(id_data_use))
-    
-    
-    # set i_use_all to be a 2d Matrie of size (nump,nr) of random integers in range(N)
+        print('Loaded these prior data model types:', str(id_data_use))
+        
+    # set i_use_all to be a 2d Matrix of size (nump,nr) of random integers in range(N)
     i_use_all = np.random.randint(0, N, (Ndp, nr))
     N_UNIQUE_all = np.zeros(Ndp)*np.nan
     T_all = np.zeros(Ndp)*np.nan
@@ -214,6 +230,10 @@ def integrate_rejection(f_prior_h5='prior.h5',
     date_start = str(datetime.now())
     t_start = datetime.now()
     
+    #print(i_use_all.shape)
+    #print(T_all.shape)
+    #print(Ndp)
+
     # PERFORM INVERSION PERHAPS IN PARALLEL
 
     if parallel:
@@ -281,8 +301,8 @@ def integrate_rejection(f_prior_h5='prior.h5',
     t_elapsed = (t_end - t_start).total_seconds()
     t_per_sounding = t_elapsed / Ndp_invert
     if (showInfo>-1):
-        print('integrate_rejection: Time=%5.1fs/%d soundings, %4.1fms/sounding, %3.1fit/s' % (t_elapsed,Ndp_invert,t_per_sounding*1000,Ndp_invert/t_elapsed), end='')
-        print('integrate_rejection: T_av=%3.1f, EV_av=%3.1f' % (np.nanmean(T_all), np.nanmean(EV_all)))
+        print('integrate_rejection: Time=%5.1fs/%d soundings, %4.1fms/sounding, %3.1fit/s. ' % (t_elapsed,Ndp_invert,t_per_sounding*1000,Ndp_invert/t_elapsed), end='')
+        print('T_av=%3.1f, EV_av=%3.1f' % (np.nanmean(T_all), np.nanmean(EV_all)))
 
     # SAVE THE RESULTS to f_post_h5
     with h5py.File(f_post_h5, 'w') as f_post:
@@ -430,12 +450,8 @@ def integrate_rejection_range(D,
     #i=0
     
     noise_model = DATA['noise_model']
-    id_prior_use = DATA['id_use']
     i_use_data = DATA['i_use']
-    #print(noise_model)
-    #print(id_prior_use)
-    #print(i_use_data)
-
+    
     # Convert class id to index
     # The class_id_list, could /should be loaded prior_h5:/M1/class_id !!
 
@@ -447,8 +463,8 @@ def integrate_rejection_range(D,
 
     class_id_list = []
     updated_data_ids = []
-    for i in range(Ndt):
-        i_prior = id_prior_use[i]-1 
+    for i in range(Ndt):        
+        i_prior = i
         if (noise_model[i]=='multinomial'):
             Di, class_id, class_id_out = ig.class_id_to_idx(D[i_prior])
             #print(class_id_out)
@@ -466,7 +482,7 @@ def integrate_rejection_range(D,
         else:    
             class_id_list.append([])
 
-    if showInfo>1:
+    if showInfo>2:
         print('class_id_list',class_id_list)
         print('len(class_id_list)',len(class_id_list))
 
@@ -480,7 +496,10 @@ def integrate_rejection_range(D,
         NDsets = len(id_use)
         L = np.zeros((NDsets, N))
 
-        
+        if showInfo>3:
+            print('Ndt=%d, ip=%d/%d, N=%d' % (Ndt, ip, nump, N))
+
+
         # Loop over the number of data types Ndt
         for i in range(Ndt):
             use_data_point = i_use_data[i][ip]
@@ -500,10 +519,8 @@ def integrate_rejection_range(D,
                 # ONLY PERFORM CALUCATION IF I_USE_DATA = 1.. UPDATE LOAD_DATA, TO ALWAY PROVIDE I_USE 
                 # Select the proper data types. It is give, the integer in 'D1/', 'D2/' etc, so we need to subtract 1
                 # as D1 is the first data types D[0]
-                i_prior = id_prior_use[i]-1 
                 
-                if showInfo>3:    
-                    print("--Using id_prior_use",str(i_prior))
+                i_prior = i 
                 
                 t0=time.time()
                 #id = id_use[i_prior]
@@ -844,11 +861,11 @@ def integrate_posterior_chunk(args):
 
 def select_subset_for_inversion(dd, N_app):
     """
-    Select a subset of indices for inversion based on the sum of absolute values.
+    Select a subset of indices for inversion based on the sum of squared residuals.
 
-    This function calculates the sum of absolute values along the specified axis
+    This function calculates the sum of squared values along the specified axis
     for each row in the input array `dd`. It then selects the indices of the 
-    `N_app` smallest sums.
+    `N_app` smallest sums for fastest performance.
 
     Parameters
     ----------
@@ -860,18 +877,17 @@ def select_subset_for_inversion(dd, N_app):
     Returns
     -------
     idx : numpy.ndarray
-        An array of indices corresponding to the `N_app` smallest sums.
-    nsum : numpy.ndarray
-        An array containing the sum of absolute values for each row in `dd`.
+        An array of indices corresponding to the `N_app` smallest L2 norms.
 
     Notes
     -----
-    This function uses `np.nansum` to ignore NaNs in the summation and 
-    `np.argpartition` for efficient selection of the smallest sums.
+    This function uses squared residuals (L2 norm) for optimal performance,
+    avoiding expensive absolute value operations. Uses `np.argpartition` 
+    for efficient selection of the smallest sums.
     """
-    nsum = np.nansum(np.abs(dd), axis=1)
-    idx = np.argpartition(nsum, N_app)[:N_app]
-    return idx, nsum
+    norms = np.sum(dd**2, axis=1)
+    idx = np.argpartition(norms, N_app)[:N_app]
+    return idx
 
 
 def likelihood_gaussian_diagonal(D, d_obs, d_std, N_app=0):
@@ -918,7 +934,7 @@ def likelihood_gaussian_diagonal(D, d_obs, d_std, N_app=0):
     
     if N_app > 0:
        L = np.ones(D.shape[0])*-1e+15
-       idx = select_subset_for_inversion(dd, N_app)[0] 
+       idx = select_subset_for_inversion(dd, N_app) 
        #L_small = -0.5 * np.nansum(dd[idx]**2 / d_std**2, axis=1)
        L_small = likelihood_gaussian_diagonal(D[idx], d_obs, d_std,0)
        L[idx]=L_small
@@ -928,7 +944,7 @@ def likelihood_gaussian_diagonal(D, d_obs, d_std, N_app=0):
 
     return L
 
-def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized=False):
+def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized=True):
     """
     Calculate the Gaussian likelihood with full covariance matrix.
     
@@ -984,8 +1000,9 @@ def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized
             
     if N_app > 0:
         L = np.ones(D.shape[0])*-1e+15
-        idx = select_subset_for_inversion(dd, N_app)[0] 
+        idx = select_subset_for_inversion(dd, N_app) 
         if useVectorized:
+            #print('Using vectorized likelihood calculation -approximation')
             L_small = -.5 * np.einsum('ij,ij->i', dd[idx] @ iCd, dd[idx])
         else:
             L_small = np.zeros(idx.shape[0])
@@ -997,6 +1014,7 @@ def likelihood_gaussian_full(D, d_obs, Cd, N_app=0, checkNaN=True, useVectorized
     
     if useVectorized:
         # vectorized    
+        #print('Using vectorized likelihood calculation')
         L = -.5 * np.einsum('ij,ij->i', dd @ iCd, dd)        
     else:   
         # non-vectorized

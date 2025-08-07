@@ -29,7 +29,6 @@ import integrate as ig
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True 
 import matplotlib.pyplot as plt
-plt.show()
 
 # %% [markdown]
 # ## 0. Get some TTEM data
@@ -88,7 +87,7 @@ ig.plot_data(f_data_h5, hardcopy=hardcopy)
 
 # %%
 # Select how many, N, prior realizations should be generated
-N=100000
+N=1000000
 
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR.h5')
 print('%s is used to hold prior realizations' % (f_prior_h5))
@@ -115,6 +114,9 @@ f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=Fals
 # f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel)
 
 print('Updated %s to hold prior DATA' % (f_prior_data_h5))
+
+# %%
+D = ig.load_prior_data(f_prior_data_h5)[0][0]
 # %% [markdown]
 # It can be useful to compare the prior data to the observed data before inversion. If there is little to no overlap of the observed data with the prior data, there is little chance that the inversion will go well. This would be an indication of inconsistency.
 # In the figure below, one can see that the observed data (red) is clearly within the space of the prior data.
@@ -200,12 +202,10 @@ try:
 except:
     pass
 
-
-
-
+# %%
 try:
     # Plot a 2D feature: The number of layers
-    ig.plot_feature_2d(f_post_h5,im=2,iz=0,key='Median', title_text = 'Number of layers', uselog=0, clim=[1,6], cmap='jet', s=12,hardcopy=hardcopy)
+    ig.plot_feature_2d(f_post_h5,im=3,iz=0,key='Median', uselog=0, clim=[1,6], cmap='jet', s=12,hardcopy=hardcopy)
     plt.show()
 except:
     pass

@@ -302,7 +302,7 @@ def save_prior_model(f_prior_h5, M_new,
 
 
 
-def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
+def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False, **kwargs):
     """
     Load forward-modeled data arrays from prior HDF5 file.
 
@@ -346,6 +346,13 @@ def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
     Sample selection follows the same priority as load_prior_model():
     explicit idx > N_use random/sequential > all samples.
     """
+
+    showInfo = kwargs.get('showInfo', 1)
+
+    if showInfo > 0:
+        print('Loading prior data from %s. ' % f_prior_h5, end='')
+        print('Using prior data ids: %s' % str(id_use))
+
     import h5py
     import numpy as np
 
@@ -379,6 +386,13 @@ def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False):
 
 
         D = [f_prior[f'/D{id}'][:][idx] for id in id_use]
+
+    if showInfo>0:
+        for i in range(len(D)):
+            print('  - /D%d: ' % (id_use[i]), end='')
+            print(' N,nd = %d/%d' % (D[i].shape[0], D[i].shape[1]))
+
+        
     return D, idx
 
 def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False, **kwargs):
@@ -424,6 +438,8 @@ def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False, **kwargs):
     
     The function ensures 2D array format with shape (N_samples, N_data_points).
     """
+    showInfo = kwargs.get('showInfo', 1)
+
     import h5py
     import numpy as np
 
@@ -476,7 +492,7 @@ def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False, **kwargs):
     return id
 
 
-def load_data(f_data_h5, id_arr=[1], **kwargs):
+def load_data(f_data_h5, id_arr=[], **kwargs):
     """
     Load observational electromagnetic data from HDF5 file.
 
@@ -510,11 +526,12 @@ def load_data(f_data_h5, id_arr=[1], **kwargs):
         - 'Cd' : list of numpy.ndarray or None
             Full covariance matrices for each dataset
         - 'id_arr' : list of int
-            Dataset identifiers that were successfully loaded
+            Dataset identifiers that were successfully loaded. If set as empty, all data types will be loaded
         - 'i_use' : list of numpy.ndarray
             Data point usage indicators (1=use, 0=ignore)
         - 'id_use' : list of int or numpy.ndarray
-            Dataset usage identifiers for cross-referencing
+            index of data type in prior data, used for cross-referencing
+            if 'id_use' is not present in the file, it defaults to the dataset id_arr
 
     Notes
     -----
@@ -535,8 +552,22 @@ def load_data(f_data_h5, id_arr=[1], **kwargs):
     """
 
     showInfo = kwargs.get('showInfo', 1)
-    
+
     import h5py
+        
+    if not isinstance(id_arr, list):
+        id_arr = [id_arr]
+
+    # If id_arr is empty find find all '/D{id}' datasets in the file
+    if len(id_arr) == 0:
+        with h5py.File(f_data_h5, 'r') as f_data:
+            id_arr = [int(re.search(r'D(\d+)', key).group(1)) for key in f_data.keys() if re.match(r'D\d+', key)]
+            id_arr.sort()
+
+    if showInfo > 0:
+        print('Loading data from %s. ' % f_data_h5, end='')
+        print('Using data types: %s' % str(id_arr))
+    
     with h5py.File(f_data_h5, 'r') as f_data:
         noise_model = [f_data[f'/D{id}'].attrs.get('noise_model', 'none') for id in id_arr]
         d_obs = [f_data[f'/D{id}/d_obs'][:] for id in id_arr]
@@ -547,7 +578,8 @@ def load_data(f_data_h5, id_arr=[1], **kwargs):
         
     for i in range(len(id_arr)):
         if id_use[i] is None:
-            id_use[i] = i+1
+            #id_use[i] = i+1
+            id_use[i] = id_arr[i]
         if i_use[i] is None:
             i_use[i] = np.ones((len(d_obs[i]),1))
 
@@ -564,9 +596,8 @@ def load_data(f_data_h5, id_arr=[1], **kwargs):
 
 
     if showInfo>0:
-        print('Loaded data from %s' % f_data_h5)
         for i in range(len(id_arr)):
-            print('Data type %d: id_use=%d, %11s, Using %5d/%5d data' % (id_arr[i], id_use[i], noise_model[i], np.sum(i_use[i]), len(i_use[i])))
+            print('  - D%d: id_use=%d, %11s, Using %d/%d data' % (id_arr[i], id_use[i], noise_model[i],  DATA['d_obs'][i].shape[0],  DATA['d_obs'][i].shape[1]))
 
     return DATA
 
@@ -1068,6 +1099,65 @@ def get_geometry(f_data_h5):
         ELEVATION = f_data['/ELEVATION'][:].flatten()
 
     return X, Y, LINE, ELEVATION
+
+
+def get_number_of_datasets(f_data_h5):
+    """
+    Get the number of datasets (D1, D2, D3, etc.) in an INTEGRATE data HDF5 file.
+    
+    Counts the number of dataset groups with names following the pattern 'D1', 'D2', 'D3', etc.
+    in an INTEGRATE HDF5 data file. This function is useful for determining how many different
+    data types or measurement systems are stored in a single file.
+    
+    Parameters
+    ----------
+    f_data_h5 : str
+        Path to the HDF5 file containing INTEGRATE data with dataset groups.
+        
+    Returns
+    -------
+    int
+        Number of datasets found in the file. Returns 0 if no datasets are found
+        or if the file cannot be accessed.
+        
+    Raises
+    ------
+    FileNotFoundError
+        If the specified HDF5 file does not exist.
+    IOError
+        If the HDF5 file cannot be opened or read.
+        
+    Examples
+    --------
+    >>> n_datasets = get_number_of_datasets('data.h5')
+    >>> print(f"File contains {n_datasets} datasets")
+    File contains 3 datasets
+    
+    Notes
+    -----
+    This function looks for HDF5 groups with names starting with 'D' followed by digits.
+    The typical INTEGRATE data file structure includes:
+    - '/D1/': First dataset (e.g., high moment data)
+    - '/D2/': Second dataset (e.g., low moment data)  
+    - '/D3/': Third dataset (e.g., processed data)
+    - And so on...
+    
+    The function only counts top-level groups that match the 'D{number}' pattern,
+    ignoring other groups like geometry data (UTMX, UTMY, etc.).
+    """
+    n_datasets = 0
+    try:
+        with h5py.File(f_data_h5, 'r') as f:
+            for key in f.keys():
+                if key[0] == 'D' and key[1:].isdigit():
+                    n_datasets += 1
+    except (FileNotFoundError, IOError) as e:
+        raise e
+    except Exception:
+        # Return 0 for any other errors (e.g., corrupted file)
+        return 0
+    
+    return n_datasets
 
 
 def post_to_csv(f_post_h5='', Mstr='/M1'):

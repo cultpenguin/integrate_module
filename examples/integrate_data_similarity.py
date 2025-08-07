@@ -23,15 +23,17 @@ import matplotlib.pyplot as plt
 # check if parallel computations can be performed
 parallel = ig.use_parallel(showInfo=1)
 
-# %% Get tTEM data from DAUGAARD
+# %%
 case = 'DAUGAARD'
-#case = 'GRUSGRAV'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
+f_data_h5 = 'DAUGAARD_AVG.h5'
 file_gex= ig.get_gex_file_from_data(f_data_h5)
 
 print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
+
+
 
 # %%
 # Load data and ploti
@@ -42,63 +44,13 @@ d_std = DATA['d_std'][0]
 # get geometry
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
-# %% SELECT a specic data point
-i_ref = int(np.ceil(d_obs.shape[0]/2))
+# %%
+r_dis = 400
+r_data = 2
 
-x_well = X[i_ref]
-y_well = Y[i_ref]
-r_dis = 100
-r_data = 1
-w_combined, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, r_data=r_data, r_dis=r_dis, doPlot=True)   
-   
-
-#%% Make a movie based on moving the central point arouns
-r_data_arr = [1,2,5,10]
-r_dis_arr = [3000,500,1000]
-r_data_arr = [1,3,10]
-r_dis_arr = [1000,400,200]
+i_ref = 6000-1
 
 
-x0 =np.min(X) + 0.2*(np.max(X)-np.min(X))
-y0 =np.min(Y)
-y1 =np.max(Y)-50
-y0 = y0+0.5*(y1-y0)
-
-y_arr = np.arange(y0, y1, 25)
-
-#i_ref_arr = np.arange(1000,1100)
-#for i_ref in i_ref_arr: 
-for r_data in r_data_arr:
-    for r_dis in r_dis_arr:
-
-        j=0
-        for yy in y_arr:
-            j=j+1
-            dis = np.sqrt((X-x0)**2 + (Y-yy)**2)
-            i_ref = np.argmin(dis)
-            x_well = X[i_ref]
-            y_well = Y[i_ref]
-
-            print('i_ref=%d, x=%f, y=%f' % (i_ref, X[i_ref], Y[i_ref]))
-
-            #plFile = 'weight_%04d_%d_%d' % (i_ref,r_data,r_dis)
-            plFile = 'weight_%04d_%d_%d' % (j,r_data,r_dis)
-
-            w_combined, w_dis, w_data, i_use = ig.get_weight_from_position(f_data_h5, x_well, y_well, r_data=r_data, r_dis=r_dis, doPlot=True, plFile=plFile)   
-
-
-        # ffmpeg -framerate 30 -i weight_%04d_3_2000.png -c:v libx264 -pix_fmt yuv420p output.mp4
-        # run ffmpeg command in current folder
-        import os 
-        try:
-            cmd = 'ffmpeg -y -framerate 10 -i weight_%%04d_%d_%d.png -c:v libx264 -pix_fmt yuv420p weight_movie_%d_%d_n%d.mp4' % (r_data,r_dis,r_data,r_dis,j)
-            print(cmd)
-            os.system(cmd)    
-        except:
-            print('Error in ffmpeg command')
-            pass
-
-#%%
 # select gates to use 
 # find the number of data points for each gate that has non-nan values
 n_not_nan = np.sum(~np.isnan(d_obs), axis=0)
@@ -157,5 +109,3 @@ plt.show()
 
 
 
-
-# %%
