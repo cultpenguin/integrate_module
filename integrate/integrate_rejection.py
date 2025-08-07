@@ -89,7 +89,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         Use only the N best-fitting samples (0=disabled).
         Default is 0.
     **kwargs : dict
-        Additional keyword arguments including showInfo, updatePostStat, post_dir.
+        Additional keyword arguments including showInfo, updatePostStat, post_dir, progress_callback.
     
     Returns
     -------
@@ -270,6 +270,9 @@ def integrate_rejection(f_prior_h5='prior.h5',
         #    if showInfo>0:
         #        print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
 
+            # Extract progress_callback for non-parallel execution
+            progress_callback = kwargs.get('progress_callback', None)
+            
             i_use, T, EV, EV_post, N_UNIQUE, ip_range = integrate_rejection_range(D=D, 
                                         DATA = DATA,
                                         idx = idx,                                   
@@ -280,6 +283,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
                                         T_base = T_base,
                                         nr=nr,
                                         use_N_best=use_N_best,
+                                        progress_callback=progress_callback,
                                         **kwargs
                                         )
         
@@ -336,6 +340,7 @@ def integrate_rejection_range(D,
                               nr=400,
                               autoT=1,
                               T_base = 1,
+                              progress_callback=None,
                               **kwargs):
     """
     Perform rejection sampling for a specific range of data points.
@@ -372,6 +377,9 @@ def integrate_rejection_range(D,
     T_base : float, optional
         Base temperature for rejection sampling when autoT=0.
         Default is 1.
+    progress_callback : callable, optional
+        Optional callback function for progress updates. Called with (current, total).
+        Default is None (no callbacks).
     **kwargs : dict
         Additional arguments including useRandomData, showInfo, use_N_best.
     
@@ -490,6 +498,13 @@ def integrate_rejection_range(D,
     # THIS IS THE ACTUAL INVERSION!!!!
     # Start looping over the data points
     for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection', leave=False):
+        # Call progress callback if provided
+        if progress_callback is not None:
+            try:
+                progress_callback(j, len(ip_range))
+            except:
+                pass  # Ignore callback errors to not break main execution
+        
         ip = ip_range[j] # This is the index of the data point to invert
         t=[]
         N = D[0].shape[0]
@@ -642,6 +657,13 @@ def integrate_rejection_range(D,
                 else:
                     print(' Time id%d, sampling: %f' % (i,t[i]))
             print('Time total: %f' % np.sum(t))
+    
+    # Final progress callback
+    if progress_callback is not None:
+        try:
+            progress_callback(len(ip_range), len(ip_range))
+        except:
+            pass  # Ignore callback errors
         
     return i_use_all, T_all, EV_all, EV_post_all, N_UNIQUE_all, ip_range
 
