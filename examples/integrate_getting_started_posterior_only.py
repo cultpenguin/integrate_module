@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # %% [markdown]
-# # Getting started with INTEGRATE
+# # Getting started with INTEGRATE - posterior analysis only
 #
 # This notebook contains a simple example of getting started with INTEGRATE - analyzing the posterior only.
 #

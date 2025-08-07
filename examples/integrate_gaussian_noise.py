@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # %% [markdown]
-# # INTEGRATE Synthetic Case Study example with different noise models
-# Demonstrates the use of different noise models with tTEM data 
+# # Synthetic Case Study example with different noise models (uncorrelated/correlated)
+# Demonstrates the use of different* noise models with tTEM data 
 # using an example using inverting data obtained from synthetic reference model
 #
 #
@@ -32,7 +32,7 @@ hardcopy=True
 
 
 # %% [markdown]
-# # Create The reference model and data
+# ## Create The reference model and data
 
 # %%
 

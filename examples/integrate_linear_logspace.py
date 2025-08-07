@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # %% [markdown]
-# # Getting started with INTEGRATE
+# # Data, and noise, in linear or log space
 #
 # This notebooks explores the difference using data (and the noise) model in linear and logspace.
 #
@@ -145,7 +145,7 @@ ig.plot_T_EV(f_post_log_h5, pl='T',hardcopy=hardcopy)
 # Plot a profile of posterior statistics of model parameters 1 (resistivity)
 
 # %%
-ig.plot_profile(f_post_h5, i1=6000, i2=10000, im=1, hardcopy=hardcopy)
+ig.plot_profile(f_post_h5, i1=6000, i2=8000, im=1, hardcopy=hardcopy)
 ig.plot_profile(f_post_log_h5, i1=6000, i2=8000, im=1, hardcopy=hardcopy)
 
 # %%

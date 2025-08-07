@@ -1651,14 +1651,14 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
     elif case=='ESBJERG':
         
         if (loadAll or loadType=='gex'):  
-            filelist.append('TX07_20230906_2x4_RC20-33_merged.h5')  
-            filelist.append('TX07_20231016_2x4_RC20-33_merged.h5')
-            filelist.append('TX07_20231127_2x4x1_RC20_33_merged.h5')
-            filelist.append('TX07_20240125_2x4_RC20-33_merged.h5')
             filelist.append('TX07_20230906_2x4_RC20-33.gex')
             filelist.append('TX07_20231016_2x4_RC20-33.gex')
             filelist.append('TX07_20231127_2x4x1_RC20_33.gex')
             filelist.append('TX07_20240125_2x4_RC20-33.gex')
+            filelist.append('TX07_20230906_2x4_RC20-33_merged.h5')  
+            filelist.append('TX07_20231016_2x4_RC20-33_merged.h5')
+            filelist.append('TX07_20231127_2x4x1_RC20_33_merged.h5')
+            filelist.append('TX07_20240125_2x4_RC20-33_merged.h5')
         
         if (loadAll or loadType=='premerge'):
             filelist.append('20230921_AVG_export.h5')
@@ -1673,8 +1673,6 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
             filelist.append('TX07_20231016_2x4_RC20-33.gex')
             filelist.append('TX07_20231127_2x4x1_RC20_33.gex')
             filelist.append('TX07_20240125_2x4_RC20-33.gex')
-            
-        
 
         if (loadAll or loadType=='ESBJERG_ALL' or len(filelist)==0):
             filelist.append('ESBJERG_ALL.h5')
@@ -2172,7 +2170,7 @@ def merge_data(f_data, f_gex='', delta_line=0, f_data_merged_h5='', **kwargs):
 
 ## 
 
-def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5=''):
+def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5='', showInfo=0):
     """
     Merge multiple posterior sampling results into unified datasets.
 
@@ -2248,6 +2246,10 @@ def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5=''):
         f_post_merged_h5 = 'POST_merged_N%d.h5' % nf
 
     f_data_merged_h5 = 'DATA_merged_N%d.h5' % nf
+
+    if showInfo>0:
+        print('Merging %d posterior files to %s' % (nf, f_post_merged_h5))
+        print('Merging %d data files to %s' % (nf, f_data_merged_h5))
 
     f_data_merged_h5 = ig.merge_data(f_data_h5_files, f_data_merged_h5=f_data_merged_h5)
 

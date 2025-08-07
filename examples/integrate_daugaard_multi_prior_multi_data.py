@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # %% [markdown]
-# # INTEGRATE Daugaard Case Study with geology-resistivity-category prior models.
+# # Daugaard Case Study with geology-resistivity-category prior models.
 #
 # This notebook contains an example of inversion of the DAUGAARD tTEM data using three different geology-resistivity prior models
 
@@ -140,7 +140,7 @@ ig.write_data_multinomial(D_obs, id=2, f_data_h5 = f_data_h5, showInfo=2)
 
 
 # %% [markdown]
-# # Ready for inversion !!
+# ## Ready for inversion !!
 
 # %%
 print("Keys in DATA")

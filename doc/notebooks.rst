@@ -34,13 +34,13 @@ INTEGRATE allows for using both correlated and uncorrelated Gaussian noise model
    
 
   
-Daugaard Case
-=============
+Hypothesis testing
+==================
 
 .. nbgallery::
    notebooks/integrate_daugaard_multi_prior_multi_data.ipynb  
    notebooks/integrate_daugaard_multi_prior.ipynb  
-   
+   notebooks/integrate_case_evidence_approximation.ipynb   
 
 Synthetic Case
 ================
@@ -48,11 +48,15 @@ Synthetic Case
 .. nbgallery::
    notebooks/integrate_synthetic_case.ipynb
 
-
 Other
-================
+=====
 
-.. nbgallery::
+.. nbgallery:: 
    notebooks/integrate_linear_logspace.ipynb
-   notebooks/integrate_data_similarity.ipynb       
+   notebooks/integrate_data_similarity.ipynb   
+   notebooks/integrate_esbjerg.ipynb
+   notebooks/integrate_esbjerg_seperate_gex.ipynb
+   notebooks/integrate_merge_data.ipynb
+   
+
 
