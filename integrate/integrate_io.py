@@ -2286,6 +2286,240 @@ def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5='', showI
     return f_post_merged_h5, f_data_merged_h5
 
 
+def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
+    """
+    Merge multiple prior model files into a single combined HDF5 file.
+
+    Combines prior model parameters and forward-modeled data from multiple
+    HDF5 files into a unified dataset. Creates a new model parameter M4 that
+    tracks the source file index for each sample, enabling traceability of
+    merged data origins.
+
+    Parameters
+    ----------
+    f_prior_h5_files : list of str
+        List of paths to prior HDF5 files to merge. Each file must contain
+        compatible model parameters (M1, M2, M3, ...) and data arrays (D1, D2, ...).
+    f_prior_merged_h5 : str, optional
+        Output path for the merged prior file. If empty, generates default
+        name 'PRIOR_merged_N{number_of_files}.h5' (default is '').
+    showInfo : int, optional
+        Verbosity level for progress information. Higher values provide more
+        detailed output (default is 0).
+
+    Returns
+    -------
+    str
+        Path to the merged prior HDF5 file.
+
+    Raises
+    ------
+    ValueError
+        If f_prior_h5_files is not a list or is empty.
+    FileNotFoundError
+        If any input files do not exist or cannot be accessed.
+
+    Notes
+    -----
+    The merging process:
+    - Concatenates all model parameters (M1, M2, M3, ...) across files
+    - Concatenates all data arrays (D1, D2, D3, ...) across files  
+    - Creates new M4 parameter containing source file indices (0-based)
+    - Preserves HDF5 attributes from the first file
+    - Updates metadata to reflect merged status
+
+    **Source File Tracking:**
+    The new M4 parameter is a DISCRETE integer array with shape (Ntotal, 1) where
+    each value indicates which input file the corresponding sample originated from:
+    - 0: samples from first file in f_prior_h5_files
+    - 1: samples from second file in f_prior_h5_files
+    - etc.
+    
+    The M4 parameter is properly marked with:
+    - is_discrete = 1 (discrete parameter type)
+    - shape = (Ntotal, 1) (consistent with other model parameters)
+    - class_name = meaningful names derived from filenames
+    - class_id = [0, 1, 2, ...] (class identifiers)
+
+    **File Compatibility:**
+    Input files can have different model parameter dimensions (e.g., different
+    numbers of layers). Arrays with fewer parameters will be padded with NaN
+    values to match the maximum dimensions. Data arrays should ideally have
+    the same dimensions, but padding is applied if they differ.
+
+    Examples
+    --------
+    >>> f_files = ['prior1.h5', 'prior2.h5', 'prior3.h5']
+    >>> merged_file = merge_prior(f_files, 'combined_prior.h5')
+    >>> print(f"Merged {len(f_files)} files into {merged_file}")
+    """
+    import h5py
+    import numpy as np
+    
+    # Input validation
+    if not isinstance(f_prior_h5_files, list):
+        raise ValueError('f_prior_h5_files must be a list of strings')
+    
+    if len(f_prior_h5_files) == 0:
+        raise ValueError('f_prior_h5_files cannot be empty')
+    
+    nf = len(f_prior_h5_files)
+    
+    # Generate output filename if not provided
+    if len(f_prior_merged_h5) == 0:
+        f_prior_merged_h5 = 'PRIOR_merged_N%d.h5' % nf
+    
+    if showInfo > 0:
+        print('Merging %d prior files to %s' % (nf, f_prior_merged_h5))
+    
+    # Initialize storage for merged data
+    M_merged = {}  # Model parameters
+    D_merged = {}  # Data arrays
+    M4_values = []  # Source file indices
+    sample_counts = []  # Track samples per file
+    
+    # First pass: collect all model parameters and data arrays
+    for i, f_prior_h5 in enumerate(f_prior_h5_files):
+        if showInfo > 1:
+            print('.. Processing file %d: %s' % (i, f_prior_h5))
+        
+        with h5py.File(f_prior_h5, 'r') as f:
+            # Count samples in this file (use M1 as reference)
+            if 'M1' in f:
+                n_samples = f['M1'].shape[0]
+                sample_counts.append(n_samples)
+                M4_values.extend([i + 1] * n_samples)  # Add file index for each sample (1-based for discrete compatibility)
+            else:
+                raise ValueError(f'File {f_prior_h5} does not contain M1 dataset')
+            
+            # Process model parameters (M1, M2, M3, ...)
+            for key in f.keys():
+                if key.startswith('M'):
+                    if key not in M_merged:
+                        M_merged[key] = []
+                    M_merged[key].append(f[key][:])
+            
+            # Process data arrays (D1, D2, D3, ...)
+            for key in f.keys():
+                if key.startswith('D'):
+                    if key not in D_merged:
+                        D_merged[key] = []
+                    D_merged[key].append(f[key][:])
+    
+    # Concatenate all arrays (handle different dimensions)
+    if showInfo > 1:
+        print('.. Concatenating arrays')
+    
+    # Concatenate model parameters (handle different parameter dimensions)
+    for key in M_merged:
+        arrays = M_merged[key]
+        if len(arrays) == 1:
+            M_merged[key] = arrays[0]
+        else:
+            # Find maximum dimensions across all arrays
+            max_cols = max(arr.shape[1] for arr in arrays)
+            
+            # Pad arrays to match maximum dimensions
+            padded_arrays = []
+            for arr in arrays:
+                if arr.shape[1] < max_cols:
+                    # Pad with NaN values for missing parameters
+                    pad_width = ((0, 0), (0, max_cols - arr.shape[1]))
+                    padded_arr = np.pad(arr, pad_width, mode='constant', constant_values=np.nan)
+                    padded_arrays.append(padded_arr)
+                else:
+                    padded_arrays.append(arr)
+            
+            M_merged[key] = np.vstack(padded_arrays)
+    
+    # Concatenate data arrays (should have same dimensions)
+    for key in D_merged:
+        arrays = D_merged[key]
+        if len(arrays) == 1:
+            D_merged[key] = arrays[0]
+        else:
+            # Check if all data arrays have same dimensions
+            shapes = [arr.shape[1] for arr in arrays]
+            if len(set(shapes)) > 1:
+                if showInfo > 0:
+                    print(f'Warning: Data arrays for {key} have different dimensions: {shapes}')
+                # Pad data arrays to match maximum dimensions
+                max_cols = max(shapes)
+                padded_arrays = []
+                for arr in arrays:
+                    if arr.shape[1] < max_cols:
+                        pad_width = ((0, 0), (0, max_cols - arr.shape[1]))
+                        padded_arr = np.pad(arr, pad_width, mode='constant', constant_values=np.nan)
+                        padded_arrays.append(padded_arr)
+                    else:
+                        padded_arrays.append(arr)
+                D_merged[key] = np.vstack(padded_arrays)
+            else:
+                D_merged[key] = np.vstack(arrays)
+    
+    # Create M4 array (source file indices) - must be shape (Ntotal, 1)
+    M_merged['M4'] = np.array(M4_values).reshape(-1, 1)
+    
+    # Write merged file
+    if showInfo > 1:
+        print('.. Writing merged file')
+    
+    with h5py.File(f_prior_merged_h5, 'w') as f_out:
+        # Write all model parameters including M4
+        for key, data in M_merged.items():
+            f_out.create_dataset(key, data=data)
+        
+        # Write all data arrays
+        for key, data in D_merged.items():
+            f_out.create_dataset(key, data=data)
+        
+        # Copy attributes from first file and update
+        with h5py.File(f_prior_h5_files[0], 'r') as f_first:
+            for attr_name, attr_value in f_first.attrs.items():
+                f_out.attrs[attr_name] = attr_value
+        
+        # Set M4 as discrete parameter with proper attributes
+        if 'M4' in f_out:
+            f_out['M4'].attrs['is_discrete'] = 1  # Mark as discrete
+            f_out['M4'].attrs['name'] = 'Source File Index'
+            f_out['M4'].attrs['x'] = np.array([0])  # Single feature dimension (like morrill example)
+            f_out['M4'].attrs['clim'] = [0.5, nf + 0.5]  # Colormap limits for 1-based indexing
+            
+            # Create class names from filenames
+            class_names = []
+            for f_name in f_prior_h5_files:
+                # Extract meaningful name from filename
+                base_name = f_name.replace('.h5', '').replace('PRIOR_', '')
+                class_names.append(base_name)
+            
+            f_out['M4'].attrs['class_name'] = [name.encode('utf-8') for name in class_names]
+            f_out['M4'].attrs['class_id'] = np.arange(1, nf + 1)  # 1-based class IDs
+        
+        # Copy attributes from existing model parameters to maintain consistency
+        with h5py.File(f_prior_h5_files[0], 'r') as f_first:
+            # Copy attributes from other M parameters while preserving their continuous nature
+            for key in M_merged.keys():
+                if key != 'M4' and key in f_first:
+                    for attr_name, attr_value in f_first[key].attrs.items():
+                        if attr_name in ['is_discrete', 'name', 'method', 'clim', 'cmap']:
+                            f_out[key].attrs[attr_name] = attr_value
+                        elif attr_name in ['x', 'z']:
+                            # Update x/z attributes to match padded dimensions
+                            new_dim = M_merged[key].shape[1]
+                            f_out[key].attrs[attr_name] = np.arange(new_dim)
+        
+        # Add merge-specific attributes
+        f_out.attrs['merged_from_files'] = [f.encode('utf-8') for f in f_prior_h5_files]
+        f_out.attrs['n_merged_files'] = nf
+        f_out.attrs['samples_per_file'] = sample_counts
+        f_out.attrs['M4_description'] = 'Source file index (0-based) - DISCRETE parameter'
+    
+    if showInfo > 0:
+        total_samples = sum(sample_counts)
+        print('Successfully merged %d samples from %d files' % (total_samples, nf))
+        print('Added M4 parameter tracking source file indices')
+    
+    return f_prior_merged_h5
 
 
 def read_usf(file_path: str) -> Dict[str, Any]:

@@ -55,6 +55,7 @@ from integrate.integrate_io import get_case_data
 from integrate.integrate_io import write_data_gaussian
 from integrate.integrate_io import write_data_multinomial
 from integrate.integrate_io import check_data
+from integrate.integrate_io import merge_prior
 from integrate.integrate_io import merge_data
 from integrate.integrate_io import merge_posterior
 from integrate.integrate_io import read_usf
