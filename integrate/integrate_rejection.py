@@ -37,7 +37,9 @@ def integrate_rejection(f_prior_h5='prior.h5',
                               Nchunks=0,
                               Ncpu=0,
                               parallel=True,
-                              use_N_best=0,  
+                              use_N_best=0,
+                              progress_callback=None,
+                              console_progress=None,
                               **kwargs):
     """
     Perform probabilistic inversion using rejection sampling.
@@ -88,8 +90,14 @@ def integrate_rejection(f_prior_h5='prior.h5',
     use_N_best : int, optional
         Use only the N best-fitting samples (0=disabled).
         Default is 0.
+    progress_callback : callable, optional
+        Callback function for progress updates. Called as progress_callback(current, total, info_dict).
+        Default is None (no callback).
+    console_progress : bool, optional
+        Whether to show console TQDM progress bar. If None, auto-detects based on progress_callback.
+        Default is None.
     **kwargs : dict
-        Additional keyword arguments including showInfo, updatePostStat, post_dir, progress_callback.
+        Additional keyword arguments including showInfo, updatePostStat, post_dir.
     
     Returns
     -------
@@ -120,13 +128,43 @@ def integrate_rejection(f_prior_h5='prior.h5',
     Ncpu = kwargs.get('N_cpu', Ncpu) # Allow using N_cpu instead of Ncpu
     Nchunks = kwargs.get('N_chunks', Nchunks) # Allow using N_chunks instead of Nchunks
     posterior_output_path = kwargs.get('post_dir', os.getcwd())
+    
+    # Setup progress callback functionality
+    if console_progress is None:
+        # Auto-detect: disable console if callback provided
+        console_progress = (progress_callback is None)
+    
+    def update_progress(current, total, extra_info=None):
+        """Update both TQDM and GUI callback"""
+        if progress_callback:
+            try:
+                info = {
+                    'data_point': current,
+                    'total_points': total,
+                    'phase': extra_info.get('phase', 'processing') if extra_info else 'processing',
+                    'status': extra_info.get('status', '') if extra_info else ''
+                }
+                if extra_info:
+                    info.update(extra_info)
+                progress_callback(current, total, info)
+            except Exception as e:
+                # Don't break main process on callback error
+                if showInfo > 0:
+                    print(f"Progress callback error: {e}")
+                    import traceback
+                    traceback.print_exc()
+    
+    # Note: TQDM disabling is handled in individual tqdm() calls via disable parameter
 
     if Ncpu < 1 :
         Ncpu =  int(multiprocessing.cpu_count())
         # Set Ncpu to be min of Ncpu and 8
         # as no gain is expected from using more than 8 processors
-        Ncpu = min(Ncpu, 8) 
-
+        Ncpu = min(Ncpu, 8)
+    
+    # Initial progress update - starting process
+    if progress_callback:
+        update_progress(0, 1, {'phase': 'initializing', 'status': 'Starting rejection sampling'})
 
     # Set default f_post_h5 filename if not set    
     if len(f_post_h5)==0:
@@ -284,6 +322,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
                                         nr=nr,
                                         use_N_best=use_N_best,
                                         progress_callback=progress_callback,
+                                        console_progress=console_progress,
                                         **kwargs
                                         )
         
@@ -322,9 +361,19 @@ def integrate_rejection(f_prior_h5='prior.h5',
         f_post.attrs['f5_prior'] = f_prior_h5
         f_post.attrs['f5_data'] = f_data_h5
         f_post.attrs['N_use'] = N_use
+    
+    # Update progress - saving results
+    if progress_callback:
+        update_progress(len(ip_range), len(ip_range), {'phase': 'saving', 'status': 'Results saved to HDF5 file'})
 
     if updatePostStat:
+        if progress_callback:
+            update_progress(len(ip_range), len(ip_range), {'phase': 'post_processing', 'status': 'Computing posterior statistics'})
         ig.integrate_posterior_stats(f_post_h5, **kwargs)
+    
+    # Final progress update - completion
+    if progress_callback:
+        update_progress(len(ip_range), len(ip_range), {'phase': 'completed', 'status': 'Integration completed successfully'})
 
     #return f_post_h5 T_all, EV_all, i_use_all
     return f_post_h5
@@ -417,10 +466,11 @@ def integrate_rejection_range(D,
     use_N_best = kwargs.get('use_N_best', 0)
     #print("use_N_best=%d" % use_N_best)
     showInfo = kwargs.get('showInfo', 0)
+    console_progress = kwargs.get('console_progress', True)
     if (showInfo<0):
         disableTqdm=True
     else:
-        disableTqdm=False
+        disableTqdm=not console_progress
     
     useRandomData = kwargs.get('useRandomData', True)
     #useRandomData = kwargs.get('useRandomData', False)
@@ -495,17 +545,24 @@ def integrate_rejection_range(D,
         print('len(class_id_list)',len(class_id_list))
 
     
+    # Update progress - starting main processing
+    if progress_callback:
+        update_progress(0, len(ip_range), {'phase': 'rejection_sampling', 'status': 'Processing data points'})
+    
     # THIS IS THE ACTUAL INVERSION!!!!
     # Start looping over the data points
-    for j in tqdm(range(len(ip_range)), miniters=10, disable=disableTqdm, desc='rejection', leave=False):
-        # Call progress callback if provided
-        if progress_callback is not None:
-            try:
-                progress_callback(j, len(ip_range))
-            except:
-                pass  # Ignore callback errors to not break main execution
-        
+    iterator = tqdm(range(len(ip_range)), miniters=10, disable=not console_progress, desc='rejection', leave=False)
+    
+    for j in iterator:
         ip = ip_range[j] # This is the index of the data point to invert
+        
+        # Update progress for this data point
+        if progress_callback:
+            update_progress(j + 1, len(ip_range), {
+                'phase': 'rejection_sampling',
+                'status': f'Processing data point {j+1}/{len(ip_range)}',
+                'current_ip': ip
+            })
         t=[]
         N = D[0].shape[0]
         NDsets = len(id_use)

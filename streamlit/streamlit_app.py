@@ -167,6 +167,56 @@ def get_file_info_from_path(file_path, file_type="prior"):
 
 # File upload function removed - using direct file paths instead
 
+def create_streamlit_progress_callback(progress_bar, status_text, phase_text, details_container):
+    """Create a progress callback function for Streamlit interface."""
+    def streamlit_progress_callback(current, total, info):
+        """Handle progress updates from integrate_rejection"""
+        try:
+            # Update progress bar
+            if total > 0:
+                percentage = min(current / total, 1.0)
+                progress_bar.progress(percentage)
+            
+            # Update status text
+            phase = info.get('phase', 'processing')
+            status = info.get('status', '')
+            
+            # Phase-specific icons and messages
+            phase_icons = {
+                'initializing': '⚙️',
+                'loading_data': '📂',
+                'validation': '✅', 
+                'rejection_sampling': '🔄',
+                'saving': '💾',
+                'post_processing': '📊',
+                'completed': '🎉'
+            }
+            
+            icon = phase_icons.get(phase, '🔄')
+            
+            # Update displays
+            if phase == 'rejection_sampling' and total > 0:
+                percentage = (current / total) * 100
+                status_text.text(f"{icon} Processing data points: {current:,}/{total:,} ({percentage:.1f}%)")
+                phase_text.text(f"Phase: {phase.replace('_', ' ').title()} - {status}")
+            elif status:
+                status_text.text(f"{icon} {status}")
+                phase_text.text(f"Phase: {phase.replace('_', ' ').title()}")
+            else:
+                status_text.text(f"{icon} {phase.replace('_', ' ').title()}...")
+                phase_text.text(f"Phase: {phase.replace('_', ' ').title()}")
+            
+            # Show additional details for active processing
+            if phase == 'rejection_sampling' and 'current_ip' in info:
+                with details_container:
+                    st.text(f"Current data point index: {info['current_ip']}")
+        
+        except Exception as e:
+            # Don't break the main process on display errors
+            logger.warning(f"Progress display error: {e}")
+    
+    return streamlit_progress_callback
+
 def main():
     """Main Streamlit application."""
     
@@ -437,58 +487,79 @@ def main():
             
             # Set output path
             if output_name.strip():
-                output_path = os.path.join(tempfile.mkdtemp(), output_name)
-                if not output_path.endswith('.h5'):
-                    output_path += '.h5'
+                import tempfile as temp_module
+                import os as os_module
+                temp_dir = temp_module.mkdtemp()
+                output_filename = output_name.strip()
+                if not output_filename.endswith('.h5'):
+                    output_filename += '.h5'
+                output_path = os_module.path.join(temp_dir, output_filename)
             else:
                 output_path = ""  # Let function auto-generate
             
-            # Execute integrate_rejection directly with simple progress indication
+            # Execute integrate_rejection with enhanced progress tracking
             try:
-                st.info("🔄 Running rejection sampling... This may take several minutes.")
+                st.info("🔄 Starting rejection sampling... This process can take several minutes to hours depending on data size.")
                 
-                # Create a simple progress indicator
+                # Create enhanced progress indicators
                 progress_bar = st.progress(0)
                 status_text = st.empty()
-                status_text.text("⏳ Initializing rejection sampling...")
+                phase_text = st.empty()
+                details_container = st.container()
                 
-                # Show the function is running
-                with st.spinner("Running integrate_rejection..."):
-                    
-                    # Execute the function directly
-                    result_file = ig.integrate_rejection(
-                        f_prior_h5=prior_file_path,
-                        f_data_h5=data_file_path,
-                        f_post_h5=output_path,
-                        N_use=N_use,
-                        id_use=id_use_list,
-                        ip_range=ip_range_list,
-                        nr=nr,
-                        autoT=autoT,
-                        T_base=T_base,
-                        Nchunks=Nchunks,
-                        Ncpu=Ncpu,
-                        parallel=parallel,
-                        use_N_best=use_N_best,
-                        showInfo=showInfo,
-                        updatePostStat=updatePostStat,
-                    )
+                # Initialize progress display
+                status_text.text("⚙️ Initializing rejection sampling...")
+                phase_text.text("Phase: Initialization")
+                
+                # Create progress callback function
+                progress_callback = create_streamlit_progress_callback(
+                    progress_bar, status_text, phase_text, details_container
+                )
+                
+                # Execute the function with progress callback
+                result_file = ig.integrate_rejection(
+                    f_prior_h5=prior_file_path,
+                    f_data_h5=data_file_path,
+                    f_post_h5=output_path,
+                    N_use=N_use,
+                    id_use=id_use_list,
+                    ip_range=ip_range_list,
+                    nr=nr,
+                    autoT=autoT,
+                    T_base=T_base,
+                    Nchunks=Nchunks,
+                    Ncpu=Ncpu,
+                    parallel=parallel,
+                    use_N_best=use_N_best,
+                    showInfo=showInfo,
+                    updatePostStat=updatePostStat,
+                    progress_callback=progress_callback,
+                    console_progress=False  # Disable console TQDM for cleaner web interface
+                )
                 
                 # Store results in session state
                 st.session_state.execution_complete = True
                 st.session_state.result_file = result_file
                 
-                # Update final progress
-                progress_bar.progress(100)
-                status_text.text("✅ Rejection sampling completed successfully!")
+                # Final success display
+                progress_bar.progress(1.0)
+                status_text.text("🎉 Rejection sampling completed successfully!")
+                phase_text.text("Phase: Completed")
                 
                 st.success("✅ Rejection sampling completed successfully!")
+                st.balloons()  # Celebration animation
                 
                 # No cleanup needed - using files directly from disk
                 
             except Exception as e:
                 st.error(f"❌ Error during execution: {str(e)}")
-                st.code(traceback.format_exc())
+                with st.expander("🔍 Error Details (Click to expand)"):
+                    st.code(traceback.format_exc())
+                
+                # Reset progress display on error
+                progress_bar.progress(0)
+                status_text.text("❌ Execution failed")
+                phase_text.text("Phase: Error")
                 
                 # No cleanup needed - using files directly from disk
         

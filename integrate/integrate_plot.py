@@ -412,7 +412,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
     return
 
 
-def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcopy=False, **kwargs):
+def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcopy=False, ax=None, **kwargs):
     """
     Plot survey geometry data from INTEGRATE HDF5 files.
 
@@ -443,6 +443,9 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         - 'id': data point indices only
     hardcopy : bool, optional
         Save plots as PNG files with descriptive names (default is False).
+    ax : matplotlib.axes.Axes, optional
+        Matplotlib axes object to plot on. If None, creates new figures 
+        (default is None).
     **kwargs : dict
         Additional keyword arguments passed to matplotlib scatter function.
 
@@ -483,30 +486,46 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
 
     tit = f_png = '%s_%d_%d.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
 
+    # When ax is provided, default to showing LINE data if pl='all'
+    if ax is not None and pl == 'all':
+        pl = 'LINE'
+    
     if (pl=='all') or (pl=='LINE'):
-        plt.figure(1, figsize=(20, 10))
-        plt.plot(X,Y,'.',color='lightgray', zorder=-1, markersize=1)
-        plt.scatter(X[ii],Y[ii],c=LINE[ii],s=s,cmap='jet',**kwargs)            
-        plt.grid()
-        plt.xlabel('X')
-        plt.ylabel('Y')
-        plt.colorbar(label='LINE')
-        plt.title('%s - LINE' % tit)
-        plt.axis('equal')
-        if hardcopy:
-            # get filename without extension        
-            f_png = '%s_%d_%d_LINE.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
-            plt.savefig(f_png)
-        plt.show()
+        if ax is None:
+            plt.figure(1, figsize=(20, 10))
+            current_ax = plt.gca()
+        else:
+            current_ax = ax
+        
+        current_ax.plot(X,Y,'.',color='lightgray', zorder=-1, markersize=1)
+        scatter = current_ax.scatter(X[ii],Y[ii],c=LINE[ii],s=s,cmap='jet',**kwargs)            
+        current_ax.grid()
+        current_ax.set_xlabel('X')
+        current_ax.set_ylabel('Y')
+        
+        if ax is None:
+            plt.colorbar(scatter, label='LINE')
+            plt.title('%s - LINE' % tit)
+            plt.axis('equal')
+            if hardcopy:
+                # get filename without extension        
+                f_png = '%s_%d_%d_LINE.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
+                plt.savefig(f_png)
+            plt.show()
+        else:
+            current_ax.set_title('%s - LINE' % tit)
+            current_ax.set_aspect('equal')
     
 
-    if (pl=='all') or (pl=='ELEVATION'):
+    if ax is None and ((pl=='all') or (pl=='ELEVATION')):
         plt.figure(1, figsize=(20, 10))
-        plt.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap='jet',**kwargs)            
-        plt.grid()
-        plt.xlabel('X')
-        plt.ylabel('Y')
-        plt.colorbar(label='ELEVATION')
+        current_ax = plt.gca()
+            
+        scatter = current_ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap='jet',**kwargs)            
+        current_ax.grid()
+        current_ax.set_xlabel('X')
+        current_ax.set_ylabel('Y')
+        plt.colorbar(scatter, label='ELEVATION')
         plt.title('ELEVATION')
         plt.axis('equal')
         if hardcopy:
@@ -514,20 +533,36 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             f_png = '%s_%d_%d_ELEVATION.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
             plt.savefig(f_png)
         plt.show()
+    elif ax is not None and pl == 'ELEVATION':
+        scatter = ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap='jet',**kwargs)            
+        ax.grid()
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_title('ELEVATION')
+        ax.set_aspect('equal')
 
-    if (pl=='all') or (pl=='id'):
+    if ax is None and ((pl=='all') or (pl=='id')):
         plt.figure(1, figsize=(20, 10))
-        plt.scatter(X[ii],Y[ii],c=ii,s=s,cmap='jet',**kwargs)  
-        plt.grid()
-        plt.xlabel('X')
-        plt.ylabel('Y')
-        plt.colorbar(label='id')
+        current_ax = plt.gca()
+            
+        scatter = current_ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap='jet',**kwargs)  
+        current_ax.grid()
+        current_ax.set_xlabel('X')
+        current_ax.set_ylabel('Y')
+        plt.colorbar(scatter, label='id')
         plt.title('id')
         plt.axis('equal')
         if hardcopy:
             # get filename without extension        
             f_png = '%s_%d_%d_id.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
             plt.savefig(f_png)
+    elif ax is not None and pl == 'id':
+        scatter = ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap='jet',**kwargs)  
+        ax.grid()
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_title('id')
+        ax.set_aspect('equal')
 
     return
 
