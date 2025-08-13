@@ -58,6 +58,7 @@ Other
    notebooks/integrate_esbjerg_seperate_gex.ipynb
    notebooks/integrate_merge_data.ipynb
    notebooks/integrate_timing_example.ipynb
+   notebooks/integrate_merge_prior.ipynb
    
 
 
