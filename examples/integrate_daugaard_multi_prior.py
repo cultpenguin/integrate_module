@@ -42,44 +42,65 @@ if not os.path.isfile(file_gex):
 
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
+# %% Load Dauagard data and increase std by a factor of 3
+inflateNoise = True
+if inflateNoise:
+    gf=3
+    print("="*60)
+    print("Increasing noise level (std) by a factor of %d" % gf)
+    print("="*60)
+    D = ig.load_data(f_data_h5)
+    D_obs = D['d_obs'][0]
+    D_std = D['d_std'][0]*gf
+    f_data_old_h5 = f_data_h5
+    f_data_h5 = 'DAUGAARD_AVG_highnoise.h5'
+    ig.copy_hdf5_file(f_data_old_h5, f_data_h5)
+    ig.write_data_gaussian(D_obs, D_std=D_std, f_data_h5=f_data_h5, file_gex=file_gex)
+
+    ig.plot_data(f_data_old_h5)
+    ig.plot_data(f_data_h5)
 
 # %% [markdown]
 # ## Compute prior data from prior model if they do not already exist
 
 # %%
 # A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-N_use = 2000000
-        
 f_prior_h5_list = []
-f_prior_h5_list.append('prior_detailed_invalleys_N2000000_dmax90.h5')
-f_prior_h5_list.append('prior_detailed_outvalleys_N2000000_dmax90.h5')
-
-f_prior_data_h5_list = []
-f_prior_data_h5_list.append('prior_detailed_invalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
-f_prior_data_h5_list.append('prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+f_prior_h5_list.append('daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+f_prior_h5_list.append('daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 
 # Go through f_prior_data_h5_list. If the file does not exist the compute, it by runinng ig.prior_data_gaaem
+f_prior_data_h5_list = []
 for i in range(len(f_prior_h5_list)):
-    f_prior_data_h5= f_prior_data_h5_list[i]
     f_prior_h5= f_prior_h5_list[i]
-    if not os.path.isfile(f_prior_data_h5):
-        print('Prior data file %s does not exist. Computing it.' % f_prior_data_h5)
-        # Compute prior data
-        f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, N=N_use)
-        f_prior_data_h5_list.append(f_prior_data_h5)
-    else:
-        print('Using existing prior data file %s' % f_prior_data_h5)
+    #ig.integrate_update_prior_attributes(f_prior_h5)
+    # check if f_prior_h5 as a datasets called '/D1'
+    with h5py.File(f_prior_h5, 'r') as f:
+        if '/D1' not in f:
+            #print('Dataset /D1 not found in %s' % f_prior_h5)
+            print('Prior data file %s does not exist. Computing it.' % f_prior_h5)
+            # Compute prior data
+            f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, N=N_use)
+            f_prior_data_h5_list.append(f_prior_data_h5)
 
+        else:
+            print('Dataset /D1 found in %s' % f_prior_h5)
+            f_prior_data_h5_list.append(f_prior_h5)
+            print('Using existing prior data file %s' % f_prior_h5)
 
+    ig.plot_prior_stats(f_prior_h5)
 
 # %%
-f_data_h5 = 'DAUGAARD_AVG.h5'
 
 f_post_h5_list = []
 
-N_use = 20000
-N_use = 200000
-#N_use = 2000000
+N_use = 1000
+N_use = 10000
+N_use = 100000
+N_use = 1000000
+
+autoT=True
+T_base = 1.0
 
 for f_prior_data_h5 in f_prior_data_h5_list:
     print('Using prior model file %s' % f_prior_data_h5)
@@ -89,8 +110,8 @@ for f_prior_data_h5 in f_prior_data_h5_list:
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
                                        N_use = N_use, 
                                        parallel=1, 
-                                       T_base = 10.0,
-                                       autoT=True,
+                                       T_base = T_base,
+                                       autoT=autoT,
                                        updatePostStat=updatePostStat,                                     
                                        showInfo=1)
     f_post_h5_list.append(f_post_h5)
@@ -217,3 +238,65 @@ plt.savefig('DAUGAARD_N%07d_EV_mode.png' % (N_use), dpi=600)
 # %%
 
 
+
+
+# %% [markdown]
+# ## Combine the two priors and invert with them as one prior
+# As an alternative to using the evidence to compute the posterior hypothesis probability, two 
+# prior realizations from both priors can be combined into realizations of a single prior.
+# This combined prior has an extra parameter '/M3' in this case, which represents the ID of the original hypothesis or prior model used.
+
+
+# %%
+# Merge the prior models and data
+f_prior_data_h5_merged = ig.merge_prior(f_prior_data_h5_list)       
+ig.integrate_update_prior_attributes(f_prior_data_h5_merged)       
+ig.plot_prior_stats(f_prior_data_h5_merged)
+
+# %%
+
+#N_use = 1100
+autoT = True
+T_base = 1
+
+N_use_merged = 2*N_use
+if not autoT:
+    N_use_merged = N_use_merged-1
+
+# Sample the posterior
+#f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
+updatePostStat =True
+f_post_data_h5_merged = ig.integrate_rejection(f_prior_data_h5_merged, f_data_h5, 
+                            N_use = N_use_merged, 
+                            parallel=1, 
+                            T_base = T_base,
+                            autoT=autoT,
+                            updatePostStat=updatePostStat,                                     
+                            showInfo=1)
+
+
+# Plot P(InValley)
+X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+# load 'M4/P' from f_post_data_h5_merged
+with h5py.File(f_post_data_h5_merged, 'r') as f_post:
+    M4_P = f_post['/M3/P'][:]
+
+plt.figure(figsize=(10,6), dpi=600)
+plt.subplot(1,1,1)
+plt.plot(X, Y, '.', markersize=3, color='gray')
+plt.scatter(X, Y, c=M4_P[:,0], cmap='RdBu_r', s=1, vmin=0, vmax=1, zorder=2)
+plt.tight_layout()
+plt.axis('equal')
+plt.colorbar()
+plt.grid()
+plt.title('P(In valley) - merged')
+plt.xlabel('UTMX [m]')
+plt.ylabel('UTMY [m]')
+plt.savefig('DAUGAARD_N%07d_EV_Pin_Tbase%d_aT%d_merged.png' % (N_use_merged,T_base,autoT), dpi=600)
+plt.show()
+
+# %%
+#% Plot Profiles
+ig.plot_profile(f_post_data_h5_merged, i1=0, i2=2000, cmap='jet', hardcopy=hardcopy)
+plt.show()
+# %%

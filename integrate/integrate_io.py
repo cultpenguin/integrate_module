@@ -2291,9 +2291,9 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
     Merge multiple prior model files into a single combined HDF5 file.
 
     Combines prior model parameters and forward-modeled data from multiple
-    HDF5 files into a unified dataset. Creates a new model parameter M4 that
-    tracks the source file index for each sample, enabling traceability of
-    merged data origins.
+    HDF5 files into a unified dataset. Creates a new model parameter (MX where 
+    X is the next available number) that tracks the source file index for each 
+    sample, enabling traceability of merged data origins.
 
     Parameters
     ----------
@@ -2324,22 +2324,22 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
     The merging process:
     - Concatenates all model parameters (M1, M2, M3, ...) across files
     - Concatenates all data arrays (D1, D2, D3, ...) across files  
-    - Creates new M4 parameter containing source file indices (0-based)
+    - Creates new MX parameter (where X is next available number) containing source file indices (1-based)
     - Preserves HDF5 attributes from the first file
     - Updates metadata to reflect merged status
 
     **Source File Tracking:**
-    The new M4 parameter is a DISCRETE integer array with shape (Ntotal, 1) where
+    The new MX parameter is a DISCRETE integer array with shape (Ntotal, 1) where
     each value indicates which input file the corresponding sample originated from:
-    - 0: samples from first file in f_prior_h5_files
-    - 1: samples from second file in f_prior_h5_files
+    - 1: samples from first file in f_prior_h5_files
+    - 2: samples from second file in f_prior_h5_files
     - etc.
     
-    The M4 parameter is properly marked with:
+    The MX parameter is properly marked with:
     - is_discrete = 1 (discrete parameter type)
     - shape = (Ntotal, 1) (consistent with other model parameters)
     - class_name = meaningful names derived from filenames
-    - class_id = [0, 1, 2, ...] (class identifiers)
+    - class_id = [1, 2, 3, ...] (class identifiers)
 
     **File Compatibility:**
     Input files can have different model parameter dimensions (e.g., different
@@ -2375,7 +2375,7 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
     # Initialize storage for merged data
     M_merged = {}  # Model parameters
     D_merged = {}  # Data arrays
-    M4_values = []  # Source file indices
+    source_file_values = []  # Source file indices
     sample_counts = []  # Track samples per file
     
     # First pass: collect all model parameters and data arrays
@@ -2388,7 +2388,7 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
             if 'M1' in f:
                 n_samples = f['M1'].shape[0]
                 sample_counts.append(n_samples)
-                M4_values.extend([i + 1] * n_samples)  # Add file index for each sample (1-based for discrete compatibility)
+                source_file_values.extend([i + 1] * n_samples)  # Add file index for each sample (1-based for discrete compatibility)
             else:
                 raise ValueError(f'File {f_prior_h5} does not contain M1 dataset')
             
@@ -2457,8 +2457,18 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
             else:
                 D_merged[key] = np.vstack(arrays)
     
-    # Create M4 array (source file indices) - must be shape (Ntotal, 1)
-    M_merged['M4'] = np.array(M4_values).reshape(-1, 1)
+    # Determine next available model parameter number
+    existing_m_params = [key for key in M_merged.keys() if key.startswith('M') and key[1:].isdigit()]
+    if existing_m_params:
+        param_numbers = [int(key[1:]) for key in existing_m_params]
+        next_param_num = max(param_numbers) + 1
+    else:
+        next_param_num = 1
+    
+    next_param_key = f'M{next_param_num}'
+    
+    # Create the new model parameter array (source file indices) - must be shape (Ntotal, 1)
+    M_merged[next_param_key] = np.array(source_file_values).reshape(-1, 1)
     
     # Write merged file
     if showInfo > 1:
@@ -2478,12 +2488,12 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
             for attr_name, attr_value in f_first.attrs.items():
                 f_out.attrs[attr_name] = attr_value
         
-        # Set M4 as discrete parameter with proper attributes
-        if 'M4' in f_out:
-            f_out['M4'].attrs['is_discrete'] = 1  # Mark as discrete
-            f_out['M4'].attrs['name'] = 'Source File Index'
-            f_out['M4'].attrs['x'] = np.array([0])  # Single feature dimension (like morrill example)
-            f_out['M4'].attrs['clim'] = [0.5, nf + 0.5]  # Colormap limits for 1-based indexing
+        # Set the new model parameter as discrete parameter with proper attributes
+        if next_param_key in f_out:
+            f_out[next_param_key].attrs['is_discrete'] = 1  # Mark as discrete
+            f_out[next_param_key].attrs['name'] = 'Source File Index'
+            f_out[next_param_key].attrs['x'] = np.array([0])  # Single feature dimension (like morrill example)
+            f_out[next_param_key].attrs['clim'] = [0.5, nf + 0.5]  # Colormap limits for 1-based indexing
             
             # Create class names from filenames
             class_names = []
@@ -2492,14 +2502,14 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
                 base_name = f_name.replace('.h5', '').replace('PRIOR_', '')
                 class_names.append(base_name)
             
-            f_out['M4'].attrs['class_name'] = [name.encode('utf-8') for name in class_names]
-            f_out['M4'].attrs['class_id'] = np.arange(1, nf + 1)  # 1-based class IDs
+            f_out[next_param_key].attrs['class_name'] = [name.encode('utf-8') for name in class_names]
+            f_out[next_param_key].attrs['class_id'] = np.arange(1, nf + 1)  # 1-based class IDs
         
         # Copy attributes from existing model parameters to maintain consistency
         with h5py.File(f_prior_h5_files[0], 'r') as f_first:
             # Copy attributes from other M parameters while preserving their continuous nature
             for key in M_merged.keys():
-                if key != 'M4' and key in f_first:
+                if key != next_param_key and key in f_first:
                     for attr_name, attr_value in f_first[key].attrs.items():
                         if attr_name in ['is_discrete', 'name', 'method', 'clim', 'cmap']:
                             f_out[key].attrs[attr_name] = attr_value
@@ -2512,12 +2522,12 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
         f_out.attrs['merged_from_files'] = [f.encode('utf-8') for f in f_prior_h5_files]
         f_out.attrs['n_merged_files'] = nf
         f_out.attrs['samples_per_file'] = sample_counts
-        f_out.attrs['M4_description'] = 'Source file index (0-based) - DISCRETE parameter'
+        f_out.attrs[f'{next_param_key}_description'] = 'Source file index (1-based) - DISCRETE parameter'
     
     if showInfo > 0:
         total_samples = sum(sample_counts)
         print('Successfully merged %d samples from %d files' % (total_samples, nf))
-        print('Added M4 parameter tracking source file indices')
+        print(f'Added {next_param_key} parameter tracking source file indices')
     
     return f_prior_merged_h5
 

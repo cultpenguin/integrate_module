@@ -49,8 +49,8 @@ print("# Running Quick Timing Test")
 print("="*50)
 
 # Define test parameters - small arrays for quick demonstration
-N_arr_quick = [100, 500, 1000]  # Small dataset sizes for quick test
-Nproc_arr_quick = [1, 2, 4]     # Limited processor counts
+N_arr_quick = [100, 1000, 10000]  # Small dataset sizes for quick test
+Nproc_arr_quick = [1, 2, 4, 8]     # Limited processor counts
 
 # Run timing computation
 timing_file = ig.timing_compute(N_arr=N_arr_quick, Nproc_arr=Nproc_arr_quick)
