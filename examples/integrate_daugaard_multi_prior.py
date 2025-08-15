@@ -23,6 +23,8 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import h5py
+
+from integrate.integrate_io import copy_prior
 hardcopy=True
 
 # %% [markdown]
@@ -43,9 +45,9 @@ if not os.path.isfile(file_gex):
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% Load Dauagard data and increase std by a factor of 3
-inflateNoise = True
+inflateNoise = False
 if inflateNoise:
-    gf=3
+    gf=5
     print("="*60)
     print("Increasing noise level (std) by a factor of %d" % gf)
     print("="*60)
@@ -57,8 +59,8 @@ if inflateNoise:
     ig.copy_hdf5_file(f_data_old_h5, f_data_h5)
     ig.write_data_gaussian(D_obs, D_std=D_std, f_data_h5=f_data_h5, file_gex=file_gex)
 
-    ig.plot_data(f_data_old_h5)
-    ig.plot_data(f_data_h5)
+    #ig.plot_data(f_data_old_h5)
+    #ig.plot_data(f_data_h5)
 
 # %% [markdown]
 # ## Compute prior data from prior model if they do not already exist
@@ -68,6 +70,30 @@ if inflateNoise:
 f_prior_h5_list = []
 f_prior_h5_list.append('daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 f_prior_h5_list.append('daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+
+#%% Split PRIOR mdoel and data into two
+# read f_prior_h5, and split it itp two priors with half the data in each
+# first use ig.load_prior_data() and ig.save_prior_data()
+useSubset = True
+f_prior_h5 = f_prior_h5_list[0]
+
+if useSubset:
+    # This can probably be done with more elegance!
+    D, M, idx = ig.load_prior(f_prior_h5)
+    Nd = D[0].shape[0]
+    nsubsets = 2
+    f_prior_h5_list = []
+    Nd_sub = int(np.ceil(Nd/2))
+    for i in range(nsubsets):   
+        # idx should go from i*Nd_sub to (i+1)*Nd_sub, unless in the last iteration
+        # from i*Nd_sub to Nd
+        idx = np.arange(i*Nd_sub, Nd) if i == nsubsets - 1 else np.arange(i*Nd_sub, (i+1)*Nd_sub)
+
+        f_prior_data_h5 = 'prior_data_%02d_%d_%d.h5' % (i+1,idx[0],idx[-1])
+        
+        ig.copy_prior(f_prior_h5, f_prior_data_h5, idx=idx)
+        f_prior_h5_list.append(f_prior_data_h5)
+#%%
 
 # Go through f_prior_data_h5_list. If the file does not exist the compute, it by runinng ig.prior_data_gaaem
 f_prior_data_h5_list = []
@@ -97,7 +123,8 @@ f_post_h5_list = []
 N_use = 1000
 N_use = 10000
 N_use = 100000
-N_use = 1000000
+N_use = 200000
+#N_use = 1000000
 
 autoT=True
 T_base = 1.0

@@ -36,6 +36,7 @@ from integrate.integrate import sample_posterior_multiple_hypotheses
 from integrate.integrate import timing_compute
 from integrate.integrate import timing_plot
 
+from integrate.integrate_io import copy_prior
 from integrate.integrate_io import load_prior
 from integrate.integrate_io import load_prior_data
 from integrate.integrate_io import save_prior_data

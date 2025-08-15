@@ -37,7 +37,7 @@ import h5py
 import re
 from typing import Dict, List, Union, Any
 
-def load_prior(f_prior_h5, N_use=0, idx = [], Randomize=False):
+def load_prior(f_prior_h5, N_use=0, idx = [], Randomize=False, ii=None):
     """
     Load prior model parameters and data from HDF5 file.
 
@@ -56,6 +56,10 @@ def load_prior(f_prior_h5, N_use=0, idx = [], Randomize=False):
         (default is []).
     Randomize : bool, optional
         Whether to randomize the order of loaded samples (default is False).
+    ii : array-like, optional
+        Array of indices specifying which models and data to load. If provided,
+        only len(ii) models and data will be loaded from 'M1', 'M2', ... and 
+        'D1', 'D2', ... datasets using these indices (default is None).
 
     Returns
     -------
@@ -72,13 +76,19 @@ def load_prior(f_prior_h5, N_use=0, idx = [], Randomize=False):
     -----
     This function internally calls load_prior_data() and load_prior_model()
     with consistent indexing to ensure data and model correspondence.
-    Sample selection priority: explicit idx > N_use > all samples.
+    Sample selection priority: ii > explicit idx > N_use > all samples.
     """
-    if len(idx)==0:
+    # If ii is provided, use it as the index selection
+    if ii is not None:
+        ii = np.asarray(ii)
+        D, idx = load_prior_data(f_prior_h5, idx=ii, Randomize=Randomize)
+        M, idx = load_prior_model(f_prior_h5, idx=ii, Randomize=Randomize)
+    elif len(idx)==0:
         D, idx = load_prior_data(f_prior_h5, N_use=N_use, Randomize=Randomize)
+        M, idx = load_prior_model(f_prior_h5, idx=idx, Randomize=Randomize)
     else:
         D, idx = load_prior_data(f_prior_h5, idx=idx, Randomize=Randomize)
-    M, idx = load_prior_model(f_prior_h5, idx=idx, Randomize=Randomize)
+        M, idx = load_prior_model(f_prior_h5, idx=idx, Randomize=Randomize)
     return D, M, idx
 
 
@@ -492,7 +502,7 @@ def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False, **kwargs):
     return id
 
 
-def load_data(f_data_h5, id_arr=[], **kwargs):
+def load_data(f_data_h5, id_arr=[], ii=None, **kwargs):
     """
     Load observational electromagnetic data from HDF5 file.
 
@@ -508,6 +518,10 @@ def load_data(f_data_h5, id_arr=[], **kwargs):
         Dataset identifiers to load (e.g., [1, 2] for D1 and D2).
         Each ID corresponds to a different measurement system or processing
         stage (default is [1]).
+    ii : array-like, optional
+        Array of indices specifying which data points to load from each dataset.
+        If provided, only len(ii) data points will be loaded from each dataset
+        using these indices (default is None).
     **kwargs : dict
         Additional arguments:
         - showInfo : int, verbosity level (0=silent, 1=normal, >1=verbose)
@@ -568,12 +582,25 @@ def load_data(f_data_h5, id_arr=[], **kwargs):
         print('Loading data from %s. ' % f_data_h5, end='')
         print('Using data types: %s' % str(id_arr))
     
+    # Convert ii to numpy array if provided
+    if ii is not None:
+        ii = np.asarray(ii)
+    
     with h5py.File(f_data_h5, 'r') as f_data:
         noise_model = [f_data[f'/D{id}'].attrs.get('noise_model', 'none') for id in id_arr]
-        d_obs = [f_data[f'/D{id}/d_obs'][:] for id in id_arr]
-        d_std = [f_data[f'/D{id}/d_std'][:] if 'd_std' in f_data[f'/D{id}'] else None for id in id_arr]
+        
+        # Load data with selective indexing if ii is provided
+        if ii is not None:
+            d_obs = [f_data[f'/D{id}/d_obs'][ii] for id in id_arr]
+            d_std = [f_data[f'/D{id}/d_std'][ii] if 'd_std' in f_data[f'/D{id}'] else None for id in id_arr]
+            i_use = [f_data[f'/D{id}/i_use'][ii] if 'i_use' in f_data[f'/D{id}'] else None for id in id_arr]
+        else:
+            d_obs = [f_data[f'/D{id}/d_obs'][:] for id in id_arr]
+            d_std = [f_data[f'/D{id}/d_std'][:] if 'd_std' in f_data[f'/D{id}'] else None for id in id_arr]
+            i_use = [f_data[f'/D{id}/i_use'][:] if 'i_use' in f_data[f'/D{id}'] else None for id in id_arr]
+        
+        # Full covariance matrices and id_use are typically not indexed by data points
         Cd = [f_data[f'/D{id}/Cd'][:] if 'Cd' in f_data[f'/D{id}'] else None for id in id_arr]
-        i_use = [f_data[f'/D{id}/i_use'][:] if 'i_use' in f_data[f'/D{id}'] else None for id in id_arr]
         id_use = [f_data[f'/D{id}/id_use'][()] if 'id_use' in f_data[f'/D{id}'] and f_data[f'/D{id}/id_use'].shape == () else f_data[f'/D{id}/id_use'][:] if 'id_use' in f_data[f'/D{id}'] else None for id in id_arr]
         
     for i in range(len(id_arr)):
@@ -1345,70 +1372,244 @@ def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, c
     :param compress: Whether to compress the output dataset. Default is True.
     :type compress: bool, optional
 
-    :return: None
+    :return: output_filename
     """
+    import time
+    
     showInfo = kwargs.get('showInfo', 0)
-    # Open the input file
-    if showInfo>0:
-        print('Trying to copy %s to %s' % (input_filename, output_filename))
-    with h5py.File(input_filename, 'r') as input_file:
+    delay_after_close = kwargs.get('delay_after_close', 0.1)
+    
+    input_file = None
+    output_file = None
+    
+    try:
+        # Open the input file
+        if showInfo > 0:
+            print('Trying to copy %s to %s' % (input_filename, output_filename))
+        
+        input_file = h5py.File(input_filename, 'r')
+        
         # Create the output file
-        with h5py.File(output_filename, 'w') as output_file:
-            # Copy each group/dataset from the input file to the output file
-            #i_use = np.sort(np.random.choice(400000,10,replace=False))
-            i_use = []
-            for name in input_file:
-                if showInfo>0:
-                    print('Copying %s' % name)
-                if isinstance(input_file[name], h5py.Dataset):                    
-                    # If N is specified, only copy the first N elements
+        output_file = h5py.File(output_filename, 'w')
+        
+        # Copy each group/dataset from the input file to the output file
+        i_use = []
+        for name in input_file:
+            if showInfo > 0:
+                print('Copying %s' % name)
+            if isinstance(input_file[name], h5py.Dataset):                    
+                # If N is specified, only copy the first N elements
 
-                    if len(i_use)==0:
-                        N_in = input_file[name].shape[0]
-                        if N is None:
-                            N=N_in
-                        if N>N_in:
-                            N=N_in
-                        if N==N_in:                            
-                            i_use = np.arange(N)
-                        else:
-                            i_use = np.sort(np.random.choice(N_in,N,replace=False))
-
-                    if N<20000:
-                        loadToMemory=False
-
-                    # Read full dataset into memory
-                    if loadToMemory:
-                        # Load all data to memory, before slicing
-                        if showInfo>0:
-                            print('Loading %s to memory' % name)
-                        data_in = input_file[name][:]    
-                        data = data_in[i_use]
+                if len(i_use) == 0:
+                    N_in = input_file[name].shape[0]
+                    if N is None:
+                        N = N_in
+                    if N > N_in:
+                        N = N_in
+                    if N == N_in:                            
+                        i_use = np.arange(N)
                     else:
-                        # Read directly from HDF5 file   
-                        data = input_file[name][i_use]
+                        i_use = np.sort(np.random.choice(N_in, N, replace=False))
 
-                    # Create new dataset in output file with compression
-                    # Convert floating point data to 32-bit precision
-                    if data.dtype.kind == 'f':
-                        data = data.astype(np.float32)
-                        
-                    if compress:
-                        #output_dataset = output_file.create_dataset(name, data=data, compression="lzf")
-                        output_dataset = output_file.create_dataset(name, data=data, compression="gzip", compression_opts=4)
-                    else:
-                        output_dataset = output_file.create_dataset(name, data=data)
-                    # Copy the attributes of the dataset
-                    for key, value in input_file[name].attrs.items():                        
-                        output_dataset.attrs[key] = value
+                if N < 20000:
+                    loadToMemory = False
+
+                # Read full dataset into memory
+                if loadToMemory:
+                    # Load all data to memory, before slicing
+                    if showInfo > 0:
+                        print('Loading %s to memory' % name)
+                    data_in = input_file[name][:]    
+                    data = data_in[i_use]
                 else:
-                    input_file.copy(name, output_file)
+                    # Read directly from HDF5 file   
+                    data = input_file[name][i_use]
 
-            # Copy the attributes of the input file to the output file
-            for key, value in input_file.attrs.items():
-                output_file.attrs[key] = value
+                # Create new dataset in output file with compression
+                # Convert floating point data to 32-bit precision
+                if data.dtype.kind == 'f':
+                    data = data.astype(np.float32)
+                    
+                if compress:
+                    output_dataset = output_file.create_dataset(name, data=data, compression="gzip", compression_opts=4)
+                else:
+                    output_dataset = output_file.create_dataset(name, data=data)
+                # Copy the attributes of the dataset
+                for key, value in input_file[name].attrs.items():                        
+                    output_dataset.attrs[key] = value
+            else:
+                input_file.copy(name, output_file)
 
-        return output_filename
+        # Copy the attributes of the input file to the output file
+        for key, value in input_file.attrs.items():
+            output_file.attrs[key] = value
+
+    except Exception as e:
+        # Clean up files in case of error
+        if output_file is not None:
+            try:
+                output_file.close()
+            except:
+                pass
+        if input_file is not None:
+            try:
+                input_file.close()
+            except:
+                pass
+        # Remove partially created output file
+        try:
+            import os
+            if os.path.exists(output_filename):
+                os.remove(output_filename)
+        except:
+            pass
+        raise e
+    
+    finally:
+        # Ensure files are properly closed
+        if output_file is not None:
+            try:
+                output_file.flush()
+                output_file.close()
+            except:
+                pass
+        if input_file is not None:
+            try:
+                input_file.close()
+            except:
+                pass
+        
+        # Add small delay to ensure file handles are fully released
+        if delay_after_close > 0:
+            time.sleep(delay_after_close)
+
+    return output_filename
+
+def copy_prior(input_filename, output_filename, idx=None, **kwargs):
+    """
+    Copy a PRIOR file (potentially containing M1, M2, ... and D1, D2, ...) 
+    using only a specific subset of data as indicated by idx.
+    
+    :param input_filename: The path to the input PRIOR HDF5 file.
+    :type input_filename: str
+    :param output_filename: The path to the output PRIOR HDF5 file.
+    :type output_filename: str
+    :param idx: Indices to copy. If None, a simple complete copy is made.
+                If set, copy should be made with all attributes, but using only 
+                data ids of M1, M2..., D1, D2... as indicated by idx.
+                Thus if idx=[0,1,2] the size of /M1 should be (3,nd).
+    :type idx: array-like or None, optional
+    
+    :return: output_filename
+    """
+    import time
+    import numpy as np
+    
+    showInfo = kwargs.get('showInfo', 0)
+    delay_after_close = kwargs.get('delay_after_close', 0.1)
+    compress = kwargs.get('compress', True)
+    
+    input_file = None
+    output_file = None
+    
+    try:
+        # Open the input file
+        if showInfo > 0:
+            print('Copying PRIOR file %s to %s' % (input_filename, output_filename))
+            if idx is not None:
+                print('Using subset with %d indices' % len(idx))
+        
+        input_file = h5py.File(input_filename, 'r')
+        
+        # Create the output file
+        output_file = h5py.File(output_filename, 'w')
+        
+        # Convert idx to numpy array if provided
+        if idx is not None:
+            idx = np.asarray(idx)
+        
+        # Copy each group/dataset from the input file to the output file
+        for name in input_file:
+            if showInfo > 0:
+                print('Copying %s' % name)
+                
+            if isinstance(input_file[name], h5py.Dataset):
+                # Determine if this is a dataset that should be subset
+                dataset = input_file[name]
+                
+                if idx is not None and dataset.ndim > 0:
+                    # Apply subsetting to the first dimension
+                    if len(idx) > dataset.shape[0]:
+                        raise ValueError(f"Index array length ({len(idx)}) exceeds dataset size ({dataset.shape[0]}) for {name}")
+                    
+                    # Get the subset of data
+                    data = dataset[idx]
+                else:
+                    # Copy all data
+                    data = dataset[:]
+                
+                # Convert floating point data to 32-bit precision
+                if data.dtype.kind == 'f':
+                    data = data.astype(np.float32)
+                    
+                # Create new dataset in output file with compression
+                if compress:
+                    output_dataset = output_file.create_dataset(name, data=data, compression="gzip", compression_opts=4)
+                else:
+                    output_dataset = output_file.create_dataset(name, data=data)
+                
+                # Copy all attributes of the dataset
+                for key, value in dataset.attrs.items():                        
+                    output_dataset.attrs[key] = value
+                    
+            else:
+                # Copy groups and other non-dataset objects directly
+                input_file.copy(name, output_file)
+
+        # Copy all attributes of the input file to the output file
+        for key, value in input_file.attrs.items():
+            output_file.attrs[key] = value
+
+    except Exception as e:
+        # Clean up files in case of error
+        if output_file is not None:
+            try:
+                output_file.close()
+            except:
+                pass
+        if input_file is not None:
+            try:
+                input_file.close()
+            except:
+                pass
+        # Remove partially created output file
+        try:
+            import os
+            if os.path.exists(output_filename):
+                os.remove(output_filename)
+        except:
+            pass
+        raise e
+    
+    finally:
+        # Ensure files are properly closed
+        if output_file is not None:
+            try:
+                output_file.flush()
+                output_file.close()
+            except:
+                pass
+        if input_file is not None:
+            try:
+                input_file.close()
+            except:
+                pass
+        
+        # Add small delay to ensure file handles are fully released
+        if delay_after_close > 0:
+            time.sleep(delay_after_close)
+
+    return output_filename
 
 def hdf5_scan(file_path):
     """
@@ -1635,6 +1836,9 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
             filelist.append('prior_detailed_general_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
             filelist.append('prior_detailed_invalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
             filelist.append('prior_detailed_outvalleys_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+            filelist.append('daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+            filelist.append('daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+            
             
         if (loadAll or loadType=='post'):
             filelist.append('POST_DAUGAARD_AVG_prior_detailed_general_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu2000000_aT1.h5')
