@@ -45,9 +45,9 @@ if not os.path.isfile(file_gex):
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% Load Dauagard data and increase std by a factor of 3
-inflateNoise = False
+inflateNoise = True
 if inflateNoise:
-    gf=5
+    gf=3
     print("="*60)
     print("Increasing noise level (std) by a factor of %d" % gf)
     print("="*60)
@@ -75,9 +75,8 @@ f_prior_h5_list.append('daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_
 # read f_prior_h5, and split it itp two priors with half the data in each
 # first use ig.load_prior_data() and ig.save_prior_data()
 useSubset = True
-f_prior_h5 = f_prior_h5_list[0]
-
 if useSubset:
+    f_prior_h5 = f_prior_h5_list[0]
     # This can probably be done with more elegance!
     D, M, idx = ig.load_prior(f_prior_h5)
     Nd = D[0].shape[0]
@@ -123,10 +122,10 @@ f_post_h5_list = []
 N_use = 1000
 N_use = 10000
 N_use = 100000
-N_use = 200000
-#N_use = 1000000
+#N_use = 200000
+N_use = 1000000
 
-autoT=True
+autoT=False
 T_base = 1.0
 
 for f_prior_data_h5 in f_prior_data_h5_list:
@@ -236,33 +235,35 @@ plt.savefig('DAUGAARD_N%07d_EV_Pout.png' % (N_use), dpi=600)
 plt.show()
 
 #%%
-import matplotlib.colors as mcolors
-import matplotlib.pyplot as plt
-import numpy as np
+plTest=False
+if plTest:
+    import matplotlib.colors as mcolors
+    import matplotlib.pyplot as plt
+    import numpy as np
 
-# Create a discrete two-color colormap
-colors = ['black', '#0173B2']  # Black and blue - colorblind friendly
-cmap = mcolors.ListedColormap(colors)
+    # Create a discrete two-color colormap
+    colors = ['black', '#0173B2']  # Black and blue - colorblind friendly
+    colors = ['red', 'blue']  # Red and yellow 
+    cmap = mcolors.ListedColormap(colors)
 
-plt.figure(figsize=(10,6), dpi=600)
-# Get the index of the highest value in each column in EV_P_sum
-EV_mode = np.argmax(EV_P, axis=0)
-EV_P_max = np.max(EV_P, axis=0)
-psize = (EV_P_max-0.5)*5+0.001
-plt.subplot(1,1,1)
-#plt.plot(X, Y, 'k.', markersize=4)
-plt.scatter(X, Y, c=EV_mode, cmap=cmap, s=psize, zorder=2)
-plt.axis('equal')
-plt.grid()
-plt.tight_layout()
-#cbar = plt.colorbar(ticks=[0, 1])
-cbar = plt.colorbar(ticks=[0.25, 0.75])
-cbar.set_ticklabels(['In', 'Out'])
-plt.xlabel('UTMX [m]')
-plt.ylabel('UTMY [m]')
+    plt.figure(figsize=(10,6), dpi=600)
+    # Get the index of the highest value in each column in EV_P_sum
+    EV_mode = np.argmax(EV_P, axis=0)
+    EV_P_max = np.max(EV_P, axis=0)
+    psize = (EV_P_max-0.5)*4+0.001
+    plt.subplot(1,1,1)
+    plt.plot(X, Y, 'w.', markersize=4, color='lightgray', zorder=1)
+    plt.scatter(X, Y, c=EV_mode, cmap=cmap, s=psize, zorder=2)
+    plt.axis('equal')
+    plt.grid()
+    plt.tight_layout()
+    #cbar = plt.colorbar(ticks=[0, 1])
+    cbar = plt.colorbar(ticks=[0.25, 0.75])
+    cbar.set_ticklabels(['In', 'Out'])
+    plt.xlabel('UTMX [m]')
+    plt.ylabel('UTMY [m]')
 
-plt.savefig('DAUGAARD_N%07d_EV_mode.png' % (N_use), dpi=600)
-# %%
+    plt.savefig('DAUGAARD_N%07d_EV_mode.png' % (N_use), dpi=600)
 
 
 
@@ -308,6 +309,7 @@ X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 with h5py.File(f_post_data_h5_merged, 'r') as f_post:
     M4_P = f_post['/M3/P'][:]
 
+#%%
 plt.figure(figsize=(10,6), dpi=600)
 plt.subplot(1,1,1)
 plt.plot(X, Y, '.', markersize=3, color='gray')
@@ -324,6 +326,6 @@ plt.show()
 
 # %%
 #% Plot Profiles
-ig.plot_profile(f_post_data_h5_merged, i1=0, i2=2000, cmap='jet', hardcopy=hardcopy)
-plt.show()
+#ig.plot_profile(f_post_data_h5_merged, i1=0, i2=2000, cmap='jet', hardcopy=hardcopy)
+#plt.show()
 # %%
