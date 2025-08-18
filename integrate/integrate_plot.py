@@ -366,7 +366,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         EV_max = np.percentile(EV,99)
         EV_max = 0
         EV_min = np.percentile(EV,1)
-        EV_min = -100
+        EV_min = -30
         
         #if 'vmin' not in kwargs:
         #    kwargs['vmin'] = EV_min

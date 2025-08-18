@@ -45,9 +45,9 @@ if not os.path.isfile(file_gex):
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
 # %% Load Dauagard data and increase std by a factor of 3
-inflateNoise = True
-if inflateNoise:
-    gf=3
+inflateNoise = 3
+if inflateNoise != 1:
+    gf=inflateNoise
     print("="*60)
     print("Increasing noise level (std) by a factor of %d" % gf)
     print("="*60)
@@ -55,7 +55,7 @@ if inflateNoise:
     D_obs = D['d_obs'][0]
     D_std = D['d_std'][0]*gf
     f_data_old_h5 = f_data_h5
-    f_data_h5 = 'DAUGAARD_AVG_highnoise.h5'
+    f_data_h5 = 'DAUGAARD_AVG_gf%g.h5' % (gf) 
     ig.copy_hdf5_file(f_data_old_h5, f_data_h5)
     ig.write_data_gaussian(D_obs, D_std=D_std, f_data_h5=f_data_h5, file_gex=file_gex)
 
@@ -115,6 +115,10 @@ for i in range(len(f_prior_h5_list)):
 
     ig.plot_prior_stats(f_prior_h5)
 
+# %% 
+# Set random seed
+np.random.seed(42)
+
 # %%
 
 f_post_h5_list = []
@@ -123,23 +127,33 @@ N_use = 1000
 N_use = 10000
 N_use = 100000
 #N_use = 200000
-N_use = 1000000
+#N_use = 1000000
 
-autoT=False
-T_base = 1.0
+autoT=True
+T_base = 1
+
+txt = 'N%d_autoT%d_Tbase%g_useSub%d_inflateNoise%d' % (N_use, autoT, T_base,useSubset,inflateNoise)
 
 for f_prior_data_h5 in f_prior_data_h5_list:
     print('Using prior model file %s' % f_prior_data_h5)
 
     #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
     updatePostStat =True
+
+
+
+    # extract filename without extension from f_prior_data_h5
+    fileparts = os.path.splitext(f_prior_data_h5)
+    f_post_h5 = 'post_%s_%s.h5' % (fileparts[0],txt)
+
+
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
                                        N_use = N_use, 
                                        parallel=1, 
                                        T_base = T_base,
                                        autoT=autoT,
-                                       updatePostStat=updatePostStat,                                     
-                                       showInfo=1)
+                                       updatePostStat=updatePostStat, 
+                                       f_post_h5=f_post_h5)
     f_post_h5_list.append(f_post_h5)
 
 
@@ -150,25 +164,27 @@ for f_post_h5 in f_post_h5_list:
 
 # %%
 for f_post_h5 in f_post_h5_list:
-    ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
+    ig.plot_T_EV(f_post_h5, pl='EV',hardcopy=hardcopy)
     plt.show()
 
 # %%
-for f_post_h5 in f_post_h5_list:
-    #% Posterior analysis
-    # Plot the Temperature used for inversion
-    #ig.plot_T_EV(f_post_h5, pl='T')
-    #ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
-    #plt.show()
+plotPro = False
+if plotPro:
+    for f_post_h5 in f_post_h5_list:
+        #% Posterior analysis
+        # Plot the Temperature used for inversion
+        #ig.plot_T_EV(f_post_h5, pl='T')
+        #ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
+        #plt.show()
 
-    #ig.plot_T_EV(f_post_h5, pl='ND')
+        #ig.plot_T_EV(f_post_h5, pl='ND')
 
-    #% Plot Profiles
-    ig.plot_profile(f_post_h5, i1=0, i2=2000, cmap='jet', hardcopy=hardcopy)
-    plt.show()
-    #% Export to CSV
-    #ig.post_to_csv(f_post_h5)
-    #plt.show()
+        #% Plot Profiles
+        ig.plot_profile(f_post_h5, i1=0, i2=2000, cmap='jet', hardcopy=hardcopy)
+        plt.show()
+        #% Export to CSV
+        #ig.post_to_csv(f_post_h5)
+        #plt.show()
 
 # %%
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
@@ -216,7 +232,7 @@ plt.title('P(In Valley)')
 plt.xlabel('UTMX [m]')
 plt.ylabel('UTMY [m]')
 plt.grid()
-plt.savefig('DAUGAARD_N%07d_EV_Pin.png' % (N_use), dpi=600)
+plt.savefig('%s_Pin.png' % (txt), dpi=600)
 plt.show()
 
 #%%
@@ -231,7 +247,7 @@ plt.grid()
 plt.title('P(Out of valleys)')
 plt.xlabel('UTMX [m]')
 plt.ylabel('UTMY [m]')
-plt.savefig('DAUGAARD_N%07d_EV_Pout.png' % (N_use), dpi=600)
+plt.savefig('%s_Pout.png' % (txt), dpi=600)
 plt.show()
 
 #%%
@@ -283,31 +299,36 @@ ig.plot_prior_stats(f_prior_data_h5_merged)
 
 # %%
 
-#N_use = 1100
-autoT = True
-T_base = 1
+#N_use = 10000
+#autoT = False
+#T_base = 10
 
 N_use_merged = 2*N_use
-if not autoT:
-    N_use_merged = N_use_merged-1
 
 # Sample the posterior
 #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
 updatePostStat =True
-f_post_data_h5_merged = ig.integrate_rejection(f_prior_data_h5_merged, f_data_h5, 
+
+txt_merged = 'N%d_autoT%d_Tbase%g_useSub%d_inflateNoise%d' % (N_use_merged, autoT, T_base,useSubset,inflateNoise)
+fileparts = os.path.splitext(f_prior_data_h5_merged)
+f_post_h5_merged = 'post_%s_%s.h5' % (fileparts[0],txt_merged)
+
+f_post_h5_merged = ig.integrate_rejection(f_prior_data_h5_merged, f_data_h5, 
                             N_use = N_use_merged, 
                             parallel=1, 
                             T_base = T_base,
                             autoT=autoT,
                             updatePostStat=updatePostStat,                                     
-                            showInfo=1)
+                            showInfo=1, f_post_h5=f_post_h5_merged)
 
-
+#%%
 # Plot P(InValley)
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 # load 'M4/P' from f_post_data_h5_merged
-with h5py.File(f_post_data_h5_merged, 'r') as f_post:
+with h5py.File(f_post_h5_merged, 'r') as f_post:
     M4_P = f_post['/M3/P'][:]
+
+ig.plot_T_EV(f_post_h5_merged, pl='T')  
 
 #%%
 plt.figure(figsize=(10,6), dpi=600)
@@ -321,7 +342,8 @@ plt.grid()
 plt.title('P(In valley) - merged')
 plt.xlabel('UTMX [m]')
 plt.ylabel('UTMY [m]')
-plt.savefig('DAUGAARD_N%07d_EV_Pin_Tbase%d_aT%d_merged.png' % (N_use_merged,T_base,autoT), dpi=600)
+plt.savefig('%s_Pin_merged.png' % (txt_merged), dpi=600)
+
 plt.show()
 
 # %%
