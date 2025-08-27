@@ -92,13 +92,14 @@ On Windows, the [ga-aem-forward-win](https://pypi.org/project/ga-aem-forward-win
 
 5. Install the Python gatdaem1d module:
 
-    cd GA-AEM/python/
-    pip install -e .
+```
+cd GA-AEM/python/
+pip install -e .
 
-    # Test the installation
-    cd examples
-    python skytem_example.py
-
+# Test the installation
+cd examples
+python integrate_skytem.py
+```
 
 
 ### Compile GA-AEM Python module on Ubuntu/Linux
