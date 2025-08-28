@@ -264,6 +264,8 @@ def integrate_rejection(f_prior_h5='prior.h5',
     EV_all = np.zeros(Ndp)*np.nan
     # 'posterior' evience - mean posterior likelihood TODO
     EV_post_all  = np.zeros(Ndp)*np.nan
+    EV_post_all_mean = np.zeros(Ndp)*np.nan
+    LOGL_mean_all = np.zeros((Ndp, Ndt))*np.nan
 
     date_start = str(datetime.now())
     t_start = datetime.now()
@@ -286,7 +288,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         if showInfo>1:
             print('Ncpu = %d\nNchunks=%d' % (Ncpu, Nchunks))
 
-        i_use_all, T_all, EV_all, EV_post_all, N_UNIQUE_all = integrate_posterior_main(
+        i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, LOGL_mean_all, N_UNIQUE_all = integrate_posterior_main(
             ip_chunks=ip_chunks,
             D=D, 
             DATA = DATA,
@@ -311,7 +313,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
             # Extract progress_callback for non-parallel execution
             progress_callback = kwargs.get('progress_callback', None)
             
-            i_use, T, EV, EV_post, N_UNIQUE, ip_range = integrate_rejection_range(D=D, 
+            i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range = integrate_rejection_range(D=D, 
                                         DATA = DATA,
                                         idx = idx,                                   
                                         N_use=N_use, 
@@ -333,6 +335,8 @@ def integrate_rejection(f_prior_h5='prior.h5',
                 T_all[ip] = T[i]
                 EV_all[ip] = EV[i]
                 EV_post_all[ip] = EV_post[i]
+                EV_post_all_mean[ip] = EV_post_mean[i]
+                LOGL_mean_all[ip, :] = LOGL_mean[i, :]
                 N_UNIQUE_all[ip] = N_UNIQUE[i]
 
     # WHere T_all is Inf set it to Nan
@@ -353,6 +357,8 @@ def integrate_rejection(f_prior_h5='prior.h5',
         f_post.create_dataset('T', data=T_all)
         f_post.create_dataset('EV', data=EV_all)
         f_post.create_dataset('EV_post', data=EV_post_all)
+        f_post.create_dataset('EV_post_mean', data=EV_post_all_mean)
+        f_post.create_dataset('LOGL_mean', data=LOGL_mean_all)
         f_post.create_dataset('N_UNIQUE', data=N_UNIQUE_all)
         #f_post.create_dataset('ip_range', data=ip_range)
         f_post.attrs['date_start'] = date_start
@@ -485,19 +491,23 @@ def integrate_rejection_range(D,
     nump=len(ip_range)
     if showInfo>1:
         print('Number of data points to invert: %d' % nump)
+        
+    # Get number of data types used - needed for array initialization
+    Ndt = len(id_use)
+    if showInfo>2:
+        print('Numbe of data type used, Ndt=%d' % Ndt)
+        
     i_use_all = np.zeros((nump, nr), dtype=np.int32)
     T_all = np.zeros(nump)*np.nan
     EV_all = np.zeros(nump)*np.nan
     EV_post_all = np.zeros(nump)*np.nan
+    EV_post_all_mean = np.zeros(nump)*np.nan
+    LOGL_mean_all = np.zeros((nump, Ndt))*np.nan
     N_UNIQUE_all = np.zeros(nump)*np.nan
     
     
     # Get the lookup sample size
     N = D[0].shape[0]
-
-    Ndt = len(id_use) # Number of data types used   
-    if showInfo>2:
-        print('Numbe of data type used, Ndt=%d' % Ndt)
 
     if N_use>N:
         N_use = N
@@ -573,6 +583,9 @@ def integrate_rejection_range(D,
 
 
         # Loop over the number of data types Ndt
+        total_n_data_non_nan = 0  # Initialize total count for all data types
+        n_data_per_type = np.zeros(Ndt)  # Track data count per data type
+
         for i in range(Ndt):
             use_data_point = i_use_data[i][ip]
             #use_data_point = 1 # FORCE USE OF DATA POINT
@@ -580,7 +593,8 @@ def integrate_rejection_range(D,
             if showInfo>3:    
                 print("-i=%d, Using data type %d" % (i,Ndt))
                 print("len(D)",len(D))
-
+                
+            n_data_non_nan=0
             if (use_data_point==1):
                 #if i_use_data[i]==1:
                 #    print('Using data %d' % i)
@@ -598,7 +612,10 @@ def integrate_rejection_range(D,
                 #id = id_use[i_prior]
                 if noise_model[i]=='gaussian':
                     d_obs = DATA['d_obs'][i][ip]
-                    
+                    n_data_non_nan = np.sum(~np.isnan(d_obs))
+                    total_n_data_non_nan += n_data_non_nan
+                    n_data_per_type[i] = n_data_non_nan
+            
                     if DATA['Cd'][0] is not None:                    
                         # if Cd is 3 dimensional, take the first slice
                         if len(DATA['Cd'][0].shape) == 3:
@@ -619,6 +636,9 @@ def integrate_rejection_range(D,
                     t.append(time.time()-t0)
                 elif noise_model[i]=='multinomial':
                     d_obs = DATA['d_obs'][i][ip]
+                    n_data_non_nan = np.sum(~np.isnan(d_obs))
+                    total_n_data_non_nan += n_data_non_nan
+                    n_data_per_type[i] = n_data_non_nan
 
                     if showInfo>3:
                         print(D[i])
@@ -642,7 +662,7 @@ def integrate_rejection_range(D,
                     
         t0=time.time()
 
-        # NOw we have all the likelihoods for all data types. Copmbine them into ooe
+        # NOw we have all the likelihoods for all data types. Combine them into one
         L_single = L
         L = np.sum(L_single, axis=0)
         
@@ -687,6 +707,22 @@ def integrate_rejection_range(D,
 
         # Compute 'posterior evidence' - mean posterior likelihood
         EV_post = np.nanmean(exp_logL)
+        
+        # Compute normalized posterior evidence per data point
+        if total_n_data_non_nan > 0:
+            EV_post_mean = EV_post / total_n_data_non_nan
+        else:
+            EV_post_mean = np.nan
+        
+        # Compute LOGL_mean per data type: mean of log-likelihood divided by (-2 * n_data_used)
+        LOGL_mean_current = np.zeros(Ndt) * np.nan
+        for i in range(Ndt):
+            if n_data_per_type[i] > 0:
+                # Get log-likelihood for accepted samples for this data type
+                L_accepted = L_single[i, i_use]  # Log-likelihood for accepted samples, data type i
+                mean_logl_accepted = np.nanmean(L_accepted)
+                LOGL_mean_current[i] = mean_logl_accepted / (-2.0 * n_data_per_type[i])
+            
         #EV_post2 = np.nanmean(L[i_use])
         #print('EV=%f, EV_post=%f, EV_post2=%f' % (EV, EV_post, EV_post2))
         
@@ -704,6 +740,8 @@ def integrate_rejection_range(D,
         T_all[j] = T
         EV_all[j] = EV
         EV_post_all[j] = EV_post
+        EV_post_all_mean[j] = EV_post_mean
+        LOGL_mean_all[j, :] = LOGL_mean_current
         # find the number of unique indexes
         N_UNIQUE_all[j] = len(np.unique(i_use))
 
@@ -722,7 +760,7 @@ def integrate_rejection_range(D,
         except:
             pass  # Ignore callback errors
         
-    return i_use_all, T_all, EV_all, EV_post_all, N_UNIQUE_all, ip_range
+    return i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, LOGL_mean_all, N_UNIQUE_all, ip_range
 
 
 
@@ -812,14 +850,19 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
     
     # Get number of data points from, f_data_h5
     Ndp = DATA['d_obs'][0].shape[0]
+    
+    # Get number of data types
+    Ndt = len(id_use)
 
     i_use_all = np.random.randint(0, N, (Ndp, nr))
     T_all = np.zeros(Ndp)*np.nan
     EV_all = np.zeros(Ndp)*np.nan
     EV_post_all = np.zeros(Ndp)*np.nan
+    EV_post_all_mean = np.zeros(Ndp)*np.nan
+    LOGL_mean_all = np.zeros((Ndp, Ndt))*np.nan
     N_UNIQUE_all = np.zeros(Ndp)*np.nan
     
-    for i, (i_use, T, EV, EV_post, N_UNIQUE, ip_range) in enumerate(results):
+    for i, (i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range) in enumerate(results):
         for i in range(len(ip_range)):
                 ip = ip_range[i]
                 #print('ip=%d, i=%d' % (ip,i))
@@ -827,9 +870,11 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
                 T_all[ip] = T[i]
                 EV_all[ip] = EV[i]
                 EV_post_all[ip] = EV_post[i]
+                EV_post_all_mean[ip] = EV_post_mean[i]
+                LOGL_mean_all[ip, :] = LOGL_mean[i, :]
                 N_UNIQUE_all[ip] = N_UNIQUE[i]
 
-    return i_use_all, T_all, EV_all, EV_post_all, N_UNIQUE_all
+    return i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, LOGL_mean_all, N_UNIQUE_all
 
 
 
@@ -914,7 +959,7 @@ def integrate_posterior_chunk(args):
 
         #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
 
-        i_use, T, EV, EV_post, N_UNIQUE, ip_range = integrate_rejection_range(
+        i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range = integrate_rejection_range(
             D,
             DATA,
             idx,
@@ -927,7 +972,7 @@ def integrate_posterior_chunk(args):
             use_N_best=use_N_best, 
         )
 
-        return i_use, T, EV, EV_post, N_UNIQUE, ip_range
+        return i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range
     
     finally:
         # Clean up worker's shared memory references

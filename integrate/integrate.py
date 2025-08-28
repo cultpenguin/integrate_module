@@ -1869,38 +1869,38 @@ def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **
     return thick_mean, thick_median, thick_std, class_out, X, Y
 
 
-# Import rejection sampling functions from separate module
-# Note: These imports work when the package is properly installed
-# For development, you may need to modify paths or use try/except
-try:
-    from integrate.integrate_rejection import (
-        integrate_rejection,
-        integrate_rejection_range, 
-        integrate_posterior_main,
-        integrate_posterior_chunk,
-        likelihood_gaussian_diagonal,
-        likelihood_gaussian_full,
-        likelihood_multinomial,
-        select_subset_for_inversion,
-        create_shared_memory,
-        reconstruct_shared_arrays,
-        cleanup_shared_memory
-    )
-except ImportError:
-    # For development when running directly, try relative import
-    from .integrate_rejection import (
-        integrate_rejection,
-        integrate_rejection_range, 
-        integrate_posterior_main,
-        integrate_posterior_chunk,
-        likelihood_gaussian_diagonal,
-        likelihood_gaussian_full,
-        likelihood_multinomial,
-        select_subset_for_inversion,
-        create_shared_memory,
-        reconstruct_shared_arrays,
-        cleanup_shared_memory
-    )
+# # Import rejection sampling functions from separate module
+# # Note: These imports work when the package is properly installed
+# # For development, you may need to modify paths or use try/except
+# try:
+#     from integrate.integrate_rejection import (
+#         integrate_rejection,
+#         integrate_rejection_range, 
+#         integrate_posterior_main,
+#         integrate_posterior_chunk,
+#         likelihood_gaussian_diagonal,
+#         likelihood_gaussian_full,
+#         likelihood_multinomial,
+#         select_subset_for_inversion,
+#         create_shared_memory,
+#         reconstruct_shared_arrays,
+#         cleanup_shared_memory
+#     )
+# except ImportError:
+#     # For development when running directly, try relative import
+#     from .integrate_rejection import (
+#         integrate_rejection,
+#         integrate_rejection_range, 
+#         integrate_posterior_main,
+#         integrate_posterior_chunk,
+#         likelihood_gaussian_diagonal,
+#         likelihood_gaussian_full,
+#         likelihood_multinomial,
+#         select_subset_for_inversion,
+#         create_shared_memory,
+#         reconstruct_shared_arrays,
+#         cleanup_shared_memory
+#     )
 
 
 # Functions moved to integrate_rejection.py

@@ -293,12 +293,13 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         Minimum temperature value for color scale normalization (default is 1).
     T_max : int, optional
         Maximum temperature value for color scale normalization (default is 100).
-    pl : {'all', 'T', 'EV', 'ND'}, optional
+    pl : {'all', 'T', 'EV', 'ND', 'LOGL_mean'}, optional
         Type of plot to generate (default is 'all'):
-        - 'all': plot all three types
+        - 'all': plot all available types
         - 'T': temperature field only
         - 'EV': evidence field only  
         - 'ND': number of data points only
+        - 'LOGL_mean': mean log-likelihood divided by (-2*n_data_used) only
     hardcopy : bool, optional
         Save plots as PNG files with descriptive names (default is False).
     **kwargs : dict
@@ -335,6 +336,11 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             EV_mul=f_post['/EV_mul'][:]
         except:
             EV_mu=[]
+            
+        try:
+            LOGL_mean=f_post['/LOGL_mean'][:]
+        except:
+            LOGL_mean=None
 
     nd = X.shape[0]
     if i1<1: 
@@ -408,6 +414,36 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             plt.savefig(f_png)
             plt.show()
             
+    if (pl=='all') or (pl=='LOGL_mean'):
+        if LOGL_mean is not None:
+            # Plot mean log-likelihood normalized by (-2*n_data_used)
+            # Use first data type (index 0) or sum across data types if multiple
+            if len(LOGL_mean.shape) == 2:
+                # If multiple data types, sum across them for visualization
+                LOGL_mean_plot = np.nansum(LOGL_mean, axis=1)
+            else:
+                LOGL_mean_plot = LOGL_mean
+                
+            # Get reasonable color limits (1st to 99th percentile)
+            LOGL_min = np.nanpercentile(LOGL_mean_plot, 1)
+            LOGL_max = np.nanpercentile(LOGL_mean_plot, 99)
+            
+            plt.figure(4, figsize=(20, 10))
+            plt.scatter(X[i1:i2], Y[i1:i2], c=LOGL_mean_plot[i1:i2], s=s, cmap='RdYlBu_r', 
+                       vmin=LOGL_min, vmax=LOGL_max, **kwargs)
+            plt.grid()
+            plt.xlabel('X')
+            plt.ylabel('Y')
+            plt.colorbar(label='LOGL_mean')
+            plt.title('Mean Log-Likelihood / (-2*n_data_used)')
+            plt.axis('equal')
+            if hardcopy:
+                # get filename without extension
+                f_png = '%s_%d_%d_LOGL_mean.png' % (os.path.splitext(f_post_h5)[0], i1, i2)
+                plt.savefig(f_png)
+                plt.show()
+        else:
+            print('LOGL_mean data not found in %s' % f_post_h5)
 
     return
 

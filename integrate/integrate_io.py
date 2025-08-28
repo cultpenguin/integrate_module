@@ -1979,7 +1979,7 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
 
 
 
-def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_data_h5='data.h5', **kwargs):
+def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_data_h5='data.h5', UTMX=None, UTMY=None, LINE=None, ELEVATION=None, **kwargs):
     """
     Write observational data with Gaussian noise model to HDF5 file.
 
@@ -2007,6 +2007,18 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
         Flag indicating logarithmic data scaling (0=linear, 1=log, default is 0).
     f_data_h5 : str, optional
         Path to output HDF5 file (default is 'data.h5').
+    UTMX : numpy.ndarray, optional
+        UTM X coordinates in meters, shape (N_stations,) or (N_stations,1).
+        If None, creates sequential integers (default is None).
+    UTMY : numpy.ndarray, optional
+        UTM Y coordinates in meters, shape (N_stations,) or (N_stations,1).
+        If None, creates zeros array (default is None).
+    LINE : numpy.ndarray, optional
+        Survey line identifiers, shape (N_stations,) or (N_stations,1).
+        If None, creates array filled with 1s (default is None).
+    ELEVATION : numpy.ndarray, optional
+        Ground surface elevation in meters, shape (N_stations,) or (N_stations,1).
+        If None, creates zeros array (default is None).
     **kwargs : dict
         Additional metadata parameters:
         - showInfo : int, verbosity level
@@ -2040,7 +2052,8 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
         **Behavior:**
         
         - If D_std is not provided, it is calculated as d_std * D_obs
-        - The function ensures that datasets 'UTMX', 'UTMY', 'LINE', and 'ELEVATION' exist
+        - If coordinate parameters (UTMX, UTMY, LINE, ELEVATION) are provided, uses check_data() to create/update geometry datasets
+        - If coordinate parameters are not provided, creates default geometry datasets if they don't exist
         - If a group with name 'D{id}' exists, it is removed before adding new data
         - Writes attributes 'noise_model' and 'is_log' to the dataset group
     """
@@ -2054,31 +2067,48 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
         D_std = np.abs(d_std * D_obs)
 
     D_str = 'D%d' % id
-
     ns,nd=D_obs.shape
     
-    with h5py.File(f_data_h5, 'a') as f:
-        # check if '/UTMX' exists and create it if it does not
-        if 'UTMX' not in f:
-            if showInfo>0:
-                print('Creating %s:/UTMX' % f_data_h5) 
-            UTMX = np.atleast_2d(np.arange(ns)).T
-            f.create_dataset('UTMX' , data=UTMX) 
-        if 'UTMY' not in f:
-            if showInfo>0:
-                print('Creating %s:/UTMY' % f_data_h5)
-            UTMY = f['UTMX'][:]*0
-            f.create_dataset('UTMY', data=UTMY)
-        if 'LINE' not in f:
-            if showInfo>0:
-                print('Creating %s:/LINE' % f_data_h5)
-            LINE = f['UTMX'][:]*0+1
-            f.create_dataset('LINE', data=LINE)
-        if 'ELEVATION' not in f:
-            if showInfo>0:
-                print('Creating %s:/ELEVATION' % f_data_h5)
-            ELEVATION = f['UTMX'][:]*0
-            f.create_dataset('ELEVATION', data=ELEVATION)
+    # Handle geometry data
+    coord_provided = any(coord is not None for coord in [UTMX, UTMY, LINE, ELEVATION])
+    
+    if coord_provided:
+        # Use check_data to handle geometry with provided coordinates
+        import integrate as ig
+        check_kwargs = {'showInfo': showInfo}
+        if UTMX is not None:
+            check_kwargs['UTMX'] = UTMX
+        if UTMY is not None:
+            check_kwargs['UTMY'] = UTMY
+        if LINE is not None:
+            check_kwargs['LINE'] = LINE
+        if ELEVATION is not None:
+            check_kwargs['ELEVATION'] = ELEVATION
+        ig.check_data(f_data_h5, **check_kwargs)
+    else:
+        # Original behavior: create default geometry datasets if they don't exist
+        with h5py.File(f_data_h5, 'a') as f:
+            # check if '/UTMX' exists and create it if it does not
+            if 'UTMX' not in f:
+                if showInfo>0:
+                    print('Creating %s:/UTMX' % f_data_h5) 
+                UTMX_default = np.atleast_2d(np.arange(ns)).T
+                f.create_dataset('UTMX' , data=UTMX_default) 
+            if 'UTMY' not in f:
+                if showInfo>0:
+                    print('Creating %s:/UTMY' % f_data_h5)
+                UTMY_default = f['UTMX'][:]*0
+                f.create_dataset('UTMY', data=UTMY_default)
+            if 'LINE' not in f:
+                if showInfo>0:
+                    print('Creating %s:/LINE' % f_data_h5)
+                LINE_default = f['UTMX'][:]*0+1
+                f.create_dataset('LINE', data=LINE_default)
+            if 'ELEVATION' not in f:
+                if showInfo>0:
+                    print('Creating %s:/ELEVATION' % f_data_h5)
+                ELEVATION_default = f['UTMX'][:]*0
+                f.create_dataset('ELEVATION', data=ELEVATION_default)
 
     # check if group 'D{id}/' exists and remove it if it does
     with h5py.File(f_data_h5, 'a') as f:
@@ -2219,69 +2249,89 @@ def check_data(f_data_h5='data.h5', **kwargs):
     - LINE: Survey line identifiers (required for data organization) 
     - ELEVATION: Ground surface elevation (required for depth calculations)
     
-    Default value generation when datasets are missing:
+    **Behavior:**
+    
+    - If coordinate parameters are provided (UTMX, UTMY, LINE, ELEVATION):
+      * Updates existing datasets with new values
+      * Creates datasets if they don't exist
+    - If coordinate parameters are not provided:
+      * Leaves existing datasets unchanged
+      * Creates missing datasets with default values
+    
+    Default value generation when datasets are missing and no values provided:
     - UTMX: Sequential values 0, 1, 2, ... (placeholder coordinates)
-    - UTMY: Sequential values 0, 1, 2, ... (placeholder coordinates)
+    - UTMY: Zeros array with same length as UTMX
     - LINE: All values set to 1 (single survey line)
     - ELEVATION: All values set to 0 (sea level reference)
     
-    Dataset dimensions are inferred from existing 'D1/d_obs' observations.
-    All geometry datasets are created with consistent length matching
-    the number of measurement locations.
-        
-        - showInfo (int): Verbosity level. If greater than 0, prints information messages. Default is 0.
-        - UTMX (array-like): Array of UTMX coordinate values. If not provided, attempts to read from file or generates defaults.
-        - UTMY (array-like): Array of UTMY coordinate values. Default is zeros array with same length as UTMX.
-        - LINE (array-like): Array of survey line identifiers. Default is ones array with same length as UTMX.
-        - ELEVATION (array-like): Array of elevation values. Default is zeros array with same length as UTMX.
-        
-        **Behavior:**
-        
-        - If UTMX is not provided, function attempts to determine array length from existing 'D1/d_obs' dataset
-        - Missing datasets are created with appropriate default values
-        - Existing datasets are preserved and not overwritten
+    Dataset dimensions are inferred from existing 'D1/d_obs' observations
+    when no coordinate data is provided.
     """
 
     showInfo = kwargs.get('showInfo', 0)
 
     if showInfo>0:
-        print('Checking INTEGRATE data in %s' % f_data_h5)  
-
-    UTMX = kwargs.get('UTMX', [])
-    if len(UTMX)==0:
-        with h5py.File(f_data_h5, 'r') as f:
-            if 'UTMX' in f:
-                UTMX = f['UTMX'][:]
-            else:
-                ns = f['D1/d_obs'].shape[0] 
-                print('UTMX not found in %s' % f_data_h5)
-                UTMX = np.atleast_2d(np.arange(ns)).T    
-            f.close()
-
-    UTMY = kwargs.get('UTMY', UTMX*0)
-    LINE = kwargs.get('LINE', UTMX*0+1)
-    ELEVATION = kwargs.get('ELEVATION', UTMX*0)
-
+        print('Checking INTEGRATE data in %s' % f_data_h5)
+    
+    # Check which coordinate parameters were provided
+    coord_params = ['UTMX', 'UTMY', 'LINE', 'ELEVATION']
+    provided_coords = {param: kwargs.get(param, None) for param in coord_params}
+    coords_provided = any(coord is not None for coord in provided_coords.values())
+    
     with h5py.File(f_data_h5, 'a') as f:
-        # check if '/UTMX' exists and create it if it does not
-        if 'UTMX' not in f:
-            if showInfo>0:
-                print('Creating UTMX')            
-            f.create_dataset('UTMX', data=UTMX) 
-        if 'UTMY' not in f:
-            if showInfo>0:
-                print('Creating UTMY')            
-            f.create_dataset('UTMY', data=UTMY)
-        if 'LINE' not in f:
-            if showInfo>0:
-                print('Creating LINE')
-            f.create_dataset('LINE', data=LINE)
-        if 'ELEVATION' not in f:
-            if showInfo>0:
-                print('Creating ELEVATION')
-            f.create_dataset('ELEVATION', data=ELEVATION)
-
-            f.close()
+        # Handle each coordinate dataset
+        for coord_name in coord_params:
+            coord_data = provided_coords[coord_name]
+            
+            if coord_data is not None:
+                # Coordinate data provided - update or create
+                if coord_name in f:
+                    if showInfo > 0:
+                        print('Updating %s' % coord_name)
+                    # Delete existing dataset and recreate with new data
+                    del f[coord_name]
+                    f.create_dataset(coord_name, data=coord_data)
+                else:
+                    if showInfo > 0:
+                        print('Creating %s' % coord_name)
+                    f.create_dataset(coord_name, data=coord_data)
+            else:
+                # No coordinate data provided - create defaults only if missing
+                if coord_name not in f:
+                    if showInfo > 0:
+                        print('Creating default %s' % coord_name)
+                    
+                    # Determine size from existing data or other coordinates
+                    ns = None
+                    if 'D1/d_obs' in f:
+                        ns = f['D1/d_obs'].shape[0]
+                    elif 'UTMX' in f:
+                        ns = f['UTMX'].shape[0]
+                    elif any(provided_coords[c] is not None for c in coord_params):
+                        # Use size from first provided coordinate
+                        for c in coord_params:
+                            if provided_coords[c] is not None:
+                                ns = len(np.atleast_1d(provided_coords[c]))
+                                break
+                    
+                    if ns is None:
+                        print('Warning: Cannot determine dataset size for %s' % coord_name)
+                        continue
+                        
+                    # Create default data based on coordinate type
+                    if coord_name == 'UTMX':
+                        default_data = np.atleast_2d(np.arange(ns)).T
+                    elif coord_name == 'UTMY':
+                        default_data = np.zeros((ns, 1))
+                    elif coord_name == 'LINE':
+                        default_data = np.ones((ns, 1))
+                    elif coord_name == 'ELEVATION':
+                        default_data = np.zeros((ns, 1))
+                    
+                    f.create_dataset(coord_name, data=default_data)
+                else:
+                    if showInfo > 0:
+                        print('%s already exists - leaving unchanged' % coord_name)
 
 
 
