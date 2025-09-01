@@ -726,11 +726,20 @@ def forward_gaaem(C=np.array(()),
 
     doCompress = kwargs.get('doCompress', True)
 
+    print(stmfiles)
+    print(file_gex)
+
     if (len(stmfiles)>0) and (file_gex != '') and (len(GEX)==0):
         # GEX FILE and STM FILES
+        printf('file_gex="%s"' % (file_gex))
         if (showInfo)>1:
             print('Using submitted GEX file (%s)' % (file_gex))
         GEX =   ig.read_gex(file_gex)
+    elif (len(stmfiles)>0):
+        # USING STM FILES
+        if (showInfo)>1:
+            print('Using submitted STM files (%s)' % (stmfiles))
+
     elif (len(stmfiles)==0) and (file_gex != '') and (len(GEX)==0):
         # ONLY GEX FILE
         stmfiles, GEX = ig.gex_to_stm(file_gex, **kwargs)
@@ -765,8 +774,9 @@ def forward_gaaem(C=np.array(()),
         print('Using STM files : ')
         print(stmfiles)
 
-    if (showInfo>1):
-        print('Using GEX file: ', GEX['filename'])
+    if (showInfo>1):        
+        if 'filename' in GEX:
+            print('Using GEX file: ', GEX['filename'])
 
     nstm=len(stmfiles)
     if (showInfo>0):
@@ -840,7 +850,8 @@ def forward_gaaem(C=np.array(()),
         if len(tx_height)==0:
             tx_height=np.array([0])
         G = Geometry(tx_height=tx_height, txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
-        ng = 28
+        # Here we should read the number of gates from the lines in STMFILES that conatin 'NumberOfWindows = 41'
+        ng = 41
 
     #print(tx_height)
 
