@@ -94,7 +94,9 @@ ig.plot_data(f_data_h5, hardcopy=hardcopy)
 
 # %%
 # Select how many prior model realizations (N) should be generated
-N=10000
+N=5000000
+#N=100000
+#N=200000
 
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR.h5')
 print('%s is used to hold prior realizations' % (f_prior_h5))
@@ -117,9 +119,9 @@ ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 
 # %%
 # Option 1: Update the existing PRIOR.h5 file with forward-modeled data
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=False, parallel=parallel)
+# f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=False, parallel=parallel)
 # Option 2: Create a copy of PRIOR.h5 and update the copy (uncomment to use)
-# f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel)
 
 print('Updated %s to hold prior data (forward-modeled responses)' % (f_prior_data_h5))
 
@@ -149,7 +151,7 @@ ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,hardcopy=hardcopy)
 N_use = N   # Number of prior samples to use (use all available)
 T_base = 1  # Base annealing temperature for rejection sampling
 autoT = 1   # Automatically estimate optimal annealing temperature
-f_post_h5 = ig.integrate_rejection(f_prior_h5, 
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                    f_data_h5, 
                                    f_post_h5 = 'POST.h5', 
                                    N_use = N_use, 
@@ -163,24 +165,8 @@ f_post_h5 = ig.integrate_rejection(f_prior_h5,
 # This computes summary statistics like mean, median, standard deviation
 # ig.integrate_posterior_stats(f_post_h5)
 
-import h5py
-import numpy as np
-with h5py.File(f_post_h5, 'r') as f_post:
-    # Access posterior statistics
-    EV_post_mean = f_post['EV_post_mean'][:]
-    # Compute additional statistics if needed
-
-X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-
-plt.figure()
-plt.plot(np.log(EV_post_mean))
-
-# vmax is the 95% percentile
-vmax = np.percentile(np.log(EV_post_mean), 95)
-vmin = np.percentile(np.log(EV_post_mean), 5)
-
-plt.figure()
-plt.scatter(X, Y, c=np.log(EV_post_mean), s=20, cmap='jet', vmin=vmin, vmax=vmax)
+# %% 
+ig.plot_geometry(f_data_h5, pl='all')
 
 # %% [markdown]
 # ## 3. Plot statistics from the posterior $\sigma(\mathbf{m})$
@@ -203,6 +189,11 @@ ig.plot_data_prior_post(f_post_h5, i_plot=0,hardcopy=hardcopy)
 ig.plot_T_EV(f_post_h5, pl='T',hardcopy=hardcopy)
 # Plot the evidence (log-likelihood) estimated during inversion
 ig.plot_T_EV(f_post_h5, pl='EV',hardcopy=hardcopy)
+# Plot the normalize logL
+ig.plot_T_EV(f_post_h5, pl='LOGL_mean',hardcopy=hardcopy, )
+
+# plot ND
+ig.plot_T_EV(f_post_h5, pl='ND',hardcopy=hardcopy)
 
 # %% [markdown]
 # ### Resistivity profiles

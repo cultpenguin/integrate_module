@@ -372,7 +372,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         EV_max = np.percentile(EV,99)
         EV_max = 0
         EV_min = np.percentile(EV,1)
-        EV_min = -30
+        #EV_min = -30
         
         #if 'vmin' not in kwargs:
         #    kwargs['vmin'] = EV_min
@@ -425,8 +425,10 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
                 LOGL_mean_plot = LOGL_mean
                 
             # Get reasonable color limits (1st to 99th percentile)
-            LOGL_min = np.nanpercentile(LOGL_mean_plot, 1)
-            LOGL_max = np.nanpercentile(LOGL_mean_plot, 99)
+            #LOGL_min = np.nanpercentile(LOGL_mean_plot, 1)
+            #LOGL_max = np.nanpercentile(LOGL_mean_plot, 99)
+            LOGL_min = 0
+            LOGL_max = 5
             
             plt.figure(4, figsize=(20, 10))
             plt.scatter(X[i1:i2], Y[i1:i2], c=LOGL_mean_plot[i1:i2], s=s, cmap='RdYlBu_r', 
