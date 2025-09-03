@@ -79,8 +79,8 @@ from integrate.integrate_plot import plot_posterior_cumulative_thickness
 from integrate.integrate_plot import get_clim_cmap
 
 # Import gex module functions
-from integrate.gex import read_gex
-from integrate.gex import describe_gex
+from integrate.gex import read_gex as read_gex2
+from integrate.gex import describe_gex as describe_gex2
 
 # REMOVE CLI IMPORTS - These cause circular dependencies
 # from . import integrate_cli

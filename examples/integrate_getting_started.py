@@ -52,6 +52,9 @@ file_gex= ig.get_gex_file_from_data(f_data_h5)
 print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
 
+
+
+
 # %% [markdown]
 # ### Plot the geometry and data
 # `ig.plot_geometry` plots the spatial geometry of the data (i.e., the locations of the soundings).
@@ -65,9 +68,12 @@ ig.plot_geometry(f_data_h5, pl='LINE')
 ig.plot_geometry(f_data_h5, pl='ELEVATION')
 ig.plot_geometry(f_data_h5, pl='id')
 
+
 # %%
 # The electromagnetic data (d_obs and d_std) can be plotted using ig.plot_data:
 ig.plot_data(f_data_h5, hardcopy=hardcopy)
+# Plot data channel 15 in an XY grid
+ig.plot_data_xy(f_data_h5, data_channel=15, cmap='jet');
 
 # %% [markdown]
 # ## 1. Set up the prior model ($\rho(\mathbf{m},\mathbf{d})$)
@@ -95,6 +101,7 @@ ig.plot_data(f_data_h5, hardcopy=hardcopy)
 # %%
 # Select how many prior model realizations (N) should be generated
 N=1000000
+N=10000
 
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR.h5')
 print('%s is used to hold prior realizations' % (f_prior_h5))
@@ -117,8 +124,8 @@ ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 
 # %%
 # Option 1: Update the existing PRIOR.h5 file with forward-modeled data
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=False, parallel=parallel)
-# Option 2: Create a copy of PRIOR.h5 and update the copy (uncomment to use)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True)
+#f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=False, parallel=parallel)
 # f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel)
 
 print('Updated %s to hold prior data (forward-modeled responses)' % (f_prior_data_h5))
@@ -149,7 +156,7 @@ ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,hardcopy=hardcopy)
 N_use = N   # Number of prior samples to use (use all available)
 T_base = 1  # Base annealing temperature for rejection sampling
 autoT = 1   # Automatically estimate optimal annealing temperature
-f_post_h5 = ig.integrate_rejection(f_prior_h5, 
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                    f_data_h5, 
                                    f_post_h5 = 'POST.h5', 
                                    N_use = N_use, 
@@ -184,6 +191,10 @@ ig.plot_data_prior_post(f_post_h5, i_plot=0,hardcopy=hardcopy)
 ig.plot_T_EV(f_post_h5, pl='T',hardcopy=hardcopy)
 # Plot the evidence (log-likelihood) estimated during inversion
 ig.plot_T_EV(f_post_h5, pl='EV',hardcopy=hardcopy)
+# Plot the normalized mean-loglikelihood
+# Values less than one suggest overfitting
+# Values above one suggest underfitting
+ig.plot_T_EV(f_post_h5, pl='LOGL_mean',hardcopy=hardcopy)
 
 # %% [markdown]
 # ### Resistivity profiles

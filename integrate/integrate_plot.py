@@ -771,11 +771,10 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         Entropy=f_post[Mstr+'/Entropy'][:].T
         P=f_post[Mstr+'/P'][:]
         T=f_post['/T'][:].T
-        EV=f_post['/EV'][:].T
         try:
-            EV=f_post['/EV_mul'][:]
+            LOGL_mean=f_post['/LOGL_mean'][:]
         except:
-            a=1
+            LOGL_mean=None
 
     nm = Mode.shape[0]
     if nm<=1:
@@ -861,7 +860,8 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     ax[2].set_xticks([])
     
     im4 = ax[3].semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
-    plt.semilogy(ID[0,i1:i2],-EV[i1:i2], 'r', label='-log(EV)')
+    if LOGL_mean is not None:
+        plt.semilogy(ID[0,i1:i2],-LOGL_mean[i1:i2], 'r', label='LOGL_mean')
     plt.tight_layout()
     ax[3].set_xlim(ID[0,i1], ID[0,i2])
     ax[3].set_ylim(0.99, 200)
@@ -998,11 +998,10 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         Median=f_post[Mstr+'/Median'][:].T
         Std=f_post[Mstr+'/Std'][:].T
         T=f_post['/T'][:].T
-        EV=f_post['/EV'][:].T
         try:
-            EV=f_post['/EV_mul'][:]
+            LOGL_mean=f_post['/LOGL_mean'][:]
         except:
-            a=1
+            LOGL_mean=None
 
     # Compute alpha matrix 'A' such that 
     # any values with Std<alpha are fully solid
@@ -1128,7 +1127,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     ax[2].set_xticks([])
     
     im4 = ax[3].semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
-    plt.semilogy(ID[0,i1:i2],-EV[i1:i2], 'r', label='-log(EV)')
+    if LOGL_mean is not None:
+        plt.semilogy(ID[0,i1:i2],LOGL_mean[i1:i2], 'r', label='LOGL_mean')
     plt.tight_layout()
     ax[3].set_xlim(ID[0,i1], ID[0,i2])
     ax[3].set_ylim(0.99, 200)
@@ -1269,6 +1269,15 @@ def plot_data_xy(f_data_h5, Dkey='D1', data_key='d_obs', data_channel=0, uselog=
     if kwargs['hardcopy']:
         f_png = f"{os.path.splitext(f_data_h5)[0]}_{Dkey}_{data_key}_ch{data_channel}.png"
         plt.savefig(f_png)
+    
+    # Check if we're in a Jupyter notebook environment
+    #try:
+    #    # If we're in a notebook, don't call plt.show() to avoid double display
+    #    get_ipython()
+    #    # We're in an IPython/Jupyter environment, figure will auto-display
+    #except NameError:
+    #    # We're not in a notebook, need to explicitly show
+    #    plt.show()
     
     return fig
 
