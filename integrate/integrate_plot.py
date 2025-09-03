@@ -860,13 +860,30 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     ax[2].set_xticks([])
     
     im4 = ax[3].semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
-    if LOGL_mean is not None:
-        plt.semilogy(ID[0,i1:i2],-LOGL_mean[i1:i2], 'r', label='LOGL_mean')
-    plt.tight_layout()
     ax[3].set_xlim(ID[0,i1], ID[0,i2])
     ax[3].set_ylim(0.99, 200)
-    ax[3].legend(loc='upper right')
+    ax[3].set_ylabel('Temperature', color='k')
+    ax[3].tick_params(axis='y', labelcolor='k')
+    
+    if LOGL_mean is not None:
+        # Create second y-axis for LOGL_mean
+        ax3_twin = ax[3].twinx()
+        ax3_twin.plot(ID[0,i1:i2], LOGL_mean[i1:i2], 'r', label='LOGL_mean')
+        # Add dotted red line at y=1
+        ax3_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
+        ax3_twin.set_ylim(0, 5)
+        ax3_twin.set_ylabel('LOGL_mean', color='r')
+        ax3_twin.tick_params(axis='y', labelcolor='r')
+        
+        # Combine legends from both axes
+        lines1, labels1 = ax[3].get_legend_handles_labels()
+        lines2, labels2 = ax3_twin.get_legend_handles_labels()
+        ax[3].legend(lines1 + lines2, labels1 + labels2, loc='upper right')
+    else:
+        ax[3].legend(loc='upper right')
+    
     plt.grid(True)
+    plt.tight_layout()
 
     # Create an invisible colorbar for the last subplot
     cbar4 = fig.colorbar(im3, ax=ax[3])
@@ -1127,13 +1144,30 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     ax[2].set_xticks([])
     
     im4 = ax[3].semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
-    if LOGL_mean is not None:
-        plt.semilogy(ID[0,i1:i2],LOGL_mean[i1:i2], 'r', label='LOGL_mean')
-    plt.tight_layout()
     ax[3].set_xlim(ID[0,i1], ID[0,i2])
     ax[3].set_ylim(0.99, 200)
-    ax[3].legend(loc='upper right')
+    ax[3].set_ylabel('Temperature', color='k')
+    ax[3].tick_params(axis='y', labelcolor='k')
+    
+    if LOGL_mean is not None:
+        # Create second y-axis for LOGL_mean
+        ax3_twin = ax[3].twinx()
+        ax3_twin.plot(ID[0,i1:i2], LOGL_mean[i1:i2], 'r', label='LOGL_mean')
+        # Add dotted red line at y=1
+        ax3_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
+        ax3_twin.set_ylim(0, 5)
+        ax3_twin.set_ylabel('LOGL_mean', color='r')
+        ax3_twin.tick_params(axis='y', labelcolor='r')
+        
+        # Combine legends from both axes
+        lines1, labels1 = ax[3].get_legend_handles_labels()
+        lines2, labels2 = ax3_twin.get_legend_handles_labels()
+        ax[3].legend(lines1 + lines2, labels1 + labels2, loc='upper right')
+    else:
+        ax[3].legend(loc='upper right')
+    
     plt.grid(True)
+    plt.tight_layout()
 
     if nm>1:
         # Create an invisible colorbar for the last subplot
@@ -1655,6 +1689,12 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
 
     f_prior_h5 = f_post['/'].attrs['f5_prior']
     f_data_h5 = f_post['/'].attrs['f5_data']
+    
+    # Load LOGL_mean if it exists
+    try:
+        LOGL_mean = f_post['/LOGL_mean'][:]
+    except:
+        LOGL_mean = None
 
 
     # if id is a list of integers, then loop over them and call 
@@ -1784,6 +1824,8 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
         if i_plot>-1:            
             ax.text(0.1, 0.1, 'T = %4.2f.' % (f_post['/T'][i_plot]), transform=ax.transAxes)
             ax.text(0.1, 0.2, 'log(EV) = %4.2f.' % (f_post['/EV'][i_plot]), transform=ax.transAxes)
+            if LOGL_mean is not None:
+                ax.text(0.1, 0.3, 'LOGL_mean = %4.2f.' % (LOGL_mean[i_plot]), transform=ax.transAxes)
             plt.title('Data set %s, Observation # %d' % (Dkey, i_plot+1))
 
 

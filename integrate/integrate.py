@@ -731,7 +731,6 @@ def forward_gaaem(C=np.array(()),
 
     if (len(stmfiles)>0) and (file_gex != '') and (len(GEX)==0):
         # GEX FILE and STM FILES
-        print('file_gex="%s"' % (file_gex))
         if (showInfo)>1:
             print('Using submitted GEX file (%s)' % (file_gex))
         GEX =   ig.read_gex(file_gex)
