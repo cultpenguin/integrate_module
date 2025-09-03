@@ -1979,7 +1979,7 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
 
 
 
-def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_data_h5='data.h5', UTMX=None, UTMY=None, LINE=None, ELEVATION=None, **kwargs):
+def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_data_h5='data.h5', UTMX=None, UTMY=None, LINE=None, ELEVATION=None, delete_if_exist=False, name=None, **kwargs):
     """
     Write observational data with Gaussian noise model to HDF5 file.
 
@@ -2019,6 +2019,12 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
     ELEVATION : numpy.ndarray, optional
         Ground surface elevation in meters, shape (N_stations,) or (N_stations,1).
         If None, creates zeros array (default is None).
+    delete_if_exist : bool, optional
+        Whether to delete the entire HDF5 file if it exists before creating
+        new data. Use with caution as this removes all existing data (default is False).
+    name : str, optional
+        Optional name attribute to be written to the data group. If provided,
+        this string will be stored as an attribute alongside 'noise_model' (default is None).
     **kwargs : dict
         Additional metadata parameters:
         - showInfo : int, verbosity level
@@ -2061,10 +2067,31 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
     showInfo = kwargs.get('showInfo', 0)
     f_gex = kwargs.get('f_gex', '')
 
+    # Delete entire file if requested
+    if delete_if_exist:
+        import os
+        if os.path.exists(f_data_h5):
+            os.remove(f_data_h5)
+            if showInfo > 1:
+                print("File %s has been deleted." % f_data_h5)
+        else:
+            if showInfo > 1:
+                print("File %s does not exist." % f_data_h5)
+
+    # Ensure D_obs is 2D with shape (N_stations, N_channels)
+    D_obs = np.atleast_2d(D_obs)
+    if D_obs.shape[0] == 1 and D_obs.shape[1] > 1:
+        D_obs = D_obs.T
+
     if len(D_std)==0:
         if len(d_std)==0:
             d_std = 0.01
         D_std = np.abs(d_std * D_obs)
+    else:
+        # Ensure D_std is 2D with same shape as D_obs
+        D_std = np.atleast_2d(D_std)
+        if D_std.shape[0] == 1 and D_std.shape[1] > 1:
+            D_std = D_std.T
 
     D_str = 'D%d' % id
     ns,nd=D_obs.shape
@@ -2132,6 +2159,8 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
         # wrote attribute noise_model
         f['/%s/' % D_str].attrs['noise_model'] = 'gaussian'
         f['/%s/' % D_str].attrs['is_log'] = is_log
+        if name is not None:
+            f['/%s/' % D_str].attrs['name'] = name
         if len(f_gex)>0:
             f['/%s/' % D_str].attrs['gex'] = f_gex
     
@@ -2285,16 +2314,21 @@ def check_data(f_data_h5='data.h5', **kwargs):
             
             if coord_data is not None:
                 # Coordinate data provided - update or create
+                # Ensure coordinate data is 2D with shape (N_stations, 1)
+                coord_data_2d = np.atleast_2d(coord_data)
+                if coord_data_2d.shape[0] == 1 and coord_data_2d.shape[1] > 1:
+                    coord_data_2d = coord_data_2d.T
+                
                 if coord_name in f:
                     if showInfo > 0:
                         print('Updating %s' % coord_name)
                     # Delete existing dataset and recreate with new data
                     del f[coord_name]
-                    f.create_dataset(coord_name, data=coord_data)
+                    f.create_dataset(coord_name, data=coord_data_2d)
                 else:
                     if showInfo > 0:
                         print('Creating %s' % coord_name)
-                    f.create_dataset(coord_name, data=coord_data)
+                    f.create_dataset(coord_name, data=coord_data_2d)
             else:
                 # No coordinate data provided - create defaults only if missing
                 if coord_name not in f:

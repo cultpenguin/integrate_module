@@ -1152,26 +1152,36 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     return
 
-def plot_data_xy(f_data_h5, pl_type='line', **kwargs):
+def plot_data_xy(f_data_h5, Dkey='D1', data_key='d_obs', data_channel=0, uselog=False, clim=[], **kwargs):
     """
-    Create 2D spatial plot of survey geometry and elevation data.
+    Create 2D spatial plot of actual data values from electromagnetic surveys.
 
     Generates a scatter plot showing the spatial distribution of survey data
-    points with color-coding for survey lines, elevation, or both. Useful for
-    visualizing survey layout and topographic variations.
+    with color-coding based on actual measured values. Useful for visualizing
+    data distribution and identifying spatial patterns.
 
     Parameters
     ----------
     f_data_h5 : str
-        Path to the HDF5 file containing geometry data.
-    pl_type : {'line', 'elevation', 'all'}, optional
-        Type of geometry plot to generate (default is 'line'):
-        - 'line': color by survey line numbers only
-        - 'elevation': color by elevation data only
-        - 'all': show both line and elevation information
+        Path to the HDF5 file containing observational data.
+    Dkey : str, optional
+        Data group identifier to plot (e.g., 'D1', 'D2', default is 'D1').
+    data_key : str, optional
+        Data dataset to plot within the group (default is 'd_obs').
+        Options: 'd_obs', 'd_std', or other datasets in the data group.
+    data_channel : int, optional
+        Channel/gate number to plot for multi-channel data (default is 0).
+        For data of shape [N_stations, N_channels], selects which channel to display.
+    uselog : bool, optional
+        Apply logarithmic scaling to the colorbar (default is False).
+    clim : list, optional
+        Color scale limits as [min, max]. If empty list, uses automatic limits
+        (default is []).
     **kwargs : dict
         Additional keyword arguments:
         - hardcopy : bool, save plot as PNG file (default False)
+        - s : int, marker size for scatter plot (default 20)
+        - cmap : str, colormap name (default 'viridis')
 
     Returns
     -------
@@ -1181,42 +1191,88 @@ def plot_data_xy(f_data_h5, pl_type='line', **kwargs):
     Notes
     -----
     Coordinates are automatically scaled to kilometers for better readability.
-    The plot uses equal aspect ratio and includes grid lines and appropriate
-    colorbars for the selected data type. Figure size is automatically adjusted
-    based on the aspect ratio of the survey area.
+    The plot uses equal aspect ratio and includes grid lines. For multi-channel
+    data, only the specified channel is displayed. Figure size is automatically 
+    adjusted based on the aspect ratio of the survey area.
     """
-    #import integrate as ig
     import matplotlib.pyplot as plt
+    import matplotlib.colors
+    import h5py
+    import numpy as np
     
     kwargs.setdefault('hardcopy', False)
+    kwargs.setdefault('s', 20)
+    kwargs.setdefault('cmap', 'viridis')
     
-    # Get 'f_prior' and 'f_data' from the selected file 
-    # and display them in the sidebar
+    # Get geometry
     X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-    # Get the ratio between the width   and the height of the plot from X and Y
+    
+    # Load data
+    with h5py.File(f_data_h5, 'r') as f:
+        if Dkey not in f:
+            raise ValueError(f"Data group '{Dkey}' not found in file")
+        if data_key not in f[Dkey]:
+            raise ValueError(f"Data key '{data_key}' not found in group '{Dkey}'")
+            
+        data = f[Dkey][data_key][:]
+        
+        # Get name attribute if it exists
+        name_attr = f[Dkey].attrs.get('name', None)
+    
+    # Handle data dimensions
+    if data.ndim == 1:
+        plot_data = data
+    elif data.ndim == 2:
+        if data_channel >= data.shape[1]:
+            raise ValueError(f"Channel {data_channel} not available. Data has {data.shape[1]} channels.")
+        plot_data = data[:, data_channel]
+    else:
+        raise ValueError(f"Unsupported data dimensions: {data.shape}")
+    
+    # Calculate figure ratio and create plot
     ratio = (X.max()-X.min())/(Y.max()-Y.min())
     fig, ax = plt.subplots(figsize=(12, 12/ratio))
-    ax.set_title('GEOMETRY')
-    if (pl_type=='all')|(pl_type=='elevation'):
-        cbar1 = plt.colorbar(ax.scatter(X/1000, Y/1000, c=ELEVATION, s=20, cmap='gray'))
-        cbar1.set_label('Elevation (m)')
-    if (pl_type=='all')|(pl_type=='line'):
-        cbar2 = plt.colorbar(ax.scatter(X/1000, Y/1000, c=LINE, s=.1, cmap='jet'))
-        cbar2.set_label('LINE')
+    
+    # Create title
+    if name_attr is not None:
+        title = f"Data set {Dkey}: {name_attr} - {data_key}"
+    else:
+        title = f"Data set {Dkey} - {data_key}"
+    
+    if data.ndim == 2 and data.shape[1] > 1:
+        title += f" (channel {data_channel})"
+    
+    ax.set_title(title)
+    
+    # Create scatter plot
+    if uselog:
+        # Handle NaN and non-positive values for log scaling
+        plot_data_clean = plot_data.copy()
+        plot_data_clean[~np.isfinite(plot_data_clean) | (plot_data_clean <= 0)] = 1e-12
+        scatter = ax.scatter(X/1000, Y/1000, c=plot_data_clean, s=kwargs['s'], cmap=kwargs['cmap'], 
+                           norm=matplotlib.colors.LogNorm())
+    else:
+        scatter = ax.scatter(X/1000, Y/1000, c=plot_data, s=kwargs['s'], cmap=kwargs['cmap'])
+    
+    # Apply colorbar limits if provided
+    if len(clim) == 2:
+        scatter.set_clim(clim[0], clim[1])
+    
+    cbar = plt.colorbar(scatter)
+    cbar.set_label(f"{data_key}")
+    
     ax.set_xlabel('X (km)')
     ax.set_ylabel('Y (km)')
-    # add equal axis
     ax.axis('equal')
     ax.grid()
 
     if kwargs['hardcopy']:
-        f_png = '%s_xy_%s.png' % (os.path.splitext(f_data_h5)[0],pl_type)
+        f_png = f"{os.path.splitext(f_data_h5)[0]}_{Dkey}_{data_key}_ch{data_channel}.png"
         plt.savefig(f_png)
     
-
     return fig
 
-def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
+def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', uselog=True, **kwargs):
     """
     Plot observational data from an HDF5 file.
     
@@ -1232,6 +1288,8 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
     :type Dkey: str or list, optional
     :param plType: Plotting method - 'imshow' for 2D image display, 'plot' for line plots
     :type plType: str, optional
+    :param uselog: Apply logarithmic scaling to data visualization (default is True)
+    :type uselog: bool, optional
     :param kwargs: Additional plotting arguments including hardcopy, figsize, colormap options
     :type kwargs: dict
     
@@ -1271,6 +1329,14 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
         print("plot_data: Using data set %s" % Dkey)
  
     noise_model = f_data['/%s' % Dkey].attrs['noise_model']
+    
+    # Get name attribute if it exists
+    name_attr = f_data['/%s' % Dkey].attrs.get('name', None)
+    
+    # Force plot type for discrete/multinomial data
+    if noise_model == 'multinomial' or Dkey.upper() in ['D2', 'D3', 'D4', 'D5']:
+        plType = 'plot'
+    
     if noise_model == 'gaussian':
         noise_model = 'Gaussian'
         d_obs = f_data['/%s' % Dkey]['d_obs'][:]
@@ -1302,10 +1368,17 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
 
         fig, ax = plt.subplots(4,1,figsize=(10,12), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
 
+        # Set suptitle with optional name attribute
+
         if plType=='plot':
-            im1 = ax[0].semilogy(d_obs[i_plot,:], linewidth=.5)
-            im2 = ax[1].semilogy(d_std[i_plot,:], linewidth=.5)
-            im3 = ax[2].semilogy((d_obs[i_plot,:]/d_std[i_plot,:]), linewidth=.5)
+            if uselog:
+                im1 = ax[0].semilogy(d_obs[i_plot,:], linewidth=.5)
+                im2 = ax[1].semilogy(d_std[i_plot,:], linewidth=.5)
+                im3 = ax[2].semilogy((d_obs[i_plot,:]/d_std[i_plot,:]), linewidth=.5)
+            else:
+                im1 = ax[0].plot(d_obs[i_plot,:], linewidth=.5)
+                im2 = ax[1].plot(d_std[i_plot,:], linewidth=.5)
+                im3 = ax[2].plot((d_obs[i_plot,:]/d_std[i_plot,:]), linewidth=.5)
             ax[0].set_xlim(xlim)
             ax[1].set_xlim(xlim)
             ax[2].set_xlim(xlim)
@@ -1315,9 +1388,25 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
             ax[2].set_ylabel('S/N (d_obs/d_std)')
 
         elif plType=='imshow':            
-            im1 = ax[0].imshow(d_obs[i_plot,:].T, aspect='auto', cmap='jet_r', norm=matplotlib.colors.LogNorm(), extent=extent)
-            im2 = ax[1].imshow(d_std[i_plot,:].T, aspect='auto', cmap='hot_r', norm=matplotlib.colors.LogNorm(), extent=extent)
-            im3 = ax[2].imshow((d_obs[i_plot,:]/d_std[i_plot,:]).T, aspect='auto', vmin = 0.5, vmax = 50, extent=extent)
+            if uselog:
+                # Handle NaN and invalid values for LogNorm
+                d_obs_clean = d_obs[i_plot,:].copy()
+                d_std_clean = d_std[i_plot,:].copy()
+                
+                # Replace NaN/inf/zero values with small positive values for LogNorm
+                d_obs_clean[~np.isfinite(d_obs_clean) | (d_obs_clean <= 0)] = 1e-12
+                d_std_clean[~np.isfinite(d_std_clean) | (d_std_clean <= 0)] = 1e-12
+                
+                im1 = ax[0].imshow(d_obs_clean.T, aspect='auto', cmap='jet_r', norm=matplotlib.colors.LogNorm(), extent=extent)
+                im2 = ax[1].imshow(d_std_clean.T, aspect='auto', cmap='hot_r', norm=matplotlib.colors.LogNorm(), extent=extent)
+            else:
+                im1 = ax[0].imshow(d_obs[i_plot,:].T, aspect='auto', cmap='jet_r', extent=extent)
+                im2 = ax[1].imshow(d_std[i_plot,:].T, aspect='auto', cmap='hot_r', extent=extent)
+            
+            # For signal-to-noise ratio, handle division by zero and set reasonable limits
+            snr_data = d_obs[i_plot,:] / d_std[i_plot,:]
+            snr_data = np.where(np.isfinite(snr_data), snr_data, 1.0)
+            im3 = ax[2].imshow(snr_data.T, aspect='auto', vmin = 0.5, vmax = 50, extent=extent)
 
             fig.colorbar(im1, ax=ax[0])
             fig.colorbar(im2, ax=ax[1])
@@ -1326,6 +1415,7 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
             ax[0].set_ylabel('gate number')
             ax[1].set_ylabel('gate number')
             ax[2].set_ylabel('gate number')
+                
             ax[0].set_title('d_obs: observed data')
             ax[1].set_title('d_std: standard deviation')
             #ax[2].set_title('d_std/d_obs: relative standard deviation')
@@ -1350,7 +1440,11 @@ def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', **kwargs):
         ax[2].grid()
         ax[3].grid()
 
-        plt.suptitle('Data set %s' % Dkey)
+        if name_attr is not None:
+            fig.suptitle("Dataset %s: %s" % (Dkey, name_attr))
+        else:
+            fig.suptitle("Dataset %s" % Dkey)
+
         plt.tight_layout()
     else:
         print("plot_data: Unknown noise model: %s" % noise_model)
