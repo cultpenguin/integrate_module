@@ -24,7 +24,7 @@ import numpy as np
 from load_data_XYZ_mod_dat import load_data_XYZ as load_data_XYZ_mod_dat
 from load_data_XYZ_avg_export import load_data_XYZ as load_data_XYZ_avg_export
 
-doPlot=True
+doPlot=False
     
 
 # %%  load data
