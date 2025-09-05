@@ -309,7 +309,8 @@ def save_prior_model(f_prior_h5, M_new,
 
         if showInfo>1:
             print("New prior data '%s' saved to file: %s " % (key,f_prior_h5))
-
+    
+    return im
 
 
 def load_prior_data(f_prior_h5, id_use=[], idx=[], N_use=0, Randomize=False, **kwargs):
@@ -1383,6 +1384,27 @@ def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, c
     output_file = None
     
     try:
+        # Check and close any open HDF5 file handles for these files
+        try:
+            # Get all open file objects
+            open_files = list(h5py.h5f.get_obj_ids())
+            for fid in open_files:
+                try:
+                    f_temp = h5py.h5i.get_name(fid)
+                    if f_temp:
+                        f_temp = f_temp.decode('utf-8') if isinstance(f_temp, bytes) else f_temp
+                        if f_temp == input_filename or f_temp == output_filename:
+                            if showInfo > 0:
+                                print(f'Closing open HDF5 file handle for: {f_temp}')
+                            h5py.h5f.close(fid)
+                except (ValueError, OSError, RuntimeError):
+                    # Handle cases where the file ID might be invalid or already closed
+                    continue
+        except (ValueError, OSError):
+            # If we can't get file IDs, continue without closing
+            if showInfo > 0:
+                print('Could not check for open HDF5 file handles')
+        
         # Open the input file
         if showInfo > 0:
             print('Trying to copy %s to %s' % (input_filename, output_filename))

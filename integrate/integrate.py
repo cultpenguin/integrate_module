@@ -663,13 +663,13 @@ Forward simulation
 
 def forward_gaaem(C=np.array(()), 
                     thickness=np.array(()), 
-                    stmfiles=[], 
+                    stmfiles=None, 
                     tx_height=np.array(()), 
                     txrx_dx = -13, 
                     txrx_dy = 0,
                     txrx_dz     = .1,
                     GEX={}, 
-                    file_gex='', 
+                    file_gex=None, 
                     showtime=False, 
                     **kwargs):
     """
@@ -682,7 +682,7 @@ def forward_gaaem(C=np.array(()),
     thickness : numpy.ndarray, optional
         Thickness array. Default is np.array(()).
     stmfiles : list, optional
-        List of STM files. Default is [].
+        List of STM files. Default is None.
     tx_height : numpy.ndarray, optional
         Transmitter height array. Default is np.array(()).
     txrx_dx : float, optional
@@ -694,7 +694,7 @@ def forward_gaaem(C=np.array(()),
     GEX : dict, optional
         GEX dictionary. Default is {}.
     file_gex : str, optional
-        Path to GEX file. Default is ''.
+        Path to GEX file. Default is None.
     showtime : bool, optional
         Flag to display execution time. Default is False.
     **kwargs : dict
@@ -709,7 +709,6 @@ def forward_gaaem(C=np.array(()),
     numpy.ndarray
         Forward modeled data array.
     """
-    
     from gatdaem1d import Earth;
     from gatdaem1d import Geometry;
     # Next should probably only be loaded if the DLL is not allready loaded!!!
@@ -725,6 +724,12 @@ def forward_gaaem(C=np.array(()),
         disableTqdm=False
 
     doCompress = kwargs.get('doCompress', True)
+
+    # Handle None defaults
+    if stmfiles is None:
+        stmfiles = []
+    if file_gex is None:
+        file_gex = ''
 
     #print(stmfiles)
     #print(file_gex)
@@ -852,7 +857,13 @@ def forward_gaaem(C=np.array(()),
         # Here we should read the number of gates from the lines in STMFILES that conatin 'NumberOfWindows = 41'
         ng = 41
 
-    #print(tx_height)
+    print(tx_height.shape)
+
+    # pinrt txrx_dx, txrx_dy, txrx_dz
+    if (showInfo>0):
+        print('txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (txrx_dx, txrx_dy, txrx_dz))
+        print('ng=%d' % ng)
+        
 
     D = np.zeros((nd,ng))
 
@@ -967,7 +978,7 @@ def get_process_handle_count():
     import os
     return psutil.Process(os.getpid()).num_handles()
 
-def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1, im_height=0, Nhank=280, Nfreq=12, is_log=False, parallel=True, **kwargs):
+def prior_data_gaaem(f_prior_h5, stmfiles=None, file_gex=None, N=0, doMakePriorCopy=True, im=1, id=1, im_height=0, Nhank=280, Nfreq=12, is_log=False, parallel=True, **kwargs):
     """
     Generate prior data for the GA-AEM method.
 
@@ -1033,18 +1044,35 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
     if N>N_in:
         N=N_in
 
-    if not os.path.isfile(file_gex):
-        print("ERRROR: file_gex=%s does not exist in the current folder." % file_gex)
+    # if is not None file_gex
+    if (file_gex is not None):
+        if not os.path.isfile(file_gex):
+            print("ERRROR: file_gex=%s does not exist in the current folder." % file_gex)
+
+    if (stmfiles is not None):
+        for i in range(len(stmfiles)):
+            if not os.path.isfile(stmfiles[i]):
+                print("ERRROR: stmfiles[%d]=%s does not exist in the current folder." % (i,stmfiles[i]))
+ 
 
     if doMakePriorCopy:
-        file_gex_basename = os.path.splitext(os.path.basename(file_gex))[0]
+
+        # If file_gex is not None, then use it to get the file_base_name
+        if (file_gex is not None) and os.path.isfile(file_gex): 
+            file_basename = os.path.splitext(os.path.basename(file_gex))[0]
+        elif (stmfiles is not None) and (len(stmfiles)>0):
+            file_basename = os.path.splitext(os.path.basename(stmfiles[0]))[0]
+        else:
+            file_basename = 'GAAEM'
+        
+        print('Using file_basename=%s' % file_basename)
 
         if N < N_in:
-            f_prior_data_h5 = '%s_%s_N%d_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex_basename)[0], N, Nhank, Nfreq)
+            f_prior_data_h5 = '%s_%s_N%d_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_basename)[0], N, Nhank, Nfreq)
         else:
-            f_prior_data_h5 = '%s_%s_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_gex_basename)[0], Nhank, Nfreq)
-            
+            f_prior_data_h5 = '%s_%s_Nh%d_Nf%d.h5' % (os.path.splitext(f_prior_h5)[0], os.path.splitext(file_basename)[0], Nhank, Nfreq)
         
+
         if (showInfo>0):
             print("Creating a copy of %s" % (f_prior_h5))
             print("                as %s" % (f_prior_data_h5))
@@ -1090,10 +1118,24 @@ def prior_data_gaaem(f_prior_h5, file_gex, N=0, doMakePriorCopy=True, im=1, id=1
             print("prior_data_gaaem: Using 1 thread /(sequential).")
         # Sequential
         if im_height>0:
-            print('Using tx_height')
-            D = ig.forward_gaaem(C=C, thickness=thickness, tx_height=tx_height, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)
+            if (showInfo>1):
+                print('Using tx_height')
+            D = ig.forward_gaaem(C=C, 
+                                 thickness=thickness, 
+                                 tx_height=tx_height, 
+                                 file_gex=file_gex, 
+                                 stmfiles=stmfiles,
+                                 Nhank=Nhank, 
+                                 Nfreq=Nfreq, 
+                                 parallel=parallel, **kwargs)
         else:
-            D = ig.forward_gaaem(C=C, thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=parallel, **kwargs)
+            D = ig.forward_gaaem(C=C, 
+                                 thickness=thickness, 
+                                 file_gex=file_gex, 
+                                 stmfiles=stmfiles,
+                                 Nhank=Nhank, 
+                                 Nfreq=Nfreq, 
+                                 parallel=parallel, **kwargs)
         if is_log:
             D = np.log10(D)
     else:
