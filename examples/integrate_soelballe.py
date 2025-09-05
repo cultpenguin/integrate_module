@@ -149,7 +149,7 @@ if useMOD:
 # Select how many prior model realizations (N) should be generated
 import integrate as ig
 import numpy as np
-N=10000
+N=1000000
 RHO_min=1
 RHO_max=3000
 f_prior_h5 = ig.prior_model_layered(
@@ -223,18 +223,16 @@ txrx_dz= -1*GENERAL['RxCoilPosition'][0][2]
 print('txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (txrx_dx, txrx_dy, txrx_dz))
 #%% 
 
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, f_data_h5='DATA_sim.h5', 
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5,
                     im_height=im_height, 
                     stmfiles=stmfiles, 
-                    showInfo=1, 
+                    showInfo=0, 
                     txrx_dx = txrx_dx,
                     txrx_dy = txrx_dy,
                     txrx_dz = txrx_dz,
-                    parallel=False)
+                    parallel=True)
 
 f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=im_height)
-
-
 
 ig.plot_data_prior(f_prior_data_h5, f_data_h5, id=1, id_data=1)
 ig.plot_data_prior(f_prior_data_h5, f_data_h5, id=2, id_data=2)

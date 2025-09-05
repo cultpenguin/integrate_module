@@ -1116,7 +1116,7 @@ def prior_data_gaaem(f_prior_h5, file_gex=None, stmfiles=None, N=0, doMakePriorC
             print("prior_data_gaaem: Using 1 thread /(sequential).")
         # Sequential
         if im_height>0:
-            if (showInfo>1):
+            if (showInfo>0):
                 print('Using tx_height')
             D = ig.forward_gaaem(C=C, 
                                  thickness=thickness, 
@@ -1140,7 +1140,8 @@ def prior_data_gaaem(f_prior_h5, file_gex=None, stmfiles=None, N=0, doMakePriorC
 
         # Make sure STM files are only written once!!! (need for multihreading)
         # D = ig.forward_gaaem(C=C[0:1,:], thickness=thickness, file_gex=file_gex, Nhank=Nhank, Nfreq=Nfreq, parallel=False, **kwargs)
-        stmfiles, GEX = ig.gex_to_stm(file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
+        if stmfiles is None or len(stmfiles)==0:
+            stmfiles, _ = ig.gex_to_stm(file_gex, Nhank=Nhank, Nfreq=Nfreq, **kwargs)
 
         # Parallel
         if Ncpu < 1 :
