@@ -1379,9 +1379,9 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
 
         ### simulate the resistivity in each layer
         if RHO_dist=='log-normal':
-            rho_all=np.random.lognormal(mean=np.log10(RHO_MEAN), sigma=np.log10(RHO_std), size=NLAY[i])
+            rho_all=np.random.lognormal(mean=np.log(RHO_MEAN), sigma=np.log(RHO_std), size=NLAY[i])
         elif RHO_dist=='normal':
-            rho_all=np.random.normal(mean=RHO_MEAN, sigma=RHO_std, size=NLAY[i])
+            rho_all=np.random.normal(loc=RHO_MEAN, scale=RHO_std, size=NLAY[i])
         elif RHO_dist=='log-uniform':
             rho_all=np.exp(np.random.uniform(np.log(RHO_min), np.log(RHO_max), NLAY[i]))
         elif RHO_dist=='uniform':
@@ -1637,9 +1637,10 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
     
     if lay_dist == 'chi2':
         NLAY = np.random.chisquare(NLAY_deg, N)
-        NLAY = np.ceil(NLAY).astype(int)    
+        NLAY = np.ceil(NLAY).astype(int)
         if len(f_prior_h5)<1:
             f_prior_h5 = 'PRIOR_WB_CHI2_NF_%d_%s_N%d.h5' % (NLAY_deg, RHO_dist, N)
+        NLAY_max = np.max(NLAY)  # Update NLAY_max to accommodate chi2 distribution
     elif lay_dist == 'uniform':
         NLAY = np.random.randint(NLAY_min, NLAY_max+1, N)
         if NLAY_min == NLAY_max:
@@ -1663,7 +1664,7 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
     M_rho = np.zeros((N, nz))
 
     nm_sparse = NLAY_max+NLAY_max-1
-    if (showInfo>0):
+    if (showInfo>1):
         print("nm_sparse", nm_sparse)
     M_rho_sparse = np.ones((N, nm_sparse))*np.nan
     
@@ -1680,10 +1681,13 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
             M_rho_single = np.exp(np.random.uniform(low=np.log(RHO_min), high = np.log(RHO_max), size=(1, nlayers)))
         elif RHO_dist=='normal':
             M_rho_single = np.random.normal(loc=RHO_mean, scale = RHO_std, size=(1, nlayers))
-        elif RHO_dist=='log-normal':
+        elif RHO_dist=='log-normal' or RHO_dist=='lognormal':
             M_rho_single = np.random.lognormal(mean=np.log(RHO_mean), sigma = RHO_std/RHO_mean, size=(1, nlayers))
         elif RHO_dist=='chi2':
             M_rho_single = np.random.chisquare(df = chi2_deg, size=(1, nlayers))
+        else:
+            # Default to log-uniform if RHO_dist is not recognized
+            M_rho_single = np.exp(np.random.uniform(low=np.log(RHO_min), high = np.log(RHO_max), size=(1, nlayers)))
 
         for j in range(nlayers):
             ind = np.where(z>=z_single[j])[0]

@@ -21,9 +21,10 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # #%load_ext autoreload
-    # # # # # # #%autoreload 2
+    # # # # # # # #%load_ext autoreload
+    # # # # # # # #%autoreload 2
     pass
+
 # %%
 import integrate as ig
 # Check if parallel computations can be performed
@@ -100,8 +101,7 @@ ig.plot_data_xy(f_data_h5, data_channel=15, cmap='jet');
 
 # %%
 # Select how many prior model realizations (N) should be generated
-N=1000000
-N=100000
+N=2000000
 
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR.h5')
 print('%s is used to hold prior realizations' % (f_prior_h5))
