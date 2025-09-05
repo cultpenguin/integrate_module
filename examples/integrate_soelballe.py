@@ -149,7 +149,7 @@ if useMOD:
 # Select how many prior model realizations (N) should be generated
 import integrate as ig
 import numpy as np
-N=1000000
+N=10000
 RHO_min=1
 RHO_max=3000
 f_prior_h5 = ig.prior_model_layered(
@@ -216,10 +216,20 @@ d_sim_2 = ig.forward_gaaem(C=cond,
 
 
 #%% 
+print(GENERAL['RxCoilPosition'])
+txrx_dx= GENERAL['RxCoilPosition'][0][0]
+txrx_dy= GENERAL['RxCoilPosition'][0][1]
+txrx_dz= -1*GENERAL['RxCoilPosition'][0][2]
+print('txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (txrx_dx, txrx_dy, txrx_dz))
+#%% 
+
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, f_data_h5='DATA_sim.h5', 
                     im_height=im_height, 
                     stmfiles=stmfiles, 
                     showInfo=1, 
+                    txrx_dx = txrx_dx,
+                    txrx_dy = txrx_dy,
+                    txrx_dz = txrx_dz,
                     parallel=False)
 
 f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=im_height)
@@ -235,8 +245,8 @@ D_obs = ig.load_data(f_data_h5)
 D_prior, idx = ig.load_prior_data(f_prior_data_h5)
 d_sim_3 = D_prior[0]
 
-plt.plot(D_obs['d_obs'][1])
-plt.plot(D_prior[1],'r-')
+#plt.plot(D_obs['d_obs'][1])
+#plt.plot(D_prior[1],'r-')
 
 #%% 
 
@@ -265,3 +275,5 @@ try:
     plt.show()
 except:
     pass
+
+# %%
