@@ -1564,50 +1564,84 @@ def plot_data_prior(f_prior_data_h5,
     f_data = h5py.File(f_data_h5)
     f_prior_data = h5py.File(f_prior_data_h5)
     
-    plt.figure(figsize=(7,6))
-    # PLOT PRIOR REALIZATIONS
-    dh5_str = 'D%d' % (id)
-    if dh5_str in f_prior_data:
-        f_prior_data[dh5_str]  
-        npr = f_prior_data[dh5_str].shape[0]
+    # Get data dimensions to determine plot type
+    prior_data = None
+    obs_data = None
+    is_1d = False
+    
+    # Load prior data
+    dh5_str_prior = 'D%d' % (id)
+    if dh5_str_prior in f_prior_data:
+        npr = f_prior_data[dh5_str_prior].shape[0]
+        nr_prior = np.min([nr, npr])
+        i_use = np.sort(np.random.choice(npr, nr_prior, replace=False))
+        prior_data = f_prior_data[dh5_str_prior][i_use]
         
-        nr = np.min([nr,npr])
-        # select nr random sample of d_obs
-        i_use = np.sort(np.random.choice(npr, nr, replace=False))
-        D = f_prior_data[dh5_str][i_use]
-        
-        plt.semilogy(D.T,'-',alpha=alpha, linewidth=0.1, color=cols[1], label='\rho(d)') 
-        
+        # Check if data is 1D (only one column)
+        if prior_data.shape[1] == 1:
+            is_1d = True
+            prior_data = prior_data.flatten()
     else:   
-        print('%s not in f_prior_data' % dh5_str)
-
-    # PLOT OBSERVED DATA
-    print('id_data = %d' % id_data)
-    dh5_str = 'D%d/%s' % (id_data,d_str)
-
-    # check that dh5_str is in f_data
-    if dh5_str in f_data:
-        d_obs = f_data[dh5_str][:]
-        ns, nd = f_data[dh5_str].shape
-        nr = np.min([nr,ns])    
-        # select nr random sample of d_obs
-        i_use_d = np.sort(np.random.choice(ns, nr, replace=False))
-
-        plt.semilogy(d_obs[i_use_d,:].T,'-',alpha=alpha, linewidth=0.1,label='d_obs', color=cols[2])
+        print('%s not in f_prior_data' % dh5_str_prior)
+    
+    # Load observed data
+    dh5_str_obs = 'D%d/%s' % (id_data, d_str)
+    if dh5_str_obs in f_data:
+        d_obs_full = f_data[dh5_str_obs][:]
+        if len(d_obs_full.shape) == 1:
+            d_obs_full = d_obs_full.reshape(-1, 1)
+        ns, nd = d_obs_full.shape
+        nr_obs = np.min([nr, ns])    
+        i_use_d = np.sort(np.random.choice(ns, nr_obs, replace=False))
+        obs_data = d_obs_full[i_use_d, :]
         
+        # Check if observed data is also 1D
+        if obs_data.shape[1] == 1:
+            is_1d = True
+            obs_data = obs_data.flatten()
     else:
-        print('%s not in f_data'% dh5_str)
-
+        print('%s not in f_data' % dh5_str_obs)
+    
+    plt.figure(figsize=(7,6))
+    
+    if is_1d:
+        # Create histogram plot for 1D data
+        bins = 50
+        
+        if prior_data is not None:
+            plt.hist(prior_data, bins=bins, alpha=alpha, color=cols[1], 
+                    label='Prior data', density=True, histtype='stepfilled')
+        
+        if obs_data is not None:
+            plt.hist(obs_data, bins=bins, alpha=alpha, color=cols[2], 
+                    label='Observed data', density=True, histtype='stepfilled')
+        
+        plt.xlabel('Data Value')
+        plt.ylabel('Probability Density')
+        plt.legend()
+        plt.title('Prior data vs Observed data (1D Histogram)')
+    else:
+        # Original 2D line plot
+        if prior_data is not None:
+            plt.semilogy(prior_data.T, '-', alpha=alpha, linewidth=0.1, 
+                        color=cols[1], label='Prior data')
+        
+        if obs_data is not None:
+            plt.semilogy(obs_data.T, '-', alpha=alpha, linewidth=0.1, 
+                        label='Observed data', color=cols[2])
+        
+        plt.xlabel('Data #')
+        plt.ylabel('Data Value')
+        plt.title('Prior data (black) and observed data (red)')
+    
     if ylim is not None:
-        plt.ylim(ylim)
+        if is_1d:
+            plt.xlim(ylim)  # For histogram, ylim becomes xlim
+        else:
+            plt.ylim(ylim)
 
     plt.grid()
-    plt.xlabel('Data #')
-    plt.ylabel('Data Value')
     plt.tight_layout()
-    # Add legend but, only 'A' and 'B'
-    #plt.title('Prior data (black) and observed data (red)\n%s (black)\n%s (red)' % (os.path.splitext(f_prior_data_h5)[0],os.path.splitext(f_data_h5)[0]) )
-    plt.title('Prior data (black) and observed data (red)')
     
     f_data.close()
     f_prior_data.close()
