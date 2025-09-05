@@ -71,7 +71,7 @@ if useAVG:
     f_data_h5 = f_xyz[0].replace('.xyz', '.h5')
     f_data_h5 = 'DATA_avg.h5'
     ig.write_data_gaussian(D, D_std = D_std, f_data_h5=f_data_h5, 
-                           file_gex=file_gex, showInfo=2, 
+                           file_gex=file_gex, showInfo=0, 
                            UTMX=XYZ[:,0], 
                            UTMY=XYZ[:,1],
                            ELEVATION=XYZ[:,2],
@@ -82,7 +82,7 @@ if useAVG:
 
     ig.write_data_gaussian(ALT.T, D_std = ALT.T*0+1, f_data_h5=f_data_h5, 
                         id=2,
-                        showInfo=2, 
+                        showInfo=0, 
                         name='Altitude',
     )
 
@@ -149,9 +149,22 @@ if useMOD:
 # Select how many prior model realizations (N) should be generated
 import integrate as ig
 import numpy as np
-N=1000
+N=1000000
+RHO_min=1
+RHO_max=3000
+f_prior_h5 = ig.prior_model_layered(
+    N=N,
+    lay_dist='uniform',         # Uniform distribution of layer numbers
+    NLAY_min=2,                 # Minimum 3 layers
+    NLAY_max=6,                 # Maximum 6 layers
+    RHO_dist='log-uniform',     # Log-uniform resistivity distribution
+    RHO_min=RHO_min,
+    RHO_max=RHO_max,
+    f_prior_h5='PRIOR_layered_uniform_log-uniform_N%d.h5' % N,
+    showInfo=1
+)
 
-f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR.h5')
+
 print('%s is used to hold prior realizations' % (f_prior_h5))
 
 # Simulate N heights and update f_prior_h5 with these data
@@ -206,8 +219,7 @@ d_sim_2 = ig.forward_gaaem(C=cond,
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, f_data_h5='DATA_sim.h5', 
                     im_height=im_height, 
                     stmfiles=stmfiles, 
-                    showInfo=1,
-                    showtime=True, 
+                    showInfo=1, 
                     parallel=False)
 
 f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=im_height)
@@ -234,5 +246,22 @@ plt.semilogy(d_sim_3[0],'g-',linewidth=1)
 plt.show()
 
 #%% %%%% INVERT
-#f_post_h5 = ig.integrate_rejection(f_data_h5, f_prior_data_h5, f_post_h5='POST.h5', id_use=[1])
+f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
+                                   f_data_h5, 
+                                   f_post_h5 = 'POST.h5', 
+                                   showInfo=1, 
+                                   parallel=parallel,
+                                   id_use=[1,2])
 
+# %%
+ig.plot_profile(f_post_h5, i1=1, i2=4000, im=1, hardcopy=hardcopy)
+ig.plot_profile(f_post_h5, i1=1, i2=4000, im=4, hardcopy=hardcopy)
+#%%
+ig.plot_T_EV(f_post_h5, pl='LOGL_mean',hardcopy=hardcopy)
+
+# %% 
+try:
+    ig.plot_feature_2d(f_post_h5,im=1,iz=30, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
+    plt.show()
+except:
+    pass

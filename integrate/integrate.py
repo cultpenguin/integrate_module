@@ -857,8 +857,6 @@ def forward_gaaem(C=np.array(()),
         # Here we should read the number of gates from the lines in STMFILES that conatin 'NumberOfWindows = 41'
         ng = 41
 
-    print(tx_height.shape)
-
     # pinrt txrx_dx, txrx_dy, txrx_dz
     if (showInfo>0):
         print('txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (txrx_dx, txrx_dy, txrx_dz))
@@ -978,7 +976,7 @@ def get_process_handle_count():
     import os
     return psutil.Process(os.getpid()).num_handles()
 
-def prior_data_gaaem(f_prior_h5, stmfiles=None, file_gex=None, N=0, doMakePriorCopy=True, im=1, id=1, im_height=0, Nhank=280, Nfreq=12, is_log=False, parallel=True, **kwargs):
+def prior_data_gaaem(f_prior_h5, file_gex=None, stmfiles=None, N=0, doMakePriorCopy=True, im=1, id=1, im_height=0, Nhank=280, Nfreq=12, is_log=False, parallel=True, **kwargs):
     """
     Generate prior data for the GA-AEM method.
 
@@ -1186,7 +1184,7 @@ def prior_data_gaaem(f_prior_h5, stmfiles=None, file_gex=None, N=0, doMakePriorC
 
   
         D = np.concatenate(D_chunks)
-        #print("D.shape", D.shape)
+        
         if is_log:
             D = np.log10(D)
 
