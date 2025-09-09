@@ -1,3 +1,4 @@
+
 if __name__ == "__main__":
     # %%
     try:
@@ -12,7 +13,7 @@ if __name__ == "__main__":
         # # # # # # #%load_ext autoreload
         # # # # # # #%autoreload 2
         pass
-        # %%
+    # %%
 
     import integrate as ig
     # Check if parallel computations can be performed
@@ -106,8 +107,7 @@ if __name__ == "__main__":
     # Select how many prior model realizations (N) should be generated
     import integrate as ig
     import numpy as np
-    N=1000000
-    N=100000
+    N=6000000
 
     RHO_min=1
     RHO_max=3000
@@ -218,13 +218,15 @@ if __name__ == "__main__":
         import pyvista as pv
         import numpy as np
         #pv.set_jupyter_backend('client')
+        #pv.set_jupyter_backend('pythreejs')  # or 'static' if you want static images
+        #pv.set_jupyter_backend('trame')  # or 'static' if you want static images
         pv.set_plot_theme("document")
-        p = pv.Plotter(notebook=True)
         p = pv.Plotter()
         # Don't filter out the resistivity range you want to map opacity for
         filtered_df = df  # Use all data or filter by other criteria like LINE
         #filtered_df = df[(df['LINE'] > 1000) & (df['LINE'] < 1400) ]
         points = filtered_df[['X', 'Y', 'Z']].values[:]
+        std = filtered_df[['Std']].values[:]
         # Scale Z-axis differently
         z_exxageration = 2
         points[:, 2] = points[:, 2] * z_exxageration
@@ -235,8 +237,12 @@ if __name__ == "__main__":
         min_resistivity = .1;150   # Full opacity (1.0) at this resistivity
         max_resistivity = 200;400  # No opacity (0.0) at this resistivity
         opacity = np.clip((max_resistivity - resistivity_values) / (max_resistivity - min_resistivity), 0.1, 1.0)
-        p.add_points(points, render_points_as_spheres=True, point_size=6, scalars=median, cmap='jet', opacity=opacity)
-        #p.add_points(points, render_points_as_spheres=True, point_size=6, scalars=median, cmap='jet')
+        # COmpute opacrity from Std. Everything with Std>1 shgould be transrent. Everything with Std<0.1 should be fully opaque
+        min_std = 0.1   # Full opacity (1.0) at this
+        max_std = 1.0  # No opacity (0.0) at this
+        opacity = np.clip((max_std - std.flatten()) / (max_std - min_std), 0.99, 1.0)
+        p.add_points(points, render_points_as_spheres=True, point_size=10, scalars=median, cmap='jet', opacity=opacity)
+        #p.add_points(points, render_points_as_spheres=True, point_size=6, scalars=median, cmap='jet', opacity=1)
         p.show_grid()
         p.show()
 
