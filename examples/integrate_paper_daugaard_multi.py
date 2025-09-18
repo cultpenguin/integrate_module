@@ -35,7 +35,7 @@ hardcopy=True
 # %%
 useMergedPrior=True
 useGenericPrior=True
-N_use = 100000
+N_use = 2000000
 
 files = ig.get_case_data(case='DAUGAARD', loadType='prior_data') # Load data and prior+data realizations
 f_data_h5 = files[0]
@@ -145,7 +145,7 @@ for i_prior in range(len(f_prior_data_h5_list)):
     
     # Get filename without extension
     fileparts = os.path.splitext(f_prior_data_h5)
-    f_post_h5 = 'post_%s_N%d_inflateNoise%d.h5' % (fileparts[0], N_use,inflateNoise)
+    f_post_h5 = 'post_%s_Nuse%d_inflateNoise%d.h5' % (fileparts[0], N_use,inflateNoise)
 
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                     f_data_h5, 
@@ -155,7 +155,8 @@ for i_prior in range(len(f_prior_data_h5_list)):
                                     parallel=True, 
                                     updatePostStat=False)
     
-    ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
+    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
+    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
 
     f_post_h5_list.append(f_post_h5)    
 
@@ -176,17 +177,17 @@ for i_post in range(len(f_post_h5_list)):
 
 # %% EFFECT OF SIZE
 
-N_use_arr = [1000,10000]
+N_use_arr = [1000,10000,100000,1000000]
 
 f_post_h5_N_list = []
 
 for N_use in N_use_arr:
     for i_prior in range(len(f_prior_data_h5_list)):
 
-        
+        f_prior_data_h5= f_prior_data_h5_list[i_prior]
         # Get filename without extension
         fileparts = os.path.splitext(f_prior_data_h5)
-        f_post_h5 = 'post_%s_N%d_inflateNoise%d.h5' % (fileparts[0], N_use,inflateNoise)
+        f_post_h5 = 'post_%s_Nuse%d_inflateNoise%d.h5' % (fileparts[0], N_use,inflateNoise)
 
         f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                         f_data_h5, 
@@ -196,6 +197,7 @@ for N_use in N_use_arr:
                                         parallel=True, 
                                         updatePostStat=True)
         
-        ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
-
+        ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
+        ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+    
 
