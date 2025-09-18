@@ -430,13 +430,21 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             LOGL_min = 0
             LOGL_max = 5
             
+            # Create custom colormap: red -> white/green -> blue with white/green at value 1
+            from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
+            colors = ['red', 'green', 'blue']
+            custom_cmap = LinearSegmentedColormap.from_list('custom', colors, N=256)
+            
+            # Use TwoSlopeNorm to center the colormap at value 1
+            norm = TwoSlopeNorm(vmin=LOGL_min, vcenter=1, vmax=LOGL_max)
+            
             plt.figure(4, figsize=(20, 10))
-            plt.scatter(X[i1:i2], Y[i1:i2], c=LOGL_mean_plot[i1:i2], s=s, cmap='RdYlBu_r', 
-                       vmin=LOGL_min, vmax=LOGL_max, **kwargs)
+            scatter = plt.scatter(X[i1:i2], Y[i1:i2], c=LOGL_mean_plot[i1:i2], s=s, 
+                                cmap=custom_cmap, norm=norm, **kwargs)
             plt.grid()
             plt.xlabel('X')
             plt.ylabel('Y')
-            plt.colorbar(label='LOGL_mean')
+            plt.colorbar(scatter, label='LOGL_mean')
             plt.title('Mean Log-Likelihood / (-2*n_data_used)')
             plt.axis('equal')
             if hardcopy:

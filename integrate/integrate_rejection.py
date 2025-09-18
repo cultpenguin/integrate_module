@@ -515,8 +515,6 @@ def integrate_rejection_range(D,
     if len(idx)==0:
         idx = np.arange(N_use)
     
-    #i=0
-    
     noise_model = DATA['noise_model']
     i_use_data = DATA['i_use']
     
@@ -665,8 +663,7 @@ def integrate_rejection_range(D,
         # NOw we have all the likelihoods for all data types. Combine them into one
         L_single = L
         L = np.sum(L_single, axis=0)
-        
-
+     
         # AUTO ANNEALE
         t0=time.time()
         #autoT=1
@@ -692,13 +689,26 @@ def integrate_rejection_range(D,
             print('Error in np.random.choice for ip=%d' % ip)   
             i_use = np.random.choice(N, nr)
         
+        # Store i_use bore fore reoriding( for coimputing LOGL_mean)
+        #i_use_before_reordering = i_use.copy()
+        # Compute LOGL_mean per data type: mean of log-likelihood divided by (-2 * n_data_used)
+        # We compute this before reordering i_use, so we use i_use_before_reordering
+        LOGL_mean_current = np.zeros(Ndt) * np.nan
+        for i in range(Ndt):
+            if n_data_per_type[i] > 0:
+                # Get log-likelihood for accepted samples for this data type
+                L_accepted = L_single[i, i_use]  # Log-likelihood for accepted samples, data type i
+                mean_logl_accepted = np.nanmean(L_accepted)
+                LOGL_mean_current[i] = mean_logl_accepted / (-2.0 * n_data_per_type[i])
+                pass
+
+
+
         if useRandomData:
             # get the correct index of the subset used
             i_use = idx[i_use]
 
         t.append(time.time()-t0)        
-
-    
 
         # Compute the evidence
         maxlogL = np.nanmax(L)
@@ -714,15 +724,7 @@ def integrate_rejection_range(D,
         else:
             EV_post_mean = np.nan
         
-        # Compute LOGL_mean per data type: mean of log-likelihood divided by (-2 * n_data_used)
-        LOGL_mean_current = np.zeros(Ndt) * np.nan
-        for i in range(Ndt):
-            if n_data_per_type[i] > 0:
-                # Get log-likelihood for accepted samples for this data type
-                L_accepted = L_single[i, i_use]  # Log-likelihood for accepted samples, data type i
-                mean_logl_accepted = np.nanmean(L_accepted)
-                LOGL_mean_current[i] = mean_logl_accepted / (-2.0 * n_data_per_type[i])
-            
+        
         #EV_post2 = np.nanmean(L[i_use])
         #print('EV=%f, EV_post=%f, EV_post2=%f' % (EV, EV_post, EV_post2))
         

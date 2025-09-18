@@ -19,6 +19,8 @@ except:
     pass
 
 import integrate as ig
+# Check if parallel computations can be performed
+parallel = ig.use_parallel(showInfo=1)
 import numpy as np
 import os
 import matplotlib.pyplot as plt
@@ -31,6 +33,10 @@ hardcopy=True
 # ## Download the data DAUGAARD data including non-trivial prior data realizations
 
 # %%
+useMergedPrior=True
+useGenericPrior=True
+N_use = 100000
+
 files = ig.get_case_data(case='DAUGAARD', loadType='prior_data') # Load data and prior+data realizations
 f_data_h5 = files[0]
 file_gex= ig.get_gex_file_from_data(f_data_h5)
@@ -62,324 +68,104 @@ if inflateNoise != 1:
 ig.plot_data(f_data_h5, hardcopy= hardcopy)
 plt.show()
 
+# %% Get geometry and data info
+X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+
+# Find a unique list of line number, then find the LINEnumber that occurs most frequently
+unique_lines, counts = np.unique(LINE, return_counts=True)
+most_frequent_line = unique_lines[np.argmax(counts)]
+print("Most frequent line number:", most_frequent_line)
+
+# find the indexes of the most frequent line
+id_line = np.where(LINE == most_frequent_line)[0]
+
+# Only use the first entries of id_line until the index change more than 2
+id_line_diff = np.diff(id_line)
+id_line_cut = np.where(id_line_diff > 2)[0]
+if len(id_line_cut) > 0:
+    id_line = id_line[:id_line_cut[0]+1]
+
+# set id_line to 100,101...,1001
+id_line = np.arange(2000, 3001)
+
+
+plt.figure(figsize=(10, 6))
+plt.scatter(X, Y, c=ELEVATION, s=1,label='Survey Points')
+plt.plot(X[id_line],Y[id_line], 'k.', markersize=10, label='All Survey Points')
+plt.grid()
+plt.colorbar(label='Elevation (m)')
+plt.xlabel('X (m)')
+plt.ylabel('Y (m)')
+plt.title('Survey Points Colored by Elevation')
+plt.axis('equal')
+plt.legend()
+if hardcopy:
+    plt.savefig('DAUGAARD_survey_points_elevation.png', dpi=300)
+plt.show()
+
+i1=np.min(id_line)
+i2=np.max(id_line)+1
+
+
 #%%  [markdown]
 # ## Compute prior data from prior model if they do not already exist
 
-# %%
-# A1. CONSTRUCT PRIOR MODEL OR USE EXISTING
-f_prior_h5_list = []
-f_prior_h5_list.append('daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
-f_prior_h5_list.append('daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
-
-f_prior_h5 = 'daugaard_merged.h5'
-ig.merge_prior(f_prior_h5_list, f_prior_merged_h5=f_prior_h5, showInfo=2)
-
-
-# %% 
-ig.plot_prior_stats(f_prior_h5_list[0], hardcopy=hardcopy)
-plt.show()
-ig.plot_prior_stats(f_prior_h5_list[1], hardcopy=hardcopy)
-plt.show()
-ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
-plt.show()
-
-
-
-
-
-# %% INVERSION
-N_use = 10000
-updatePostStat =True
-f_post_h5 = 'post_daugaard_N%d_inflateNoise%d.h5' % (N_use,inflateNoise)
-f_post_h5='p.h5'
-f_post_h5 = ig.integrate_rejection(f_prior_data_h5_list[0], f_data_h5, 
-                                    N_use = N_use, 
-                                    parallel=True,
-                                    updatePostStat=updatePostStat, 
-                                    f_post_h5=f_post_h5)
-
-
-
-
-
-
-#%% Split PRIOR mdoel and data into two
-# read f_prior_h5, and split it itp two priors with half the data in each
-# first use ig.load_prior_data() and ig.save_prior_data()
-useSubset = True
-if useSubset:
-    f_prior_h5 = f_prior_h5_list[0]
-    # This can probably be done with more elegance!
-    D, M, idx = ig.load_prior(f_prior_h5)
-    Nd = D[0].shape[0]
-    nsubsets = 2
-    f_prior_h5_list = []
-    Nd_sub = int(np.ceil(Nd/2))
-    for i in range(nsubsets):   
-        # idx should go from i*Nd_sub to (i+1)*Nd_sub, unless in the last iteration
-        # from i*Nd_sub to Nd
-        idx = np.arange(i*Nd_sub, Nd) if i == nsubsets - 1 else np.arange(i*Nd_sub, (i+1)*Nd_sub)
-
-        f_prior_data_h5 = 'prior_data_%02d_%d_%d.h5' % (i+1,idx[0],idx[-1])
-        
-        ig.copy_prior(f_prior_h5, f_prior_data_h5, idx=idx)
-        f_prior_h5_list.append(f_prior_data_h5)
-#%%
-
-# Go through f_prior_data_h5_list. If the file does not exist the compute, it by runinng ig.prior_data_gaaem
 f_prior_data_h5_list = []
-for i in range(len(f_prior_h5_list)):
-    f_prior_h5= f_prior_h5_list[i]
-    #ig.integrate_update_prior_attributes(f_prior_h5)
-    # check if f_prior_h5 as a datasets called '/D1'
-    with h5py.File(f_prior_h5, 'r') as f:
-        if '/D1' not in f:
-            #print('Dataset /D1 not found in %s' % f_prior_h5)
-            print('Prior data file %s does not exist. Computing it.' % f_prior_h5)
-            # Compute prior data
-            f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, N=N_use)
-            f_prior_data_h5_list.append(f_prior_data_h5)
+f_prior_data_h5_list.append('daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+f_prior_data_h5_list.append('daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 
-        else:
-            print('Dataset /D1 found in %s' % f_prior_h5)
-            f_prior_data_h5_list.append(f_prior_h5)
-            print('Using existing prior data file %s' % f_prior_h5)
+if useMergedPrior:
+    f_prior_data_merged_h5 = ig.merge_prior(f_prior_data_h5_list, f_prior_merged_h5='daugaard_merged.h5', showInfo=2)
+    f_prior_data_h5_list.append(f_prior_data_merged_h5)
 
-    ig.plot_prior_stats(f_prior_h5)
-
-# %% 
-# Set random seed
-np.random.seed(42)
+if useGenericPrior:
+    N=N_use
+    f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR.h5')
+    f_prior_data_generic_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, NdoMakePriorCopy=True)
+    f_prior_data_h5_list.append(f_prior_data_generic_h5)
 
 # %%
+# Select how many prior model realizations (N) should be generated
 
 f_post_h5_list = []
 
-N_use = 1000
-N_use = 10000
-N_use = 100000
-#N_use = 200000
-#N_use = 1000000
+for i_prior in range(len(f_prior_data_h5_list)):
 
-autoT=True
-T_base = 1
+    f_prior_data_h5= f_prior_data_h5_list[i_prior]
+    ig.integrate_update_prior_attributes(f_prior_data_h5)
 
-txt = 'N%d_autoT%d_Tbase%g_useSub%d_inflateNoise%d' % (N_use, autoT, T_base,useSubset,inflateNoise)
+    # plot prior data and observed data
+    ig.plot_data_prior(f_prior_data_h5, f_data_h5, i_plot=100, hardcopy=hardcopy)
 
-for f_prior_data_h5 in f_prior_data_h5_list:
-    print('Using prior model file %s' % f_prior_data_h5)
-
-    #f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
-    updatePostStat =True
-
-
-
-    # extract filename without extension from f_prior_data_h5
+    
+    # Get filename without extension
     fileparts = os.path.splitext(f_prior_data_h5)
-    f_post_h5 = 'post_%s_%s.h5' % (fileparts[0],txt)
+    f_post_h5 = 'post_%s_N%d_inflateNoise%d.h5' % (fileparts[0], N_use,inflateNoise)
+
+    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
+                                    f_data_h5, 
+                                    f_post_h5, 
+                                    N_use = N_use, 
+                                    showInfo=1, 
+                                    parallel=True, 
+                                    updatePostStat=False)
+    
+    ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
+
+    f_post_h5_list.append(f_post_h5)    
 
 
-    f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
-                                       N_use = N_use, 
-                                       parallel=1, 
-                                       T_base = T_base,
-                                       autoT=autoT,
-                                       updatePostStat=updatePostStat, 
-                                       f_post_h5=f_post_h5)
-    f_post_h5_list.append(f_post_h5)
-
-
-# %%
-for f_post_h5 in f_post_h5_list:
-    ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
-    plt.show()
-
-# %%
-for f_post_h5 in f_post_h5_list:
-    ig.plot_T_EV(f_post_h5, pl='EV',hardcopy=hardcopy)
-    plt.show()
-
-# %%
-plotPro = False
-if plotPro:
-    for f_post_h5 in f_post_h5_list:
-        #% Posterior analysis
-        # Plot the Temperature used for inversion
-        #ig.plot_T_EV(f_post_h5, pl='T')
-        #ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
-        #plt.show()
-
-        #ig.plot_T_EV(f_post_h5, pl='ND')
-
-        #% Plot Profiles
-        ig.plot_profile(f_post_h5, i1=0, i2=2000, cmap='jet', hardcopy=hardcopy)
-        plt.show()
-        #% Export to CSV
-        #ig.post_to_csv(f_post_h5)
-        #plt.show()
-
-# %%
-X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-
-nd=len(X)
-nev=len(f_post_h5_list)
-
-EV_mul = np.zeros((nev,nd))
-
-iev = -1
-for f_post_h5 in f_post_h5_list:
-    iev += 1
-    # Read '/EV' from f_post_h5
-    with h5py.File(f_post_h5, 'r') as f_post:
-        print(f_post_h5)
-        #EV=(f_post['/EV'][:]) 
-        EV_mul[iev]=(f_post['/EV'][:])
-
-#% Normalize EV
-
-EV_P = 0*EV_mul
-E_max = np.max(EV_mul, axis=0)
-
-for iev in range(nev):
-    EV_P[iev] = np.exp(EV_mul[iev]-E_max)
-
-# Use annealing to flaten prob
-T_EV = 10
-EV_P = EV_P**(1/T_EV)
-
-EV_P_sum = np.sum(EV_P,axis=0)
-for iev in range(nev):
-    EV_P[iev] = EV_P[iev]/EV_P_sum
-
-
-# %%
-plt.figure(figsize=(10,6), dpi=600)
-plt.subplot(1,1,1)
-plt.plot(X, Y, '.', markersize=3, color='gray')
-plt.scatter(X, Y, c=EV_P[0], cmap='RdBu_r', s=1, vmin=0, vmax=1, zorder=2)
-plt.tight_layout()
-plt.axis('equal')
-plt.colorbar()
-plt.title('P(In Valley)')
-plt.xlabel('UTMX [m]')
-plt.ylabel('UTMY [m]')
-plt.grid()
-plt.savefig('%s_Pin.png' % (txt), dpi=600)
-plt.show()
-
+# %% 
+for i_post in range(len(f_post_h5_list)):
+    ig.integrate_posterior_stats(f_post_h5_list[i_post], showInfo=1)
+    
 #%%
-plt.figure(figsize=(10,6), dpi=600)
-plt.subplot(1,1,1)
-plt.plot(X, Y, '.', markersize=3, color='gray')
-plt.scatter(X, Y, c=EV_P[1], cmap='RdBu_r', s=1, vmin=0, vmax=1, zorder=2)
-plt.tight_layout()
-plt.axis('equal')
-plt.colorbar()
-plt.grid()
-plt.title('P(Out of valleys)')
-plt.xlabel('UTMX [m]')
-plt.ylabel('UTMY [m]')
-plt.savefig('%s_Pout.png' % (txt), dpi=600)
-plt.show()
+for i_post in range(len(f_post_h5_list)):
+    f_post_h5 = f_post_h5_list[i_post]
+    
+    ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
+    
+    ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
 
-#%%
-plTest=False
-if plTest:
-    import matplotlib.colors as mcolors
-    import matplotlib.pyplot as plt
-    import numpy as np
+    ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=hardcopy)
 
-    # Create a discrete two-color colormap
-    colors = ['black', '#0173B2']  # Black and blue - colorblind friendly
-    colors = ['red', 'blue']  # Red and yellow 
-    cmap = mcolors.ListedColormap(colors)
-
-    plt.figure(figsize=(10,6), dpi=600)
-    # Get the index of the highest value in each column in EV_P_sum
-    EV_mode = np.argmax(EV_P, axis=0)
-    EV_P_max = np.max(EV_P, axis=0)
-    psize = (EV_P_max-0.5)*4+0.001
-    plt.subplot(1,1,1)
-    plt.plot(X, Y, 'w.', markersize=4, color='lightgray', zorder=1)
-    plt.scatter(X, Y, c=EV_mode, cmap=cmap, s=psize, zorder=2)
-    plt.axis('equal')
-    plt.grid()
-    plt.tight_layout()
-    #cbar = plt.colorbar(ticks=[0, 1])
-    cbar = plt.colorbar(ticks=[0.25, 0.75])
-    cbar.set_ticklabels(['In', 'Out'])
-    plt.xlabel('UTMX [m]')
-    plt.ylabel('UTMY [m]')
-
-    plt.savefig('DAUGAARD_N%07d_EV_mode.png' % (N_use), dpi=600)
-
-
-
-
-# %% [markdown]
-# ## Combine the two priors and invert with them as one prior
-# As an alternative to using the evidence to compute the posterior hypothesis probability, two 
-# prior realizations from both priors can be combined into realizations of a single prior.
-# This combined prior has an extra parameter '/M3' in this case, which represents the ID of the original hypothesis or prior model used.
-
-
-# %%
-# Merge the prior models and data
-f_prior_data_h5_merged = ig.merge_prior(f_prior_data_h5_list)       
-ig.integrate_update_prior_attributes(f_prior_data_h5_merged)       
-ig.plot_prior_stats(f_prior_data_h5_merged)
-
-# %%
-
-#N_use = 10000
-#autoT = False
-#T_base = 10
-
-N_use_merged = 2*N_use
-
-# Sample the posterior
-#f_prior_data_h5 = 'gotaelv2_N1000000_fraastad_ttem_Nh280_Nf12.h5'
-updatePostStat =True
-
-txt_merged = 'N%d_autoT%d_Tbase%g_useSub%d_inflateNoise%d' % (N_use_merged, autoT, T_base,useSubset,inflateNoise)
-fileparts = os.path.splitext(f_prior_data_h5_merged)
-f_post_h5_merged = 'post_%s_%s.h5' % (fileparts[0],txt_merged)
-
-f_post_h5_merged = ig.integrate_rejection(f_prior_data_h5_merged, f_data_h5, 
-                            N_use = N_use_merged, 
-                            parallel=1, 
-                            T_base = T_base,
-                            autoT=autoT,
-                            updatePostStat=updatePostStat,                                     
-                            showInfo=1, f_post_h5=f_post_h5_merged)
-
-#%%
-# Plot P(InValley)
-X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-# load 'M4/P' from f_post_data_h5_merged
-with h5py.File(f_post_h5_merged, 'r') as f_post:
-    M4_P = f_post['/M3/P'][:]
-
-ig.plot_T_EV(f_post_h5_merged, pl='T')  
-
-#%%
-plt.figure(figsize=(10,6), dpi=600)
-plt.subplot(1,1,1)
-plt.plot(X, Y, '.', markersize=3, color='gray')
-plt.scatter(X, Y, c=M4_P[:,0], cmap='RdBu_r', s=1, vmin=0, vmax=1, zorder=2)
-plt.tight_layout()
-plt.axis('equal')
-plt.colorbar()
-plt.grid()
-plt.title('P(In valley) - merged')
-plt.xlabel('UTMX [m]')
-plt.ylabel('UTMY [m]')
-plt.savefig('%s_Pin_merged.png' % (txt_merged), dpi=600)
-
-plt.show()
-
-# %%
-#% Plot Profiles
-#ig.plot_profile(f_post_data_h5_merged, i1=0, i2=2000, cmap='jet', hardcopy=hardcopy)
-#plt.show()
-# %%
