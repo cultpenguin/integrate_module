@@ -473,12 +473,13 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         (default is empty array).
     s : int, optional
         Size of scatter plot markers in points (default is 5).
-    pl : {'all', 'LINE', 'ELEVATION', 'id'}, optional
+    pl : {'all', 'LINE', 'ELEVATION', 'id', 'NDATA'}, optional
         Type of geometry plot to generate (default is 'all'):
         - 'all': plot all geometry types
         - 'LINE': survey line numbers only
         - 'ELEVATION': elevation data only
         - 'id': data point indices only
+        - 'NDATA': number of valid (non-NaN) data points per location
     hardcopy : bool, optional
         Save plots as PNG files with descriptive names (default is False).
     ax : matplotlib.axes.Axes, optional
@@ -506,6 +507,9 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
     print('f_data_h5=%s' % f_data_h5)        
     X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
     
+    wx = 10
+    wy = (np.max(Y)-np.min(Y))/(np.max(X)-np.min(X)) * wx
+    print('Plot size: wx=%f, wy=%f' % (wx, wy))
     nd = X.shape[0]
 
     if len(ii)==0:
@@ -530,7 +534,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
     
     if (pl=='all') or (pl=='LINE'):
         if ax is None:
-            plt.figure(1, figsize=(20, 10))
+            plt.figure(1, figsize=(wx, wy))
             current_ax = plt.gca()
         else:
             current_ax = ax
@@ -543,7 +547,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         
         if ax is None:
             plt.colorbar(scatter, label='LINE')
-            plt.title('%s - LINE' % tit)
+            plt.title('LINE')
             plt.axis('equal')
             if hardcopy:
                 # get filename without extension        
@@ -551,12 +555,12 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
                 plt.savefig(f_png)
             plt.show()
         else:
-            current_ax.set_title('%s - LINE' % tit)
+            current_ax.set_title('LINE')
             current_ax.set_aspect('equal')
     
 
     if ax is None and ((pl=='all') or (pl=='ELEVATION')):
-        plt.figure(1, figsize=(20, 10))
+        plt.figure(1, figsize=(wx, wy))
         current_ax = plt.gca()
             
         scatter = current_ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap='jet',**kwargs)            
@@ -580,7 +584,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         ax.set_aspect('equal')
 
     if ax is None and ((pl=='all') or (pl=='id')):
-        plt.figure(1, figsize=(20, 10))
+        plt.figure(1, figsize=(wx, wy))
         current_ax = plt.gca()
             
         scatter = current_ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap='jet',**kwargs)  
@@ -595,12 +599,65 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             f_png = '%s_%d_%d_id.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
             plt.savefig(f_png)
     elif ax is not None and pl == 'id':
-        scatter = ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap='jet',**kwargs)  
+        scatter = ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap='jet',**kwargs)
         ax.grid()
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_title('id')
         ax.set_aspect('equal')
+
+    if ax is None and ((pl=='all') or (pl=='NDATA')):
+        # Get number of data using the new function
+        try:
+            # Get data counts for all datasets (returns 2D array)
+            data_counts = ig.get_number_of_data(f_data_h5, count_nan=False)
+
+            # If multiple datasets, sum across datasets to get total valid data per location
+            if data_counts.shape[0] > 1:
+                n_data_per_location = np.sum(data_counts, axis=0)
+            else:
+                n_data_per_location = data_counts[0, :]
+
+            plt.figure(1, figsize=(wx, wy))
+            current_ax = plt.gca()
+
+            scatter = current_ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],s=s,cmap='viridis',**kwargs)
+            current_ax.grid()
+            current_ax.set_xlabel('X')
+            current_ax.set_ylabel('Y')
+            plt.colorbar(scatter, label='Number of valid data points')
+            plt.title('Number of Data (non-NaN)')
+            plt.axis('equal')
+            if hardcopy:
+                # get filename without extension
+                f_png = '%s_%d_%d_NDATA.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
+                plt.savefig(f_png)
+            plt.show()
+        except Exception as e:
+            print(f"Warning: Could not plot number of data: {e}")
+            print("This requires valid d_obs datasets in the HDF5 file")
+
+    elif ax is not None and pl == 'NDATA':
+        # Get number of data using the new function
+        try:
+            # Get data counts for all datasets (returns 2D array)
+            data_counts = ig.get_number_of_data(f_data_h5, count_nan=False)
+
+            # If multiple datasets, sum across datasets to get total valid data per location
+            if data_counts.shape[0] > 1:
+                n_data_per_location = np.sum(data_counts, axis=0)
+            else:
+                n_data_per_location = data_counts[0, :]
+
+            scatter = ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],s=s,cmap='viridis',**kwargs)
+            ax.grid()
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
+            ax.set_title('Number of Data (non-NaN)')
+            ax.set_aspect('equal')
+        except Exception as e:
+            print(f"Warning: Could not plot number of data: {e}")
+            print("This requires valid d_obs datasets in the HDF5 file")
 
     return
 
