@@ -95,7 +95,7 @@ i_plot_2 = 1000
 
 plt.figure(figsize=(10, 6))
 plt.scatter(X, Y, c=ELEVATION, s=1,label='Survey Points')
-plt.plot(X[id_line],Y[id_line], 'k.', markersize=10, label='All Survey Points')
+plt.plot(X[id_line],Y[id_line], 'k.', markersize=4, label='All Survey Points')
 plt.plot(X[i_plot_1],Y[i_plot_1], 'k*', markersize=10, label='P1')
 plt.plot(X[i_plot_2],Y[i_plot_2], 'k*', markersize=10, label='P2')
 plt.grid()
@@ -180,7 +180,7 @@ N_use_arr = [1000,10000]
 
 f_post_h5_N_list = []
 
-for N_use in N_use_arr):
+for N_use in N_use_arr:
     for i_prior in range(len(f_prior_data_h5_list)):
 
         
