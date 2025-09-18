@@ -450,7 +450,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
     return
 
 
-def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcopy=False, ax=None, **kwargs):
+def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcopy=False, ax=None, cmap='jet', **kwargs):
     """
     Plot survey geometry data from INTEGRATE HDF5 files.
 
@@ -483,8 +483,11 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
     hardcopy : bool, optional
         Save plots as PNG files with descriptive names (default is False).
     ax : matplotlib.axes.Axes, optional
-        Matplotlib axes object to plot on. If None, creates new figures 
+        Matplotlib axes object to plot on. If None, creates new figures
         (default is None).
+    cmap : str or matplotlib.colors.Colormap, optional
+        Colormap to use for color-coding the scatter plots (default is 'jet').
+        Can be any valid matplotlib colormap name or colormap object.
     **kwargs : dict
         Additional keyword arguments passed to matplotlib scatter function.
 
@@ -534,13 +537,13 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
     
     if (pl=='all') or (pl=='LINE'):
         if ax is None:
-            plt.figure(1, figsize=(wx, wy))
+            plt.figure(1, figsize=(20, 10))
             current_ax = plt.gca()
         else:
             current_ax = ax
         
         current_ax.plot(X,Y,'.',color='lightgray', zorder=-1, markersize=1)
-        scatter = current_ax.scatter(X[ii],Y[ii],c=LINE[ii],s=s,cmap='jet',**kwargs)            
+        scatter = current_ax.scatter(X[ii],Y[ii],c=LINE[ii],s=s,cmap=cmap,**kwargs)            
         current_ax.grid()
         current_ax.set_xlabel('X')
         current_ax.set_ylabel('Y')
@@ -560,10 +563,10 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
     
 
     if ax is None and ((pl=='all') or (pl=='ELEVATION')):
-        plt.figure(1, figsize=(wx, wy))
+        plt.figure(1, figsize=(20, 10))
         current_ax = plt.gca()
             
-        scatter = current_ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap='jet',**kwargs)            
+        scatter = current_ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap=cmap,**kwargs)            
         current_ax.grid()
         current_ax.set_xlabel('X')
         current_ax.set_ylabel('Y')
@@ -576,7 +579,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             plt.savefig(f_png)
         plt.show()
     elif ax is not None and pl == 'ELEVATION':
-        scatter = ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap='jet',**kwargs)            
+        scatter = ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap=cmap,**kwargs)            
         ax.grid()
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
@@ -584,10 +587,10 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         ax.set_aspect('equal')
 
     if ax is None and ((pl=='all') or (pl=='id')):
-        plt.figure(1, figsize=(wx, wy))
+        plt.figure(1, figsize=(20, 10))
         current_ax = plt.gca()
             
-        scatter = current_ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap='jet',**kwargs)  
+        scatter = current_ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap=cmap,**kwargs)  
         current_ax.grid()
         current_ax.set_xlabel('X')
         current_ax.set_ylabel('Y')
@@ -599,7 +602,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             f_png = '%s_%d_%d_id.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
             plt.savefig(f_png)
     elif ax is not None and pl == 'id':
-        scatter = ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap='jet',**kwargs)
+        scatter = ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap=cmap,**kwargs)
         ax.grid()
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
@@ -618,10 +621,10 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             else:
                 n_data_per_location = data_counts[0, :]
 
-            plt.figure(1, figsize=(wx, wy))
+            plt.figure(1, figsize=(20, 10))
             current_ax = plt.gca()
 
-            scatter = current_ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],s=s,cmap='viridis',**kwargs)
+            scatter = current_ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],s=s,cmap=cmap,**kwargs)
             current_ax.grid()
             current_ax.set_xlabel('X')
             current_ax.set_ylabel('Y')
@@ -649,7 +652,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             else:
                 n_data_per_location = data_counts[0, :]
 
-            scatter = ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],s=s,cmap='viridis',**kwargs)
+            scatter = ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],s=s,cmap=cmap,**kwargs)
             ax.grid()
             ax.set_xlabel('X')
             ax.set_ylabel('Y')
