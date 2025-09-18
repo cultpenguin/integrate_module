@@ -56,6 +56,11 @@ print("Using GEX file: %s" % file_gex)
 # ### Plot the geometry and data
 # `ig.plot_geometry` plots the spatial geometry of the data (i.e., the locations of the soundings).
 # `ig.plot_data` plots the measured electromagnetic data for each sounding.
+ig.plot_geometry(f_data_h5, pl='NDATA', hardcopy= hardcopy)
+ig.plot_geometry(f_data_h5, pl='LINE', hardcopy= hardcopy)
+ig.plot_geometry(f_data_h5, pl='ELEVATION', hardcopy= hardcopy)
+
+
 
 # %%
 # The commented line below would plot LINE, ELEVATION and data id as three scatter plots:

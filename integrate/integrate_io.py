@@ -1129,24 +1129,26 @@ def get_geometry(f_data_h5):
     return X, Y, LINE, ELEVATION
 
 
-def get_number_of_datasets(f_data_h5):
+def get_number_of_datasets(f_data_h5, return_ids=False):
     """
     Get the number of datasets (D1, D2, D3, etc.) in an INTEGRATE data HDF5 file.
-    
+
     Counts the number of dataset groups with names following the pattern 'D1', 'D2', 'D3', etc.
     in an INTEGRATE HDF5 data file. This function is useful for determining how many different
     data types or measurement systems are stored in a single file.
-    
+
     Parameters
     ----------
     f_data_h5 : str
         Path to the HDF5 file containing INTEGRATE data with dataset groups.
-        
+    return_ids : bool, optional
+        If True, returns the list of dataset IDs instead of just the count (default is False).
+
     Returns
     -------
-    int
-        Number of datasets found in the file. Returns 0 if no datasets are found
-        or if the file cannot be accessed.
+    int or list
+        If return_ids=False: Number of datasets found in the file. Returns 0 if no datasets are found.
+        If return_ids=True: List of dataset IDs (e.g., [1, 2, 3] for D1, D2, D3). Returns empty list if none found.
         
     Raises
     ------
@@ -1157,9 +1159,15 @@ def get_number_of_datasets(f_data_h5):
         
     Examples
     --------
+    >>> # Get number of datasets
     >>> n_datasets = get_number_of_datasets('data.h5')
     >>> print(f"File contains {n_datasets} datasets")
     File contains 3 datasets
+
+    >>> # Get dataset IDs
+    >>> dataset_ids = get_number_of_datasets('data.h5', return_ids=True)
+    >>> print(f"Dataset IDs: {dataset_ids}")
+    Dataset IDs: [1, 2, 3]
     
     Notes
     -----
@@ -1173,19 +1181,149 @@ def get_number_of_datasets(f_data_h5):
     The function only counts top-level groups that match the 'D{number}' pattern,
     ignoring other groups like geometry data (UTMX, UTMY, etc.).
     """
-    n_datasets = 0
+    dataset_ids = []
     try:
         with h5py.File(f_data_h5, 'r') as f:
             for key in f.keys():
                 if key[0] == 'D' and key[1:].isdigit():
-                    n_datasets += 1
+                    dataset_ids.append(int(key[1:]))
+        dataset_ids.sort()
     except (FileNotFoundError, IOError) as e:
         raise e
     except Exception:
-        # Return 0 for any other errors (e.g., corrupted file)
-        return 0
-    
-    return n_datasets
+        # Return appropriate empty value for any other errors (e.g., corrupted file)
+        return [] if return_ids else 0
+
+    return dataset_ids if return_ids else len(dataset_ids)
+
+
+def get_number_of_data(f_data_h5, id=None, count_nan=False):
+    """
+    Get the number of data per location for datasets in an INTEGRATE data HDF5 file.
+
+    Returns a 2D numpy array of size (Ndataset, Ndatapoints) containing the number
+    of valid (non-NaN) or total data values at each measurement location for each dataset.
+
+    Parameters
+    ----------
+    f_data_h5 : str
+        Path to the HDF5 file containing INTEGRATE data with dataset groups.
+    id : int or list of int, optional
+        Dataset identifier(s) to query (e.g., 1 for D1, [1,2] for D1 and D2).
+        If None, returns data for all datasets found in the file.
+    count_nan : bool, optional
+        If False (default), counts only non-NaN values at each location.
+        If True, counts total number of data channels regardless of NaN values.
+
+    Returns
+    -------
+    numpy.ndarray
+        2D array of shape (Ndataset, Ndatapoints) where:
+        - Ndataset: number of datasets
+        - Ndatapoints: maximum number of data locations across all datasets
+        - Values: number of valid data channels per location (or total if count_nan=True)
+
+    Raises
+    ------
+    FileNotFoundError
+        If the specified HDF5 file does not exist.
+    IOError
+        If the HDF5 file cannot be opened or read.
+    KeyError
+        If the specified dataset ID does not exist in the file.
+
+    Examples
+    --------
+    >>> # Get non-NaN data counts for all datasets
+    >>> data_counts = get_number_of_data('data.h5')
+    >>> print(f"Shape: {data_counts.shape}")  # (3, 4000) for 3 datasets, 4000 locations
+    Shape: (3, 4000)
+
+    >>> # Get total data counts (including NaN) for specific dataset
+    >>> counts_d1 = get_number_of_data('data.h5', id=1, count_nan=True)
+    >>> print(f"Shape: {counts_d1.shape}")  # (1, 4000) for 1 dataset, 4000 locations
+    Shape: (1, 4000)
+
+    Notes
+    -----
+    This function analyzes d_obs arrays in each dataset:
+    - d_obs shape: (N_locations, N_data_per_location)
+    - By default, counts non-NaN values: np.sum(~np.isnan(d_obs), axis=1)
+    - With count_nan=True, returns total data channels: d_obs.shape[1] for each location
+
+    The returned 2D array allows easy comparison across datasets and locations.
+    Missing datasets are filled with zeros in the output array.
+    """
+    import h5py
+    import numpy as np
+
+    try:
+        # Get dataset IDs using get_number_of_datasets (avoids code duplication)
+        if id is None:
+            dataset_ids = get_number_of_datasets(f_data_h5, return_ids=True)
+        else:
+            # Handle single id or list of ids
+            if not isinstance(id, list):
+                dataset_ids = [id]
+            else:
+                dataset_ids = id
+
+        with h5py.File(f_data_h5, 'r') as f:
+
+            if not dataset_ids:
+                return np.array([]).reshape(0, 0)
+
+            # First pass: determine maximum number of data points across all datasets
+            max_datapoints = 0
+            valid_datasets = []
+
+            for dataset_id in dataset_ids:
+                d_obs_path = f'D{dataset_id}/d_obs'
+                if d_obs_path in f:
+                    data_shape = f[d_obs_path].shape
+                    if len(data_shape) >= 2:
+                        max_datapoints = max(max_datapoints, data_shape[0])
+                        valid_datasets.append(dataset_id)
+                    elif len(data_shape) == 1:
+                        max_datapoints = max(max_datapoints, 1)
+                        valid_datasets.append(dataset_id)
+
+            if not valid_datasets:
+                return np.array([]).reshape(0, 0)
+
+            # Initialize result array
+            result = np.zeros((len(valid_datasets), max_datapoints), dtype=int)
+
+            # Second pass: fill the result array
+            for i, dataset_id in enumerate(valid_datasets):
+                d_obs_path = f'D{dataset_id}/d_obs'
+                if d_obs_path in f:
+                    d_obs = f[d_obs_path][:]
+
+                    if len(d_obs.shape) >= 2:
+                        n_locations = d_obs.shape[0]
+
+                        if count_nan:
+                            # Count total data channels per location
+                            n_data_per_location = d_obs.shape[1]
+                            result[i, :n_locations] = n_data_per_location
+                        else:
+                            # Count non-NaN values per location
+                            for loc in range(n_locations):
+                                result[i, loc] = np.sum(~np.isnan(d_obs[loc, :]))
+                    else:
+                        # Handle 1D case
+                        if count_nan:
+                            result[i, 0] = d_obs.shape[0]
+                        else:
+                            result[i, 0] = np.sum(~np.isnan(d_obs))
+
+            return result
+
+    except (FileNotFoundError, IOError) as e:
+        raise e
+    except Exception as e:
+        raise IOError(f"Error reading HDF5 file: {str(e)}")
 
 
 def post_to_csv(f_post_h5='', Mstr='/M1'):

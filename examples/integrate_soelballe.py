@@ -106,8 +106,8 @@ if __name__ == "__main__":
     # Select how many prior model realizations (N) should be generated
     import integrate as ig
     import numpy as np
-    N=1000000
-    N=100000
+    N=6000000
+    #N=100000
 
     RHO_min=1
     RHO_max=3000
