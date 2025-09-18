@@ -507,6 +507,9 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
     print('f_data_h5=%s' % f_data_h5)        
     X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
     
+    wx = 10
+    wy = (np.max(Y)-np.min(Y))/(np.max(X)-np.min(X)) * wx
+    print('Plot size: wx=%f, wy=%f' % (wx, wy))
     nd = X.shape[0]
 
     if len(ii)==0:
@@ -531,7 +534,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
     
     if (pl=='all') or (pl=='LINE'):
         if ax is None:
-            plt.figure(1, figsize=(20, 10))
+            plt.figure(1, figsize=(wx, wy))
             current_ax = plt.gca()
         else:
             current_ax = ax
@@ -544,7 +547,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         
         if ax is None:
             plt.colorbar(scatter, label='LINE')
-            plt.title('%s - LINE' % tit)
+            plt.title('LINE')
             plt.axis('equal')
             if hardcopy:
                 # get filename without extension        
@@ -552,12 +555,12 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
                 plt.savefig(f_png)
             plt.show()
         else:
-            current_ax.set_title('%s - LINE' % tit)
+            current_ax.set_title('LINE')
             current_ax.set_aspect('equal')
     
 
     if ax is None and ((pl=='all') or (pl=='ELEVATION')):
-        plt.figure(1, figsize=(20, 10))
+        plt.figure(1, figsize=(wx, wy))
         current_ax = plt.gca()
             
         scatter = current_ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap='jet',**kwargs)            
@@ -581,7 +584,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         ax.set_aspect('equal')
 
     if ax is None and ((pl=='all') or (pl=='id')):
-        plt.figure(1, figsize=(20, 10))
+        plt.figure(1, figsize=(wx, wy))
         current_ax = plt.gca()
             
         scatter = current_ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap='jet',**kwargs)  
@@ -615,7 +618,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             else:
                 n_data_per_location = data_counts[0, :]
 
-            plt.figure(1, figsize=(20, 10))
+            plt.figure(1, figsize=(wx, wy))
             current_ax = plt.gca()
 
             scatter = current_ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],s=s,cmap='viridis',**kwargs)
