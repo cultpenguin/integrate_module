@@ -1,3 +1,4 @@
+
 if __name__ == "__main__":
     # %%
     try:
@@ -12,7 +13,7 @@ if __name__ == "__main__":
         # # # # # # #%load_ext autoreload
         # # # # # # #%autoreload 2
         pass
-        # %%
+    # %%
 
     import integrate as ig
     # Check if parallel computations can be performed
@@ -107,7 +108,11 @@ if __name__ == "__main__":
     import integrate as ig
     import numpy as np
     N=6000000
+<<<<<<< HEAD
     #N=100000
+=======
+    N=1000000
+>>>>>>> f9a268f97f0d895f761a787930028c00deab9cce
 
     RHO_min=1
     RHO_max=3000
@@ -173,12 +178,17 @@ if __name__ == "__main__":
     D_prior, idx = ig.load_prior_data(f_prior_data_h5)
 
     #%% %%%% INVERT
+    id_use = [1,2]
+    #id_use = [2]
+    #id_use = [1]
+    # f_post_h5 should be 'POST-h5' including infomration abotu N and id_use
+    f_post_h5 = 'POST_N%d_id%s.h5' % (N, '_'.join([str(i) for i in id_use]) )
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
-                                    f_data_h5, 
-                                    f_post_h5 = 'POST.h5', 
+                                    f_data_h5,
+                                    f_post_h5 = f_post_h5,
                                     showInfo=1, 
                                     parallel=parallel,
-                                    id_use=[1,2])
+                                    id_use=id_use)
 
     # %%
     if doPlot:
@@ -193,8 +203,35 @@ if __name__ == "__main__":
         ig.plot_feature_2d(f_post_h5,im=1,iz=10, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
         plt.show()
     # %%
+    # read M1/Mean from f_post_h5
+    with h5py.File(f_post_h5, 'r') as h5f:
+        M1_Mean = h5f['M1/Mean'][:]
+        M1_Std = h5f['M1/Std'][:]
+        M1_Median = h5f['M1/Median'][:]
+        # Get the altitude as well
+        im_height = 4
+        ALT_Mean = h5f['M%d/Mean' % im_height][:]
+        ALT_Std = h5f['M%d/Std' % im_height][:]
+        ALT_Median = h5f['M%d/Median' % im_height][:]
+        
+    ALT_obs = D_obs['d_obs'][1]
 
 
+    plt.figure(figsize=(12,6))
+    plt.plot(ALT_Median,'r-', label='Inverted Altitude Median')
+    plt.plot(ALT_Mean,'b-', label='Inverted Altitude Mean')
+    plt.plot(ALT_Mean-ALT_Mean*ALT_Std,'b-', linewidth=.2,label='Inverted Altitude Mean -std')
+    plt.plot(ALT_Mean+ALT_Mean*ALT_Std,'b-', linewidth=.2,label='Inverted Altitude Mean +std')
+    plt.plot(ALT_obs,'k-', label='Observed Altitude')
+    plt.xlabel('Data Point Index')
+    plt.ylabel('Altitude (m)')
+    plt.legend()
+    plt.grid()
+    plt.title('Observed vs Inverted Altitude')
+    if hardcopy:
+        # use fname as f_post_h5 wityhout .h5 and add .png
+        fname = f_post_h5.replace('.h5', '.png')
+        plt.savefig(fname, dpi=300)
 
     # %% [markdown]
     # ## Export results to CSV format
@@ -218,13 +255,15 @@ if __name__ == "__main__":
         import pyvista as pv
         import numpy as np
         #pv.set_jupyter_backend('client')
+        #pv.set_jupyter_backend('pythreejs')  # or 'static' if you want static images
+        #pv.set_jupyter_backend('trame')  # or 'static' if you want static images
         pv.set_plot_theme("document")
-        p = pv.Plotter(notebook=True)
         p = pv.Plotter()
         # Don't filter out the resistivity range you want to map opacity for
         filtered_df = df  # Use all data or filter by other criteria like LINE
         #filtered_df = df[(df['LINE'] > 1000) & (df['LINE'] < 1400) ]
         points = filtered_df[['X', 'Y', 'Z']].values[:]
+        std = filtered_df[['Std']].values[:]
         # Scale Z-axis differently
         z_exxageration = 2
         points[:, 2] = points[:, 2] * z_exxageration
@@ -235,8 +274,12 @@ if __name__ == "__main__":
         min_resistivity = .1;150   # Full opacity (1.0) at this resistivity
         max_resistivity = 200;400  # No opacity (0.0) at this resistivity
         opacity = np.clip((max_resistivity - resistivity_values) / (max_resistivity - min_resistivity), 0.1, 1.0)
-        p.add_points(points, render_points_as_spheres=True, point_size=6, scalars=median, cmap='jet', opacity=opacity)
-        #p.add_points(points, render_points_as_spheres=True, point_size=6, scalars=median, cmap='jet')
+        # COmpute opacrity from Std. Everything with Std>1 shgould be transrent. Everything with Std<0.1 should be fully opaque
+        min_std = 0.1   # Full opacity (1.0) at this
+        max_std = 1.0  # No opacity (0.0) at this
+        opacity = np.clip((max_std - std.flatten()) / (max_std - min_std), 0.99, 1.0)
+        #p.add_points(points, render_points_as_spheres=True, point_size=10, scalars=median, cmap='jet', opacity=opacity)
+        p.add_points(points, render_points_as_spheres=True, point_size=6, scalars=median, cmap='jet', opacity=1)
         p.show_grid()
         p.show()
 

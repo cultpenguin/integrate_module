@@ -1,4 +1,4 @@
-=============
+  =============
 Data format
 =============
 
@@ -406,6 +406,11 @@ At the very minimum POST.h5 needs to contain the index (in PRIOR.h5) of realizat
      - *
      - *
      - Filename of HDF5 PRIOR file.
+   * - /LOGL_mean
+     - [N,Nd]
+     - 
+     - 
+     - Mean log-likelihood divided by -Nd/2. Values >1 indicate underfitting, values <1 indicate overfitting. For joint inversion of multiple datasets, size is [N,number_of_datasets].
 
 
 

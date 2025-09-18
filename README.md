@@ -102,11 +102,11 @@ python integrate_skytem.py
 ```
 
 
-### Compile GA-AEM Python module on Ubuntu/Linux
+### Compile GA-AEM Python module on Debian/Ubuntu/Linux
 
-A script that downloads and installs GA-AEM is located in `scripts/cmake_build_script_ubuntu_gatdaem1d.sh`. Be sure to use the appropriate Python environment and then run:
+A script that downloads and installs GA-AEM is located in `scripts/cmake_build_script_DebianUbuntu_gatdaem1d.sh`. This script has been tested and confirmed to work on both Debian and Ubuntu distributions. Be sure to use the appropriate Python environment and then run:
 
-    sh scripts/cmake_build_script_ubuntu_gatdaem1d.sh
+    sh scripts/cmake_build_script_DebianUbuntu_gatdaem1d.sh
     cd ga-aem/install-ubuntu/python
     pip install .
     
