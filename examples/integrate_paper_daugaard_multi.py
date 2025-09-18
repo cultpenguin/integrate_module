@@ -88,10 +88,16 @@ if len(id_line_cut) > 0:
 # set id_line to 100,101...,1001
 id_line = np.arange(2000, 3001)
 
+# slect indexes to plot
+
+i_plot_1 = 100
+i_plot_2 = 1000
 
 plt.figure(figsize=(10, 6))
 plt.scatter(X, Y, c=ELEVATION, s=1,label='Survey Points')
 plt.plot(X[id_line],Y[id_line], 'k.', markersize=10, label='All Survey Points')
+plt.plot(X[i_plot_1],Y[i_plot_1], 'k*', markersize=10, label='P1')
+plt.plot(X[i_plot_2],Y[i_plot_2], 'k*', markersize=10, label='P2')
 plt.grid()
 plt.colorbar(label='Elevation (m)')
 plt.xlabel('X (m)')
@@ -136,7 +142,6 @@ for i_prior in range(len(f_prior_data_h5_list)):
 
     # plot prior data and observed data
     ig.plot_data_prior(f_prior_data_h5, f_data_h5, i_plot=100, hardcopy=hardcopy)
-
     
     # Get filename without extension
     fileparts = os.path.splitext(f_prior_data_h5)
@@ -168,4 +173,29 @@ for i_post in range(len(f_post_h5_list)):
     ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
 
     ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=hardcopy)
+
+# %% EFFECT OF SIZE
+
+N_use_arr = [1000,10000]
+
+f_post_h5_N_list = []
+
+for N_use in N_use_arr):
+    for i_prior in range(len(f_prior_data_h5_list)):
+
+        
+        # Get filename without extension
+        fileparts = os.path.splitext(f_prior_data_h5)
+        f_post_h5 = 'post_%s_N%d_inflateNoise%d.h5' % (fileparts[0], N_use,inflateNoise)
+
+        f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
+                                        f_data_h5, 
+                                        f_post_h5, 
+                                        N_use = N_use, 
+                                        showInfo=1, 
+                                        parallel=True, 
+                                        updatePostStat=True)
+        
+        ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
+
 
