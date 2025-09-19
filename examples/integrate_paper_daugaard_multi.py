@@ -154,9 +154,7 @@ for i_prior in range(len(f_prior_data_h5_list)):
                                     showInfo=1, 
                                     parallel=True, 
                                     updatePostStat=False)
-    
-    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
-    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+   
 
     f_post_h5_list.append(f_post_h5)    
 
@@ -169,15 +167,28 @@ for i_post in range(len(f_post_h5_list)):
 for i_post in range(len(f_post_h5_list)):
     f_post_h5 = f_post_h5_list[i_post]
     
+    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
+    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+
     ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
     
     ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
 
     ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=hardcopy)
 
+    ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Mean', uselog=1, s=10,hardcopy=hardcopy)
+    plt.show()
+    ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10,hardcopy=hardcopy)
+    plt.show()
+
+
+# %% [markdown]
+# ## Effect of size of prior data set
+
 # %% EFFECT OF SIZE
 
 N_use_arr = [1000,10000,100000,1000000]
+N_use_arr = [1000,10000,100000]
 
 f_post_h5_N_list = []
 
@@ -197,7 +208,87 @@ for N_use in N_use_arr:
                                         parallel=True, 
                                         updatePostStat=True)
         
-        ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
-        ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+        f_post_h5_N_list.append(f_post_h5)
     
+#%% 
+for i_post in range(len(f_post_h5_N_list)):
+    f_post_h5 = f_post_h5_N_list[i_post]
 
+    
+    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
+    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+    
+    ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
+    
+    ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
+
+    ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=hardcopy)
+
+    ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Mean', uselog=1, s=10,hardcopy=hardcopy)
+    plt.show()
+    ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10,hardcopy=hardcopy)
+    plt.show()
+
+
+
+
+# %% [markdown]
+# ## Effect of size of prior data set
+
+# %% EFFECT OF SIZE
+
+T_base_arr = [1,2,10,20,100]
+N_use = 10000
+
+f_post_h5_T_list = []
+
+for T_base in T_base_arr:
+    for i_prior in range(len(f_prior_data_h5_list)):
+
+        f_prior_data_h5= f_prior_data_h5_list[i_prior]
+        # Get filename without extension
+        fileparts = os.path.splitext(f_prior_data_h5)
+        f_post_h5 = 'post_%s_Nuse%d_T%d_inflateNoise%d.h5' % (fileparts[0], N_use,T_base,inflateNoise)
+
+        f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
+                                        f_data_h5, 
+                                        f_post_h5, 
+                                        T_base = T_base,
+                                        N_use = N_use,
+                                        autoT=False,
+                                        showInfo=1, 
+                                        parallel=True, 
+                                        updatePostStat=True)
+        
+        f_post_h5_T_list.append(f_post_h5)
+
+
+
+
+#%% 
+# concatenate f_post_h5_list, f_post_h5_N_list, f_post_h5_T_list
+f_post_h5_all_list = f_post_h5_list + f_post_h5_N_list + f_post_h5_T_list
+
+#f_post_h5_all_list = f_post_h5_T_list
+
+
+for i_post in range(len(f_post_h5_all_list)):
+    f_post_h5 = f_post_h5_all_list[i_post]
+
+    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
+    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+    
+    ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
+    
+    ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
+    ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
+    ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
+    ig.plot_T_EV(f_post_h5, pl='ND', hardcopy=hardcopy)
+
+    ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=hardcopy)
+
+    #ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='LogMean', uselog=1, s=10,hardcopy=hardcopy)
+    ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, s=10,hardcopy=hardcopy)
+    plt.show()
+    ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10,hardcopy=hardcopy)
+    plt.show()

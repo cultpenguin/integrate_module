@@ -430,15 +430,23 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             LOGL_min = 0
             LOGL_max = 5
             
-            # Create custom colormap: red -> white/green -> blue with white/green at value 1
-            from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
-            colors = ['red', 'green', 'blue']
-            custom_cmap = LinearSegmentedColormap.from_list('custom', colors, N=256)
+            # Create custom colormap: red -> white -> blue with white at value 1
+            # Red-white takes 1/5 (0 to 1), white-blue takes 4/5 (1 to 5)
+            from matplotlib.colors import LinearSegmentedColormap, Normalize
             
-            # Use TwoSlopeNorm to center the colormap at value 1
-            norm = TwoSlopeNorm(vmin=LOGL_min, vcenter=1, vmax=LOGL_max)
+            # Define color segments with proper proportions
+            # Value 1 should be at position 0.2 (1/5) in the colormap
+            colors = ['red', 'white', 'blue']
+            n_seg = len(colors) - 1
+            # Create segments: 0->1 takes 20% (0.0 to 0.2), 1->5 takes 80% (0.2 to 1.0)
+            segment_positions = [0.0, 0.2, 1.0]
+            custom_cmap = LinearSegmentedColormap.from_list('custom', list(zip(segment_positions, colors)), N=256)
+            
+            # Use standard normalization
+            norm = Normalize(vmin=LOGL_min, vmax=LOGL_max)
             
             plt.figure(4, figsize=(20, 10))
+            plt.plot(X[i1:i2], Y[i1:i2], color='lightgray', zorder=-1, marker='.', linestyle='None', markersize=2*s)  # Background points in light gray
             scatter = plt.scatter(X[i1:i2], Y[i1:i2], c=LOGL_mean_plot[i1:i2], s=s, 
                                 cmap=custom_cmap, norm=norm, **kwargs)
             plt.grid()
