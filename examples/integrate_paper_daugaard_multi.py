@@ -101,7 +101,7 @@ i_plot_2 = 1000
 
 plt.figure(figsize=(10, 6))
 plt.scatter(X, Y, c=NON_NAN, s=1,label='Survey Points')
-plt.plot(X[id_line],Y[id_line], 'k.', markersize=4, label='All Survey Points')
+plt.plot(X[id_line],Y[id_line], 'k-', markersize=4, label='Profile', zorder=2, linewidth=2)
 plt.plot(X[i_plot_1],Y[i_plot_1], 'k*', markersize=10, label='P1')
 plt.plot(X[i_plot_2],Y[i_plot_2], 'k*', markersize=10, label='P2')
 plt.grid()
@@ -112,7 +112,7 @@ plt.title('Survey Points Colored by Number of Non-NaN Data Points')
 plt.axis('equal')
 plt.legend()
 if hardcopy:
-    plt.savefig('DAUGAARD_survey_points_elevation.png', dpi=300)
+    plt.savefig('DAUGAARD_survey_points_nonnan.png', dpi=300)
 plt.show()
 
 i1=np.min(id_line)
