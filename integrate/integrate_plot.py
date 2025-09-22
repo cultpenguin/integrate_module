@@ -803,7 +803,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
 
 
 
-def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
+def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='id', **kwargs):
     """
     Plot 1D profiles from posterior sampling results.
     
@@ -817,8 +817,12 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
     :type i1: int, optional
     :param i2: Ending index for the data points to plot (1-based indexing)
     :type i2: int, optional
+    :param ii: Specific array of indices to plot. If provided, overrides i1 and i2
+    :type ii: numpy.ndarray, optional
     :param im: Model identifier to plot. If 0, automatically detects and plots all models
     :type im: int, optional
+    :param xaxis: X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...)
+    :type xaxis: str, optional
     :param kwargs: Additional plotting arguments passed to discrete/continuous plotting functions
     :type kwargs: dict
     
@@ -852,7 +856,7 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
                 im = int(key[1:])
                 try:
                     if key[0]=='M':
-                        plot_profile(f_post_h5, i1, i2, im=im, **kwargs)
+                        plot_profile(f_post_h5, i1, i2, ii, im=im, xaxis=xaxis, **kwargs)
                 except:
                     print('Error in plot_profile for key=%s' % key)
         return 
@@ -864,12 +868,12 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
     #print(Mstr)
     #print(is_discrete)
     if is_discrete:
-        plot_profile_discrete(f_post_h5, i1, i2, im, **kwargs)
+        plot_profile_discrete(f_post_h5, i1, i2, ii, im, xaxis, **kwargs)
     elif not is_discrete:
-        plot_profile_continuous(f_post_h5, i1, i2, im, **kwargs)
+        plot_profile_continuous(f_post_h5, i1, i2, ii, im, xaxis, **kwargs)
 
 
-def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
+def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='id', **kwargs):
     """
     Create vertical profile plots for discrete categorical model parameters.
 
@@ -887,8 +891,12 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     i2 : float, optional
         Ending data point index for profile plotting. If larger than data size,
         uses all available data (default is 1e+9).
+    ii : numpy.ndarray, optional
+        Specific array of indices to plot. If provided, overrides i1 and i2 (default is empty array).
     im : int, optional
         Model index to plot (e.g., 1 for M1, 2 for M2, default is 1).
+    xaxis : str, optional
+        X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'id').
     **kwargs : dict
         Additional keyword arguments:
         - hardcopy : bool, save plot as PNG file (default False)
@@ -992,14 +1000,90 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     for i in range(nd):
         ZZ[:,i] = ELEVATION[i]-ZZ[:,i]
 
-    if i1<1: 
-        i1=0
-    if i2>nd-1:
-        i2=nd-1
+    # Index selection logic - use specific indices if provided, otherwise use range
+    if len(ii)==0:
+        if i1<1:
+            i1=0
+        if i2>nd-1:
+            i2=nd-1
+        ii = np.arange(i1,i2)
+    else:
+        # Ensure ii indices are within bounds
+        ii = np.array(ii)
+        ii = ii[ii < nd]  # Remove indices >= nd
+        ii = ii[ii >= 0]  # Remove negative indices
 
-    # Get center of grid cells
-    IID = ID[:,i1:i2]
-    IIZ = ZZ[:,i1:i2]
+    # X-axis selection logic
+    if xaxis == 'id':
+        # Use data index (default behavior)
+        XAXIS_DATA, ZZ_XAXIS = np.meshgrid(id, z)
+        XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+        ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+        # compute the depth from the surface plus the elevation
+        for i in range(nd):
+            ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+        # Get center of grid cells
+        IID = XAXIS_DATA[:,ii]
+        IIZ = ZZ_XAXIS[:,ii]
+        # Create x-axis values for temperature plotting
+        x_axis_values = XAXIS_DATA[0,ii]
+    elif xaxis == 'x':
+        # Use X coordinates
+        XAXIS_DATA, ZZ_XAXIS = np.meshgrid(X, z)
+        XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+        ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+        # compute the depth from the surface plus the elevation
+        for i in range(nd):
+            ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+        # Get center of grid cells
+        IID = XAXIS_DATA[:,ii]
+        IIZ = ZZ_XAXIS[:,ii]
+        # Create x-axis values for temperature plotting
+        x_axis_values = XAXIS_DATA[0,ii]
+    elif xaxis == 'y':
+        # Use Y coordinates
+        XAXIS_DATA, ZZ_XAXIS = np.meshgrid(Y, z)
+        XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+        ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+        # compute the depth from the surface plus the elevation
+        for i in range(nd):
+            ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+        # Get center of grid cells
+        IID = XAXIS_DATA[:,ii]
+        IIZ = ZZ_XAXIS[:,ii]
+        # Create x-axis values for temperature plotting
+        x_axis_values = XAXIS_DATA[0,ii]
+    elif xaxis == 'index':
+        # Use sequential indices 0,1,2,3... for the SELECTED points only
+        # Create sequential x-axis for selected indices
+        n_selected = len(ii)
+        sequential_x = np.arange(n_selected)
+        XAXIS_SEQUENTIAL, ZZ_XAXIS = np.meshgrid(sequential_x, z)
+
+        # For depth, we still need to use the original indices for elevation
+        ZZ_ORIGINAL = np.zeros_like(ZZ_XAXIS)
+        for i, orig_idx in enumerate(ii):
+            ZZ_ORIGINAL[:,i] = ELEVATION[orig_idx] - z
+
+        # Get center of grid cells - now sequential
+        IID = XAXIS_SEQUENTIAL
+        IIZ = ZZ_ORIGINAL
+        # Create x-axis values for temperature plotting
+        x_axis_values = sequential_x
+    else:
+        # Default to 'id' if invalid option provided
+        print(f"Warning: Unknown xaxis option '{xaxis}'. Using 'id' instead.")
+        XAXIS_DATA, ZZ_XAXIS = np.meshgrid(id, z)
+        XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+        ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+        # compute the depth from the surface plus the elevation
+        for i in range(nd):
+            ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+        # Get center of grid cells
+        IID = XAXIS_DATA[:,ii]
+        IIZ = ZZ_XAXIS[:,ii]
+        # Create x-axis values for temperature plotting
+        x_axis_values = XAXIS_DATA[0,ii]
     # IID, IIZ is the center of the cell. Create new grids, DDc, ZZc, that hold the the cordńers if the grids. 
     # DDc should have cells of size 1, while ZZc should be the same as ZZ but with a row added at the bottom that is the same as the last row of ZZ plus 100
     DDc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
@@ -1018,8 +1102,8 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
 
     # MODE
-    im1 = ax[0].pcolormesh(DDc, ZZc, Mode[:,i1:i2], 
-            cmap=cmap,            
+    im1 = ax[0].pcolormesh(DDc, ZZc, Mode[:,ii],
+            cmap=cmap,
             shading='auto')
     im1.set_clim(clim[0]-.5,clim[1]+.5)        
 
@@ -1031,18 +1115,18 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     cbar1.ax.invert_yaxis()
 
     # ENTROPY
-    im2 = ax[1].pcolormesh(DDc, ZZc, Entropy[:,i1:i2],
-            cmap='hot_r', 
+    im2 = ax[1].pcolormesh(DDc, ZZc, Entropy[:,ii],
+            cmap='hot_r',
             shading='auto')
     im2.set_clim(0,1)
     ax[1].set_title('Entropy')
     fig.colorbar(im2, ax=ax[1], label='Entropy')
 
     # MODE with transparency set using entropy
-    im3 = ax[2].pcolormesh(DDc, ZZc, Mode[:,i1:i2],
-            cmap=cmap, 
+    im3 = ax[2].pcolormesh(DDc, ZZc, Mode[:,ii],
+            cmap=cmap,
             shading='auto',
-            alpha=1-Entropy[:,i1:i2])
+            alpha=1-Entropy[:,ii])
     im3.set_clim(clim[0]-.5,clim[1]+.5)
     ax[2].set_title('Mode with transparency')
     #fig.colorbar(im3, ax=ax[2], label='label')
@@ -1055,9 +1139,9 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     ax[0].set_xticks([])
     ax[1].set_xticks([])
     ax[2].set_xticks([])
-    
-    im4 = ax[3].semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
-    ax[3].set_xlim(ID[0,i1], ID[0,i2])
+
+    im4 = ax[3].semilogy(x_axis_values,T[ii], 'k', label='T')
+    ax[3].set_xlim(x_axis_values.min(), x_axis_values.max())
     ax[3].set_ylim(0.99, 200)
     ax[3].set_ylabel('Temperature', color='k')
     ax[3].tick_params(axis='y', labelcolor='k')
@@ -1065,7 +1149,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     if LOGL_mean is not None:
         # Create second y-axis for LOGL_mean
         ax3_twin = ax[3].twinx()
-        ax3_twin.plot(ID[0,i1:i2], LOGL_mean[i1:i2], 'r', label='LOGL_mean')
+        ax3_twin.plot(x_axis_values, LOGL_mean[ii], 'r', label='LOGL_mean')
         # Add dotted red line at y=1
         ax3_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
         ax3_twin.set_ylim(0, 5)
@@ -1098,7 +1182,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     return
 
-def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
+def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='id', **kwargs):
     """
     Create vertical profile plots for continuous model parameters.
 
@@ -1115,8 +1199,12 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     i2 : float, optional
         Ending data point index for profile plotting. If larger than data size,
         uses all available data (default is 1e+9).
+    ii : numpy.ndarray, optional
+        Specific array of indices to plot. If provided, overrides i1 and i2 (default is empty array).
     im : int, optional
         Model index to plot (e.g., 1 for M1, 2 for M2, default is 1).
+    xaxis : str, optional
+        X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'id').
     **kwargs : dict
         Additional keyword arguments:
         - hardcopy : bool, save plot as PNG file (default False)
@@ -1263,12 +1351,90 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         for i in range(nd):
             ZZ[:,i] = ELEVATION[i]-ZZ[:,i]
 
+        # Index selection logic - use specific indices if provided, otherwise use range
+        if len(ii)==0:
+            if i1<1:
+                i1=0
+            if i2>nd-1:
+                i2=nd-1
+            ii = np.arange(i1,i2)
+        else:
+            # Ensure ii indices are within bounds
+            ii = np.array(ii)
+            ii = ii[ii < nd]  # Remove indices >= nd
+            ii = ii[ii >= 0]  # Remove negative indices
 
+        # X-axis selection logic
+        if xaxis == 'id':
+            # Use data index (default behavior)
+            XAXIS_DATA, ZZ_XAXIS = np.meshgrid(id, z)
+            XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+            ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+            # compute the depth from the surface plus the elevation
+            for i in range(nd):
+                ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+            # Get center of grid cells
+            IID = XAXIS_DATA[:,ii]
+            IIZ = ZZ_XAXIS[:,ii]
+            # Create x-axis values for temperature plotting
+            x_axis_values = XAXIS_DATA[0,ii]
+        elif xaxis == 'x':
+            # Use X coordinates
+            XAXIS_DATA, ZZ_XAXIS = np.meshgrid(X, z)
+            XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+            ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+            # compute the depth from the surface plus the elevation
+            for i in range(nd):
+                ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+            # Get center of grid cells
+            IID = XAXIS_DATA[:,ii]
+            IIZ = ZZ_XAXIS[:,ii]
+            # Create x-axis values for temperature plotting
+            x_axis_values = XAXIS_DATA[0,ii]
+        elif xaxis == 'y':
+            # Use Y coordinates
+            XAXIS_DATA, ZZ_XAXIS = np.meshgrid(Y, z)
+            XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+            ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+            # compute the depth from the surface plus the elevation
+            for i in range(nd):
+                ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+            # Get center of grid cells
+            IID = XAXIS_DATA[:,ii]
+            IIZ = ZZ_XAXIS[:,ii]
+            # Create x-axis values for temperature plotting
+            x_axis_values = XAXIS_DATA[0,ii]
+        elif xaxis == 'index':
+            # Use sequential indices 0,1,2,3... for the SELECTED points only
+            # Create sequential x-axis for selected indices
+            n_selected = len(ii)
+            sequential_x = np.arange(n_selected)
+            XAXIS_SEQUENTIAL, ZZ_XAXIS = np.meshgrid(sequential_x, z)
 
+            # For depth, we still need to use the original indices for elevation
+            ZZ_ORIGINAL = np.zeros_like(ZZ_XAXIS)
+            for i, orig_idx in enumerate(ii):
+                ZZ_ORIGINAL[:,i] = ELEVATION[orig_idx] - z
 
-        # Get center of grid cells
-        IID = ID[:,i1:i2]
-        IIZ = ZZ[:,i1:i2]
+            # Get center of grid cells - now sequential
+            IID = XAXIS_SEQUENTIAL
+            IIZ = ZZ_ORIGINAL
+            # Create x-axis values for temperature plotting
+            x_axis_values = sequential_x
+        else:
+            # Default to 'id' if invalid option provided
+            print(f"Warning: Unknown xaxis option '{xaxis}'. Using 'id' instead.")
+            XAXIS_DATA, ZZ_XAXIS = np.meshgrid(id, z)
+            XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+            ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+            # compute the depth from the surface plus the elevation
+            for i in range(nd):
+                ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+            # Get center of grid cells
+            IID = XAXIS_DATA[:,ii]
+            IIZ = ZZ_XAXIS[:,ii]
+            # Create x-axis values for temperature plotting
+            x_axis_values = XAXIS_DATA[0,ii]
         # IID, IIZ is the center of the cell. Create new grids, DDc, ZZc, that hold the the cordńers if the grids. 
         # DDc should have cells of size 1, while ZZc should be the same as ZZ but with a row added at the bottom that is the same as the last row of ZZ plus 100
         DDc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
@@ -1289,27 +1455,27 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     if (nm>1)&(key=='Mean'):
         isp=1
         # MEAN
-        im1 = ax[isp].pcolormesh(DDc, ZZc, Mean[:,i1:i2], 
-                cmap=cmap,            
+        im1 = ax[isp].pcolormesh(DDc, ZZc, Mean[:,ii],
+                cmap=cmap,
                 shading='auto',
                 norm=LogNorm())
         im1.set_clim(clim[0],clim[1])        
         # if transp>0, set alpha
         if alpha>0:
-            im1.set_alpha(A[:,i1:i2])
+            im1.set_alpha(A[:,ii])
         ax[isp].set_title('Mean %s' % name)
         fig.colorbar(im1, ax=ax[isp], label='%s' % name)
     
     if (nm>1)&(key=='Median'):
         isp=1
         # MEDIAN
-        im2 = ax[isp].pcolormesh(DDc, ZZc, Median[:,i1:i2], 
-                cmap=cmap,            
+        im2 = ax[isp].pcolormesh(DDc, ZZc, Median[:,ii],
+                cmap=cmap,
                 shading='auto',
                 norm=LogNorm())  # Set color scale to logarithmic
         im2.set_clim(clim[0],clim[1])        
         if alpha>0:
-            im2.set_alpha(A[:,i1:i2])
+            im2.set_alpha(A[:,ii])
         ax[isp].set_title('Median %s' % name)
         fig.colorbar(im2, ax=ax[isp], label='%s' % name) 
 
@@ -1317,8 +1483,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         isp=2
         # STD
         import matplotlib
-        im3 = ax[isp].pcolormesh(DDc, ZZc, Std[:,i1:i2], 
-                    cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]), 
+        im3 = ax[isp].pcolormesh(DDc, ZZc, Std[:,ii],
+                    cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]),
                     shading='auto')
         im3.set_clim(0,1)
         ax[isp].set_title('Std %s' % name)
@@ -1326,11 +1492,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     else:
         isp=2
         
-        im3 = ax[2].plot(id[i1:i2],Mean[:,i1:i2].T, 'k', label='Mean')
-        ax[2].plot(id[i1:i2],Mean[:,i1:i2].T+2*Std[:,i1:i2].T, 'k:', label='P97.5')
-        ax[2].plot(id[i1:i2],Mean[:,i1:i2].T-2*Std[:,i1:i2].T, 'k:', label='P2.5')
-        
-        ax[2].plot(id[i1:i2],Median[:,i1:i2].T, 'r', label='Median')
+        im3 = ax[2].plot(id[ii],Mean[:,ii].T, 'k', label='Mean')
+        ax[2].plot(id[ii],Mean[:,ii].T+2*Std[:,ii].T, 'k:', label='P97.5')
+        ax[2].plot(id[ii],Mean[:,ii].T-2*Std[:,ii].T, 'k:', label='P2.5')
+
+        ax[2].plot(id[ii],Median[:,ii].T, 'r', label='Median')
         # add legend
         ax[2].legend(loc='upper right')
         # add grd on
@@ -1338,7 +1504,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         # hide ax[0]
 
         # set axis on ax[3] to be the same as on ax[4]
-        ax[2].set_xlim(i1,i2)
+        ax[2].set_xlim(ii.min(),ii.max())
         ax[2].set_title(name)
         ax[0].axis('off')
         ax[1].axis('off')
@@ -1348,8 +1514,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     ax[1].set_xticks([])
     ax[2].set_xticks([])
     
-    im4 = ax[3].semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
-    ax[3].set_xlim(ID[0,i1], ID[0,i2])
+    im4 = ax[3].semilogy(x_axis_values,T[ii], 'k', label='T')
+    ax[3].set_xlim(x_axis_values.min(), x_axis_values.max())
     ax[3].set_ylim(0.99, 200)
     ax[3].set_ylabel('Temperature', color='k')
     ax[3].tick_params(axis='y', labelcolor='k')
@@ -1357,7 +1523,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     if LOGL_mean is not None:
         # Create second y-axis for LOGL_mean
         ax3_twin = ax[3].twinx()
-        ax3_twin.plot(ID[0,i1:i2], LOGL_mean[i1:i2], 'r', label='LOGL_mean')
+        ax3_twin.plot(x_axis_values, LOGL_mean[ii], 'r', label='LOGL_mean')
         # Add dotted red line at y=1
         ax3_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
         ax3_twin.set_ylim(0, 5)
