@@ -71,6 +71,12 @@ plt.show()
 # %% Get geometry and data info
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
+with h5py.File(f_data_h5,'r') as f_data:
+    # find number of nan values on d_obs
+    NON_NAN = np.sum(~np.isnan(f_data['/%s' % 'D1']['d_obs']), axis=1)
+
+
+
 # Find a unique list of line number, then find the LINEnumber that occurs most frequently
 unique_lines, counts = np.unique(LINE, return_counts=True)
 most_frequent_line = unique_lines[np.argmax(counts)]
@@ -94,7 +100,7 @@ i_plot_1 = 100
 i_plot_2 = 1000
 
 plt.figure(figsize=(10, 6))
-plt.scatter(X, Y, c=ELEVATION, s=1,label='Survey Points')
+plt.scatter(X, Y, c=NON_NAN, s=1,label='Survey Points')
 plt.plot(X[id_line],Y[id_line], 'k.', markersize=4, label='All Survey Points')
 plt.plot(X[i_plot_1],Y[i_plot_1], 'k*', markersize=10, label='P1')
 plt.plot(X[i_plot_2],Y[i_plot_2], 'k*', markersize=10, label='P2')
@@ -102,7 +108,7 @@ plt.grid()
 plt.colorbar(label='Elevation (m)')
 plt.xlabel('X (m)')
 plt.ylabel('Y (m)')
-plt.title('Survey Points Colored by Elevation')
+plt.title('Survey Points Colored by Number of Non-NaN Data Points')
 plt.axis('equal')
 plt.legend()
 if hardcopy:

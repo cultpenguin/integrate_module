@@ -42,6 +42,108 @@ import numpy as np
 import h5py
 import integrate as ig
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+
+
+def get_colormap_and_limits(cmap_type='default', custom_clim=None):
+    """
+    Return colormap and associated limits for different visualization types.
+
+    Creates various colormaps and their associated color limits for different
+    geophysical data visualization needs, with a focus on resistivity and
+    electromagnetic data plotting.
+
+    Parameters
+    ----------
+    cmap_type : str, optional
+        Type of colormap to return (default is 'default'):
+        - 'default': Red-white-blue-black colormap for general use
+        - 'resistivity': Log-scale colormap optimized for resistivity data
+        - 'entropy': Grayscale colormap for uncertainty visualization
+        - 'discrete': Categorical colormap for discrete classifications
+        - 'temperature': Hot colormap for temperature/evidence fields
+        - 'elevation': Terrain-like colormap for topographic data
+        - 'seismic': Blue-white-red colormap for seismic data
+    custom_clim : list or tuple, optional
+        Custom color limits as [min, max]. If provided, overrides default
+        limits for the specified colormap type (default is None).
+
+    Returns
+    -------
+    cmap : matplotlib.colors.Colormap
+        The colormap object ready for use in matplotlib plotting functions.
+    clim : list
+        Color scale limits as [min, max] values appropriate for the colormap.
+
+    Notes
+    -----
+    Default colormap creates a smooth transition: red (low) → white (medium)
+    → blue (high) → black (very high), which is effective for resistivity
+    visualization where extreme values need emphasis.
+
+    Examples
+    --------
+    >>> cmap, clim = get_colormap_and_limits('default')
+    >>> # Use with matplotlib: plt.imshow(data, cmap=cmap, vmin=clim[0], vmax=clim[1])
+
+    >>> cmap, clim = get_colormap_and_limits('resistivity', custom_clim=[10, 1000])
+    >>> # Custom limits override defaults for resistivity colormap
+    """
+
+    if cmap_type == 'default':
+        # Red to white to blue to black colormap
+        colors = ['red', 'white', 'blue', 'black']
+        n_bins = 256
+        cmap = LinearSegmentedColormap.from_list('default', colors, N=n_bins)
+        clim = [1, 2600]
+
+    elif cmap_type == 'resistivity':
+        # Optimized for resistivity data with log scaling
+        colors = ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red', 'darkred']
+        cmap = LinearSegmentedColormap.from_list('resistivity', colors, N=256)
+        clim = [1, 1000]
+
+    elif cmap_type == 'entropy':
+        # Grayscale for uncertainty/entropy
+        colors = ['white', 'gray', 'black']
+        cmap = LinearSegmentedColormap.from_list('entropy', colors, N=256)
+        clim = [0, 1]
+
+    elif cmap_type == 'discrete':
+        # Categorical colormap for discrete classifications
+        cmap = plt.cm.Set1
+        clim = [0.5, 8.5]  # Typical for 8 categories
+
+    elif cmap_type == 'temperature':
+        # Hot colormap for temperature/evidence fields
+        cmap = plt.cm.hot_r
+        clim = [1, 100]
+
+    elif cmap_type == 'elevation':
+        # Terrain-like colormap for elevation data
+        cmap = plt.cm.terrain
+        clim = [0, 500]  # Meters above sea level
+
+    elif cmap_type == 'seismic':
+        # Blue-white-red for seismic/anomaly data
+        colors = ['darkblue', 'blue', 'lightblue', 'white', 'lightcoral', 'red', 'darkred']
+        cmap = LinearSegmentedColormap.from_list('seismic', colors, N=256)
+        clim = [-1, 1]
+
+    else:
+        # Fallback to default if unknown type
+        colors = ['red', 'white', 'blue', 'black']
+        cmap = LinearSegmentedColormap.from_list('default', colors, N=256)
+        clim = [1, 2600]
+
+    # Override with custom limits if provided
+    if custom_clim is not None:
+        if len(custom_clim) == 2:
+            clim = list(custom_clim)
+        else:
+            raise ValueError("custom_clim must be a list or tuple of length 2 [min, max]")
+
+    return cmap, clim
 
 
 def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='median', usePrior=False, **kwargs):
@@ -210,7 +312,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
     
     if showInfo>1:
         print("f_prior_h5 = %d" % f_prior_h5)
-    clim_ref, cmap_ref = ig.get_clim_cmap(f_prior_h5,dstr)
+    clim_ref, cmap_ref = ig.h5_get_clim_cmap(f_prior_h5,dstr)
     if len(cmap)==0:
         cmap = cmap_ref
     if len(clim)==0:
@@ -2039,7 +2141,7 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
 
     M = f_prior[Mkey][:]
     N, Nm = M.shape
-    clim,cmap = ig.get_clim_cmap(f_prior_h5, Mstr=Mkey)
+    clim,cmap = ig.h5_get_clim_cmap(f_prior_h5, Mstr=Mkey)
 
     is_discrete = f_prior['/%s'%Mkey].attrs['is_discrete']    
     
@@ -2191,7 +2293,7 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
 
 
 # function that reads cmap and clim if they are set
-def get_clim_cmap(f_prior_h5, Mstr='/M1'):
+def h5_get_clim_cmap(f_prior_h5, Mstr='/M1'):
     """
     Retrieve color scale limits and colormap from prior model attributes.
 

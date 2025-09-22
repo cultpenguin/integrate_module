@@ -261,8 +261,8 @@ except:
 #import integrate as ig
 #f_prior_h5='PRIOR_UNIFORM_NL_1-8_log-uniform_N10000_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
 #f_post_h5 = 'POST_DAUGAARD_AVG_PRIOR_UNIFORM_NL_1-8_log-uniform_N10000_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nu10000_aT1.h5'
-#clim, cmap = ig.get_clim_cmap(f_prior_h5)
-#clim, cmap = ig.get_clim_cmap(f_prior_h5,'/M1')
+#clim, cmap = ig.h5_get_clim_cmap(f_prior_h5)
+#clim, cmap = ig.h5_get_clim_cmap(f_prior_h5,'/M1')
 #ig.plot_feature_2d(f_post_h5,im=1,iz=5,key='Median', title_text = 'XX', cmap='jet', s=12, vmin=10, vmax=100, hardcopy=hardcopy)
 #ig.plot_feature_2d(f_post_h5,im=1,iz=5,key='Median', hardcopy=True, s=11)
 #ig.plot_feature_2d(f_post_h5,im=1,iz=5,key='Median', title_text = 'XX', hardcopy=True, clim=[10 ,100], cmap='jet',s=11)
