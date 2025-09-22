@@ -79,6 +79,7 @@ from integrate.integrate_plot import plot_feature_2d
 from integrate.integrate_plot import plot_posterior_cumulative_thickness
 from integrate.integrate_plot import h5_get_clim_cmap
 from integrate.integrate_plot import get_colormap_and_limits
+from integrate.integrate_plot import find_points_along_line_segments
 
 # Import gex module functions
 from integrate.gex import read_gex as read_gex2

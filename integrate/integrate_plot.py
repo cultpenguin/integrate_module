@@ -40,9 +40,11 @@ Email: tmeha@geo.au.dk
 import os
 import numpy as np
 import h5py
-import integrate as ig
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from integrate.integrate import integrate_posterior_stats
+from integrate.integrate_io import get_geometry, get_number_of_data
+from integrate.integrate import posterior_cumulative_thickness
 
 
 def get_colormap_and_limits(cmap_type='default', custom_clim=None):
@@ -210,7 +212,7 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
     if isinstance(icat, int):
         icat = np.array([icat])
 
-    out = ig.posterior_cumulative_thickness(f_post_h5, im=2, icat=icat, usePrior=usePrior, **kwargs)
+    out = posterior_cumulative_thickness(f_post_h5, im=2, icat=icat, usePrior=usePrior, **kwargs)
     if not isinstance(out, tuple):
         # Then output failed
         return
@@ -257,7 +259,7 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
 
     return fig
 
-def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, title_text='', hardcopy=False, cmap=[], clim=[], **kwargs):
+def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, title_text='', hardcopy=False, cmap=None, clim=None, **kwargs):
     """
     Create 2D spatial scatter plot of model parameter features.
 
@@ -327,14 +329,18 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
             name = dstr
 
         
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
     
     if showInfo>1:
-        print("f_prior_h5 = %d" % f_prior_h5)
-    clim_ref, cmap_ref = ig.h5_get_clim_cmap(f_prior_h5,dstr)
-    if len(cmap)==0:
+        print("f_prior_h5 = %s" % f_prior_h5)
+
+
+    cmap_ref, clim_ref = ig.get_colormap_and_limits('resistivity')
+    if cmap is None:
+        # Check prior file for colormap
         cmap = cmap_ref
-    if len(clim)==0:
+        
+    if clim_ref is None:
         clim = clim_ref
 
     if showInfo>2:
@@ -442,7 +448,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
     
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
     clim=(T_min,T_max)
 
     with h5py.File(f_post_h5,'r') as f_post:
@@ -645,7 +651,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         if 'f5_prior' in f_data['/'].attrs:
             f_data_h5 = f_data['/'].attrs['f5_data']
     print('f_data_h5=%s' % f_data_h5)        
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
     
     wx = 10
     wy = (np.max(Y)-np.min(Y))/(np.max(X)-np.min(X)) * wx
@@ -750,7 +756,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         # Get number of data using the new function
         try:
             # Get data counts for all datasets (returns 2D array)
-            data_counts = ig.get_number_of_data(f_data_h5, count_nan=False)
+            data_counts = get_number_of_data(f_data_h5, count_nan=False)
 
             # If multiple datasets, sum across datasets to get total valid data per location
             if data_counts.shape[0] > 1:
@@ -781,7 +787,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         # Get number of data using the new function
         try:
             # Get data counts for all datasets (returns 2D array)
-            data_counts = ig.get_number_of_data(f_data_h5, count_nan=False)
+            data_counts = get_number_of_data(f_data_h5, count_nan=False)
 
             # If multiple datasets, sum across datasets to get total valid data per location
             if data_counts.shape[0] > 1:
@@ -803,14 +809,14 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
 
 
 
-def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='id', **kwargs):
+def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='index', gap_threshold=None, **kwargs):
     """
     Plot 1D profiles from posterior sampling results.
-    
+
     This function creates vertical profile plots showing the posterior distribution
     of model parameters as a function of depth or model layer. Automatically
     detects model type (discrete or continuous) and calls appropriate plotting function.
-    
+
     :param f_post_h5: Path to the HDF5 file containing posterior sampling results
     :type f_post_h5: str
     :param i1: Starting index for the data points to plot (1-based indexing)
@@ -823,12 +829,14 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='id', **
     :type im: int, optional
     :param xaxis: X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...)
     :type xaxis: str, optional
+    :param gap_threshold: Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, the region becomes transparent. If None, no gap transparency is applied.
+    :type gap_threshold: float, optional
     :param kwargs: Additional plotting arguments passed to discrete/continuous plotting functions
     :type kwargs: dict
-    
+
     :returns: None (creates matplotlib plots)
     :rtype: None
-    
+
     .. note::
         The function automatically computes posterior statistics if not present in the file.
         For discrete models, calls plot_profile_discrete(). For continuous models,
@@ -846,7 +854,7 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='id', **
             print('No posterior stats found in %s - computing them now' % f_post_h5)
             updatePostStat = True
     if updatePostStat:
-            ig.integrate_posterior_stats(f_post_h5)
+            integrate_posterior_stats(f_post_h5)
             
     if (im==0):
         print('Plot profile for all model parameters')
@@ -856,9 +864,11 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='id', **
                 im = int(key[1:])
                 try:
                     if key[0]=='M':
-                        plot_profile(f_post_h5, i1, i2, ii, im=im, xaxis=xaxis, **kwargs)
-                except:
-                    print('Error in plot_profile for key=%s' % key)
+                        plot_profile(f_post_h5, i1, i2, ii, im=im, xaxis=xaxis, gap_threshold=gap_threshold, **kwargs)
+                except Exception as e:
+                    print('Error in plot_profile for key=%s: %s' % (key, str(e)))
+                    import traceback
+                    traceback.print_exc()
         return 
     
     
@@ -868,12 +878,12 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='id', **
     #print(Mstr)
     #print(is_discrete)
     if is_discrete:
-        plot_profile_discrete(f_post_h5, i1, i2, ii, im, xaxis, **kwargs)
+        plot_profile_discrete(f_post_h5, i1, i2, ii, im, xaxis, gap_threshold, **kwargs)
     elif not is_discrete:
-        plot_profile_continuous(f_post_h5, i1, i2, ii, im, xaxis, **kwargs)
+        plot_profile_continuous(f_post_h5, i1, i2, ii, im, xaxis, gap_threshold, **kwargs)
 
 
-def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='id', **kwargs):
+def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='index', gap_threshold=None, **kwargs):
     """
     Create vertical profile plots for discrete categorical model parameters.
 
@@ -897,6 +907,8 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
         Model index to plot (e.g., 1 for M1, 2 for M2, default is 1).
     xaxis : str, optional
         X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'id').
+    gap_threshold : float, optional
+        Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, regions after the gaps become completely transparent to indicate missing data. If None, no gap transparency is applied (default is None).
     **kwargs : dict
         Additional keyword arguments:
         - hardcopy : bool, save plot as PNG file (default False)
@@ -930,7 +942,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
     
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
 
     Mstr = '/M%d' % im
 
@@ -1013,6 +1025,22 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
         ii = ii[ii < nd]  # Remove indices >= nd
         ii = ii[ii >= 0]  # Remove negative indices
 
+    # Sort indices based on chosen x-axis to ensure monotonic ordering
+    if xaxis == 'x':
+        # Sort by X coordinates
+        x_vals = X[ii]
+        sort_order = np.argsort(x_vals)
+        ii = ii[sort_order]
+    elif xaxis == 'y':
+        # Sort by Y coordinates
+        y_vals = Y[ii]
+        sort_order = np.argsort(y_vals)
+        ii = ii[sort_order]
+    elif xaxis == 'id':
+        # Sort by data index (sort ii directly)
+        ii = np.sort(ii)
+    # For 'index', no additional sorting needed (will be sequential 0,1,2,3...)
+
     # X-axis selection logic
     if xaxis == 'id':
         # Use data index (default behavior)
@@ -1094,7 +1122,53 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
     ZZc[:-1,:-1] = IIZ
     ZZc[-1,:] = ZZc[-2,:] + 1
-  
+
+    # Gap detection and transparency
+    gap_alpha = None
+    if gap_threshold is not None and len(x_axis_values) > 1:
+        showInfo = kwargs.get('showInfo', 0)
+        if showInfo > 0:
+            print(f"Gap transparency: threshold={gap_threshold}, x_values={x_axis_values}")
+
+        # Calculate distances between consecutive x-axis points
+        x_diffs = np.diff(x_axis_values)
+
+        # Create alpha mask for gaps: 1.0 for normal spacing, 0.0 for large gaps
+        gap_alpha = np.ones(IID.shape)  # Shape: (nz, n_selected)
+
+        # Find positions where gaps exceed threshold
+        large_gaps = x_diffs > gap_threshold
+
+        if np.any(large_gaps):
+            gap_count = np.sum(large_gaps)
+            if showInfo > 0:
+                print(f"Found {gap_count} large gaps (>{gap_threshold})")
+
+            # For each large gap, make cells that fall within the gap region transparent
+            for i, is_large_gap in enumerate(large_gaps):
+                if is_large_gap:
+                    # Gap exists between x_axis_values[i] and x_axis_values[i+1]
+                    gap_start = x_axis_values[i]
+                    gap_end = x_axis_values[i+1]
+
+                    if showInfo > 0:
+                        print(f"Gap {i}: from {gap_start:.1f} to {gap_end:.1f} (width: {x_diffs[i]:.1f})")
+
+                    # Find which cells in the DDc grid fall within this gap
+                    # DDc contains the corner coordinates of each cell
+                    for col in range(IID.shape[1]):
+                        # Get the x-coordinate range for this column
+                        cell_x_start = DDc[0, col]
+                        cell_x_end = DDc[0, col + 1]
+
+                        # Check if this cell overlaps with the gap region
+                        # Cell overlaps if: cell_start < gap_end AND cell_end > gap_start
+                        if cell_x_start < gap_end and cell_x_end > gap_start:
+                            # This cell is within or overlaps the gap region
+                            gap_alpha[:, col] = 0.0
+                            if showInfo > 1:  # More verbose debugging
+                                print(f"  Made column {col} transparent (cell range: {cell_x_start:.1f}-{cell_x_end:.1f})")
+
     # ii is a numpy array from i1 to i2
     # ii = np.arange(i1,i2)
 
@@ -1102,7 +1176,12 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
 
     # MODE
-    im1 = ax[0].pcolormesh(DDc, ZZc, Mode[:,ii],
+    mode_data = Mode[:,ii]
+    if gap_alpha is not None:
+        # Use masked array to hide transparent regions
+        mode_data = np.ma.masked_where(gap_alpha == 0.0, mode_data)
+
+    im1 = ax[0].pcolormesh(DDc, ZZc, mode_data,
             cmap=cmap,
             shading='auto')
     im1.set_clim(clim[0]-.5,clim[1]+.5)        
@@ -1115,18 +1194,28 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     cbar1.ax.invert_yaxis()
 
     # ENTROPY
-    im2 = ax[1].pcolormesh(DDc, ZZc, Entropy[:,ii],
+    entropy_data = Entropy[:,ii]
+    if gap_alpha is not None:
+        # Use masked array to hide transparent regions
+        entropy_data = np.ma.masked_where(gap_alpha == 0.0, entropy_data)
+
+    im2 = ax[1].pcolormesh(DDc, ZZc, entropy_data,
             cmap='hot_r',
             shading='auto')
     im2.set_clim(0,1)
     ax[1].set_title('Entropy')
     fig.colorbar(im2, ax=ax[1], label='Entropy')
 
-    # MODE with transparency set using entropy
-    im3 = ax[2].pcolormesh(DDc, ZZc, Mode[:,ii],
+    # MODE with transparency set using entropy (and gaps if available)
+    mode_entropy_data = Mode[:,ii]
+    if gap_alpha is not None:
+        # Use masked array to hide gap regions completely
+        mode_entropy_data = np.ma.masked_where(gap_alpha == 0.0, mode_entropy_data)
+
+    im3 = ax[2].pcolormesh(DDc, ZZc, mode_entropy_data,
             cmap=cmap,
             shading='auto',
-            alpha=1-Entropy[:,ii])
+            alpha=1-Entropy[:,ii])  # Keep entropy transparency
     im3.set_clim(clim[0]-.5,clim[1]+.5)
     ax[2].set_title('Mode with transparency')
     #fig.colorbar(im3, ax=ax[2], label='label')
@@ -1140,7 +1229,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     ax[1].set_xticks([])
     ax[2].set_xticks([])
 
-    im4 = ax[3].semilogy(x_axis_values,T[ii], 'k', label='T')
+    im4 = ax[3].semilogy(x_axis_values,T[ii], 'k.', label='T')
     ax[3].set_xlim(x_axis_values.min(), x_axis_values.max())
     ax[3].set_ylim(0.99, 200)
     ax[3].set_ylabel('Temperature', color='k')
@@ -1149,7 +1238,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     if LOGL_mean is not None:
         # Create second y-axis for LOGL_mean
         ax3_twin = ax[3].twinx()
-        ax3_twin.plot(x_axis_values, LOGL_mean[ii], 'r', label='LOGL_mean')
+        ax3_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
         # Add dotted red line at y=1
         ax3_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
         ax3_twin.set_ylim(0, 5)
@@ -1182,7 +1271,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
     return
 
-def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='id', **kwargs):
+def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='index', gap_threshold=None, **kwargs):
     """
     Create vertical profile plots for continuous model parameters.
 
@@ -1205,6 +1294,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         Model index to plot (e.g., 1 for M1, 2 for M2, default is 1).
     xaxis : str, optional
         X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'id').
+    gap_threshold : float, optional
+        Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, regions after the gaps become completely transparent to indicate missing data. If None, no gap transparency is applied (default is None).
     **kwargs : dict
         Additional keyword arguments:
         - hardcopy : bool, save plot as PNG file (default False)
@@ -1239,7 +1330,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
     """
     from matplotlib.colors import LogNorm
 
-    cmap_def, clim_def = ig.get_colormap_and_limits('resistivity')
+    cmap_def, clim_def = get_colormap_and_limits('resistivity')
     
     kwargs.setdefault('hardcopy', False)
     kwargs.setdefault('cmap', None)
@@ -1258,10 +1349,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
             name = f_prior['/M%d' % im].attrs['name']
         else:
             name='M%d' % im
-    
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
 
     Mstr = '/M%d' % im
+    clim_ref, cmap_ref = h5_get_clim_cmap(f_prior_h5, Mstr)
 
     if showInfo>0:
         print("Plotting profile %s from %s" % (Mstr, f_post_h5))
@@ -1364,6 +1456,22 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
             ii = ii[ii < nd]  # Remove indices >= nd
             ii = ii[ii >= 0]  # Remove negative indices
 
+        # Sort indices based on chosen x-axis to ensure monotonic ordering
+        if xaxis == 'x':
+            # Sort by X coordinates
+            x_vals = X[ii]
+            sort_order = np.argsort(x_vals)
+            ii = ii[sort_order]
+        elif xaxis == 'y':
+            # Sort by Y coordinates
+            y_vals = Y[ii]
+            sort_order = np.argsort(y_vals)
+            ii = ii[sort_order]
+        elif xaxis == 'id':
+            # Sort by data index (sort ii directly)
+            ii = np.sort(ii)
+        # For 'index', no additional sorting needed ('index' will be sequential)
+
         # X-axis selection logic
         if xaxis == 'id':
             # Use data index (default behavior)
@@ -1445,7 +1553,53 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
 
         ZZc[:-1,:-1] = IIZ
         ZZc[-1,:] = ZZc[-2,:] + 1
-    
+
+        # Gap detection and transparency
+        gap_alpha = None
+        if gap_threshold is not None and len(x_axis_values) > 1:
+            showInfo = kwargs.get('showInfo', 0)
+            if showInfo > 0:
+                print(f"Gap transparency: threshold={gap_threshold}, x_values={x_axis_values}")
+
+            # Calculate distances between consecutive x-axis points
+            x_diffs = np.diff(x_axis_values)
+
+            # Create alpha mask for gaps: 1.0 for normal spacing, 0.0 for large gaps
+            gap_alpha = np.ones(IID.shape)  # Shape: (nz, n_selected)
+
+            # Find positions where gaps exceed threshold
+            large_gaps = x_diffs > gap_threshold
+
+            if np.any(large_gaps):
+                gap_count = np.sum(large_gaps)
+                if showInfo > 0:
+                    print(f"Found {gap_count} large gaps (>{gap_threshold})")
+
+                # For each large gap, make cells that fall within the gap region transparent
+                for i, is_large_gap in enumerate(large_gaps):
+                    if is_large_gap:
+                        # Gap exists between x_axis_values[i] and x_axis_values[i+1]
+                        gap_start = x_axis_values[i]
+                        gap_end = x_axis_values[i+1]
+
+                        if showInfo > 0:
+                            print(f"Gap {i}: from {gap_start:.1f} to {gap_end:.1f} (width: {x_diffs[i]:.1f})")
+
+                        # Find which cells in the DDc grid fall within this gap
+                        # DDc contains the corner coordinates of each cell
+                        for col in range(IID.shape[1]):
+                            # Get the x-coordinate range for this column
+                            cell_x_start = DDc[0, col]
+                            cell_x_end = DDc[0, col + 1]
+
+                            # Check if this cell overlaps with the gap region
+                            # Cell overlaps if: cell_start < gap_end AND cell_end > gap_start
+                            if cell_x_start < gap_end and cell_x_end > gap_start:
+                                # This cell is within or overlaps the gap region
+                                gap_alpha[:, col] = 0.0
+                                if showInfo > 1:  # More verbose debugging
+                                    print(f"  Made column {col} transparent (cell range: {cell_x_start:.1f}-{cell_x_end:.1f})")
+
     # Create a figure with 3 subplots sharing the same Xaxis!
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
     
@@ -1455,12 +1609,17 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
     if (nm>1)&(key=='Mean'):
         isp=1
         # MEAN
-        im1 = ax[isp].pcolormesh(DDc, ZZc, Mean[:,ii],
+        mean_data = Mean[:,ii]
+        if gap_alpha is not None:
+            # Use masked array to hide gap regions completely
+            mean_data = np.ma.masked_where(gap_alpha == 0.0, mean_data)
+
+        im1 = ax[isp].pcolormesh(DDc, ZZc, mean_data,
                 cmap=cmap,
                 shading='auto',
                 norm=LogNorm())
-        im1.set_clim(clim[0],clim[1])        
-        # if transp>0, set alpha
+        im1.set_clim(clim[0],clim[1])
+        # Apply uncertainty-based transparency if enabled
         if alpha>0:
             im1.set_alpha(A[:,ii])
         ax[isp].set_title('Mean %s' % name)
@@ -1469,11 +1628,17 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
     if (nm>1)&(key=='Median'):
         isp=1
         # MEDIAN
-        im2 = ax[isp].pcolormesh(DDc, ZZc, Median[:,ii],
+        median_data = Median[:,ii]
+        if gap_alpha is not None:
+            # Use masked array to hide gap regions completely
+            median_data = np.ma.masked_where(gap_alpha == 0.0, median_data)
+
+        im2 = ax[isp].pcolormesh(DDc, ZZc, median_data,
                 cmap=cmap,
                 shading='auto',
                 norm=LogNorm())  # Set color scale to logarithmic
-        im2.set_clim(clim[0],clim[1])        
+        im2.set_clim(clim[0],clim[1])
+        # Apply uncertainty-based transparency if enabled
         if alpha>0:
             im2.set_alpha(A[:,ii])
         ax[isp].set_title('Median %s' % name)
@@ -1483,7 +1648,12 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         isp=2
         # STD
         import matplotlib
-        im3 = ax[isp].pcolormesh(DDc, ZZc, Std[:,ii],
+        std_data = Std[:,ii]
+        if gap_alpha is not None:
+            # Use masked array to hide gap regions completely
+            std_data = np.ma.masked_where(gap_alpha == 0.0, std_data)
+
+        im3 = ax[isp].pcolormesh(DDc, ZZc, std_data,
                     cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]),
                     shading='auto')
         im3.set_clim(0,1)
@@ -1514,7 +1684,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
     ax[1].set_xticks([])
     ax[2].set_xticks([])
     
-    im4 = ax[3].semilogy(x_axis_values,T[ii], 'k', label='T')
+    im4 = ax[3].semilogy(x_axis_values,T[ii], 'k.', label='T')
     ax[3].set_xlim(x_axis_values.min(), x_axis_values.max())
     ax[3].set_ylim(0.99, 200)
     ax[3].set_ylabel('Temperature', color='k')
@@ -1523,7 +1693,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
     if LOGL_mean is not None:
         # Create second y-axis for LOGL_mean
         ax3_twin = ax[3].twinx()
-        ax3_twin.plot(x_axis_values, LOGL_mean[ii], 'r', label='LOGL_mean')
+        ax3_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
         # Add dotted red line at y=1
         ax3_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
         ax3_twin.set_ylim(0, 5)
@@ -1610,7 +1780,7 @@ def plot_data_xy(f_data_h5, Dkey='D1', data_key='d_obs', data_channel=0, uselog=
     kwargs.setdefault('cmap', 'viridis')
     
     # Get geometry
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
     
     # Load data
     with h5py.File(f_data_h5, 'r') as f:
@@ -2247,7 +2417,142 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
             else:
                 plt.savefig('%s_%s_id%05d.png' % (os.path.splitext(f_post_h5)[0],Dkey,i_plot))
         plt.show()
-    
+
+
+def find_points_along_line_segments(X, Y, Xl, Yl, ID=None, tolerance=None, method='closest'):
+    """
+    Find point indices that lie along or near specified line segments.
+
+    Parameters:
+    -----------
+    X : array-like
+        X coordinates of points
+    Y : array-like
+        Y coordinates of points
+    Xl : array-like
+        X coordinates defining line segment endpoints (length = number of segments)
+    Yl : array-like
+        Y coordinates defining line segment endpoints (length = number of segments)
+    ID : array-like, optional
+        Point identifiers (same length as X, Y)
+    tolerance : float, optional
+        Maximum distance from line segments to include points
+        If None, uses 1% of the maximum coordinate range
+    method : str, optional
+        Selection method: 'closest' (default), 'within_tolerance', or 'perpendicular'
+
+    Returns:
+    --------
+    indices : numpy.ndarray
+        Indices of points that lie along the line segments
+    distances : numpy.ndarray
+        Distances from selected points to their nearest line segments
+    segment_ids : numpy.ndarray
+        Which line segment each selected point is closest to
+
+    Notes:
+    ------
+    For 3 line segments, len(Xl) = len(Yl) = 3, defining segments:
+    - Segment 0: from (Xl[0], Yl[0]) to (Xl[1], Yl[1])
+    - Segment 1: from (Xl[1], Yl[1]) to (Xl[2], Yl[2])
+    - etc.
+
+    Examples:
+    ---------
+    >>> X = np.array([1, 2, 3, 4, 5])
+    >>> Y = np.array([1, 2, 3, 4, 5])
+    >>> Xl = np.array([0, 3, 6])  # Two line segments
+    >>> Yl = np.array([0, 3, 6])
+    >>> indices, distances, seg_ids = find_points_along_line_segments(X, Y, Xl, Yl)
+    """
+    import numpy as np
+
+    X = np.array(X)
+    Y = np.array(Y)
+    Xl = np.array(Xl)
+    Yl = np.array(Yl)
+
+    if len(X) != len(Y):
+        raise ValueError("X and Y must have the same length")
+
+    if len(Xl) != len(Yl):
+        raise ValueError("Xl and Yl must have the same length")
+
+    if len(Xl) < 2:
+        raise ValueError("Need at least 2 points to define line segments")
+
+    if ID is not None:
+        ID = np.array(ID)
+        if len(ID) != len(X):
+            raise ValueError("ID must have the same length as X and Y")
+
+    # Set default tolerance if not provided
+    if tolerance is None:
+        x_range = np.max(X) - np.min(X)
+        y_range = np.max(Y) - np.min(Y)
+        tolerance = 0.01 * max(x_range, y_range)
+
+    n_points = len(X)
+    n_segments = len(Xl) - 1
+
+    # Store results for each point
+    min_distances = np.full(n_points, np.inf)
+    closest_segments = np.full(n_points, -1, dtype=int)
+
+    # Calculate distance from each point to each line segment
+    for seg_idx in range(n_segments):
+        # Line segment endpoints
+        x1, y1 = Xl[seg_idx], Yl[seg_idx]
+        x2, y2 = Xl[seg_idx + 1], Yl[seg_idx + 1]
+
+        # Vector from start to end of segment
+        dx = x2 - x1
+        dy = y2 - y1
+        segment_length_sq = dx*dx + dy*dy
+
+        if segment_length_sq < 1e-12:  # Degenerate segment (same start/end point)
+            # Distance to single point
+            distances = np.sqrt((X - x1)**2 + (Y - y1)**2)
+        else:
+            # Calculate perpendicular distance to line segment
+            # Project each point onto the line segment
+            t = ((X - x1) * dx + (Y - y1) * dy) / segment_length_sq
+
+            # Clamp t to [0, 1] to stay within segment bounds
+            t = np.clip(t, 0, 1)
+
+            # Find closest points on segment
+            closest_x = x1 + t * dx
+            closest_y = y1 + t * dy
+
+            # Calculate distances
+            distances = np.sqrt((X - closest_x)**2 + (Y - closest_y)**2)
+
+        # Update minimum distances and closest segments
+        mask = distances < min_distances
+        min_distances[mask] = distances[mask]
+        closest_segments[mask] = seg_idx
+
+    # Select points based on method
+    if method == 'closest':
+        # Select points within tolerance of their closest segment
+        selected_mask = min_distances <= tolerance
+    elif method == 'within_tolerance':
+        # Same as closest for this implementation
+        selected_mask = min_distances <= tolerance
+    elif method == 'perpendicular':
+        # Select points within tolerance and prefer perpendicular distances
+        selected_mask = min_distances <= tolerance
+    else:
+        raise ValueError(f"Unknown method: {method}")
+
+    # Get indices of selected points
+    selected_indices = np.where(selected_mask)[0]
+
+    return (selected_indices,
+            min_distances[selected_indices],
+            closest_segments[selected_indices])
+
 
 def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
     """
@@ -2334,7 +2639,7 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
 
     M = f_prior[Mkey][:]
     N, Nm = M.shape
-    clim,cmap = ig.h5_get_clim_cmap(f_prior_h5, Mstr=Mkey)
+    clim,cmap = h5_get_clim_cmap(f_prior_h5, Mstr=Mkey)
 
     is_discrete = f_prior['/%s'%Mkey].attrs['is_discrete']    
     

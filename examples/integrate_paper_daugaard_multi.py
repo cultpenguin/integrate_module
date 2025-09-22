@@ -92,16 +92,55 @@ if len(id_line_cut) > 0:
     id_line = id_line[:id_line_cut[0]+1]
 
 # set id_line to 100,101...,1001
-id_line = np.arange(2000, 3001)
+id_line_1 = np.arange(755, 815)
+id_line_2 = np.arange(7720, 7730)
+id_line_3 = np.flip(np.arange(2705, 2731))
+id_line = np.concatenate((id_line_1, id_line_2, id_line_3))
+#id_liine = id_line_3
+
+# Find points within buffer distance
+Xl = np.array([X[id_line][0], X[id_line][-1]])
+Yl = np.array([Y[id_line][0], Y[id_line][-1]])
+buffer = 10.0
+indices, distances, segment_ids = ig.find_points_along_line_segments(
+    X, Y, Xl, Yl, tolerance=buffer
+)
+id_line = indices
+
+# Find points within buffer distance
+Xl = np.array([np.min(X), np.max(X)])
+Yl = np.array([np.max(Y), np.min(Y)])
+buffer = 10.0
+indices, distances, segment_ids = ig.find_points_along_line_segments(
+    X, Y, Xl, Yl, tolerance=buffer
+)
+id_line = indices
+
+
+# Find points within buffer distance
+Xl = np.array([544000, 543550])
+Yl = np.array([6174500, 6176500])
+buffer = 10.0
+indices, distances, segment_ids = ig.find_points_along_line_segments(
+    X, Y, Xl, Yl, tolerance=buffer
+)
+id_line = indices
+
+i_plot_1 = indices[5]
+i_plot_2 = 1000
+
+
+
+
 
 # slect indexes to plot
-
-i_plot_1 = 100
-i_plot_2 = 1000
+#i_plot_1 = 100
+#i_plot_2 = 1000
 
 plt.figure(figsize=(10, 6))
 plt.scatter(X, Y, c=NON_NAN, s=1,label='Survey Points')
-plt.plot(X[id_line],Y[id_line], 'k-', markersize=4, label='Profile', zorder=2, linewidth=2)
+#plt.plot(X[id_line],Y[id_line], 'k-', markersize=8, label='Profile', zorder=2, linewidth=5)
+plt.plot(X[id_line],Y[id_line], 'r.', markersize=8, label='Profile', zorder=2, linewidth=5)
 plt.plot(X[i_plot_1],Y[i_plot_1], 'k*', markersize=10, label='P1')
 plt.plot(X[i_plot_2],Y[i_plot_2], 'k*', markersize=10, label='P2')
 plt.grid()
@@ -274,27 +313,25 @@ for T_base in T_base_arr:
 #%% 
 # concatenate f_post_h5_list, f_post_h5_N_list, f_post_h5_T_list
 f_post_h5_all_list = f_post_h5_list + f_post_h5_N_list + f_post_h5_T_list
-
+cmap, clim = ig.get_colormap_and_limits('resistivity')
 #f_post_h5_all_list = f_post_h5_T_list
 
 
 for i_post in range(len(f_post_h5_all_list)):
     f_post_h5 = f_post_h5_all_list[i_post]
 
-    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
-    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+    #ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
+    #ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
     
-    ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
+    #ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
+    #ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
+    #ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
+    #ig.plot_T_EV(f_post_h5, pl='ND', hardcopy=hardcopy)
+
+    #ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y', cmap=cmap, clim=clim,hardcopy=hardcopy)
     
-    ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
-    ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
-    ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
-    ig.plot_T_EV(f_post_h5, pl='ND', hardcopy=hardcopy)
-
-    ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=hardcopy)
-
-    #ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='LogMean', uselog=1, s=10,hardcopy=hardcopy)
-    ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, s=10,hardcopy=hardcopy)
-    plt.show()
-    ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10,hardcopy=hardcopy)
+    #ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='LogMean', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
+    #ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, s=10,hardcopy=hardcopy)
+    #plt.show()
+    ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10, hardcopy=hardcopy)
     plt.show()
