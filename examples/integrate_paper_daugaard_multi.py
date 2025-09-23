@@ -320,18 +320,19 @@ cmap, clim = ig.get_colormap_and_limits('resistivity')
 for i_post in range(len(f_post_h5_all_list)):
     f_post_h5 = f_post_h5_all_list[i_post]
 
-    #ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
-    #ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
+    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
     
-    #ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
-    #ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
-    #ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
-    #ig.plot_T_EV(f_post_h5, pl='ND', hardcopy=hardcopy)
+    ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
+    ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
+    ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
+    ig.plot_T_EV(f_post_h5, pl='ND', hardcopy=hardcopy)
 
-    #ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y', cmap=cmap, clim=clim,hardcopy=hardcopy)
+    ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y', cmap=cmap, clim=clim,hardcopy=hardcopy)
     
-    #ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='LogMean', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
-    #ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, s=10,hardcopy=hardcopy)
-    #plt.show()
+    ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='LogMean', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
+    plt.show()
+    ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
+    plt.show()
     ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10, hardcopy=hardcopy)
     plt.show()

@@ -335,7 +335,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
         print("f_prior_h5 = %s" % f_prior_h5)
 
 
-    cmap_ref, clim_ref = ig.get_colormap_and_limits('resistivity')
+    cmap_ref, clim_ref = get_colormap_and_limits('resistivity')
     if cmap is None:
         # Check prior file for colormap
         cmap = cmap_ref
