@@ -16,17 +16,14 @@ set -x  # show commands while executing
 
 # Install necessary packages in Debian/Ubuntu (tested on Ubuntu 22.04 LTS and Debian 13)
 # Check if sudo is available, if not assume user is root
+PREFIX=
 if command -v sudo >/dev/null 2>&1; then
-	sudo sh -c '
-		apt-get update &&
-		apt-get install -y build-essential libfftw3-dev libfftw3-bin libfftw3-double3 libopenmpi-dev cmake pkg-config git &&
-		apt-get autoremove -y'
-else
-	sh -c '
-		apt-get update &&
-		apt-get install -y build-essential libfftw3-dev libfftw3-bin libfftw3-double3 libopenmpi-dev cmake pkg-config git &&
-		apt-get autoremove -y'
+	PREFIX=sudo
 fi
+$PREFIX sh -c '
+		apt-get update &&
+		apt-get install -y build-essential libfftw3-dev libfftw3-bin libfftw3-double3 libopenmpi-dev cmake pkg-config git &&
+		apt-get autoremove -y'
 
 ## 1. Clone the ga-aem repository from Github
 if ! test -d ga-aem
