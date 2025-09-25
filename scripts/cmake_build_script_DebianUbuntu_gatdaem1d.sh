@@ -5,9 +5,9 @@
 # See more detailed information on https://github.com/GeoscienceAustralia/ga-aem/blob/master/cmake_build_script_ubuntu.sh
 #
 # Test this script with the latest Debian using a docker container:
-#   docker run -it --rm -v $(pwd):/workspace debian:latest /workspace/cmake_build_script_DebianUbuntu_gatdaem1d.sh
+#   docker run -it --rm -v $(pwd):/workspace -e DEBIAN_FRONTEND=noninteractive debian:latest /workspace/cmake_build_script_DebianUbuntu_gatdaem1d.sh
 # Test this script with the latest Ubuntu using a docker container:
-#	docker run -it --rm -v $(pwd):/workspace ubuntu:latest /workspace/cmake_build_script_DebianUbuntu_gatdaem1d.sh
+#	docker run -it --rm -v $(pwd):/workspace -e DEBIAN_FRONTEND=noninteractive ubuntu:latest /workspace/cmake_build_script_DebianUbuntu_gatdaem1d.sh
 #
 #
 set -e  # exit with error if a command fails
