@@ -47,6 +47,11 @@ def print_timing_summary(f_timing):
             T_total = data['T_total']
         except:
             T_total = T_prior + T_forward + T_rejection + T_poststat
+            
+        try:
+            nobs = data['nobs']
+        except:
+            nobs = 11693  # Default fallback value
 
         print(f"\n{'='*60}")
         print(f"INTEGRATE Timing Summary: {f_timing}")
@@ -59,12 +64,13 @@ def print_timing_summary(f_timing):
         T_forward_sounding_per_sec = N_arr[:,np.newaxis]/T_forward
         T_forward_sounding_per_sec_per_cpu = T_forward_sounding_per_sec/Nproc_arr[np.newaxis,:]
 
-        T_rejection_sounding_per_sec = N_arr[:,np.newaxis]/T_rejection
-        T_rejection_sounding_per_sec_per_cpu = T_rejection_sounding_per_sec/Nproc_arr[np.newaxis,:]
+        # For rejection sampling, use correct metric: data soundings per second (not lookup table models per second)
+        T_rejection_per_data = nobs/T_rejection  # Data soundings per second
+        T_rejection_per_data_per_cpu = T_rejection_per_data/Nproc_arr[np.newaxis,:]
 
         # Find best performance cases (remove NaN values)
         forward_valid = ~np.isnan(T_forward_sounding_per_sec)
-        rejection_valid = ~np.isnan(T_rejection_sounding_per_sec)
+        rejection_valid = ~np.isnan(T_rejection_per_data)
 
         if np.any(forward_valid):
             max_forward_total = np.nanmax(T_forward_sounding_per_sec)
@@ -83,41 +89,73 @@ def print_timing_summary(f_timing):
                     print(f"     {int(ncpu):2d} CPUs: {best_perf:8.1f} sounds/sec ({best_perf_per_cpu:.2f} per CPU)")
 
         if np.any(rejection_valid):
-            max_rejection_total = np.nanmax(T_rejection_sounding_per_sec)
-            max_rejection_per_cpu = np.nanmax(T_rejection_sounding_per_sec_per_cpu)
+            # Focus on largest lookup table (largest N value)
+            max_n_idx = np.argmax(N_arr)
+            
+            # Extract rejection performance for largest lookup table only
+            T_rejection_largest = T_rejection_per_data[max_n_idx, :]
+            T_rejection_largest_per_cpu = T_rejection_per_data_per_cpu[max_n_idx, :]
+            
+            # Check if we have valid data for the largest lookup table
+            if np.any(~np.isnan(T_rejection_largest)):
+                max_rejection_total = np.nanmax(T_rejection_largest)
+                max_rejection_per_cpu = np.nanmax(T_rejection_largest_per_cpu)
+                
+                # Find which CPU count achieved the maximum performance
+                max_total_cpu_idx = np.nanargmax(T_rejection_largest)
+                max_per_cpu_cpu_idx = np.nanargmax(T_rejection_largest_per_cpu)
+                max_total_cpus = int(Nproc_arr[max_total_cpu_idx])
+                max_per_cpu_cpus = int(Nproc_arr[max_per_cpu_cpu_idx])
 
-            print(f"\n⚡ REJECTION SAMPLING PERFORMANCE:")
-            print(f"   Max soundings/sec (all CPUs): {max_rejection_total:.1f}")
-            print(f"   Max soundings/sec/CPU:        {max_rejection_per_cpu:.2f}")
+                print(f"\n⚡ REJECTION SAMPLING PERFORMANCE (Largest Lookup Table: {int(N_arr[max_n_idx]):,} models):")
+                print(f"   Max data soundings/sec (all CPUs): {max_rejection_total:.1f} (achieved with {max_total_cpus} CPUs)")
+                print(f"   Max data soundings/sec/CPU:       {max_rejection_per_cpu:.2f} (achieved with {max_per_cpu_cpus} CPUs)")
 
-            # Show performance for different CPU counts
-            print(f"\n   Rejection Performance by CPU Count:")
-            for j, ncpu in enumerate(Nproc_arr):
-                if np.any(~np.isnan(T_rejection_sounding_per_sec[:, j])):
-                    best_perf = np.nanmax(T_rejection_sounding_per_sec[:, j])
-                    best_perf_per_cpu = best_perf / ncpu
-                    print(f"     {int(ncpu):2d} CPUs: {best_perf:8.1f} sounds/sec ({best_perf_per_cpu:.2f} per CPU)")
+                # Show performance for different CPU counts (largest lookup table only)
+                print(f"\n   Rejection Performance by CPU Count (Largest Lookup Table):")
+                for j, ncpu in enumerate(Nproc_arr):
+                    if not np.isnan(T_rejection_largest[j]):
+                        best_perf = T_rejection_largest[j]
+                        best_perf_per_cpu = best_perf / ncpu
+                        print(f"     {int(ncpu):2d} CPUs: {best_perf:8.1f} data sounds/sec ({best_perf_per_cpu:.2f} per CPU)")
+                    elif int(ncpu) == 1:
+                        # Always show 1 CPU entry even if data is NaN, for reference
+                        print(f"     {int(ncpu):2d} CPUs: No valid data")
+            else:
+                print(f"\n⚡ REJECTION SAMPLING PERFORMANCE: No valid data for largest lookup table ({int(N_arr[max_n_idx]):,} models)")
 
-        # Overall timing breakdown for best case
+        # Overall timing breakdown for best case using largest lookup table
         if np.any(~np.isnan(T_total)):
-            best_idx = np.unravel_index(np.nanargmax(N_arr[:,np.newaxis]/T_total), T_total.shape)
-            best_n, best_cpu = N_arr[best_idx[0]], Nproc_arr[best_idx[1]]
+            # Focus on largest lookup table (largest N value)
+            max_n_idx = np.argmax(N_arr)
+            
+            # Extract timing data for largest lookup table only
+            T_total_largest = T_total[max_n_idx, :]
+            
+            # Check if we have valid data for the largest lookup table
+            if np.any(~np.isnan(T_total_largest)):
+                # Find best CPU count for the largest lookup table
+                best_cpu_idx = np.nanargmax(N_arr[max_n_idx]/T_total_largest)
+                best_cpu = Nproc_arr[best_cpu_idx]
+                best_n = N_arr[max_n_idx]
 
-            t_pri = T_prior[best_idx]
-            t_fwd = T_forward[best_idx]
-            t_rej = T_rejection[best_idx]
-            t_post = T_poststat[best_idx]
-            t_tot = t_pri + t_fwd + t_rej + t_post
+                t_pri = T_prior[max_n_idx, best_cpu_idx]
+                t_fwd = T_forward[max_n_idx, best_cpu_idx]
+                t_rej = T_rejection[max_n_idx, best_cpu_idx]
+                t_post = T_poststat[max_n_idx, best_cpu_idx]
+                t_tot = t_pri + t_fwd + t_rej + t_post
 
-            print(f"\n📊 BEST OVERALL PERFORMANCE CASE:")
-            print(f"   Dataset: {int(best_n):,} models, {int(best_cpu)} CPUs")
-            print(f"   Total throughput: {best_n/t_tot:.1f} models/sec")
-            print(f"\n   Time breakdown:")
-            print(f"     Prior generation: {t_pri:6.1f}s ({100*t_pri/t_tot:4.1f}%)")
-            print(f"     Forward modeling: {t_fwd:6.1f}s ({100*t_fwd/t_tot:4.1f}%)")
-            print(f"     Rejection sample: {t_rej:6.1f}s ({100*t_rej/t_tot:4.1f}%)")
-            print(f"     Post statistics:  {t_post:6.1f}s ({100*t_post/t_tot:4.1f}%)")
-            print(f"     Total time:       {t_tot:6.1f}s")
+                print(f"\n📊 BEST OVERALL PERFORMANCE (Largest Lookup Table: {int(best_n):,} models):")
+                print(f"   Best CPU configuration: {int(best_cpu)} CPUs")
+                print(f"   Total throughput: {best_n/t_tot:.1f} models/sec")
+                print(f"\n   Time breakdown:")
+                print(f"     Prior generation: {t_pri:6.1f}s ({100*t_pri/t_tot:4.1f}%)")
+                print(f"     Forward modeling: {t_fwd:6.1f}s ({100*t_fwd/t_tot:4.1f}%)")
+                print(f"     Rejection sample: {t_rej:6.1f}s ({100*t_rej/t_tot:4.1f}%)")
+                print(f"     Post statistics:  {t_post:6.1f}s ({100*t_post/t_tot:4.1f}%)")
+                print(f"     Total time:       {t_tot:6.1f}s")
+            else:
+                print(f"\n📊 BEST OVERALL PERFORMANCE: No valid data for largest lookup table ({int(N_arr[max_n_idx]):,} models)")
 
         print(f"\n{'='*60}")
 

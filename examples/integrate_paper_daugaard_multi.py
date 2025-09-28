@@ -35,7 +35,10 @@ hardcopy=True
 # %%
 useMergedPrior=True
 useGenericPrior=True
+inflateNoise = 10
 N_use = 2000000
+N_use = 50000
+#N_use = 100000
 
 files = ig.get_case_data(case='DAUGAARD', loadType='prior_data') # Load data and prior+data realizations
 f_data_h5 = files[0]
@@ -51,7 +54,6 @@ plt.show()
 
 
 # %% Load Dauagard data and increase std by a factor of 3
-inflateNoise = 1
 if inflateNoise != 1:
     gf=inflateNoise
     print("="*60)
@@ -175,19 +177,22 @@ if useGenericPrior:
     f_prior_data_generic_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, NdoMakePriorCopy=True)
     f_prior_data_h5_list.append(f_prior_data_generic_h5)
 
-# %%
-# Select how many prior model realizations (N) should be generated
-
-f_post_h5_list = []
-
+#%% Plor prior data and observed data
 for i_prior in range(len(f_prior_data_h5_list)):
 
     f_prior_data_h5= f_prior_data_h5_list[i_prior]
     ig.integrate_update_prior_attributes(f_prior_data_h5)
-
-    # plot prior data and observed data
     ig.plot_data_prior(f_prior_data_h5, f_data_h5, i_plot=100, hardcopy=hardcopy)
-    
+
+# %%
+# Select how many prior model realizations (N) should be generated
+
+f_post_h5_list = []
+autoT=False
+for i_prior in range(len(f_prior_data_h5_list)):
+
+    f_prior_data_h5= f_prior_data_h5_list[i_prior]
+  
     # Get filename without extension
     fileparts = os.path.splitext(f_prior_data_h5)
     f_post_h5 = 'post_%s_Nuse%d_inflateNoise%d.h5' % (fileparts[0], N_use,inflateNoise)
@@ -198,16 +203,54 @@ for i_prior in range(len(f_prior_data_h5_list)):
                                     N_use = N_use, 
                                     showInfo=1, 
                                     parallel=True, 
+                                    autoT=autoT,
+                                    T_base=1,
                                     updatePostStat=False)
    
 
     f_post_h5_list.append(f_post_h5)    
 
-
 # %% 
 for i_post in range(len(f_post_h5_list)):
     ig.integrate_posterior_stats(f_post_h5_list[i_post], showInfo=1)
     
+
+ #%% 
+ #if useMergedPrior:
+X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+with h5py.File(f_post_h5_list[0],'r') as f:
+    EV1 = f['/EV'][:]
+with h5py.File(f_post_h5_list[1],'r') as f:
+    EV2 = f['/EV'][:]
+with h5py.File(f_post_h5_list[2],'r') as f:
+    P = f['/M3/P'][:]
+
+# EV1 is log10(EV1), and EV2 is log10(EV2).
+# Compute probability of valley lithology using log-sum-exp trick for numerical stability
+log_sum = np.logaddexp(EV1 * np.log(10), EV2 * np.log(10))
+P_valley = np.exp(EV1 * np.log(10) - log_sum)
+P_vallyey_check = P[:,:,0]
+#P_valley = EV1/(EV1+EV2)
+# use cmap red white blue
+cmap = plt.get_cmap('RdBu_r')
+plt.figure(figsize=(8, 6))
+plt.scatter(X, Y, c=P_valley, s=1, cmap=cmap, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
+plt.savefig('DAUGAARD_Pvalley_EV_N%d_No%d_aT%d.png' % (N_use,inflateNoise,autoT), dpi=300)
+plt.figure(figsize=(8, 6))
+#plt.scatter(X, Y, c=P_vallyey_check[:,0], s=1, cmap=cmap, vmin=.45, vmax=.55);plt.colorbar(label='P(Valley)');plt.axis('equal')
+plt.scatter(X, Y, c=P_vallyey_check[:,0], s=1, cmap=cmap, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
+plt.savefig('DAUGAARD_Pvalley_N%d_No%d_aT%d.png' % (N_use,inflateNoise,autoT), dpi=300)
+
+
+plt.figure(figsize=(4, 4))
+plt.plot(P_valley.flatten(),P_vallyey_check[:,0].flatten(),'k.', markersize=.1);plt.xlabel('P(Valley) from EV');plt.ylabel('P(Valley) from M3');plt.axis('equal' )
+plt.grid(True, which='both', alpha=0.3)
+plt.gca().set_xticks(np.arange(0, 1.1, 0.1))
+plt.gca().set_yticks(np.arange(0, 1.1, 0.1))
+plt.grid(True, which='major', alpha=0.7)
+plt.savefig('DAUGAARD_Pvalley_compa_N%d_No%d_aT%d.png' % (N_use,inflateNoise,autoT), dpi=300)
+
+
 #%%
 for i_post in range(len(f_post_h5_list)):
     f_post_h5 = f_post_h5_list[i_post]
@@ -225,6 +268,11 @@ for i_post in range(len(f_post_h5_list)):
     plt.show()
     ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10,hardcopy=hardcopy)
     plt.show()
+
+    try:
+        ig.plot_feature_2d(f_post_h5,im=3, key='Mode', uselog=1, s=10, cmap='jet', hardcopy=hardcopy)
+    except:
+        pass
 
 
 # %% [markdown]
@@ -274,6 +322,11 @@ for i_post in range(len(f_post_h5_N_list)):
     ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10,hardcopy=hardcopy)
     plt.show()
 
+    try:
+        ig.plot_feature_2d(f_post_h5,im=3, key='Mode', uselog=1, s=10, cmap='jet', hardcopy=hardcopy)
+    except:
+        pass
+
 
 
 
@@ -283,9 +336,8 @@ for i_post in range(len(f_post_h5_N_list)):
 # %% EFFECT OF SIZE
 
 T_base_arr = [1,2,10,20,100]
-N_use = 10000
-
-f_post_h5_T_list = []
+N_use = 100000
+f_post_h5_T_list = [] 
 
 for T_base in T_base_arr:
     for i_prior in range(len(f_prior_data_h5_list)):
@@ -336,3 +388,8 @@ for i_post in range(len(f_post_h5_all_list)):
     plt.show()
     ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10, hardcopy=hardcopy)
     plt.show()
+
+    try:
+        ig.plot_feature_2d(f_post_h5,im=3, key='Mode', uselog=1, s=10, cmap='jet', hardcopy=hardcopy)
+    except:
+        pass
