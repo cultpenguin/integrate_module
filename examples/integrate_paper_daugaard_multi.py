@@ -35,7 +35,8 @@ hardcopy=True
 # %%
 useMergedPrior=True
 useGenericPrior=True
-inflateNoise = 10
+inflateNoise = 3
+useLogData = True
 N_use = 2000000
 N_use = 50000
 #N_use = 100000
@@ -53,6 +54,24 @@ ig.plot_geometry(f_data_h5, pl='NDATA', hardcopy= hardcopy, cmap='viridis')
 plt.show()
 
 
+# %% log-data?
+
+if useLogData:
+    f_data_h5_org = f_data_h5
+    f_data_h5 = 'DATA_LOGSPACE.h5'
+    ig.copy_hdf5_file(f_data_h5_org, f_data_h5)
+    DATA = ig.load_data(f_data_h5_org)
+    D_obs = DATA['d_obs'][0]
+    D_std = DATA['d_std'][0]
+    lD_obs = np.log10(D_obs)
+    lD_std_up = np.abs(np.log10(D_obs+D_std)-lD_obs)
+    lD_std_down = np.abs(np.log10(D_obs-D_std)-lD_obs)
+    corr_std = 0.02
+    lD_std = np.abs((lD_std_up+lD_std_down)/2) + corr_std
+    ig.write_data_gaussian(lD_obs, D_std = lD_std, f_data_h5 = f_data_h5, id=1, showInfo=0, is_log=1)
+
+
+
 # %% Load Dauagard data and increase std by a factor of 3
 if inflateNoise != 1:
     gf=inflateNoise
@@ -67,7 +86,7 @@ if inflateNoise != 1:
     ig.copy_hdf5_file(f_data_old_h5, f_data_h5)
     ig.write_data_gaussian(D_obs, D_std=D_std, f_data_h5=f_data_h5, file_gex=file_gex)
 
-ig.plot_data(f_data_h5, hardcopy= hardcopy)
+ig.plot_data(f_data_h5, useLog = 0, hardcopy= hardcopy)
 plt.show()
 
 # %% Get geometry and data info
@@ -166,6 +185,27 @@ i2=np.max(id_line)+1
 f_prior_data_h5_list = []
 f_prior_data_h5_list.append('daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 f_prior_data_h5_list.append('daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+
+if useLogData == True:
+    f_prior_log_data_h5  = 'd_valley_log.h5'
+    ig.copy_hdf5_file(f_prior_data_h5_list[0], f_prior_log_data_h5, showInfo=2)
+    D,id =  ig.load_prior_data(f_prior_data_h5_list[0])
+    Dlog = np.log10(D[0])
+    ig.save_prior_data(f_prior_log_data_h5, Dlog, id=1, showInfo=2)
+    f_prior_data_h5_list[0] = f_prior_log_data_h5
+
+    f_prior_log_data_h5  = 'd_out_log.h5'
+    ig.copy_hdf5_file(f_prior_data_h5_list[1], f_prior_log_data_h5, showInfo=2)
+    D,id =  ig.load_prior_data(f_prior_data_h5_list[1])
+    Dlog = np.log10(D[0])
+    ig.save_prior_data(f_prior_log_data_h5, Dlog, id=1, showInfo=2)
+    f_prior_data_h5_list[1] = f_prior_log_data_h5
+
+
+#%%
+ig.plot_data_prior(f_prior_data_h5_list[0], f_data_h5, i_plot=100, hardcopy=hardcopy)
+        
+#%%
 
 if useMergedPrior:
     f_prior_data_merged_h5 = ig.merge_prior(f_prior_data_h5_list, f_prior_merged_h5='daugaard_merged.h5', showInfo=2)
