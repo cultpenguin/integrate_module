@@ -22,7 +22,7 @@ if command -v sudo >/dev/null 2>&1; then
 fi
 $PREFIX sh -c '
 		apt-get update &&
-		apt-get install -y build-essential libfftw3-dev libfftw3-bin libfftw3-double3 libopenmpi-dev cmake pkg-config git &&
+		apt-get install -y build-essential libfftw3-dev libfftw3-bin libfftw3-double3 libopenmpi-dev cmake pkg-config git python3 python3-pip python3-venv&&
 		apt-get autoremove -y'
 
 ## 1. Clone the ga-aem repository from Github
@@ -67,6 +67,14 @@ readelf -d install-ubuntu/python/gatdaem1d/gatdaem1d.so  | grep 'Shared'
 ## 3. Install python module
 echo  "installing from --> $INSTALL_DIR"
 cd "$INSTALL_DIR"/python
+
+
+# Check if PEP 668 is enabled (for example, in Debian/Ubuntu with system Python)
+if [ -f "$(python3 -c "import sys; print(sys.prefix)")/lib/python3."*"/EXTERNALLY-MANAGED" ]; then
+	    echo "✓ PEP 668 is enabled - proceeding with venv (for use with Docker)"
+		python3 -m venv venv
+		. venv/bin/activate
+fi
 
 # Check if pip is available
 if command -v pip >/dev/null 2>&1; then
