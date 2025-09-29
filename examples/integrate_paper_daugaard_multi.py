@@ -36,9 +36,9 @@ hardcopy=True
 useMergedPrior=True
 useGenericPrior=True
 inflateNoise = 3
-useLogData = True
+useLogData = False
 N_use = 2000000
-N_use = 50000
+N_use = 500000
 #N_use = 100000
 
 files = ig.get_case_data(case='DAUGAARD', loadType='prior_data') # Load data and prior+data realizations
@@ -191,14 +191,14 @@ if useLogData == True:
     ig.copy_hdf5_file(f_prior_data_h5_list[0], f_prior_log_data_h5, showInfo=2)
     D,id =  ig.load_prior_data(f_prior_data_h5_list[0])
     Dlog = np.log10(D[0])
-    ig.save_prior_data(f_prior_log_data_h5, Dlog, id=1, showInfo=2)
+    ig.save_prior_data(f_prior_log_data_h5, Dlog, id=1, showInfo=2, force_delete=True)
     f_prior_data_h5_list[0] = f_prior_log_data_h5
 
     f_prior_log_data_h5  = 'd_out_log.h5'
     ig.copy_hdf5_file(f_prior_data_h5_list[1], f_prior_log_data_h5, showInfo=2)
     D,id =  ig.load_prior_data(f_prior_data_h5_list[1])
     Dlog = np.log10(D[0])
-    ig.save_prior_data(f_prior_log_data_h5, Dlog, id=1, showInfo=2)
+    ig.save_prior_data(f_prior_log_data_h5, Dlog, id=1, showInfo=2, force_delete=True)
     f_prior_data_h5_list[1] = f_prior_log_data_h5
 
 
@@ -275,11 +275,11 @@ P_vallyey_check = P[:,:,0]
 cmap = plt.get_cmap('RdBu_r')
 plt.figure(figsize=(8, 6))
 plt.scatter(X, Y, c=P_valley, s=1, cmap=cmap, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
-plt.savefig('DAUGAARD_Pvalley_EV_N%d_No%d_aT%d.png' % (N_use,inflateNoise,autoT), dpi=300)
+plt.savefig('DAUGAARD_Pvalley_EV_N%d_No%d_aT%d_l%d.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
 plt.figure(figsize=(8, 6))
 #plt.scatter(X, Y, c=P_vallyey_check[:,0], s=1, cmap=cmap, vmin=.45, vmax=.55);plt.colorbar(label='P(Valley)');plt.axis('equal')
 plt.scatter(X, Y, c=P_vallyey_check[:,0], s=1, cmap=cmap, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
-plt.savefig('DAUGAARD_Pvalley_N%d_No%d_aT%d.png' % (N_use,inflateNoise,autoT), dpi=300)
+plt.savefig('DAUGAARD_Pvalley_N%d_No%d_aT%d_l%d.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
 
 
 plt.figure(figsize=(4, 4))
@@ -288,7 +288,7 @@ plt.grid(True, which='both', alpha=0.3)
 plt.gca().set_xticks(np.arange(0, 1.1, 0.1))
 plt.gca().set_yticks(np.arange(0, 1.1, 0.1))
 plt.grid(True, which='major', alpha=0.7)
-plt.savefig('DAUGAARD_Pvalley_compa_N%d_No%d_aT%d.png' % (N_use,inflateNoise,autoT), dpi=300)
+plt.savefig('DAUGAARD_Pvalley_compa_N%d_No%d_aT%d_l%d.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
 
 
 #%%
