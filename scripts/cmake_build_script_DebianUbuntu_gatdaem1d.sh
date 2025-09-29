@@ -5,9 +5,9 @@
 # See more detailed information on https://github.com/GeoscienceAustralia/ga-aem/blob/master/cmake_build_script_ubuntu.sh
 #
 # Test this script with the latest Debian using a docker container:
-#   docker run -it --rm -v $(pwd):/workspace debian:latest /workspace/cmake_build_script_DebianUbuntu_gatdaem1d.sh
+#   docker run -it --rm -v $(pwd):/workspace -e DEBIAN_FRONTEND=noninteractive debian:latest /workspace/cmake_build_script_DebianUbuntu_gatdaem1d.sh
 # Test this script with the latest Ubuntu using a docker container:
-#	docker run -it --rm -v $(pwd):/workspace ubuntu:latest /workspace/cmake_build_script_DebianUbuntu_gatdaem1d.sh
+#	docker run -it --rm -v $(pwd):/workspace -e DEBIAN_FRONTEND=noninteractive ubuntu:latest /workspace/cmake_build_script_DebianUbuntu_gatdaem1d.sh
 #
 #
 set -e  # exit with error if a command fails
@@ -16,17 +16,14 @@ set -x  # show commands while executing
 
 # Install necessary packages in Debian/Ubuntu (tested on Ubuntu 22.04 LTS and Debian 13)
 # Check if sudo is available, if not assume user is root
+PREFIX=
 if command -v sudo >/dev/null 2>&1; then
-	sudo sh -c '
-		apt-get update &&
-		apt-get install -y build-essential libfftw3-dev libfftw3-bin libfftw3-double3 libopenmpi-dev cmake pkg-config git &&
-		apt-get autoremove -y'
-else
-	sh -c '
-		apt-get update &&
-		apt-get install -y build-essential libfftw3-dev libfftw3-bin libfftw3-double3 libopenmpi-dev cmake pkg-config git &&
-		apt-get autoremove -y'
+	PREFIX=sudo
 fi
+$PREFIX sh -c '
+		apt-get update &&
+		apt-get install -y build-essential libfftw3-dev libfftw3-bin libfftw3-double3 libopenmpi-dev cmake pkg-config git python3 python3-pip python3-venv&&
+		apt-get autoremove -y'
 
 ## 1. Clone the ga-aem repository from Github
 if ! test -d ga-aem
@@ -46,8 +43,18 @@ BUILD_DIR="$PWD"/build-ubuntu
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
-# compile gatdaem1d
-cmake -Wno-dev -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release -DWITH_MPI=OFF -DWITH_NETCDF=OFF -DWITH_GDAL=OFF -DWITH_PETSC=OFF ..
+# compile gatdaem1d with optimized compiler flags
+cmake -Wno-dev \
+  -DCMAKE_C_COMPILER=gcc \
+  -DCMAKE_CXX_COMPILER=g++ \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_FLAGS_RELEASE="-O3 -march=native -mtune=native -DNDEBUG -ffast-math -funroll-loops" \
+  -DCMAKE_CXX_FLAGS_RELEASE="-O3 -march=native -mtune=native -DNDEBUG -ffast-math -funroll-loops" \
+  -DWITH_MPI=OFF \
+  -DWITH_NETCDF=OFF \
+  -DWITH_GDAL=OFF \
+  -DWITH_PETSC=OFF \
+  ..
 cmake --build . --target matlab-bindings --config=Release
 cmake --build . --target python-bindings --config=Release
 cmake --install . --prefix "$INSTALL_DIR"
@@ -60,6 +67,14 @@ readelf -d install-ubuntu/python/gatdaem1d/gatdaem1d.so  | grep 'Shared'
 ## 3. Install python module
 echo  "installing from --> $INSTALL_DIR"
 cd "$INSTALL_DIR"/python
+
+
+# Check if PEP 668 is enabled (for example, in Debian/Ubuntu with system Python)
+if [ -f "$(python3 -c "import sys; print(sys.prefix)")/lib/python3."*"/EXTERNALLY-MANAGED" ]; then
+	    echo "✓ PEP 668 is enabled - proceeding with venv (for use with Docker)"
+		python3 -m venv venv
+		. venv/bin/activate
+fi
 
 # Check if pip is available
 if command -v pip >/dev/null 2>&1; then
