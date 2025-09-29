@@ -43,8 +43,18 @@ BUILD_DIR="$PWD"/build-ubuntu
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
-# compile gatdaem1d
-cmake -Wno-dev -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release -DWITH_MPI=OFF -DWITH_NETCDF=OFF -DWITH_GDAL=OFF -DWITH_PETSC=OFF ..
+# compile gatdaem1d with optimized compiler flags
+cmake -Wno-dev \
+  -DCMAKE_C_COMPILER=gcc \
+  -DCMAKE_CXX_COMPILER=g++ \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_FLAGS_RELEASE="-O3 -march=native -mtune=native -DNDEBUG -ffast-math -funroll-loops" \
+  -DCMAKE_CXX_FLAGS_RELEASE="-O3 -march=native -mtune=native -DNDEBUG -ffast-math -funroll-loops" \
+  -DWITH_MPI=OFF \
+  -DWITH_NETCDF=OFF \
+  -DWITH_GDAL=OFF \
+  -DWITH_PETSC=OFF \
+  ..
 cmake --build . --target matlab-bindings --config=Release
 cmake --build . --target python-bindings --config=Release
 cmake --install . --prefix "$INSTALL_DIR"
