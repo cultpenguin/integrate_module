@@ -714,19 +714,17 @@ def integrate_rejection_range(D,
         maxlogL = np.nanmax(L)
         exp_logL = np.exp(L - maxlogL)
         EV = maxlogL + np.log(np.nansum(exp_logL)/len(L))
-
-        # Compute 'posterior evidence' - mean posterior likelihood
-        EV_post = np.nanmean(exp_logL)
+        # EV_direct  = np.log(np.mean(np.exp(L)))
+        
+        
+        # Compute log-'posterior evidence' - mean posterior log-likelihood
+        EV_post = maxlogL + np.log(np.nansum(exp_logL[i_use])/len(L[i_use]))
         
         # Compute normalized posterior evidence per data point
         if total_n_data_non_nan > 0:
             EV_post_mean = EV_post / total_n_data_non_nan
         else:
             EV_post_mean = np.nan
-        
-        
-        #EV_post2 = np.nanmean(L[i_use])
-        #print('EV=%f, EV_post=%f, EV_post2=%f' % (EV, EV_post, EV_post2))
         
         t.append(time.time()-t0)
 
