@@ -5,9 +5,9 @@
 # See more detailed information on https://github.com/GeoscienceAustralia/ga-aem/blob/master/cmake_build_script_ubuntu.sh
 #
 # Test this script with the latest Debian using a docker container:
-#   docker run -it --rm -v $(pwd):/workspace debian:latest /workspace/cmake_build_script_DebianUbuntu_gatdaem1d.sh
+#   docker run -it --rm -v $(pwd):/workspace -e DEBIAN_FRONTEND=noninteractive debian:latest /workspace/cmake_build_script_DebianUbuntu_gatdaem1d.sh
 # Test this script with the latest Ubuntu using a docker container:
-#	docker run -it --rm -v $(pwd):/workspace ubuntu:latest /workspace/cmake_build_script_DebianUbuntu_gatdaem1d.sh
+#	docker run -it --rm -v $(pwd):/workspace -e DEBIAN_FRONTEND=noninteractive ubuntu:latest /workspace/cmake_build_script_DebianUbuntu_gatdaem1d.sh
 #
 #
 set -e  # exit with error if a command fails
@@ -16,17 +16,14 @@ set -x  # show commands while executing
 
 # Install necessary packages in Debian/Ubuntu (tested on Ubuntu 22.04 LTS and Debian 13)
 # Check if sudo is available, if not assume user is root
+PREFIX=
 if command -v sudo >/dev/null 2>&1; then
-	sudo sh -c '
-		apt-get update &&
-		apt-get install -y build-essential libfftw3-dev libfftw3-bin libfftw3-double3 libopenmpi-dev cmake pkg-config git &&
-		apt-get autoremove -y'
-else
-	sh -c '
-		apt-get update &&
-		apt-get install -y build-essential libfftw3-dev libfftw3-bin libfftw3-double3 libopenmpi-dev cmake pkg-config git &&
-		apt-get autoremove -y'
+	PREFIX=sudo
 fi
+$PREFIX sh -c '
+		apt-get update &&
+		apt-get install -y build-essential libfftw3-dev libfftw3-bin libfftw3-double3 libopenmpi-dev cmake pkg-config git &&
+		apt-get autoremove -y'
 
 ## 1. Clone the ga-aem repository from Github
 if ! test -d ga-aem
