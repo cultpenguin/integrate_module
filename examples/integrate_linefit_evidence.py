@@ -35,6 +35,8 @@ T_base=1
 
 # %% load mat file
 f_mat = 'linefit_evidence_N100000_std10.mat'
+#f_mat = 'linefit_evidence_N100000_std20_16_13_06.mat'
+#f_mat = 'linefit_evidence_N100000_std30_16_19_48.mat'
 # load matlab file using scipy
 mat = scipy.io.loadmat(f_mat)
 d_obs  = np.atleast_2d(mat['d_obs']).T
@@ -45,7 +47,6 @@ EV_mix_org = mat['EV_mix']
 
 P_org = mat['P_hyp'].flatten()
 P_mix_org = mat['P_hyp_mix'].flatten()
-
 
 f_data_h5='d_linefit.h5'
 ig.write_data_gaussian(d_obs, D_std=d_std, f_data_h5=f_data_h5, id=1, showInfo=2)
