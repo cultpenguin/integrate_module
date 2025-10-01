@@ -2240,8 +2240,8 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
 
     # Ensure D_obs is 2D with shape (N_stations, N_channels)
     D_obs = np.atleast_2d(D_obs)
-    if D_obs.shape[0] == 1 and D_obs.shape[1] > 1:
-        D_obs = D_obs.T
+    #if D_obs.shape[0] == 1 and D_obs.shape[1] > 1:
+    #    D_obs = D_obs.T
 
     if len(D_std)==0:
         if len(d_std)==0:
@@ -2250,12 +2250,13 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
     else:
         # Ensure D_std is 2D with same shape as D_obs
         D_std = np.atleast_2d(D_std)
-        if D_std.shape[0] == 1 and D_std.shape[1] > 1:
-            D_std = D_std.T
+        #if D_std.shape[0] == 1 and D_std.shape[1] > 1:
+        #    D_std = D_std.T
 
     D_str = 'D%d' % id
     ns,nd=D_obs.shape
-    
+    print('Data has %d stations and %d channels' % (ns,nd))
+
     # Handle geometry data
     coord_provided = any(coord is not None for coord in [UTMX, UTMY, LINE, ELEVATION])
     

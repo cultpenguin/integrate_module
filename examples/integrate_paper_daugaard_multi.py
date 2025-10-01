@@ -224,6 +224,36 @@ for i_prior in range(len(f_prior_data_h5_list)):
     ig.integrate_update_prior_attributes(f_prior_data_h5)
     ig.plot_data_prior(f_prior_data_h5, f_data_h5, i_plot=100, hardcopy=hardcopy)
 
+
+
+#%% TEST INVERSION
+nr=400
+N_use = 100000
+showInfo=1
+Ndt = ig.get_number_of_datasets(f_data_h5)
+id_data_use = DATA['id_use']
+DATA = ig.load_data(f_data_h5, id_arr = [1])
+D, idx = ig.load_prior_data(f_prior_data_h5_list[0], id_use = id_data_use, N_use = N_use, Randomize=True, showInfo=showInfo)
+
+#%%
+ip = 100
+i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range = ig.integrate_rejection_range(D=D, 
+                                        DATA = DATA,
+                                        idx = idx,                                   
+                                        N_use=N_use, 
+                                        autoT=autoT,
+                                        T_base = T_base,
+                                        ip_range = [ip],
+                                        nr=nr,
+                                        showInfo=4
+                                        )
+
+print("EV = ", EV)
+print("EV_post = ", EV_post)
+print("EV_post_mean = ", EV_post_mean)
+print("LOGL_mean = ", LOGL_mean)
+print("N_UNIQUE = ", N_UNIQUE)
+
 # %%
 # Select how many prior model realizations (N) should be generated
 

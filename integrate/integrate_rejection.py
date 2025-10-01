@@ -270,11 +270,10 @@ def integrate_rejection(f_prior_h5='prior.h5',
     date_start = str(datetime.now())
     t_start = datetime.now()
     
-    #print(i_use_all.shape)
-    #print(T_all.shape)
-    #print(Ndp)
+    
+    # Depending in whether parallel processing is used or not, 
+    # two function are implemented to perform the inversion directly on the loaded data.
 
-    # PERFORM INVERSION PERHAPS IN PARALLEL
 
     if parallel:
         # Split the ip_range into Nchunks
@@ -304,11 +303,6 @@ def integrate_rejection(f_prior_h5='prior.h5',
 
 
     else:
-
-        #for i_chunk in range(len(ip_chunks)):        
-        #    ip_range = ip_chunks[i_chunk]
-        #    if showInfo>0:
-        #        print('Chunk %d/%d, ndp=%d' % (i_chunk+1, len(ip_chunks), len(ip_range)))
 
             # Extract progress_callback for non-parallel execution
             progress_callback = kwargs.get('progress_callback', None)
@@ -390,7 +384,7 @@ def integrate_rejection_range(D,
                               DATA, 
                               idx = [],
                               N_use=1000, 
-                              id_use=[1,2], 
+                              id_use=[], 
                               ip_range=[], 
                               nr=400,
                               autoT=1,
@@ -419,7 +413,7 @@ def integrate_rejection_range(D,
         Default is 1000.
     id_use : list, optional
         List of data identifiers to use for likelihood calculation.
-        Default is [1, 2].
+        Default is [] which use all data types available.
     ip_range : list, optional
         Range of data point indices to process. If empty, processes all data points.
         Default is empty list.
@@ -489,13 +483,14 @@ def integrate_rejection_range(D,
         ip_range = np.arange(Ndp)
 
     nump=len(ip_range)
-    if showInfo>1:
-        print('Number of data points to invert: %d' % nump)
         
     # Get number of data types used - needed for array initialization
+    if len(id_use)==0:
+        # Get nmumber of data points from
+        Ndt=len(DATA['d_obs'])
+        id_use = np.arange(Ndt)
     Ndt = len(id_use)
-    if showInfo>2:
-        print('Numbe of data type used, Ndt=%d' % Ndt)
+
         
     i_use_all = np.zeros((nump, nr), dtype=np.int32)
     T_all = np.zeros(nump)*np.nan
@@ -518,6 +513,11 @@ def integrate_rejection_range(D,
     noise_model = DATA['noise_model']
     i_use_data = DATA['i_use']
     
+    if showInfo>1:
+        print('Number of data points to invert: %d' % nump)
+        print('Number of data type(s) used, Ndt=%d' % Ndt)
+        print('Noise model(s):', noise_model)
+        
     # Convert class id to index
     # The class_id_list, could /should be loaded prior_h5:/M1/class_id !!
 
@@ -529,7 +529,8 @@ def integrate_rejection_range(D,
 
     class_id_list = []
     updated_data_ids = []
-    for i in range(Ndt):        
+    for i in range(Ndt): 
+        print(i)       
         i_prior = i
         if (noise_model[i]=='multinomial'):
             Di, class_id, class_id_out = ig.class_id_to_idx(D[i_prior])
@@ -551,7 +552,6 @@ def integrate_rejection_range(D,
     if showInfo>2:
         print('class_id_list',class_id_list)
         print('len(class_id_list)',len(class_id_list))
-
     
     # Update progress - starting main processing
     if progress_callback:
@@ -573,12 +573,12 @@ def integrate_rejection_range(D,
             })
         t=[]
         N = D[0].shape[0]
+        # Get number of data types used - needed for array initialization
         NDsets = len(id_use)
         L = np.zeros((NDsets, N))
 
         if showInfo>3:
             print('Ndt=%d, ip=%d/%d, N=%d' % (Ndt, ip, nump, N))
-
 
         # Loop over the number of data types Ndt
         total_n_data_non_nan = 0  # Initialize total count for all data types
@@ -660,13 +660,15 @@ def integrate_rejection_range(D,
                     
         t0=time.time()
 
-        # NOw we have all the likelihoods for all data types. Combine them into one
+        # Now we have all the likelihoods for all data types. Combine them into one
+        # L is an array of shape (Ndt,1)
+        # If we have only one data type, then L is already correct
         L_single = L
         L = np.sum(L_single, axis=0)
-     
-        # AUTO ANNEALE
+
+        # Automatic annealing temperature estimation, if autoT=1, else use T=T_base
+        # T_base = 1 indicates no annealing
         t0=time.time()
-        #autoT=1
         # Compute the annealing temperature
         if autoT == 1:
             T = ig.logl_T_est(L)
