@@ -37,19 +37,24 @@ T_base=1
 f_mat = 'linefit_evidence_N100000_std10.mat'
 #f_mat = 'linefit_evidence_N100000_std20_16_13_06.mat'
 #f_mat = 'linefit_evidence_N100000_std30_16_19_48.mat'
+#f_mat = 'linefit_evidence_N10000_std11_23_22_55.mat'
+f_mat = 'linefit_evidence_N10000_std31_23_27_16.mat'
 # load matlab file using scipy
 mat = scipy.io.loadmat(f_mat)
 d_obs  = np.atleast_2d(mat['d_obs']).T
 d_std = np.atleast_2d(mat['d_std']).T
 
 EV_org = mat['EV']
-EV_mix_org = mat['EV_mix']
+EV_mix_org = mat['EV_mix'].flatten()
 
 P_org = mat['P_hyp'].flatten()
 P_mix_org = mat['P_hyp_mix'].flatten()
 
 f_data_h5='d_linefit.h5'
 ig.write_data_gaussian(d_obs, D_std=d_std, f_data_h5=f_data_h5, id=1, showInfo=2)
+
+print("N=", mat['d_sim_mix'].shape[0])
+print("d_std[0]=", d_std[0,0])
 
 # %% First we use a single prior for which 
 # that is a mixture prior of the 4 hypothesis
@@ -67,10 +72,11 @@ f_post_h5 = 'post_mix_linefit.h5'
 f_post_h5 = ig.integrate_rejection(f_prior_data_mix_h5, 
                                 f_data_h5, 
                                 f_post_h5=f_post_h5, 
-                                showInfo=1, 
+                                showInfo=-1, 
                                 parallel=True, 
                                 autoT=autoT,
-                                T_base=T_base,
+                                T_base=T_base,  
+                                nr=30000,                              
                                 updatePostStat=True)
 
 with h5py.File(f_post_h5,'r') as f:
@@ -107,6 +113,40 @@ else:
     print("max error: ", max_err    )
 
 
+# %% compute the same using if.integrate_rejection_range
+DATA = ig.load_data(f_data_h5)
+#PD, idx= ig.load_prior_data(f_prior_data_mix_h5, id=1)
+OUT = ig.integrate_rejection_range([D1], 
+                              DATA, 
+                              nr=400,
+                              autoT=0,
+                              T_base = 1,
+                              showInfo=4,
+                              parallel=False)
+
+i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, LOGL_mean_all, N_UNIQUE_all, ip_range = OUT
+
+d_obs1 = DATA['d_obs'][0]
+d_std1 = DATA['d_std'][0]
+id = 0
+dd1 = d_obs1-np.atleast_2d(D1[id])
+logL1 = -0.5 * np.sum((dd1/d_std1)**2)
+print("logL1=", logL1)
+
+dd2 = d_obs1-np.atleast_2d(D1)
+logL2 = -0.5 * np.nansum((dd2 / d_std1)**2, axis=1)
+#logL2 = -0.5 * np.nansum(dd2**2 / d_std1[np.newaxis, :]**2, axis=1)
+#logL2 = -0.5 * np.nansum((dd2**2) / (d_std1**2), axis=1)
+
+print("logL2[0]=", logL2[0])
+
+
+
+#L_single = ig.likelihood_gaussian_diagonal(D1, d_obs1, d_std1)
+#print("logL_single[0]=", L_single[0])
+#print('EV_TEST = ', np.log(np.mean(np.exp(L_single))))
+
+
 #%% Then we combine the 4 priors into a singkle mixture prior 
 f_prior_data_h5_list=[]
 f_post_h5_list=[]
@@ -129,6 +169,7 @@ for i in [0,1,2,3]:
                                     parallel=False, 
                                     autoT=autoT,
                                     T_base=T_base,
+                                    nr = 1000,
                                     updatePostStat=True)
     
     with h5py.File(f_post_h5_single,'r') as f:

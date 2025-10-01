@@ -383,7 +383,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
 def integrate_rejection_range(D, 
                               DATA, 
                               idx = [],
-                              N_use=1000, 
+                              N_use=None, 
                               id_use=[], 
                               ip_range=[], 
                               nr=400,
@@ -503,6 +503,8 @@ def integrate_rejection_range(D,
     
     # Get the lookup sample size
     N = D[0].shape[0]
+    if N_use is None:
+        N_use = N
 
     if N_use>N:
         N_use = N
@@ -526,11 +528,10 @@ def integrate_rejection_range(D,
     class_is_idx = True
     #class_is_idx = False
     
-
+    
     class_id_list = []
     updated_data_ids = []
     for i in range(Ndt): 
-        print(i)       
         i_prior = i
         if (noise_model[i]=='multinomial'):
             Di, class_id, class_id_out = ig.class_id_to_idx(D[i_prior])
@@ -552,7 +553,8 @@ def integrate_rejection_range(D,
     if showInfo>2:
         print('class_id_list',class_id_list)
         print('len(class_id_list)',len(class_id_list))
-    
+
+
     # Update progress - starting main processing
     if progress_callback:
         update_progress(0, len(ip_range), {'phase': 'rejection_sampling', 'status': 'Processing data points'})
@@ -625,6 +627,9 @@ def integrate_rejection_range(D,
                         
                     elif DATA['d_std'][0] is not None:
                         d_std = DATA['d_std'][i][ip]
+                        #print(d_std)
+                        #print(d_obs)
+                        #print(D[i_prior][0])
                         L_single = likelihood_gaussian_diagonal(D[i_prior], d_obs, d_std, use_N_best)
 
                     else:
@@ -681,7 +686,9 @@ def integrate_rejection_range(D,
         
         P_acc = np.exp((1/T) * (L - np.nanmax(L)))
         P_acc[np.isnan(P_acc)] = 0
-       
+
+        
+
         # Select the index of P_acc propportion to the probabilituy given by P_acc
         t0=time.time()
         try:
@@ -703,8 +710,6 @@ def integrate_rejection_range(D,
                 mean_logl_accepted = np.nanmean(L_accepted)
                 LOGL_mean_current[i] = mean_logl_accepted / (-2.0 * n_data_per_type[i])
                 pass
-
-
 
         if useRandomData:
             # get the correct index of the subset used
@@ -1068,7 +1073,8 @@ def likelihood_gaussian_diagonal(D, d_obs, d_std, N_app=0):
        L[idx]=L_small
        
     else:
-        L = -0.5 * np.nansum(dd**2 / d_std**2, axis=1)
+        # Explicit broadcasting
+        L = -0.5 * np.nansum((dd / d_std)**2, axis=1)
 
     return L
 
