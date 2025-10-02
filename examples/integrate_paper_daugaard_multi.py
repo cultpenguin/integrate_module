@@ -34,11 +34,11 @@ hardcopy=True
 
 # %%
 useMergedPrior=True
-useGenericPrior=True
-inflateNoise = 3
+useGenericPrior=False
+inflateNoise = 5
 useLogData = False
 N_use = 2000000
-N_use = 500000
+N_use = 100000
 #N_use = 100000
 
 files = ig.get_case_data(case='DAUGAARD', loadType='prior_data') # Load data and prior+data realizations
@@ -200,10 +200,6 @@ if useLogData == True:
     Dlog = np.log10(D[0])
     ig.save_prior_data(f_prior_log_data_h5, Dlog, id=1, showInfo=2, force_delete=True)
     f_prior_data_h5_list[1] = f_prior_log_data_h5
-
-
-#%%
-ig.plot_data_prior(f_prior_data_h5_list[0], f_data_h5, i_plot=100, hardcopy=hardcopy)
         
 #%%
 
@@ -224,41 +220,41 @@ for i_prior in range(len(f_prior_data_h5_list)):
     ig.integrate_update_prior_attributes(f_prior_data_h5)
     ig.plot_data_prior(f_prior_data_h5, f_data_h5, i_plot=100, hardcopy=hardcopy)
 
+#%% 
+'''
+doTest = False
+if doTest:
+    nr=400
+    N_use = 10000
+    showInfo=1
+    Ndt = ig.get_number_of_datasets(f_data_h5)
+    id_data_use = DATA['id_use']
+    D, idx = ig.load_prior_data(f_prior_data_h5_list[0], id_use = id_data_use, N_use = N_use, Randomize=True, showInfo=showInfo)
 
 
-#%% TEST INVERSION
-nr=400
-N_use = 100000
-showInfo=1
-Ndt = ig.get_number_of_datasets(f_data_h5)
-id_data_use = DATA['id_use']
-DATA = ig.load_data(f_data_h5, id_arr = [1])
-D, idx = ig.load_prior_data(f_prior_data_h5_list[0], id_use = id_data_use, N_use = N_use, Randomize=True, showInfo=showInfo)
+    i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range = ig.integrate_rejection_range(D=D, 
+                                            DATA = DATA,
+                                            idx = idx,                                   
+                                            N_use=N_use, 
+                                            autoT=autoT,
+                                            T_base = T_base,
+                                            ip_range = [ip],
+                                            nr=nr,
+                                            showInfo=1
+                                            )
 
-#%%
-ip = 100
-i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range = ig.integrate_rejection_range(D=D, 
-                                        DATA = DATA,
-                                        idx = idx,                                   
-                                        N_use=N_use, 
-                                        autoT=autoT,
-                                        T_base = T_base,
-                                        ip_range = [ip],
-                                        nr=nr,
-                                        showInfo=4
-                                        )
-
-print("EV = ", EV)
-print("EV_post = ", EV_post)
-print("EV_post_mean = ", EV_post_mean)
-print("LOGL_mean = ", LOGL_mean)
-print("N_UNIQUE = ", N_UNIQUE)
+    print("EV = ", EV)
+    print("EV_post = ", EV_post)
+    print("EV_post_mean = ", EV_post_mean)
+    print("LOGL_mean = ", LOGL_mean)
+    print("N_UNIQUE = ", N_UNIQUE)
+'''
 
 # %%
 # Select how many prior model realizations (N) should be generated
-
-f_post_h5_list = []
 autoT=False
+nr=400
+f_post_h5_list = []
 for i_prior in range(len(f_prior_data_h5_list)):
 
     f_prior_data_h5= f_prior_data_h5_list[i_prior]
@@ -272,6 +268,7 @@ for i_prior in range(len(f_prior_data_h5_list)):
                                     f_post_h5, 
                                     N_use = N_use, 
                                     showInfo=1, 
+                                    nr=nr,
                                     parallel=True, 
                                     autoT=autoT,
                                     T_base=1,
@@ -332,7 +329,7 @@ for i_post in range(len(f_post_h5_list)):
     
     ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
 
-    ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=hardcopy)
+    ig.plot_profile(f_post_h5,  ii=id_line, gap_threshold=50,hardcopy=hardcopy)
 
     ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Mean', uselog=1, s=10,hardcopy=hardcopy)
     plt.show()
@@ -349,53 +346,55 @@ for i_post in range(len(f_post_h5_list)):
 # ## Effect of size of prior data set
 
 # %% EFFECT OF SIZE
-
-N_use_arr = [1000,10000,100000,1000000]
-N_use_arr = [1000,10000,100000]
-
 f_post_h5_N_list = []
+doEffectSize = False
+if doEffectSize:
+    N_use_arr = [1000,10000,100000,1000000]
+    N_use_arr = [1000,10000,100000]
 
-for N_use in N_use_arr:
-    for i_prior in range(len(f_prior_data_h5_list)):
+   
 
-        f_prior_data_h5= f_prior_data_h5_list[i_prior]
-        # Get filename without extension
-        fileparts = os.path.splitext(f_prior_data_h5)
-        f_post_h5 = 'post_%s_Nuse%d_inflateNoise%d.h5' % (fileparts[0], N_use,inflateNoise)
+    for N_use in N_use_arr:
+        for i_prior in range(len(f_prior_data_h5_list)):
 
-        f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
-                                        f_data_h5, 
-                                        f_post_h5, 
-                                        N_use = N_use, 
-                                        showInfo=1, 
-                                        parallel=True, 
-                                        updatePostStat=True)
+            f_prior_data_h5= f_prior_data_h5_list[i_prior]
+            # Get filename without extension
+            fileparts = os.path.splitext(f_prior_data_h5)
+            f_post_h5 = 'post_%s_Nuse%d_inflateNoise%d.h5' % (fileparts[0], N_use,inflateNoise)
+
+            f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
+                                            f_data_h5, 
+                                            f_post_h5, 
+                                            N_use = N_use, 
+                                            showInfo=1, 
+                                            parallel=True, 
+                                            updatePostStat=True)
+            
+            f_post_h5_N_list.append(f_post_h5)
         
-        f_post_h5_N_list.append(f_post_h5)
-    
-#%% 
-for i_post in range(len(f_post_h5_N_list)):
-    f_post_h5 = f_post_h5_N_list[i_post]
+    #
+    for i_post in range(len(f_post_h5_N_list)):
+        f_post_h5 = f_post_h5_N_list[i_post]
 
-    
-    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
-    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
-    
-    ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
-    
-    ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
+        
+        ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
+        ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+        
+        ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
+        
+        ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
 
-    ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=hardcopy)
+        ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y', hardcopy=hardcopy)
 
-    ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Mean', uselog=1, s=10,hardcopy=hardcopy)
-    plt.show()
-    ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10,hardcopy=hardcopy)
-    plt.show()
+        ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Mean', uselog=1, s=10,hardcopy=hardcopy)
+        plt.show()
+        ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10,hardcopy=hardcopy)
+        plt.show()
 
-    try:
-        ig.plot_feature_2d(f_post_h5,im=3, key='Mode', uselog=1, s=10, cmap='jet', hardcopy=hardcopy)
-    except:
-        pass
+        try:
+            ig.plot_feature_2d(f_post_h5,im=3, key='Mode', uselog=1, s=10, cmap='jet', hardcopy=hardcopy)
+        except:
+            pass
 
 
 
@@ -403,63 +402,204 @@ for i_post in range(len(f_post_h5_N_list)):
 # %% [markdown]
 # ## Effect of size of prior data set
 
-# %% EFFECT OF SIZE
-
-T_base_arr = [1,2,10,20,100]
-N_use = 100000
+# %% T_base
 f_post_h5_T_list = [] 
+doTbase = False
+if doTbase:
+    T_base_arr = [1,2,10,20,100]
+    N_use = 100000
+    for T_base in T_base_arr:
+        for i_prior in range(len(f_prior_data_h5_list)):
 
-for T_base in T_base_arr:
-    for i_prior in range(len(f_prior_data_h5_list)):
+            f_prior_data_h5= f_prior_data_h5_list[i_prior]
+            # Get filename without extension
+            fileparts = os.path.splitext(f_prior_data_h5)
+            f_post_h5 = 'post_%s_Nuse%d_T%d_inflateNoise%d.h5' % (fileparts[0], N_use,T_base,inflateNoise)
 
-        f_prior_data_h5= f_prior_data_h5_list[i_prior]
-        # Get filename without extension
-        fileparts = os.path.splitext(f_prior_data_h5)
-        f_post_h5 = 'post_%s_Nuse%d_T%d_inflateNoise%d.h5' % (fileparts[0], N_use,T_base,inflateNoise)
-
-        f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
-                                        f_data_h5, 
-                                        f_post_h5, 
-                                        T_base = T_base,
-                                        N_use = N_use,
-                                        autoT=False,
-                                        showInfo=1, 
-                                        parallel=True, 
-                                        updatePostStat=True)
-        
-        f_post_h5_T_list.append(f_post_h5)
+            f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
+                                            f_data_h5, 
+                                            f_post_h5, 
+                                            T_base = T_base,
+                                            N_use = N_use,
+                                            autoT=False,
+                                            showInfo=1, 
+                                            parallel=True, 
+                                            updatePostStat=True)
+            
+            f_post_h5_T_list.append(f_post_h5)
 
 
 
 
 #%% 
 # concatenate f_post_h5_list, f_post_h5_N_list, f_post_h5_T_list
-f_post_h5_all_list = f_post_h5_list + f_post_h5_N_list + f_post_h5_T_list
-cmap, clim = ig.get_colormap_and_limits('resistivity')
-#f_post_h5_all_list = f_post_h5_T_list
+
+doPlotAll=False
+if doPlotAll:
+    f_post_h5_all_list = f_post_h5_list + f_post_h5_N_list + f_post_h5_T_list
+    cmap, clim = ig.get_colormap_and_limits('resistivity')
+    #f_post_h5_all_list = f_post_h5_T_list
 
 
-for i_post in range(len(f_post_h5_all_list)):
-    f_post_h5 = f_post_h5_all_list[i_post]
+    for i_post in range(len(f_post_h5_all_list)):
+        f_post_h5 = f_post_h5_all_list[i_post]
 
-    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
-    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+        ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
+        ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+        
+        ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
+        ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
+        ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
+        ig.plot_T_EV(f_post_h5, pl='ND', hardcopy=hardcopy)
+
+        ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y', cmap=cmap, clim=clim,hardcopy=hardcopy)
+        
+        ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='LogMean', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
+        plt.show()
+        ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
+        plt.show()
+        ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10, hardcopy=hardcopy)
+        plt.show()
+
+        try:
+            ig.plot_feature_2d(f_post_h5,im=3, key='Mode', uselog=1, s=10, cmap='jet', hardcopy=hardcopy)
+        except:
+            pass
+
+
+#%% #################################################################################################
+# TEST INVERSION
+# #################################################################################################
+
+#%% TEST INVERSION
+
+#f_prior_data_h5_list = ['daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5',
+# 'daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5',
+# 'daugaard_merged.h5']
+
+D_D = []
+D_idx = []
+D_M = []
+
+for i in np.arange(len(f_prior_data_h5_list)):
+    D_t, idx = ig.load_prior_data(f_prior_data_h5_list[i], Randomize=True, showInfo=1)
+    D_D.append(D_t)
+    D_idx.append(idx)
+    M_t, idx=ig.load_prior_model(f_prior_data_h5_list[i])
+    D_M.append(M_t)
+
+DATA = ig.load_data(f_data_h5, id_arr = [1])
     
-    ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
-    ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
-    ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
-    ig.plot_T_EV(f_post_h5, pl='ND', hardcopy=hardcopy)
+# %%    
+# The data point to invert
+ip = 1000 # Phyp=30,60
+ip = 100 # Phyp=3,97
 
-    ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y', cmap=cmap, clim=clim,hardcopy=hardcopy)
+N=D_D[0][0].shape[0]
+ipd=0    
+print('data ipd=%d in first [%g,%g]' %  (ipd,D_D[0][0][ipd][0],D_D[2][0][ipd][0]))
+print('data ipd=%d in 2nd dset [%g,%g]' % (ipd,D_D[1][0][ipd][0],D_D[2][0][ipd+N][0]))
+
+d_obs = DATA['d_obs'][0][ip]
+d_std = DATA['d_std'][0][ip]
+
+# %%
+
+# now inver data sat id
+autoT=False
+T_base = 1
+nr=4000
+EV_est=[]
+EV_rej=[]
+i_use_man=[]
+i_use_rej=[]
+for i in np.arange(len(D_D)):
+#for i in np.arange(1):
+    OUT = ig.integrate_rejection_range(D=D_D[i], 
+                                    DATA = DATA,
+                                    idx = idx,                                                                   
+                                    autoT=autoT,
+                                    T_base = T_base,
+                                    ip_range = [ip],
+                                    useRandomData=True,
+                                    nr=nr,
+                                    showInfo=1)
+    i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range = OUT
+    i_use_rej.append(i_use.flatten())
     
-    ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='LogMean', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
-    plt.show()
-    ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
-    plt.show()
-    ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10, hardcopy=hardcopy)
-    plt.show()
+    # compute logL manually
+    Ns = len(D_D[i][0])
+    logL_manual = np.zeros(Ns)
+    #print("Computing logL manually for %d samples" % Ns)
+    for j in range(Ns):
+        dd = D_D[i][0][j]-d_obs
+        logL_manual[j]   = -0.5 * np.nansum((dd / d_std)**2)
 
-    try:
-        ig.plot_feature_2d(f_post_h5,im=3, key='Mode', uselog=1, s=10, cmap='jet', hardcopy=hardcopy)
-    except:
-        pass
+    # compute logL using likelihood function
+    logL = ig.likelihood_gaussian_diagonal(D_D[i][0],d_obs,d_std)
+    P_acc = np.exp(logL-logL.max())
+    r = np.random.rand(len(logL))
+    i_use_temp = np.where(r < P_acc)[0]
+    i_use_man.append(i_use_temp)
+    #p=P_acc/np.sum(P_acc)
+    #i_use_temp2 = np.random.choice(len(P_acc), nr, p=p)
+    #i_use_man.append(i_use_temp2)
+
+    #print('logL manual = ')
+    #print(logL[0:3])
+
+    EV_est_single=np.log(np.mean(np.exp(logL)))
+    EV_est.append(EV_est_single.flatten())
+    EV_rej.append(EV.flatten())
+
+    print("logL (likelihood)=%g, logL(manual)=%g" % (logL[0],logL_manual[0]))
+    for k in np.arange(i):
+        print("EV(rej)=%g, EV(mix)=%g" % (EV_rej[k],EV_est[k]))
+
+    doPlot=True
+    if doPlot:
+        plt.figure(figsize=(4,3))
+        plt.semilogy(D_D[i][0][i_use_rej[i],:].T,'g-',linewidth=1,alpha=0.3)
+        plt.semilogy(D_D[i][0][i_use_man[i],:].T,'k-',linewidth=.5,alpha=0.3)
+        plt.semilogy(d_obs,'r:')
+        plt.title(f_prior_data_h5_list[i])
+        plt.show()  
+    
+
+# %%%
+a ** a
+# %% 
+iHYP = D_M[2][2]
+i_post_type_man = iHYP[i_use_man[2]]
+i_post_type_rej = iHYP[i_use_rej[2]]
+
+N_cat_rej = np.array([np.sum(i_post_type_rej==i) for i in [1,2]])
+P_rej = N_cat_rej/np.sum(N_cat_rej)
+N_cat_man = np.array([np.sum(i_post_type_man==i) for i in [1,2]])
+P_man = N_cat_man/np.sum(N_cat_man)
+print("P from MIXING (rejection): ", P_rej.flatten())
+print("P from MIXING (manual): ", P_man.flatten())
+print("Difference  = ", P_rej - P_man)
+
+P_from_EV_man = np.exp(EV_est)/(np.exp(EV_est[0])+np.exp(EV_est[1]))
+P_from_EV_rej = np.exp(EV_rej)/(np.exp(EV_rej[0])+np.exp(EV_rej[1]))
+print("P from EV (manual): ", P_from_EV_man.flatten())
+print("P from EV (rejection): ", P_from_EV_rej.flatten())
+
+# %% NOW CHECK THE INVERSION OF THE WHOLE AREA USING integrate_rejection_range()
+# DO we get the same if we call integrate_rejection_range() and integrate_rejection()
+ip_range = np.arange(1000)
+
+#for i in np.arange(len(D_D)):
+for i in np.arange(1):
+    OUT = ig.integrate_rejection_range(D=D_D[i], 
+                                    DATA = DATA,
+                                    idx = idx,                                                                   
+                                    autoT=autoT,
+                                    T_base = T_base,
+                                    ip_range = ip_range,
+                                    # useRandomData=False,
+                                    nr=nr,
+                                    showInfo=1)
+    i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range = OUT
+    i_use_rej.append(i_use.flatten())

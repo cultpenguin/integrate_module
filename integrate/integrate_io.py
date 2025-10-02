@@ -2830,7 +2830,7 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
     # First pass: collect all model parameters and data arrays
     for i, f_prior_h5 in enumerate(f_prior_h5_files):
         if showInfo > 1:
-            print('.. Processing file %d: %s' % (i, f_prior_h5))
+            print('.. Processing file %d/%d: %s' % (i+1,nf, f_prior_h5))
         
         with h5py.File(f_prior_h5, 'r') as f:
             # Count samples in this file (use M1 as reference)

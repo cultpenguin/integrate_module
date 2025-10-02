@@ -490,7 +490,6 @@ def integrate_rejection_range(D,
         Ndt=len(DATA['d_obs'])
         id_use = np.arange(Ndt)
     Ndt = len(id_use)
-
         
     i_use_all = np.zeros((nump, nr), dtype=np.int32)
     T_all = np.zeros(nump)*np.nan
@@ -554,25 +553,11 @@ def integrate_rejection_range(D,
         print('class_id_list',class_id_list)
         print('len(class_id_list)',len(class_id_list))
 
-
-    # Update progress - starting main processing
-    if progress_callback:
-        update_progress(0, len(ip_range), {'phase': 'rejection_sampling', 'status': 'Processing data points'})
-    
-    # THIS IS THE ACTUAL INVERSION!!!!
-    # Start looping over the data points
-    iterator = tqdm(range(len(ip_range)), miniters=10, disable=not console_progress, desc='rejection', leave=False)
-    
-    for j in iterator:
+    #print(ip_range)    
+    #tqdm(range(nd), mininterval=1, disable=disableTqdm, desc='gatdaem1d', leave=False):
+    for j in tqdm(range(len(ip_range)), disable=disableTqdm, desc='Rejection Sampling', leave=False):
         ip = ip_range[j] # This is the index of the data point to invert
-        
-        # Update progress for this data point
-        if progress_callback:
-            update_progress(j + 1, len(ip_range), {
-                'phase': 'rejection_sampling',
-                'status': f'Processing data point {j+1}/{len(ip_range)}',
-                'current_ip': ip
-            })
+  
         t=[]
         N = D[0].shape[0]
         # Get number of data types used - needed for array initialization
@@ -588,6 +573,11 @@ def integrate_rejection_range(D,
 
         for i in range(Ndt):
             use_data_point = i_use_data[i][ip]
+            #print(j)
+            #print(ip)
+            #print('..')
+            #print('i=%g, j=%g, ip=%g' % (i,j,ip))
+            #print(use_data_point)
             #use_data_point = 1 # FORCE USE OF DATA POINT
             #use_data_point = 0 # FORCE NOT TO USE DATA POINT
             if showInfo>3:    
@@ -615,7 +605,7 @@ def integrate_rejection_range(D,
                     n_data_non_nan = np.sum(~np.isnan(d_obs))
                     total_n_data_non_nan += n_data_non_nan
                     n_data_per_type[i] = n_data_non_nan
-            
+                        
                     if DATA['Cd'][0] is not None:                    
                         # if Cd is 3 dimensional, take the first slice
                         if len(DATA['Cd'][0].shape) == 3:
@@ -627,11 +617,11 @@ def integrate_rejection_range(D,
                         
                     elif DATA['d_std'][0] is not None:
                         d_std = DATA['d_std'][i][ip]
-                        #print(d_std)
                         #print(d_obs)
+                        #print(d_std)
                         #print(D[i_prior][0])
                         L_single = likelihood_gaussian_diagonal(D[i_prior], d_obs, d_std, use_N_best)
-
+                        #print(L_single[0:3])
                     else:
                         print('No d_std or Cd in %s' % DS)
 
@@ -667,9 +657,11 @@ def integrate_rejection_range(D,
 
         # Now we have all the likelihoods for all data types. Combine them into one
         # L is an array of shape (Ndt,1)
-        # If we have only one data type, then L is already correct
+        # If we have only one data type, then L is already correct, 
+        # and we do not need to sum
         L_single = L
-        L = np.sum(L_single, axis=0)
+        if Ndt>1:
+            L = np.sum(L_single, axis=0)
 
         # Automatic annealing temperature estimation, if autoT=1, else use T=T_base
         # T_base = 1 indicates no annealing
@@ -687,17 +679,27 @@ def integrate_rejection_range(D,
         P_acc = np.exp((1/T) * (L - np.nanmax(L)))
         P_acc[np.isnan(P_acc)] = 0
 
-        
-
         # Select the index of P_acc propportion to the probabilituy given by P_acc
         t0=time.time()
         try:
+            if P_acc.shape[0] == 1:
+                # This should probably not happen!
+                P_acc = P_acc.flatten()
             p=P_acc/np.sum(P_acc)
             i_use = np.random.choice(N, nr, p=p)
-        except:
+        except:       
+            print('####################################################################')     
+            print('####################################################################')     
             print('Error in np.random.choice for ip=%d' % ip)   
+            print('####################################################################')     
+            print('####################################################################')     
             i_use = np.random.choice(N, nr)
-        
+            
+
+        #print(P_acc.shape)
+        #print(p.shape)
+        #print(i_use.shape)
+
         # Store i_use bore fore reoriding( for coimputing LOGL_mean)
         #i_use_before_reordering = i_use.copy()
         # Compute LOGL_mean per data type: mean of log-likelihood divided by (-2 * n_data_used)
@@ -718,15 +720,13 @@ def integrate_rejection_range(D,
         t.append(time.time()-t0)        
 
         # Compute the evidence
-        maxlogL = np.nanmax(L)
-        exp_logL = np.exp(L - maxlogL)
-        EV = maxlogL + np.log(np.nansum(exp_logL)/len(L))
-        # EV_direct  = np.log(np.mean(np.exp(L)))
-        
-        
+        # Numerically stable log-mean-exp calculation
+        max_L = np.nanmax(L)
+        EV = max_L + np.log(np.nanmean(np.exp(L - max_L)))
+
         # BUG !!!
         # Compute log-'posterior evidence' - mean posterior log-likelihood
-        EV_post = np.nanmean(exp_logL)
+        EV_post = np.nan # np.nanmean(exp_logL)
         #EV_post = maxlogL + np.log(np.nansum(exp_logL[i_use])/len(L[i_use]))
         
         # Compute normalized posterior evidence per data point
@@ -761,13 +761,6 @@ def integrate_rejection_range(D,
                 else:
                     print(' Time id%d, sampling: %f' % (i,t[i]))
             print('Time total: %f' % np.sum(t))
-    
-    # Final progress callback
-    if progress_callback is not None:
-        try:
-            progress_callback(len(ip_range), len(ip_range))
-        except:
-            pass  # Ignore callback errors
         
     return i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, LOGL_mean_all, N_UNIQUE_all, ip_range
 
