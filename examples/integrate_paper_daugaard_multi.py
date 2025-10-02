@@ -588,7 +588,9 @@ print("P from EV (rejection): ", P_from_EV_rej.flatten())
 
 # %% NOW CHECK THE INVERSION OF THE WHOLE AREA USING integrate_rejection_range()
 # DO we get the same if we call integrate_rejection_range() and integrate_rejection()
-ip_range = np.arange(0, 10000, 100)
+Nd=len(DATA['d_obs'][0])
+ip_range = np.arange(Nd)
+#ip_range = np.arange(0, Nd, 100)
 i_use_compare=[]
 EV_compare=[]
 
