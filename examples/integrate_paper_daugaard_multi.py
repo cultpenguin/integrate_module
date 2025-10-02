@@ -567,7 +567,7 @@ for i in np.arange(len(D_D)):
     
 
 # %%%
-a ** a
+#a ** a
 # %% 
 iHYP = D_M[2][2]
 i_post_type_man = iHYP[i_use_man[2]]
@@ -588,10 +588,12 @@ print("P from EV (rejection): ", P_from_EV_rej.flatten())
 
 # %% NOW CHECK THE INVERSION OF THE WHOLE AREA USING integrate_rejection_range()
 # DO we get the same if we call integrate_rejection_range() and integrate_rejection()
-ip_range = np.arange(1000)
+ip_range = np.arange(0, 10000, 100)
+i_use_compare=[]
+EV_compare=[]
 
-#for i in np.arange(len(D_D)):
-for i in np.arange(1):
+for i in np.arange(len(D_D)):
+#for i in np.arange(1):
     OUT = ig.integrate_rejection_range(D=D_D[i], 
                                     DATA = DATA,
                                     idx = idx,                                                                   
@@ -601,5 +603,57 @@ for i in np.arange(1):
                                     # useRandomData=False,
                                     nr=nr,
                                     showInfo=1)
-    i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range = OUT
-    i_use_rej.append(i_use.flatten())
+    i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range_alt = OUT
+    i_use_compare.append(i_use)
+    EV_compare.append(EV.flatten())
+
+#%%
+Np = len(ip_range)
+P_compare_mix = np.zeros((Np,2))
+P_compare_ev = np.zeros((Np,2))
+
+for i in np.arange(Np):
+    i_post_type_compare = iHYP[i_use_compare[2][i]]
+    Nc = np.array([np.sum(i_post_type_compare==i) for i in [1,2]])
+    P_compare_mix[i,:] = Nc/np.sum(Nc)
+
+    EV=np.array([EV_compare[0][i],EV_compare[1][i]])
+    P_compare_ev[i,:] = np.exp(EV)/(np.exp(EV[0])+np.exp(EV[1]))
+    
+plt.figure(figsize=(4,4))
+plt.plot(P_compare_mix[:,0],'k-', label='P(Valley) from Mixing')
+plt.plot(P_compare_ev[:,0],'r-', label='P(Valley) from EV')
+plt.plot(P_vallyey_check[ip_range,0],'b--', label='P(Valley) from M3')
+plt.plot(P_valley[ip_range],'g--', label='P(Valley) from EV calc')
+plt.grid(True, which='both', alpha=0.3)
+plt.xlabel('P(Valley) from Mixing')
+plt.ylabel('P(Valley) from EV')
+plt.ylim(0,1)
+plt.legend()
+
+plt.figure(figsize=(8,4))
+plt.subplot(2,2,1)
+plt.scatter(X[ip_range], Y[ip_range], c=P_compare_mix[:,0], s=10, cmap=cmap, vmin=0, vmax=1)
+plt.colorbar()
+plt.title('P(Valley) from Mixing')
+plt.axis('equal')
+plt.subplot(2,2,2)
+plt.scatter(X[ip_range], Y[ip_range], c=P_compare_ev[:,0], s=10, cmap=cmap, vmin=0, vmax=1)
+plt.colorbar()
+plt.title('P(Valley) from EV')  
+plt.axis('equal')
+try:
+    plt.subplot(2,2,3)
+    plt.scatter(X, Y, c=P_valley, s=1, cmap=cmap, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
+    plt.subplot(2,2,4)
+    plt.scatter(X, Y, c=P_vallyey_check[:,0], s=1, cmap=cmap, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
+except:
+    pass
+
+
+plt.figure(figsize=(4, 4))
+plt.plot(P_valley.flatten(),P_vallyey_check[:,0].flatten(),'k.', markersize=.1);plt.xlabel('P(Valley) from EV');plt.ylabel('P(Valley) from M3');plt.axis('equal' )
+plt.plot(P_compare_ev[:,0],P_compare_mix[:,0],'r.', markersize=.5);plt.xlabel('P(Valley) from EV');plt.ylabel('P(Valley) from Mixing');plt.axis('equal' )
+plt.grid(True, which='both', alpha=0.3)
+
+# %%
