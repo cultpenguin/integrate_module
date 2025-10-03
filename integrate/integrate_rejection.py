@@ -1395,3 +1395,176 @@ def cleanup_shared_memory(shm_objects):
         except Exception as e:
             #logger.error(f"Error cleaning up shared memory: {e}")
             pass
+
+
+def compute_hypothesis_probability(f_post_h5_list, **kwargs):
+    """
+    Compute hypothesis probabilities from evidence values in posterior files.
+
+    This function reads evidence (EV) values from multiple posterior HDF5 files,
+    each representing a different hypothesis/prior model, and computes the
+    probability of each hypothesis at each data point using Bayesian model averaging.
+
+    The probability is computed using Bayes' theorem for model selection with the
+    assumption of equal prior probabilities for all hypotheses.
+
+    Parameters
+    ----------
+    f_post_h5_list : list of str
+        List of paths to posterior HDF5 files, one for each hypothesis.
+        Each file must contain an '/EV' dataset with log-evidence values (natural log).
+    **kwargs : dict
+        Additional keyword arguments.
+        showInfo : int, optional
+            Level of verbosity for output. Default is 0.
+
+    Returns
+    -------
+    P : ndarray, shape (n_data_points, n_hypotheses)
+        Probability of each hypothesis at each data point.
+        P[i, j] is the probability of hypothesis j at data point i.
+        Each row sums to 1.0 (within numerical precision).
+    mode : ndarray, shape (n_data_points,)
+        Index of the most probable hypothesis for each data point.
+        Values are 0-based indices in range [0, n_hypotheses-1].
+    entropy_values : ndarray, shape (n_data_points,)
+        Entropy (uncertainty measure) for each data point.
+        Values are in range [0, log_base(n_hypotheses)], where base=n_hypotheses.
+        0 = certain (one hypothesis has probability 1), higher values = more uncertain.
+
+    Notes
+    -----
+    The probability is computed using Bayes' theorem for model selection:
+
+        P(hypothesis_i | data) = P(data | hypothesis_i) * P(hypothesis_i) / P(data)
+
+    Where P(data | hypothesis_i) is the marginal likelihood (evidence), stored
+    as log-evidence (EV, natural log) in the HDF5 files. Assuming equal prior
+    probabilities for all hypotheses:
+
+        P(hypothesis_i | data) = exp(EV_i) / sum_j(exp(EV_j))
+
+    For numerical stability, the log-sum-exp trick is used:
+
+        P(hypothesis_i | data) = exp(EV_i - log_sum_exp(all EVs))
+
+    where log_sum_exp is computed using np.logaddexp.reduce() for arbitrary
+    number of hypotheses.
+
+    The evidence (EV) values are stored as natural logarithms (ln, not log10)
+    as computed by integrate_rejection_range().
+
+    Examples
+    --------
+    >>> import integrate as ig
+    >>> # Create three posterior files from different prior models
+    >>> f_post_list = ['post_valley.h5', 'post_standard.h5', 'post_merged.h5']
+    >>> P, mode, entropy = ig.compute_hypothesis_probability(f_post_list)
+    >>> print(P.shape)  # (n_data_points, 3)
+    >>> print(P[0])  # Probabilities for first data point: [0.3, 0.5, 0.2]
+    >>> print(np.sum(P[0]))  # Should be 1.0
+    >>> print(mode[0])  # Most probable hypothesis index: 1 (0-based)
+    >>> print(entropy[0])  # Uncertainty measure: ~0.96
+
+    >>> # For two hypotheses (e.g., valley vs standard lithology)
+    >>> f_post_list = ['post_valley.h5', 'post_standard.h5']
+    >>> P, mode, entropy = ig.compute_hypothesis_probability(f_post_list, showInfo=1)
+    >>> P_valley = P[:, 0]  # Probability of valley hypothesis
+    >>> P_standard = P[:, 1]  # Probability of standard hypothesis
+    >>> most_probable_hypothesis = mode  # Index of most probable hypothesis per data point
+    >>> uncertainty = entropy  # Entropy values indicating uncertainty
+
+    See Also
+    --------
+    integrate_rejection : Main rejection sampling function that creates posterior files
+    integrate_rejection_range : Core rejection sampling that computes EV values
+    """
+    import h5py
+    import numpy as np
+    import integrate as ig
+
+    showInfo = kwargs.get('showInfo', 0)
+
+    n_hypotheses = len(f_post_h5_list)
+
+    if n_hypotheses < 2:
+        raise ValueError("At least two posterior files are required for hypothesis comparison. "
+                        f"Received {n_hypotheses} file(s).")
+
+    # Read EV from all files
+    EV_list = []
+    n_data_points = None
+
+    for i, f_post_h5 in enumerate(f_post_h5_list):
+        try:
+            with h5py.File(f_post_h5, 'r') as f:
+                if '/EV' not in f:
+                    raise KeyError(f"'/EV' dataset not found in {f_post_h5}")
+
+                EV = f['/EV'][:]
+                EV_list.append(EV)
+
+                if n_data_points is None:
+                    n_data_points = len(EV)
+                elif len(EV) != n_data_points:
+                    raise ValueError(f"Inconsistent number of data points: file '{f_post_h5}' "
+                                   f"has {len(EV)} data points, expected {n_data_points}")
+
+                if showInfo > 0:
+                    print(f"Hypothesis {i+1}: Loaded EV from {os.path.basename(f_post_h5)}")
+                    if showInfo > 1:
+                        print(f"  - Data points: {len(EV)}")
+                        print(f"  - EV range: [{np.nanmin(EV):.2f}, {np.nanmax(EV):.2f}]")
+
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Posterior file not found: {f_post_h5}")
+
+    # Stack EV values: shape (n_data_points, n_hypotheses)
+    EV_all = np.stack(EV_list, axis=1)
+
+    if showInfo > 1:
+        print(f"\nCombined EV array shape: {EV_all.shape}")
+        print(f"Overall EV range: [{np.nanmin(EV_all):.2f}, {np.nanmax(EV_all):.2f}]")
+
+    # Compute probabilities using log-sum-exp trick for numerical stability
+    # P(hypothesis_i | data) = exp(EV_i) / sum_j(exp(EV_j))
+    #                        = exp(EV_i - log_sum_exp(all EVs))
+
+    # Compute log_sum_exp across hypotheses for each data point
+    # np.logaddexp.reduce handles arbitrary number of hypotheses
+    log_sum = np.logaddexp.reduce(EV_all, axis=1, keepdims=True)
+
+    # Compute probabilities
+    P = np.exp(EV_all - log_sum)
+
+    # Compute mode (most probable hypothesis index for each data point)
+    mode = np.argmax(P, axis=1)
+
+    # Compute entropy for each data point using the entropy function from integrate
+    entropy_values = ig.entropy(P, base=n_hypotheses)
+
+    if showInfo > 0:
+        print(f"\nComputed hypothesis probabilities:")
+        print(f"  - Output shape: {P.shape} (n_data_points × n_hypotheses)")
+        print(f"  - Probability range: [{np.nanmin(P):.4f}, {np.nanmax(P):.4f}]")
+        row_sums = np.sum(P, axis=1)
+        print(f"  - Row sums (should be 1.0): mean={np.nanmean(row_sums):.6f}, "
+              f"std={np.nanstd(row_sums):.2e}")
+
+        # Print mode and entropy statistics
+        print(f"\nMode and entropy statistics:")
+        mode_counts = np.bincount(mode, minlength=n_hypotheses)
+        print(f"  - Mode distribution:")
+        for i in range(n_hypotheses):
+            percentage = (mode_counts[i] / n_data_points) * 100
+            print(f"    Hypothesis {i+1}: {mode_counts[i]} data points ({percentage:.1f}%)")
+        print(f"  - Entropy range: [{np.nanmin(entropy_values):.4f}, {np.nanmax(entropy_values):.4f}]")
+        print(f"  - Mean entropy: {np.nanmean(entropy_values):.4f}, Std entropy: {np.nanstd(entropy_values):.4f}")
+
+        if showInfo > 1:
+            # Print summary statistics for each hypothesis
+            for i in range(n_hypotheses):
+                print(f"  - Hypothesis {i+1}: mean P = {np.nanmean(P[:, i]):.4f}, "
+                      f"median P = {np.nanmedian(P[:, i]):.4f}")
+
+    return P, mode, entropy_values

@@ -10,6 +10,7 @@ from integrate.integrate_rejection import select_subset_for_inversion
 from integrate.integrate_rejection import cleanup_shared_memory
 from integrate.integrate_rejection import reconstruct_shared_arrays
 from integrate.integrate_rejection import create_shared_memory
+from integrate.integrate_rejection import compute_hypothesis_probability
 
 # Import other functions from main module
 from integrate.integrate import integrate_update_prior_attributes   
