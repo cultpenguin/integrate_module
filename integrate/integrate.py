@@ -299,19 +299,23 @@ def integrate_update_prior_attributes(f_prior_h5, **kwargs):
                         dataset.attrs['class_name'] = [str(x) for x in class_id]
 
 
-def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
+def integrate_posterior_stats(f_post_h5='POST.h5', ip_range=None, **kwargs):
     """
     Compute posterior statistics for datasets in an HDF5 file.
 
-    This function computes various statistics for datasets in an HDF5 file based 
-    on the posterior samples. The statistics include mean, median, standard 
-    deviation for continuous datasets, and mode, entropy, and class probabilities 
+    This function computes various statistics for datasets in an HDF5 file based
+    on the posterior samples. The statistics include mean, median, standard
+    deviation for continuous datasets, and mode, entropy, and class probabilities
     for discrete datasets. The computed statistics are stored in the same HDF5 file.
 
     Parameters
     ----------
     f_post_h5 : str, optional
         The path to the HDF5 file to process. Default is 'POST.h5'.
+    ip_range : array-like or None, optional
+        List of data point indices to compute statistics for. If None or empty,
+        computes statistics for all data points. Data points not in ip_range
+        will have NaN values in the output. Default is None.
     **kwargs : dict
         Additional keyword arguments.
         usePrior : bool, optional
@@ -320,7 +324,7 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
             Level of verbosity for output.
         updateGeometryFromData : bool, optional
             Whether to update geometry from data file. Default is True.
-    
+
     Returns
     -------
     None
@@ -379,7 +383,7 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
     except KeyError:
         print(f"Could not read 'i_use' from {f_post_h5}")
         #return
-    
+
     if usePrior:
         with h5py.File(f_prior_h5, 'r') as f_prior:
             N = f_prior['/M1'].shape[0]
@@ -387,7 +391,21 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
             nd=i_use.shape[0]
             # compute i_use of  (nd,nr), with random integer numbers between 0 and N-1
             i_use = np.random.randint(0, N, (nd,nr))
-    
+
+    # Handle ip_range parameter
+    nsounding = i_use.shape[0]
+    if ip_range is None or len(ip_range) == 0:
+        ip_range = np.arange(nsounding)
+        if showInfo > 0:
+            print(f'Computing statistics for all {nsounding} data points')
+    else:
+        ip_range = np.asarray(ip_range)
+        if showInfo > 0:
+            print(f'Computing statistics for {len(ip_range)} of {nsounding} data points')
+        # Validate ip_range
+        if np.any(ip_range < 0) or np.any(ip_range >= nsounding):
+            raise ValueError(f"ip_range contains indices outside valid range [0, {nsounding-1}]")
+
     # Process each dataset in f_prior_h5
     with h5py.File(f_prior_h5, 'r') as f_prior, h5py.File(f_post_h5, 'a') as f_post:
         for name, dataset in f_prior.items():
@@ -400,10 +418,11 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
                 nsounding, nr = i_use.shape
                 m_post = np.zeros((nm, nr))
 
-                M_logmean = np.zeros((nsounding,nm))
-                M_mean = np.zeros((nsounding,nm))
-                M_std = np.zeros((nsounding,nm))
-                M_median = np.zeros((nsounding,nm))
+                # Initialize with NaN for all data points
+                M_logmean = np.full((nsounding, nm), np.nan)
+                M_mean = np.full((nsounding, nm), np.nan)
+                M_std = np.full((nsounding, nm), np.nan)
+                M_median = np.full((nsounding, nm), np.nan)
 
                 if showInfo>0:
                     print('nm=%d, nsounding=%d, nr=%d' % (nm, nsounding, nr))
@@ -421,7 +440,8 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
                 #if dataset.size <= 1e6:  # arbitrary threshold for loading all data into memory
                 M_all = dataset[:]
 
-                for iid in tqdm(range(nsounding), mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
+                # Only iterate over ip_range
+                for iid in tqdm(ip_range, mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
                     ir = np.int64(i_use[iid,:])
                     m_post = M_all[ir,:]
 
@@ -443,21 +463,20 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
                 f_post['/%s/%s' % (name,'Std')][:] = M_std
 
             elif name.upper().startswith('M') and 'is_discrete' in dataset.attrs and dataset.attrs['is_discrete'] == 1:
-                
-                nm = dataset.shape[1]
-                nsounding, nr = i_use.shape
-                nsounding, nr = i_use.shape
-                nm = dataset.shape[1]
-                # Get number of classes for name    
-                class_id = f_prior[name].attrs['class_id']                
-                n_classes = len(class_id)
-                
-                if showInfo>0:
-                    print('%s: DISCRETE, N_classes =%d' % (name,n_classes))    
 
-                M_mode = np.zeros((nsounding,nm))
-                M_entropy = np.zeros((nsounding,nm))
-                M_P= np.zeros((nsounding,n_classes,nm))
+                nm = dataset.shape[1]
+                nsounding, nr = i_use.shape
+                # Get number of classes for name
+                class_id = f_prior[name].attrs['class_id']
+                n_classes = len(class_id)
+
+                if showInfo>0:
+                    print('%s: DISCRETE, N_classes =%d' % (name,n_classes))
+
+                # Initialize with NaN for all data points
+                M_mode = np.full((nsounding, nm), np.nan)
+                M_entropy = np.full((nsounding, nm), np.nan)
+                M_P = np.full((nsounding, n_classes, nm), np.nan)
 
                 # Create datasets in h5 file
                 for stat in ['Mode', 'Entropy']:
@@ -477,17 +496,18 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
 
                 M_all = dataset[:]
 
-                for iid in tqdm(range(nsounding), mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
+                # Only iterate over ip_range
+                for iid in tqdm(ip_range, mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
 
                     # Get the indices of the rows to use
                     ir = np.int64(i_use[iid,:])
-                    
+
                     m_post = M_all[ir,:]
-                    
+
                     # Compute the class probability
                     n_count = np.zeros((n_classes,nm))
                     for ic in range(n_classes):
-                        n_count[ic,:]=np.sum(class_id[ic]==m_post, axis=0)/nr    
+                        n_count[ic,:]=np.sum(class_id[ic]==m_post, axis=0)/nr
                     M_P[iid,:,:] = n_count
 
                     # Compute the mode

@@ -1645,45 +1645,75 @@ def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, c
 
     return output_filename
 
-def copy_prior(input_filename, output_filename, idx=None, **kwargs):
+def copy_prior(input_filename, output_filename, idx=None, N_use=None, **kwargs):
     """
-    Copy a PRIOR file (potentially containing M1, M2, ... and D1, D2, ...) 
-    using only a specific subset of data as indicated by idx.
-    
+    Copy a PRIOR file (potentially containing M1, M2, ... and D1, D2, ...)
+    using only a specific subset of data as indicated by idx or N_use.
+
     :param input_filename: The path to the input PRIOR HDF5 file.
     :type input_filename: str
     :param output_filename: The path to the output PRIOR HDF5 file.
     :type output_filename: str
     :param idx: Indices to copy. If None, a simple complete copy is made.
-                If set, copy should be made with all attributes, but using only 
+                If set, copy should be made with all attributes, but using only
                 data ids of M1, M2..., D1, D2... as indicated by idx.
                 Thus if idx=[0,1,2] the size of /M1 should be (3,nd).
+                Takes precedence over N_use if both are provided.
     :type idx: array-like or None, optional
-    
+    :param N_use: Number of random samples to copy from the prior file.
+                  If set, N_use indices will be randomly selected without replacement.
+                  Ignored if idx is provided.
+    :type N_use: int or None, optional
+
     :return: output_filename
     """
     import time
     import numpy as np
-    
+
     showInfo = kwargs.get('showInfo', 0)
     delay_after_close = kwargs.get('delay_after_close', 0.1)
     compress = kwargs.get('compress', True)
-    
+
     input_file = None
     output_file = None
-    
+
     try:
+        # Open the input file to determine dataset size if needed
+        input_file = h5py.File(input_filename, 'r')
+
+        # Handle N_use parameter: generate random indices if N_use is set and idx is not
+        if idx is None and N_use is not None:
+            # Find the first dataset to determine the total number of samples
+            first_dataset_name = None
+            for name in input_file:
+                if isinstance(input_file[name], h5py.Dataset) and input_file[name].ndim > 0:
+                    first_dataset_name = name
+                    break
+
+            if first_dataset_name is None:
+                raise ValueError("Could not find any dataset in the prior file to determine size")
+
+            N_total = input_file[first_dataset_name].shape[0]
+
+            if N_use > N_total:
+                raise ValueError(f"N_use ({N_use}) exceeds total number of samples ({N_total})")
+
+            # Generate random indices
+            idx = np.random.choice(N_total, size=N_use, replace=False)
+            idx = np.sort(idx)  # Sort for better HDF5 read performance
+
+            if showInfo > 0:
+                print(f'Randomly selected {N_use} samples from {N_total} total samples')
+
         # Open the input file
         if showInfo > 0:
             print('Copying PRIOR file %s to %s' % (input_filename, output_filename))
             if idx is not None:
                 print('Using subset with %d indices' % len(idx))
-        
-        input_file = h5py.File(input_filename, 'r')
-        
+
         # Create the output file
         output_file = h5py.File(output_filename, 'w')
-        
+
         # Convert idx to numpy array if provided
         if idx is not None:
             idx = np.asarray(idx)

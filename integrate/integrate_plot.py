@@ -1175,6 +1175,12 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     # Create a figure with 3 subplots sharing the same Xaxis!
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
 
+    # Create BoundaryNorm for discrete colormap
+    # Define boundaries between classes (e.g., [0.5, 1.5, 2.5, ..., n_class+0.5])
+    from matplotlib.colors import BoundaryNorm
+    boundaries = np.arange(clim[0] - 0.5, clim[1] + 1, 1)
+    norm = BoundaryNorm(boundaries, n_class)
+
     # MODE
     mode_data = Mode[:,ii]
     if gap_alpha is not None:
@@ -1183,13 +1189,12 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
     im1 = ax[0].pcolormesh(DDc, ZZc, mode_data,
             cmap=cmap,
+            norm=norm,
             shading='auto')
-    im1.set_clim(clim[0]-.5,clim[1]+.5)        
 
     ax[0].set_title('Mode')
-    # /fix set the ticks to be 1 to n_class, and use class_name as tick labels
-    cbar1 = fig.colorbar(im1, ax=ax[0], label='label')
-    cbar1.set_ticks(np.arange(n_class)+1)
+    # Set the ticks at the center of each color band
+    cbar1 = fig.colorbar(im1, ax=ax[0], label='label', boundaries=boundaries, ticks=class_id)
     cbar1.set_ticklabels(class_name)
     cbar1.ax.invert_yaxis()
 
@@ -1214,13 +1219,12 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
     im3 = ax[2].pcolormesh(DDc, ZZc, mode_entropy_data,
             cmap=cmap,
+            norm=norm,
             shading='auto',
             alpha=1-Entropy[:,ii])  # Keep entropy transparency
-    im3.set_clim(clim[0]-.5,clim[1]+.5)
     ax[2].set_title('Mode with transparency')
     #fig.colorbar(im3, ax=ax[2], label='label')
-    cbar3 = fig.colorbar(im3, ax=ax[2], label='label')
-    cbar3.set_ticks(np.arange(n_class)+1)
+    cbar3 = fig.colorbar(im3, ax=ax[2], label='label', boundaries=boundaries, ticks=class_id)
     cbar3.set_ticklabels(class_name)
     cbar3.ax.invert_yaxis()
 

@@ -240,7 +240,10 @@ def integrate_rejection(f_prior_h5='prior.h5',
     if len(ip_range)==0:
         ip_range = np.arange(Ndp)
     Ndp_invert = len(ip_range)
-        
+
+    # Store the ip_range for later use in integrate_posterior_stats
+    ip_range_for_stats = np.copy(ip_range)
+
     if Ncpu ==1:
         parallel = False
     
@@ -369,7 +372,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
     if updatePostStat:
         if progress_callback:
             update_progress(len(ip_range), len(ip_range), {'phase': 'post_processing', 'status': 'Computing posterior statistics'})
-        ig.integrate_posterior_stats(f_post_h5, **kwargs)
+        ig.integrate_posterior_stats(f_post_h5, ip_range=ip_range_for_stats, **kwargs)
     
     # Final progress update - completion
     if progress_callback:
@@ -530,13 +533,13 @@ def integrate_rejection_range(D,
     
     class_id_list = []
     updated_data_ids = []
-    for i in range(Ndt): 
+    for i in range(Ndt):
         i_prior = i
         if (noise_model[i]=='multinomial'):
             Di, class_id, class_id_out = ig.class_id_to_idx(D[i_prior])
             #print(class_id_out)
-            if (class_is_idx)&(id not in updated_data_ids):
-                updated_data_ids.append(id)
+            if (class_is_idx)&(i_prior not in updated_data_ids):
+                updated_data_ids.append(i_prior)
                 D[i_prior]=Di
                 if showInfo>1:
                     print('Updated prior id %d' % i_prior)
@@ -1184,17 +1187,20 @@ def likelihood_multinomial(D, P_obs, class_id=None, class_is_idx=False, entropyF
     Returns
     -------
     ndarray, shape (N,)
-        Log-likelihood values for each sample, computed using log base 10 with
-        normalization by maximum probability for numerical stability.
-    
+        Log-likelihood values for each sample, computed using natural logarithm.
+        For each sample i: logL[i] = sum(log(p[i,j])) over all features j.
+
     Notes
     -----
     The function creates a mapping from class IDs to indices, converts test data to
     corresponding indices, and retrieves probabilities using advanced indexing.
-    
-    The log-likelihood is calculated using max normalization for numerical stability:
-    logL[i] = sum(log10(p[i] / p_max))
-    
+
+    The log-likelihood is calculated as the sum of natural logarithms of probabilities:
+    logL[i] = sum(log(p[i,j])) for all features j
+
+    This means exp(logL[i]) equals the product of probabilities across features.
+    For single-feature cases, exp(logL) directly equals the observed probability.
+
     When entropyFilter is True, only features with entropy below the threshold
     are used in the likelihood calculation, which can improve computational efficiency
     for datasets with many uninformative features.
@@ -1211,12 +1217,24 @@ def likelihood_multinomial(D, P_obs, class_id=None, class_is_idx=False, entropyF
     if class_id is None:
         class_id =  np.arange(len(np.unique(D))).astype(int)
         class_id =  np.unique(D).astype(int)
-    
+
     D=np.atleast_2d(D)
+
+    # Filter out columns with NaN values in P_obs before any processing
+    # Check each column (feature) for NaN values
+    valid_features = ~np.any(np.isnan(P_obs), axis=0)
+
+    if not np.any(valid_features):
+        # If all features have NaN, return array of NaN
+        return np.full(D.shape[0], np.nan)
+
+    # Apply NaN filtering to both D and P_obs
+    D = D[:, valid_features]
+    P_obs = P_obs[:, valid_features]
 
     if entropyFilter:
         H=entropy(P_obs.T)
-        used = np.where(H<entropyThreshold)[0] 
+        used = np.where(H<entropyThreshold)[0]
         if len(used)==0:
             used = np.arange(1)
         D = D[:,used]
@@ -1225,11 +1243,10 @@ def likelihood_multinomial(D, P_obs, class_id=None, class_is_idx=False, entropyF
     N, nm = D.shape
     logL = np.zeros((N))
     class_id = class_id.astype(int)
-    p_max = np.max(P_obs, axis=0)
 
     # Create mapping from class_id to index
     class_to_idx = {cid: idx for idx, cid in enumerate(class_id)}
-    #print('class_id',class_id)  
+    #print('class_id',class_id)
     #print('class_to_idx',class_to_idx)
 
     for i in range(N):
@@ -1241,8 +1258,8 @@ def likelihood_multinomial(D, P_obs, class_id=None, class_is_idx=False, entropyF
 
         # Get probabilities directly using advanced indexing
         p = P_obs[i_test, np.arange(nm)]
-        # Calculate log likelihood
-        logL[i] = np.sum(np.log10(p/p_max))
+        # Calculate log likelihood (natural log of probabilities)
+        logL[i] = np.sum(np.log(p))
 
        
     return logL
