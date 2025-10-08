@@ -503,7 +503,11 @@ for iw in np.arange(len(WELLS)):
     plt.imshow(P_obs)
 
     # apply P_obs to the whole data grid with distance based weighting
-    d_obs, i_use = Pobs_to_datagrid(P_obs, X_well, Y_well, f_data_h5, r_data=10, r_dis=100, doPlot=False)
+    if (iw==0)|(iw==2):
+        doPlot=True
+    else:
+        doPlot=False
+    d_obs, i_use = Pobs_to_datagrid(P_obs, X_well, Y_well, f_data_h5, r_data=10, r_dis=100, doPlot=doPlot)
 
     #% Write to DATA file
     id_out, f_out = ig.write_data_multinomial(
