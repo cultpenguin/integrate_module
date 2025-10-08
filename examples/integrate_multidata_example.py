@@ -294,7 +294,7 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
 # %%
 P_single=0.99
 inflateTEMNoise = 4
-N_use = 100000
+N_use = 200000
 
 case = 'DAUGAARD'
 files = ig.get_case_data(case=case)
