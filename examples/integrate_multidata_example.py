@@ -294,7 +294,7 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
 # %%
 P_single=0.99
 inflateTEMNoise = 4
-N_use = 100000
+N_use = 200000
 
 case = 'DAUGAARD'
 files = ig.get_case_data(case=case)
@@ -372,7 +372,7 @@ if N_use >0:
     f_prior_data_h5 = 'daugaard_merged_N%d.h5' % N_use
     if not os.path.exists(f_prior_data_h5):
         print("Creating prior file with %d samples: %s" % (N_use, f_prior_data_h5))
-        ig.copy_prior(f_prior_data_merged_full_h5, f_prior_data_h5, N_use=N_use, showInfo=1)
+        ig.copy_prior(f_prior_data_merged_full_h5, f_prior_data_h5, N_use=N_use, showInfo=1, loadtomem=True)
 else:   
     f_prior_data_h5 = f_prior_data_merged_full_h5
     print("Using full prior file: %s" % f_prior_data_h5)
@@ -517,34 +517,11 @@ for iw in np.arange(len(WELLS)):
 
     plt.show()
 
-# %% TEST
-'''
-Dall, idx = ig.load_prior_data(f_prior_data_h5)
-Mall, idx = ig.load_prior_model(f_prior_data_h5)
-DOBS = ig.load_data(f_data_h5)
-
-id_test = 4
-#P_obs = DOBS['d_obs'][1][id_line[80]]
-P_obs = DOBS['d_obs'][id_test][id_line[40]]
-D = Dall[1]
-logL =  ig.likelihood_multinomial(D, P_obs, class_id=class_id)
-plt.figure()
-plt.subplot(2,1,1)
-plt.plot(np.exp(logL[::1]-np.max(logL)),'.')
-plt.ylim(-.1,1.1)
-plt.grid()
-plt.ylabel('Likelihood - normalized')
-plt.subplot(2,1,2)
-plt.plot(np.exp(logL[::5]),'.')
-plt.ylabel('log-Likelihood')
-plt.suptitle('id_test=%d' % id_test)
-'''
-
 #%% Now use a sparse representation of the well log data. 
 # Instead of reprsentiug all nz model paraeters, we cnvert the log obserbavtion to 
 # represent the actual number of layer obverservation.
-# This we need to implement a function that goes through a reaælizations 
-# of the prior and returns the lithology at each depth intervals, and we nee to deice how we do that.
+# This we need to implement a function that goes through a realizations
+# of the prior and returns the lithology at each depth intervals, and we need to decide how we do that.
 #
 
 # load the prior lithology data
@@ -634,11 +611,11 @@ id_use = [1] # tTEM
 #id_use = [10] # well 2, dependent
 #id_use = [11] # well 2, dependent compressed
 
-#id_use = [1] # tTEM 
+id_use = [1] # tTEM 
 
-id_use = [2,4] # Both wells independent
+#id_use = [2,4] # Both wells independent
 #id_use = [3,5] # Both wells compressed
-id_use = [8,10] # Both wells, dependent
+#id_use = [8,10] # Both wells, dependent
 #id_use = [9,11] # Both wells, dependent compressed
 
 #id_use = [1,2,4] # TEM + both wells independent
@@ -656,8 +633,8 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                 id_use = id_use,
                                 ip_range = id_line,
                                 nr=nr,
-                                parallel=False, 
-                                autoT=False,
+                                parallel=True, 
+                                autoT=True,
                                 T_base=1,
                                 updatePostStat=True)
 

@@ -1645,27 +1645,45 @@ def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, c
 
     return output_filename
 
-def copy_prior(input_filename, output_filename, idx=None, N_use=None, **kwargs):
+def copy_prior(input_filename, output_filename, idx=None, N_use=None, loadtomem=False, **kwargs):
     """
-    Copy a PRIOR file (potentially containing M1, M2, ... and D1, D2, ...)
-    using only a specific subset of data as indicated by idx or N_use.
+    Copy a PRIOR file, optionally subsetting the data.
 
-    :param input_filename: The path to the input PRIOR HDF5 file.
-    :type input_filename: str
-    :param output_filename: The path to the output PRIOR HDF5 file.
-    :type output_filename: str
-    :param idx: Indices to copy. If None, a simple complete copy is made.
-                If set, copy should be made with all attributes, but using only
-                data ids of M1, M2..., D1, D2... as indicated by idx.
-                Thus if idx=[0,1,2] the size of /M1 should be (3,nd).
-                Takes precedence over N_use if both are provided.
-    :type idx: array-like or None, optional
-    :param N_use: Number of random samples to copy from the prior file.
-                  If set, N_use indices will be randomly selected without replacement.
-                  Ignored if idx is provided.
-    :type N_use: int or None, optional
+    This function copies an HDF5 PRIOR file, which may contain model parameters
+    (M1, M2, ...) and forward-modeled data (D1, D2, ...). It allows for
+    copying only a specific subset of samples using either an index array (`idx`)
+    or a specified number of random samples (`N_use`).
 
-    :return: output_filename
+    Parameters
+    ----------
+    input_filename : str
+        Path to the input PRIOR HDF5 file.
+    output_filename : str
+        Path to the output PRIOR HDF5 file.
+    idx : array-like, optional
+        An array of indices to copy. If provided, only the data corresponding
+        to these indices will be included in the new file. This takes
+        precedence over `N_use`. Default is None (copy all data).
+    N_use : int, optional
+        The number of random samples to select and copy. This is ignored if
+        `idx` is provided. Default is None.
+    loadtomem : bool, optional
+        If True, datasets are loaded entirely into memory before slicing.
+        This can significantly speed up copying large subsets of data but
+        increases memory consumption. Default is False.
+    **kwargs : dict
+        Additional keyword arguments (e.g., `showInfo`, `compress`).
+
+    Returns
+    -------
+    str
+        The path to the output HDF5 file (`output_filename`).
+
+    Raises
+    ------
+    ValueError
+        If `N_use` is greater than the total number of samples in the file,
+        or if no datasets are found to determine the size for random sampling.
     """
     import time
     import numpy as np
@@ -1728,12 +1746,16 @@ def copy_prior(input_filename, output_filename, idx=None, N_use=None, **kwargs):
                 dataset = input_file[name]
                 
                 if idx is not None and dataset.ndim > 0:
-                    # Apply subsetting to the first dimension
                     if len(idx) > dataset.shape[0]:
                         raise ValueError(f"Index array length ({len(idx)}) exceeds dataset size ({dataset.shape[0]}) for {name}")
                     
                     # Get the subset of data
-                    data = dataset[idx]
+                    if loadtomem:
+                        if showInfo > 1:
+                            print(f"Loading '{name}' to memory before slicing.")
+                        data = dataset[:][idx]
+                    else:
+                        data = dataset[idx]
                 else:
                     # Copy all data
                     data = dataset[:]
