@@ -1175,12 +1175,6 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     # Create a figure with 3 subplots sharing the same Xaxis!
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
 
-    # Create BoundaryNorm for discrete colormap
-    # Define boundaries between classes (e.g., [0.5, 1.5, 2.5, ..., n_class+0.5])
-    from matplotlib.colors import BoundaryNorm
-    boundaries = np.arange(clim[0] - 0.5, clim[1] + 1, 1)
-    norm = BoundaryNorm(boundaries, n_class)
-
     # MODE
     mode_data = Mode[:,ii]
     if gap_alpha is not None:
@@ -1189,12 +1183,14 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
     im1 = ax[0].pcolormesh(DDc, ZZc, mode_data,
             cmap=cmap,
-            norm=norm,
+            vmin=clim[0]-.5,
+            vmax=clim[1]+.5,
             shading='auto')
 
     ax[0].set_title('Mode')
-    # Set the ticks at the center of each color band
-    cbar1 = fig.colorbar(im1, ax=ax[0], label='label', boundaries=boundaries, ticks=class_id)
+    # Set the ticks at the center of each color band (at class_id values)
+    cbar1 = fig.colorbar(im1, ax=ax[0], label='label')
+    cbar1.set_ticks(class_id)
     cbar1.set_ticklabels(class_name)
     cbar1.ax.invert_yaxis()
 
@@ -1219,12 +1215,14 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
     im3 = ax[2].pcolormesh(DDc, ZZc, mode_entropy_data,
             cmap=cmap,
-            norm=norm,
+            vmin=clim[0]-.5,
+            vmax=clim[1]+.5,
             shading='auto',
             alpha=1-Entropy[:,ii])  # Keep entropy transparency
     ax[2].set_title('Mode with transparency')
     #fig.colorbar(im3, ax=ax[2], label='label')
-    cbar3 = fig.colorbar(im3, ax=ax[2], label='label', boundaries=boundaries, ticks=class_id)
+    cbar3 = fig.colorbar(im3, ax=ax[2], label='label')
+    cbar3.set_ticks(class_id)
     cbar3.set_ticklabels(class_name)
     cbar3.ax.invert_yaxis()
 
@@ -1269,7 +1267,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
     # get filename without extension
     if kwargs['hardcopy']:
-        f_png = '%s_%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],i1,i2,Mstr[1:],txt)
+        f_png = '%s__%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],ii[0],ii[-1],Mstr[1:],txt)
         plt.savefig(f_png)
     plt.show()
 
@@ -1725,7 +1723,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
 
     # get filename without extension
     if kwargs['hardcopy']:
-        f_png = '%s_%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],i1,i2,Mstr[1:],txt)
+        f_png = '%s__%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],ii[0],ii[-1],Mstr[1:],txt)
         plt.savefig(f_png)
     plt.show()
 

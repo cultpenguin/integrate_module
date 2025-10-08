@@ -2149,7 +2149,7 @@ def synthetic_case(case='Wedge', **kwargs):
 
 
 
-def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400, r_data=2, useLog=True, doPlot=False, plFile=None):
+def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400, r_data=2, useLog=True, doPlot=False, plFile=None, showInfo=0):
     """Calculate weights based on distance and data similarity to a reference point.
 
     This function computes three sets of weights:
@@ -2191,7 +2191,7 @@ def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400,
     import numpy as np
     import matplotlib.pyplot as plt
     X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-    DATA = ig.load_data(f_data_h5)
+    DATA = ig.load_data(f_data_h5, showInfo=showInfo)
     id=0
     d_obs = DATA['d_obs'][id]
     d_std = DATA['d_std'][id]

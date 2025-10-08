@@ -2427,7 +2427,7 @@ def write_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='da
         # write attribute noise_model as 'multinomial'
         f['/%s/' % D_str].attrs['noise_model'] = 'multinomial'
         
-    return f_data_h5
+    return id, f_data_h5
 
 
 def check_data(f_data_h5='data.h5', **kwargs):
