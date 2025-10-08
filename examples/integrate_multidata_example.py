@@ -294,7 +294,7 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
 # %%
 P_single=0.99
 inflateTEMNoise = 4
-N_use = 200000
+N_use = 100000
 
 case = 'DAUGAARD'
 files = ig.get_case_data(case=case)
@@ -372,7 +372,7 @@ if N_use >0:
     f_prior_data_h5 = 'daugaard_merged_N%d.h5' % N_use
     if not os.path.exists(f_prior_data_h5):
         print("Creating prior file with %d samples: %s" % (N_use, f_prior_data_h5))
-        ig.copy_prior(f_prior_data_merged_full_h5, f_prior_data_h5, N_use=N_use, showInfo=2)
+        ig.copy_prior(f_prior_data_merged_full_h5, f_prior_data_h5, N_use=N_use, showInfo=1)
 else:   
     f_prior_data_h5 = f_prior_data_merged_full_h5
     print("Using full prior file: %s" % f_prior_data_h5)
