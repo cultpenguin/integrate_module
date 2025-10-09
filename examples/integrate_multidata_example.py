@@ -35,7 +35,7 @@ for file in os.listdir('.'):
         print("Removing existing file: %s" % file)
         os.remove(file)
 
-def compute_P_obs_discrete(depth_top, depth_bottom, lithology_obs, z, class_id, P_single=0.8, P_prior=None):
+def compute_P_obs_from_log(depth_top, depth_bottom, lithology_obs, z, class_id, P_single=0.8, P_prior=None):
     """
     Compute discrete observation probability matrix from depth intervals and lithology observations.
     
@@ -75,7 +75,7 @@ def compute_P_obs_discrete(depth_top, depth_bottom, lithology_obs, z, class_id, 
     >>> lithology_obs = [1, 2, 1]  # clay, sand, clay
     >>> z = np.arange(30)
     >>> class_id = [0, 1, 2]  # gravel, clay, sand
-    >>> P_obs = compute_P_obs_discrete(depth_top, depth_bottom, lithology_obs, z, class_id)
+    >>> P_obs = compute_P_obs_from_log(depth_top, depth_bottom, lithology_obs, z, class_id)
     >>> print(P_obs.shape)  # (3, 30)
     """
     import numpy as np
@@ -239,7 +239,7 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
     Examples
     --------
     >>> # Borehole observation at specific location
-    >>> P_obs = compute_P_obs_discrete(depth_top, depth_bottom, lithology, z, class_id)
+    >>> P_obs = compute_P_obs_from_log(depth_top, depth_bottom, lithology, z, class_id)
     >>> X_well, Y_well = 543000.0, 6175800.0
     >>> d_obs, i_use = Pobs_to_datagrid(P_obs, X_well, Y_well, 'survey_data.h5',
     ...                                  r_data=10, r_dis=100)
@@ -249,7 +249,7 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
     See Also
     --------
     rescale_P_obs_temperature : Temperature scaling function
-    compute_P_obs_discrete : Create P_obs from depth intervals
+    compute_P_obs_from_log : Create P_obs from depth intervals
     get_weight_from_position : Distance-based weighting function
     """
     import numpy as np
@@ -292,7 +292,8 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
     return d_obs, i_use
 
 # %%
-P_single=0.99
+P_single=0.5
+P_single=0.95
 inflateTEMNoise = 4
 N_use = 200000
 
@@ -498,7 +499,7 @@ for iw in np.arange(len(WELLS)):
     lithology_obs = W['lithology_obs']
     X_well = W['X']
     Y_well = W['Y']
-    P_obs = compute_P_obs_discrete(depth_top, depth_bottom, lithology_obs, z, class_id, P_single=P_single, P_prior=None)
+    P_obs = compute_P_obs_from_log(depth_top, depth_bottom, lithology_obs, z, class_id, P_single=P_single, P_prior=None)
     plt.figure()
     plt.imshow(P_obs)
 
@@ -610,12 +611,12 @@ id_use = [1] # tTEM
 #id_use = [5] # Well2 - compressed
 #id_use = [6] # Well1 - simple test -> cat 5
 #id_use = [7] # Well2 - simple test-> cat 5
-#id_use = [8] # well 1, dependent
+id_use = [8] # well 1, dependent
 #id_use = [9] # well 1, dependent compressed
 #id_use = [10] # well 2, dependent
 #id_use = [11] # well 2, dependent compressed
 
-id_use = [1] # tTEM 
+#id_use = [1] # tTEM 
 
 #id_use = [2,4] # Both wells independent
 #id_use = [3,5] # Both wells compressed
@@ -637,7 +638,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                 id_use = id_use,
                                 ip_range = id_line,
                                 nr=nr,
-                                parallel=True, 
+                                parallel=False, 
                                 autoT=True,
                                 T_base=1,
                                 updatePostStat=True)
@@ -650,3 +651,37 @@ ig.plot_profile(f_post_h5, im=im_plot, ii=id_line, gap_threshold=50, xaxis='x', 
 
 #%
 #ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy)
+
+
+#%% 
+import time 
+# f_data_h5 = 'DAUGAARD_AVG_gf4.h5'
+# f_prior_data_h5 ='daugaard_merged_N200000_IDEN_im2_id2.h5'
+
+DATA = ig.load_data(f_data_h5, showInfo=0)
+id = 11
+D_obs = DATA['d_obs'][id-1]
+id_prior = DATA['id_use'][id-1]
+i_use = DATA['i_use'][id-1]
+# find i_use==1 indices
+i_use_1 = np.where(i_use == 1)[0]
+
+D_prior, idx = ig.load_prior_data(f_prior_data_h5, showInfo=0)
+D = D_prior[id_prior-1]
+
+
+pmax = np.max(np.max(D_obs, axis =2 ), axis=1)
+# find index of max pmax, ignoring NaNs
+i_max = np.nanargmax(pmax)
+print("Max pmax at index %d" % i_max)
+d_obs = D_obs[i_max]
+
+t0= time.time()
+logL = ig.likelihood_multinomial(D,d_obs)
+t1 = time.time()
+print("Elapsed time: %.2f seconds" % (t1-t0))   
+t0= time.time()
+logL = ig.likelihood_multinomial_old(D,d_obs)
+t2 = time.time()
+print("Elapsed time: %.2f seconds" % (t2-t0))
+

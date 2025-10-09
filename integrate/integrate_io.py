@@ -622,7 +622,6 @@ def load_data(f_data_h5, id_arr=[], ii=None, **kwargs):
     DATA['id_use'] = id_use        
     # return noise_model, d_obs, d_std, Cd, id_arr
 
-
     if showInfo>0:
         for i in range(len(id_arr)):
             print('  - D%d: id_use=%d, %11s, Using %d/%d data' % (id_arr[i], id_use[i], noise_model[i],  DATA['d_obs'][i].shape[0],  DATA['d_obs'][i].shape[1]))

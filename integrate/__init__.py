@@ -6,6 +6,7 @@ from integrate.integrate_rejection import integrate_posterior_main
 from integrate.integrate_rejection import likelihood_gaussian_diagonal
 from integrate.integrate_rejection import likelihood_gaussian_full
 from integrate.integrate_rejection import likelihood_multinomial
+from integrate.integrate_rejection import likelihood_multinomial_old
 from integrate.integrate_rejection import select_subset_for_inversion
 from integrate.integrate_rejection import cleanup_shared_memory
 from integrate.integrate_rejection import reconstruct_shared_arrays
