@@ -588,7 +588,7 @@ def integrate_posterior_stats(f_post_h5='POST.h5', ip_range=None, **kwargs):
                 # Memory check: estimate required memory
                 mem_required_mb = len(ip_range) * nr * nm * 8 / 1e6  # 8 bytes per float64
 
-                if mem_required_mb < 1000:  # Less than 1 GB - use full vectorization
+                if mem_required_mb < 2000:  # Less than 2 GB - use full vectorization
                     # Extract all samples at once using advanced indexing
                     m_post_all = M_all[i_use[ip_range], :]  # (len(ip_range), nr, nm)
 
@@ -669,7 +669,7 @@ def integrate_posterior_stats(f_post_h5='POST.h5', ip_range=None, **kwargs):
                 # Memory check: estimate required memory
                 mem_required_mb = len(ip_range) * nr * nm * 8 / 1e6  # 8 bytes per float64
 
-                if mem_required_mb < 1000:  # Less than 1 GB - use full vectorization
+                if mem_required_mb < 2000:  # Less than 2 GB - use full vectorization
                     # Extract all samples at once using advanced indexing
                     m_post_all = M_all[i_use[ip_range], :]  # (len(ip_range), nr, nm)
 
