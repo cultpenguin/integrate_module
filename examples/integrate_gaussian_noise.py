@@ -333,6 +333,7 @@ for i in range(len(f_data_arr)):
     f_post_h5 = ig.integrate_rejection(f_prior_log_data_h5, f_data_h5, 
                                        parallel=parallel, 
                                        Ncpu=8,
+                                       nr=1000,
                                        updatePostStat = True,                                       
                                     )
     f_post_log_h5_arr.append(f_post_h5)
