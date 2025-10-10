@@ -204,7 +204,7 @@ for i_channel in range(n_channels):
             (X_valid[channel_valid], Y_valid[channel_valid]),
             d_obs_valid[channel_valid, i_channel],
             (Xg_flat, Yg_flat),
-            method='nearest',
+            method='linear',
             fill_value=np.nan
         )
 
