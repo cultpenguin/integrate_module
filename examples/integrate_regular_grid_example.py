@@ -71,7 +71,7 @@ plt.show()
 
 # %%
 # Grid parameters
-grid_spacing = 20.0  # meters between grid nodes
+grid_spacing = 10.0  # meters between grid nodes
 buffer = 100.0       # buffer around data extent
 
 # Create regular grid
@@ -136,8 +136,8 @@ print(f"  d_obs: {d_obs_orig.shape}")
 print(f"  d_std: {d_std_orig.shape}")
 
 # Distance-based uncertainty scaling parameters
-d_min = 25.0         # Distance below which std is unchanged
-d_max = 150.0        # Distance above which std is scaled by max factor
+d_min = 40.0         # Distance below which std is unchanged
+d_max = 80.0        # Distance above which std is scaled by max factor
 std_gain_factor = 100.0  # Maximum scaling factor for distant points
 
 # Build spatial tree for nearest neighbor search
@@ -204,7 +204,7 @@ for i_channel in range(n_channels):
             (X_valid[channel_valid], Y_valid[channel_valid]),
             d_obs_valid[channel_valid, i_channel],
             (Xg_flat, Yg_flat),
-            method='linear',
+            method='nearest',
             fill_value=np.nan
         )
 
@@ -239,9 +239,9 @@ plt.axis('equal')
 plt.legend()
 
 plt.subplot(1, 2, 2)
-scatter = plt.scatter(Xg_flat, Yg_flat, c=distance_scale, s=20, cmap='hot_r', vmin=1, vmax=std_gain_factor)
+scatter = plt.scatter(Xg_flat, Yg_flat, c=distance_scale, s=2, cmap='hot_r', vmin=1, vmax=std_gain_factor)
 plt.colorbar(scatter, label='Uncertainty scaling factor')
-plt.scatter(X, Y, c='red', s=1, alpha=0.5, label='TEM measurements')
+plt.scatter(X, Y, c='red', s=0.1, label='TEM measurements')
 plt.xlabel('X (m)')
 plt.ylabel('Y (m)')
 plt.title('Uncertainty Scaling Factor')
@@ -347,7 +347,7 @@ print(f"Using prior+data: {f_prior_data_h5}")
 
 # %%
 # Inversion parameters
-N_use = 100000  # Number of prior samples to use
+N_use = 2000000  # Number of prior samples to use
 nr = 1000         # Number of posterior samples per point
 autoT = True     # Automatic temperature estimation
 
@@ -410,6 +410,7 @@ profile_end =   [np.max(Xg), y_pro]
 
 
 buffer = 10.0  # Buffer distance for point selection
+buffer = 5.0  # Buffer distance for point selection
 
 # Extract profile from irregular grid
 X_irr, Y_irr, _, _ = ig.get_geometry(f_post_irregular_h5)
@@ -479,7 +480,7 @@ cmap, clim = ig.get_colormap_and_limits('resistivity')
 print("\nPlotting irregular grid profile...")
 ig.plot_profile(
     f_post_irregular_h5,
-    im=2,
+    im=1,
     ii=indices_irr,
     gap_threshold=50,
     xaxis='x',
@@ -496,7 +497,7 @@ plt.show()
 print("Plotting regular grid profile...")
 ig.plot_profile(
     f_post_regular_h5,
-    im=2,
+    im=1,
     ii=indices_reg,
     gap_threshold=grid_spacing*1.5,
     xaxis='x',
@@ -570,6 +571,7 @@ print(f"  Regular posterior: {f_post_regular_h5}")
 print("\n✓ Regular grid inversion example completed successfully!")
 
 # %%
+
 f_post_arr = [f_post_regular_h5,f_post_irregular_h5]
 for f_post_h5 in f_post_arr:
     ig.plot_feature_2d(f_post_h5,im=1,iz=20,key='Mean', s=18, uselog=1)
