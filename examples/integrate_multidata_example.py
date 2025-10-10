@@ -40,7 +40,9 @@ for file in os.listdir('.'):
 P_single=0.5
 P_single=0.95
 inflateTEMNoise = 4
-N_use = 200000
+N_use = 0
+r_data=10
+r_dis=500
 
 case = 'DAUGAARD'
 files = ig.get_case_data(case=case)
@@ -253,7 +255,7 @@ for iw in np.arange(len(WELLS)):
         doPlot=True
     else:
         doPlot=False
-    d_obs, i_use = ig.Pobs_to_datagrid(P_obs, X_well, Y_well, f_data_h5, r_data=10, r_dis=100, doPlot=doPlot)
+    d_obs, i_use = ig.Pobs_to_datagrid(P_obs, X_well, Y_well, f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=doPlot)
 
     #% Write to DATA file
     id_out, f_out = ig.write_data_multinomial(
@@ -323,7 +325,7 @@ for iw in np.arange(4):
 
 
     # apply P_obs to the whole data grid with distance based weighting
-    d_obs, i_use = Pobs_to_datagrid(P_obs, X_well, Y_well, f_data_h5, r_data=10, r_dis=100, doPlot=False)
+    d_obs, i_use = ig.Pobs_to_datagrid(P_obs, X_well, Y_well, f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=False)
 
     plt.figure()
     plt.imshow(P_obs)
@@ -363,12 +365,12 @@ id_use = [1] # tTEM
 
 id_use = [1] # tTEM 
 
-#id_use = [2,4] # Both wells independent
+id_use = [2,4] # Both wells independent
 #id_use = [3,5] # Both wells compressed
-id_use = [8,10] # Both wells, dependent
+#id_use = [8,10] # Both wells, dependent
 #id_use = [9,11] # Both wells, dependent compressed
 
-#id_use = [1,2,4] # TEM + both wells independent
+#d_use = [1,2,4] # TEM + both wells independent
 #id_use = [1,3,5] # TEM + both wells compressed
 #id_use = [1,8,10] # TEM + both wells, dependent
 
@@ -383,7 +385,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                 id_use = id_use,
                                 ip_range = id_line,
                                 nr=nr,
-                                parallel=False, 
+                                parallel=True, 
                                 autoT=True,
                                 T_base=1,
                                 updatePostStat=True)
@@ -399,34 +401,36 @@ ig.plot_profile(f_post_h5, im=im_plot, ii=id_line, gap_threshold=50, xaxis='x', 
 
 
 #%% 
-import time 
-# f_data_h5 = 'DAUGAARD_AVG_gf4.h5'
-# f_prior_data_h5 ='daugaard_merged_N200000_IDEN_im2_id2.h5'
+doTest= False
+if doTest:
+    import time 
+    # f_data_h5 = 'DAUGAARD_AVG_gf4.h5'
+    # f_prior_data_h5 ='daugaard_merged_N200000_IDEN_im2_id2.h5'
 
-DATA = ig.load_data(f_data_h5, showInfo=0)
-id = 11
-D_obs = DATA['d_obs'][id-1]
-id_prior = DATA['id_use'][id-1]
-i_use = DATA['i_use'][id-1]
-# find i_use==1 indices
-i_use_1 = np.where(i_use == 1)[0]
+    DATA = ig.load_data(f_data_h5, showInfo=0)
+    id = 11
+    D_obs = DATA['d_obs'][id-1]
+    id_prior = DATA['id_use'][id-1]
+    i_use = DATA['i_use'][id-1]
+    # find i_use==1 indices
+    i_use_1 = np.where(i_use == 1)[0]
 
-D_prior, idx = ig.load_prior_data(f_prior_data_h5, showInfo=0)
-D = D_prior[id_prior-1]
+    D_prior, idx = ig.load_prior_data(f_prior_data_h5, showInfo=0)
+    D = D_prior[id_prior-1]
 
 
-pmax = np.max(np.max(D_obs, axis =2 ), axis=1)
-# find index of max pmax, ignoring NaNs
-i_max = np.nanargmax(pmax)
-print("Max pmax at index %d" % i_max)
-d_obs = D_obs[i_max]
+    pmax = np.max(np.max(D_obs, axis =2 ), axis=1)
+    # find index of max pmax, ignoring NaNs
+    i_max = np.nanargmax(pmax)
+    print("Max pmax at index %d" % i_max)
+    d_obs = D_obs[i_max]
 
-t0= time.time()
-logL = ig.likelihood_multinomial(D,d_obs)
-t1 = time.time()
-print("Elapsed time: %.2f seconds" % (t1-t0))   
-t0= time.time()
-logL2 = ig.likelihood_multinomial_old(D,d_obs)
-t2 = time.time()
-print("Elapsed time: %.2f seconds" % (t2-t0))
+    t0= time.time()
+    logL = ig.likelihood_multinomial(D,d_obs)
+    t1 = time.time()
+    print("Elapsed time: %.2f seconds" % (t1-t0))   
+    t0= time.time()
+    logL2 = ig.likelihood_multinomial_old(D,d_obs)
+    t2 = time.time()
+    print("Elapsed time: %.2f seconds" % (t2-t0))
 

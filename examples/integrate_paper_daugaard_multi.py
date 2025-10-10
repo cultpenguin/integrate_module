@@ -24,6 +24,7 @@ parallel = ig.use_parallel(showInfo=1)
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+plt.ion()
 import h5py
 
 from integrate.integrate_io import copy_prior
@@ -36,9 +37,10 @@ hardcopy=True
 cmap, clim = ig.get_colormap_and_limits('resistivity')
 useMergedPrior=True
 useGenericPrior=False
-inflateNoise = 4
+inflateNoise = 2
 useLogData = False
 N_use = 2000000
+N_use_org= N_use
 #N_use = 100000
 #N_use = 100000
 
@@ -232,7 +234,7 @@ for i_prior in range(len(f_prior_data_h5_list)):
 # %%
 # Select how many prior model realizations (N) should be generated
 autoT=True
-nr=400
+nr=1000
 f_post_h5_list = []
 for i_prior in range(len(f_prior_data_h5_list)):
 
@@ -285,13 +287,13 @@ P_valley_check = P[:,:,0]
 # P_valley = np.exp(EV1 - log_sum)
 #P_valley = EV1/(EV1+EV2)
 # use cmap red white blue
-cmap = plt.get_cmap('RdBu_r')
+cmap_valley = plt.get_cmap('RdBu_r')
 plt.figure(figsize=(8, 6))
-plt.scatter(X, Y, c=P_valley, s=1, cmap=cmap, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
+plt.scatter(X, Y, c=P_valley, s=1, cmap=cmap_valley, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
 plt.savefig('DAUGAARD_Pvalley_EV_N%d_No%d_aT%d_l%d.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
 plt.figure(figsize=(8, 6))
-#plt.scatter(X, Y, c=P_valley_check[:,0], s=1, cmap=cmap, vmin=.45, vmax=.55);plt.colorbar(label='P(Valley)');plt.axis('equal')
-plt.scatter(X, Y, c=P_valley_check[:,0], s=1, cmap=cmap, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
+#plt.scatter(X, Y, c=P_valley_check[:,0], s=1, cmap=cmap_valley, vmin=.45, vmax=.55);plt.colorbar(label='P(Valley)');plt.axis('equal')
+plt.scatter(X, Y, c=P_valley_check[:,0], s=1, cmap=cmap_valley, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
 plt.savefig('DAUGAARD_Pvalley_MIXTURE_N%d_No%d_aT%d_l%d.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
 
 
@@ -379,7 +381,7 @@ if doEffectSize:
 f_post_h5_T_list = [] 
 if doTbase:
     T_base_arr = [1,2,10,20,100]
-    N_use = 100000
+    N_use = N_use_org
     for T_base in T_base_arr:
         for i_prior in range(len(f_prior_data_h5_list)):
 

@@ -2190,7 +2190,7 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
 
 
 
-def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_data_h5='data.h5', UTMX=None, UTMY=None, LINE=None, ELEVATION=None, delete_if_exist=False, name=None, **kwargs):
+def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, i_use=None, is_log = 0, f_data_h5='data.h5', UTMX=None, UTMY=None, LINE=None, ELEVATION=None, delete_if_exist=False, name=None, **kwargs):
     """
     Write observational data with Gaussian noise model to HDF5 file.
 
@@ -2214,6 +2214,10 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
         If provided, takes precedence over D_std (default is []).
     id : int, optional
         Dataset identifier for HDF5 group naming ('/D{id}', default is 1).
+    i_use : numpy.ndarray, optional
+        Binary mask indicating which data points to use in inversion, shape (N_stations,) or (N_stations,1).
+        Values of 1 indicate data should be used, 0 indicates data should be excluded.
+        If None, creates array of ones (all data used by default, default is None).
     is_log : int, optional
         Flag indicating logarithmic data scaling (0=linear, 1=log, default is 0).
     f_data_h5 : str, optional
@@ -2308,6 +2312,14 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
     ns,nd=D_obs.shape
     print('Data has %d stations and %d channels' % (ns,nd))
 
+    # Handle i_use parameter
+    if i_use is None:
+        i_use = np.ones((ns, 1))
+    else:
+        i_use = np.atleast_2d(i_use)
+        if i_use.shape[0] == 1 and i_use.shape[1] > 1:
+            i_use = i_use.T
+
     # Handle geometry data
     coord_provided = any(coord is not None for coord in [UTMX, UTMY, LINE, ELEVATION])
     
@@ -2362,6 +2374,8 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
             print('Adding group %s:%s ' % (f_data_h5,D_str))
 
         f.create_dataset('/%s/d_obs' % D_str, data=D_obs)
+        f.create_dataset('/%s/i_use' % D_str, data=i_use)
+
         # Write either Cd or d_std
         if len(Cd) == 0:
             f.create_dataset('/%s/d_std' % D_str, data=D_std)

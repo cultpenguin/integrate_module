@@ -299,6 +299,140 @@ def integrate_update_prior_attributes(f_prior_h5, **kwargs):
                         dataset.attrs['class_name'] = [str(x) for x in class_id]
 
 
+def _compute_continuous_stats_vectorized(m_post_all):
+    """
+    Compute continuous statistics for all data points simultaneously.
+
+    This function vectorizes the computation of mean, median, standard deviation,
+    and log-mean statistics across all data points, eliminating the need for
+    Python loops and providing significant performance improvements.
+
+    Parameters
+    ----------
+    m_post_all : ndarray
+        Posterior samples for all data points, shape (nsounding, nr, nm)
+        where nsounding is the number of data points, nr is the number of
+        samples per data point, and nm is the number of model parameters.
+
+    Returns
+    -------
+    dict
+        Dictionary containing computed statistics:
+        - 'Mean': Mean values, shape (nsounding, nm)
+        - 'Median': Median values, shape (nsounding, nm)
+        - 'LogMean': Geometric mean (exp of mean of logs), shape (nsounding, nm)
+        - 'Std': Standard deviation of log10 values, shape (nsounding, nm)
+
+    Notes
+    -----
+    All computations are performed along axis=1 (nr samples dimension),
+    resulting in statistics for each data point and parameter combination.
+    Handles negative and zero values appropriately for logarithmic operations.
+
+    Examples
+    --------
+    >>> m_post = np.random.randn(1200, 400, 40)  # 1200 points, 400 samples, 40 params
+    >>> stats = _compute_continuous_stats_vectorized(m_post)
+    >>> stats['Mean'].shape
+    (1200, 40)
+    """
+    stats = {}
+
+    # Compute statistics along axis=1 (nr samples)
+    # Mean: simple average across samples
+    stats['Mean'] = np.mean(m_post_all, axis=1)
+
+    # Median: 50th percentile across samples
+    stats['Median'] = np.median(m_post_all, axis=1)
+
+    # LogMean: geometric mean (exp of mean of logs)
+    # Handle potential negative values by taking absolute value or masking
+    with np.errstate(invalid='ignore', divide='ignore'):
+        log_values = np.log(np.abs(m_post_all))
+        stats['LogMean'] = np.exp(np.mean(log_values, axis=1))
+
+    # Std: standard deviation of log10 values
+    # Clamp minimum value to 1e-10 to avoid log(0)
+    with np.errstate(invalid='ignore', divide='ignore'):
+        log10_values = np.log10(np.maximum(m_post_all, 1e-10))
+        stats['Std'] = np.std(log10_values, axis=1)
+
+    return stats
+
+
+def _compute_discrete_stats_vectorized(m_post_all, class_id, n_classes, nr):
+    """
+    Compute discrete statistics for all data points simultaneously.
+
+    This function vectorizes the computation of class probabilities, mode,
+    and entropy for discrete/categorical data across all data points.
+
+    Parameters
+    ----------
+    m_post_all : ndarray
+        Posterior samples for all data points, shape (nsounding, nr, nm)
+        containing class identifiers (integers).
+    class_id : ndarray
+        Array of unique class identifiers, shape (n_classes,).
+    n_classes : int
+        Number of classes.
+    nr : int
+        Number of samples per data point.
+
+    Returns
+    -------
+    dict
+        Dictionary containing computed statistics:
+        - 'P': Class probabilities, shape (nsounding, n_classes, nm)
+        - 'Mode': Most probable class, shape (nsounding, nm)
+        - 'Entropy': Information entropy, shape (nsounding, nm)
+
+    Notes
+    -----
+    Uses vectorized comparison operations to avoid nested loops over classes.
+    Entropy is normalized by n_classes (using base=n_classes in scipy.stats.entropy).
+
+    Examples
+    --------
+    >>> m_post = np.random.randint(0, 5, (1200, 400, 40))  # 5 classes
+    >>> class_id = np.array([0, 1, 2, 3, 4])
+    >>> stats = _compute_discrete_stats_vectorized(m_post, class_id, 5, 400)
+    >>> stats['P'].shape
+    (1200, 5, 40)
+    """
+    import scipy as sp
+
+    nsounding, nr, nm = m_post_all.shape
+    stats = {}
+
+    # Initialize probability array
+    M_P = np.zeros((nsounding, n_classes, nm))
+
+    # Vectorized class probability computation
+    # For each class, compute mean of (m_post_all == class_val) across samples
+    for ic, class_val in enumerate(class_id):
+        # Broadcasting comparison: (nsounding, nr, nm) == scalar
+        # Mean along axis=1 gives probability: (nsounding, nm)
+        M_P[:, ic, :] = np.mean(m_post_all == class_val, axis=1)
+
+    stats['P'] = M_P
+
+    # Mode: class with highest probability
+    # argmax along axis=1 gives index of most probable class
+    mode_indices = np.argmax(M_P, axis=1)  # (nsounding, nm)
+    stats['Mode'] = class_id[mode_indices]
+
+    # Entropy: compute for each data point
+    # scipy.stats.entropy requires axis specification
+    M_entropy = np.zeros((nsounding, nm))
+    for iid in range(nsounding):
+        M_entropy[iid, :] = sp.stats.entropy(M_P[iid, :, :], base=n_classes)
+
+    stats['Entropy'] = M_entropy
+
+    return stats
+
+
 def integrate_posterior_stats(f_post_h5='POST.h5', ip_range=None, **kwargs):
     """
     Compute posterior statistics for datasets in an HDF5 file.
@@ -437,25 +571,55 @@ def integrate_posterior_stats(f_post_h5='POST.h5', ip_range=None, **kwargs):
                                 print('Creating %s in %s' % (dset,f_post_h5 ))
                             f_post.create_dataset(dset, (nsounding,nm))
 
-                #if dataset.size <= 1e6:  # arbitrary threshold for loading all data into memory
+                # Load all prior data into memory
                 M_all = dataset[:]
 
-                # Only iterate over ip_range
-                for iid in tqdm(ip_range, mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
-                    ir = np.int64(i_use[iid,:])
-                    m_post = M_all[ir,:]
+                # VECTORIZED COMPUTATION (Phase 1 optimization)
+                # Extract all posterior samples at once: (len(ip_range), nr, nm)
+                # Use advanced indexing to get samples for all data points simultaneously
+                if showInfo > 0:
+                    print(f'Computing statistics (vectorized) for {len(ip_range)} data points...')
 
-                    m_logmean = np.exp(np.mean(np.log(m_post), axis=0))
-                    m_mean = np.mean(m_post, axis=0)
-                    m_median = np.median(m_post, axis=0)
-                    # Handle negative and zero values when taking log10 for standard deviation
-                    with np.errstate(invalid='ignore', divide='ignore'):
-                        m_std = np.std(np.log10(np.maximum(m_post, 1e-10)), axis=0)
+                # Extract samples for all data points in ip_range
+                # i_use[ip_range] has shape (len(ip_range), nr)
+                # M_all[i_use[ip_range]] would ideally give (len(ip_range), nr, nm)
+                # However, advanced indexing requires explicit loop or different approach
 
-                    M_logmean[iid,:] = m_logmean
-                    M_mean[iid,:] = m_mean
-                    M_median[iid,:] = m_median
-                    M_std[iid,:] = m_std
+                # Memory check: estimate required memory
+                mem_required_mb = len(ip_range) * nr * nm * 8 / 1e6  # 8 bytes per float64
+
+                if mem_required_mb < 1000:  # Less than 1 GB - use full vectorization
+                    # Extract all samples at once using advanced indexing
+                    m_post_all = M_all[i_use[ip_range], :]  # (len(ip_range), nr, nm)
+
+                    # Compute all statistics using vectorized helper function
+                    stats = _compute_continuous_stats_vectorized(m_post_all)
+
+                    # Assign results to output arrays
+                    M_logmean[ip_range, :] = stats['LogMean']
+                    M_mean[ip_range, :] = stats['Mean']
+                    M_median[ip_range, :] = stats['Median']
+                    M_std[ip_range, :] = stats['Std']
+
+                else:
+                    # Fallback to sequential processing for very large datasets
+                    if showInfo > 0:
+                        print(f'  (using sequential fallback due to memory: {mem_required_mb:.0f} MB)')
+
+                    for iid in tqdm(ip_range, mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
+                        ir = np.int64(i_use[iid,:])
+                        m_post = M_all[ir,:]
+
+                        m_logmean = np.exp(np.mean(np.log(m_post), axis=0))
+                        m_mean = np.mean(m_post, axis=0)
+                        m_median = np.median(m_post, axis=0)
+                        with np.errstate(invalid='ignore', divide='ignore'):
+                            m_std = np.std(np.log10(np.maximum(m_post, 1e-10)), axis=0)
+
+                        M_logmean[iid,:] = m_logmean
+                        M_mean[iid,:] = m_mean
+                        M_median[iid,:] = m_median
+                        M_std[iid,:] = m_std
 
                 f_post['/%s/%s' % (name,'LogMean')][:] = M_logmean
                 f_post['/%s/%s' % (name,'Mean')][:] = M_mean
@@ -494,27 +658,50 @@ def integrate_posterior_stats(f_post_h5='POST.h5', ip_range=None, **kwargs):
                                 print('Creating %s' % dset)
                             f_post.create_dataset(dset, (nsounding,n_classes,nm))
 
+                # Load all prior data into memory
                 M_all = dataset[:]
 
-                # Only iterate over ip_range
-                for iid in tqdm(ip_range, mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
+                # VECTORIZED COMPUTATION (Phase 2 optimization)
+                # Compute discrete statistics for all data points simultaneously
+                if showInfo > 0:
+                    print(f'Computing discrete statistics (vectorized) for {len(ip_range)} data points...')
 
-                    # Get the indices of the rows to use
-                    ir = np.int64(i_use[iid,:])
+                # Memory check: estimate required memory
+                mem_required_mb = len(ip_range) * nr * nm * 8 / 1e6  # 8 bytes per float64
 
-                    m_post = M_all[ir,:]
+                if mem_required_mb < 1000:  # Less than 1 GB - use full vectorization
+                    # Extract all samples at once using advanced indexing
+                    m_post_all = M_all[i_use[ip_range], :]  # (len(ip_range), nr, nm)
 
-                    # Compute the class probability
-                    n_count = np.zeros((n_classes,nm))
-                    for ic in range(n_classes):
-                        n_count[ic,:]=np.sum(class_id[ic]==m_post, axis=0)/nr
-                    M_P[iid,:,:] = n_count
+                    # Compute all discrete statistics using vectorized helper function
+                    stats = _compute_discrete_stats_vectorized(m_post_all, class_id, n_classes, nr)
 
-                    # Compute the mode
-                    M_mode[iid,:] = class_id[np.argmax(n_count, axis=0)]
+                    # Assign results to output arrays
+                    M_P[ip_range, :, :] = stats['P']
+                    M_mode[ip_range, :] = stats['Mode']
+                    M_entropy[ip_range, :] = stats['Entropy']
 
-                    # Compute the entropy
-                    M_entropy[iid,:]=sp.stats.entropy(n_count, base=n_classes)
+                else:
+                    # Fallback to sequential processing for very large datasets
+                    if showInfo > 0:
+                        print(f'  (using sequential fallback due to memory: {mem_required_mb:.0f} MB)')
+
+                    for iid in tqdm(ip_range, mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
+                        # Get the indices of the rows to use
+                        ir = np.int64(i_use[iid,:])
+                        m_post = M_all[ir,:]
+
+                        # Compute the class probability
+                        n_count = np.zeros((n_classes,nm))
+                        for ic in range(n_classes):
+                            n_count[ic,:]=np.sum(class_id[ic]==m_post, axis=0)/nr
+                        M_P[iid,:,:] = n_count
+
+                        # Compute the mode
+                        M_mode[iid,:] = class_id[np.argmax(n_count, axis=0)]
+
+                        # Compute the entropy
+                        M_entropy[iid,:]=sp.stats.entropy(n_count, base=n_classes)
 
                 f_post['/%s/%s' % (name,'Mode')][:] = M_mode
                 f_post['/%s/%s' % (name,'Entropy')][:] = M_entropy

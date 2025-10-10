@@ -66,7 +66,7 @@ D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
 # ## Plot the reference model and data
 
 # %%
-
+clim   = [min(rho)*0.8, max(rho)*1.25]
 
 plt.subplot(2,1,1)
 xx_ref, zz_ref = np.meshgrid(x_ref, z_ref)
@@ -173,7 +173,7 @@ if doTest:
     #d_obs[11]=np.nan
     d_std = D_std[id]
 
-    Cd_single = np.diag(d_std**2)
+    C_single = np.diag(d_std**2)+1e-18
 
     with h5py.File(f_prior_data_h5, 'r') as f:
         D = f['/D1'][:]
@@ -247,7 +247,8 @@ for f_data_h5 in f_data_h5_arr:
     f_post_h5_arr.append(f_post_h5)
     
 
-print(t_elapsed)
+for i in range(len(name_arr)):
+    print('%s: t_elapsed = %f s' % (name_arr[i], t_elapsed[i]))
 
 # %%
 # %%
