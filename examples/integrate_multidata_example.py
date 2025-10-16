@@ -292,9 +292,9 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
     return d_obs, i_use
 
 # %%
-P_single=0.99
+P_single=0.5
 inflateTEMNoise = 4
-N_use = 200000
+N_use = 50000
 
 case = 'DAUGAARD'
 files = ig.get_case_data(case=case)
@@ -615,14 +615,14 @@ id_use = [1] # tTEM
 #id_use = [10] # well 2, dependent
 #id_use = [11] # well 2, dependent compressed
 
-id_use = [1] # tTEM 
+#id_use = [1] # tTEM 
 
 #id_use = [2,4] # Both wells independent
 #id_use = [3,5] # Both wells compressed
 #id_use = [8,10] # Both wells, dependent
 #id_use = [9,11] # Both wells, dependent compressed
 
-#id_use = [1,2,4] # TEM + both wells independent
+id_use = [1,2,4] # TEM + both wells independent
 #id_use = [1,3,5] # TEM + both wells compressed
 #id_use = [1,8,10] # TEM + both wells, dependent
 
@@ -648,5 +648,5 @@ im_plot = 2 # Lithology
 #im_plot = 3 # Hypothesis
 ig.plot_profile(f_post_h5, im=im_plot, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy)
 
-#%
-#ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy)
+# %%%
+ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy)
