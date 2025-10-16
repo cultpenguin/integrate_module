@@ -593,7 +593,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
     return
 
 
-def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcopy=False, ax=None, cmap='jet', **kwargs):
+def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', hardcopy=False, ax=None, cmap='jet', **kwargs):
     """
     Plot survey geometry data from INTEGRATE HDF5 files.
 
@@ -699,11 +699,12 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
                 # get filename without extension        
                 f_png = '%s_%d_%d_LINE.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
                 plt.savefig(f_png)
-            plt.show()
+            #plt.show()
         else:
             current_ax.set_title('LINE')
             current_ax.set_aspect('equal')
-    
+        if pl == 'all':
+            plt.show()
 
     if ax is None and ((pl=='all') or (pl=='ELEVATION')):
         plt.figure(1, figsize=(20, 10))
@@ -720,7 +721,11 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             # get filename without extension        
             f_png = '%s_%d_%d_ELEVATION.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
             plt.savefig(f_png)
-        plt.show()
+
+        if pl == 'all':
+            plt.show()
+    
+
     elif ax is not None and pl == 'ELEVATION':
         scatter = ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap=cmap,**kwargs)            
         ax.grid()
@@ -728,6 +733,9 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         ax.set_ylabel('Y')
         ax.set_title('ELEVATION')
         ax.set_aspect('equal')
+
+        if pl == 'all':
+            plt.show()
 
     if ax is None and ((pl=='all') or (pl=='id')):
         plt.figure(1, figsize=(20, 10))
@@ -744,6 +752,10 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             # get filename without extension        
             f_png = '%s_%d_%d_id.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
             plt.savefig(f_png)
+
+        if pl == 'all':
+            plt.show()
+
     elif ax is not None and pl == 'id':
         scatter = ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap=cmap,**kwargs)
         ax.grid()
@@ -752,6 +764,8 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         ax.set_title('id')
         ax.set_aspect('equal')
 
+        if pl == 'all':
+            plt.show()
     if ax is None and ((pl=='all') or (pl=='NDATA')):
         # Get number of data using the new function
         try:
@@ -782,6 +796,8 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         except Exception as e:
             print(f"Warning: Could not plot number of data: {e}")
             print("This requires valid d_obs datasets in the HDF5 file")
+        if pl == 'all':
+            plt.show()
 
     elif ax is not None and pl == 'NDATA':
         # Get number of data using the new function
@@ -805,6 +821,8 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             print(f"Warning: Could not plot number of data: {e}")
             print("This requires valid d_obs datasets in the HDF5 file")
 
+        if pl == 'all':
+            plt.show()
     return
 
 

@@ -4,8 +4,10 @@ from integrate.integrate_rejection import integrate_rejection_range
 from integrate.integrate_rejection import integrate_posterior_chunk
 from integrate.integrate_rejection import integrate_posterior_main
 from integrate.integrate_rejection import likelihood_gaussian_diagonal
+from integrate.integrate_rejection import likelihood_gaussian_diagonal_old
 from integrate.integrate_rejection import likelihood_gaussian_full
 from integrate.integrate_rejection import likelihood_multinomial
+from integrate.integrate_rejection import likelihood_multinomial_old
 from integrate.integrate_rejection import select_subset_for_inversion
 from integrate.integrate_rejection import cleanup_shared_memory
 from integrate.integrate_rejection import reconstruct_shared_arrays
@@ -36,6 +38,9 @@ from integrate.integrate import get_hypothesis_probability
 from integrate.integrate import sample_posterior_multiple_hypotheses
 from integrate.integrate import timing_compute
 from integrate.integrate import timing_plot
+from integrate.integrate import compute_P_obs_from_log
+from integrate.integrate import rescale_P_obs_temperature   
+from integrate.integrate import Pobs_to_datagrid
 
 from integrate.integrate_io import copy_prior
 from integrate.integrate_io import load_prior
