@@ -68,7 +68,7 @@ D_obs = D_ref + D_noise
 
 # Write to hdf5 file
 # Add option to reomve existing file before writing!
-f_data_h5 = ig.write_data_gaussian(D_obs, D_std = D_std, f_data_h5 = f_data_h5, id=1, showInfo=1)
+f_data_h5 = ig.save_data_gaussian(D_obs, D_std = D_std, f_data_h5 = f_data_h5, id=1, showInfo=1)
 #check_data(f_data_h5)
 # %%
 # Plot the model and data
@@ -91,7 +91,7 @@ ig.plot_data(f_data_h5)
 # ## Create prior model and data
 
 # %%
-N=500000 # sample size 
+N=50000 # sample size 
 RHO_dist='log-uniform'
 #RHO_dist='uniform'
 RHO_min=0.8*min(rho)

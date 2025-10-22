@@ -62,7 +62,7 @@ lD_std_down = np.abs(np.log10(D_obs-D_std)-lD_obs)
 corr_std = 0.02
 lD_std = np.abs((lD_std_up+lD_std_down)/2) + corr_std
 
-ig.write_data_gaussian(lD_obs, D_std = lD_std, f_data_h5 = f_data_log_h5, id=1, showInfo=0, is_log=1)
+ig.save_data_gaussian(lD_obs, D_std = lD_std, f_data_h5 = f_data_log_h5, id=1, showInfo=0, is_log=1)
 
 lDATA = ig.load_data(f_data_log_h5)
 

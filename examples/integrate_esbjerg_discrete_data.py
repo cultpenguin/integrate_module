@@ -249,10 +249,10 @@ for iw in range(3): #len(well_obs)):
         d_obs[i] = P_post
 
     print('Using %s of %d data' % (np.sum(i_use), nd))        
-    #ig.write_data_multinomial(d_obs, f_data_h5=f_data_h5, i_use=i_use, id=iw+1+1)
-    ig.write_data_multinomial(d_obs, f_data_h5=f_data_h5, i_use=i_use, id=iw+1+1, id_use=2)
+    #ig.save_data_multinomial(d_obs, f_data_h5=f_data_h5, i_use=i_use, id=iw+1+1)
+    ig.save_data_multinomial(d_obs, f_data_h5=f_data_h5, i_use=i_use, id=iw+1+1, id_use=2)
 
-#ig.write_data_gaussian
+#ig.save_data_gaussian
 
 plt.figure()
 plt.plot(w)

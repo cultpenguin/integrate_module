@@ -244,7 +244,7 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
     >>> d_obs, i_use = Pobs_to_datagrid(P_obs, X_well, Y_well, 'survey_data.h5',
     ...                                  r_data=10, r_dis=100)
     >>> # Write to data file
-    >>> ig.write_data_multinomial(d_obs, i_use=i_use, id=2, f_data_h5='survey_data.h5')
+    >>> ig.save_data_multinomial(d_obs, i_use=i_use, id=2, f_data_h5='survey_data.h5')
 
     See Also
     --------
@@ -402,7 +402,7 @@ if inflateTEMNoise > 0:
     f_data_old_h5 = f_data_h5
     f_data_h5 = 'DAUGAARD_AVG_gf%g.h5' % (gf) 
     ig.copy_hdf5_file(f_data_old_h5, f_data_h5)
-    ig.write_data_gaussian(D_obs, D_std=D_std, f_data_h5=f_data_h5, file_gex=file_gex)
+    ig.save_data_gaussian(D_obs, D_std=D_std, f_data_h5=f_data_h5, file_gex=file_gex)
 
 
 #%% DESCRIBE THE WELL DATA
@@ -510,7 +510,7 @@ for iw in np.arange(len(WELLS)):
     d_obs, i_use = Pobs_to_datagrid(P_obs, X_well, Y_well, f_data_h5, r_data=10, r_dis=100, doPlot=doPlot)
 
     #% Write to DATA file
-    id_out, f_out = ig.write_data_multinomial(
+    id_out, f_out = ig.save_data_multinomial(
         D_obs=d_obs,           # Shape: (nd, nclass, nm)
         i_use=i_use,           # Shape: (nd, 1) - binary mask
         id=2+iw,                  # Data ID (will create /D2/ in DATA.h5)
@@ -591,7 +591,7 @@ for iw in np.arange(4):
 
     # Next save the P_obs to a data file, with the correct prior id
     # Save P_obs to data file
-    id_out, f_out = ig.write_data_multinomial(
+    id_out, f_out = ig.save_data_multinomial(
         D_obs=d_obs,           # Shape: (nd, nclass, nm)
         i_use=i_use,           # Shape: (nd, 1) - binary mask
         id_use=id_use,              # Which PRIOR data to use (D2 from prior file)

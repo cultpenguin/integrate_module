@@ -268,7 +268,7 @@ i_use[distances > d_max] = 0
 f_data_regular_h5 = 'DATA_regular.h5'
 
 # Write regular grid data with geometry (all in one call)
-ig.write_data_gaussian(
+ig.save_data_gaussian(
     d_obs_grid,
     D_std=d_std_grid,
     f_data_h5=f_data_regular_h5,
