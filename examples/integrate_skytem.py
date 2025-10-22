@@ -70,7 +70,7 @@ ALT_sample = sp.stats.chi2.rvs(*ALT_chi2, size=ns)
 
 
 #%%
-doPlot = False
+doPlot = True
 if doPlot:
     plt.figure()
     plt.scatter(UTMX, UTMY, c=ELEV, cmap='jet', s=1)
@@ -142,15 +142,18 @@ with h5py.File(f_prior_h5, 'r') as f:
 M,idx = ig.load_prior_model(f_prior_h5)
 M1 = M[0]
 M2 = M[1]
-M3 = ALT_sample[0:N]
-# force M3 to be a 2d numpy array
-M3 = M3.reshape(-1,1)
+M3 = M[2]
 
-# update f_prior_h5 with 'M3' data, and M3/x attribute
+
+M4 = ALT_sample[0:N]
+# force M3 to be a 2d numpy array
+M4 = M4.reshape(-1,1)
+
+# update f_prior_h5 with 'M4' data, and M4/x attribute
 with h5py.File(f_prior_h5, 'a') as f:
-    f['M3'] = M3
-    f['M3'].attrs['x'] = x
-    f['M3'].attrs['is_discrete'] = 0
+    f['M4'] = M4
+    f['M4'].attrs['x'] = x
+    f['M4'].attrs['is_discrete'] = 0
 
 #if doPlot:
 ig.plot_prior_stats(f_prior_h5)
@@ -160,14 +163,14 @@ if doPlot:
 # %% 
 thickness = np.diff(x)
 #D_ref = ig.forward_gaaem_old(C=1./M1.T, thickness=thickness, file_gex=file_gex, tx_height=ALT_sample)
-D_ref = ig.forward_gaaem(C=1./M1, thickness=thickness, file_gex=file_gex, tx_height=M3.flatten())
+D_ref = ig.forward_gaaem(C=1./M1, thickness=thickness, file_gex=file_gex, tx_height=M4.flatten())
 
 # %% Compute prior DATA
 # Remember to set the id of the prior model parameters with ALTITUDE!!
 #f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=False, im=1, id=1)
 #f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=True, im=1, id=1)
 #f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=False, im=1, id=1, im_height=3)
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=True, im=1, id=1, im_height=3)
+f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=True, im=1, id=1, im_height=4)
 with h5py.File(f_prior_data_h5, 'r') as f:
     D1 = f['D1'][:]
 
