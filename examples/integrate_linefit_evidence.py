@@ -51,7 +51,7 @@ P_org = mat['P_hyp'].flatten()
 P_mix_org = mat['P_hyp_mix'].flatten()
 
 f_data_h5='d_linefit.h5'
-ig.write_data_gaussian(d_obs, D_std=d_std, f_data_h5=f_data_h5, id=1, showInfo=2)
+ig.save_data_gaussian(d_obs, D_std=d_std, f_data_h5=f_data_h5, id=1, showInfo=2)
 
 print("N=", mat['d_sim_mix'].shape[0])
 print("d_std[0]=", d_std[0,0])

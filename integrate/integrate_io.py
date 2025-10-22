@@ -2190,9 +2190,9 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
 
 
 
-def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, i_use=None, is_log = 0, f_data_h5='data.h5', UTMX=None, UTMY=None, LINE=None, ELEVATION=None, delete_if_exist=False, name=None, **kwargs):
+def save_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, i_use=None, is_log = 0, f_data_h5='data.h5', UTMX=None, UTMY=None, LINE=None, ELEVATION=None, delete_if_exist=False, name=None, **kwargs):
     """
-    Write observational data with Gaussian noise model to HDF5 file.
+    Save observational data with Gaussian noise model to HDF5 file.
 
     Creates HDF5 datasets for electromagnetic or other geophysical measurements
     assuming Gaussian-distributed uncertainties. Handles both diagonal and full
@@ -2392,9 +2392,9 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, i_use=None, is
     
     return f_data_h5
 
-def write_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='data.h5', **kwargs):
+def save_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='data.h5', **kwargs):
     """
-    Writes observed data to an HDF5 file in a specified group with a multinomial noise model.
+    Save observed data to an HDF5 file in a specified group with a multinomial noise model.
 
     :param D_obs: The observed data array to be written to the file.
     :type D_obs: numpy.ndarray
@@ -3385,6 +3385,60 @@ def read_usf_mul(directory: str = ".", ext: str = ".usf") -> List[Dict[str, Any]
 
     print(f"Read {len(usf_list)} out of {len(usf_files)} files.")
     return D_obs, D_rel_err, usf_list
+
+
+# ============================================================================
+# DEPRECATED FUNCTIONS - Maintained for backward compatibility
+# ============================================================================
+
+def write_data_gaussian(*args, **kwargs):
+    """
+    [DEPRECATED] Use save_data_gaussian() instead.
+
+    This function has been renamed to save_data_gaussian() to maintain consistency
+    with the HDF5 I/O naming convention (load_* / save_* for HDF5 operations).
+
+    The write_data_gaussian() function will be removed in a future version.
+    Please update your code to use save_data_gaussian() instead.
+
+    See Also
+    --------
+    save_data_gaussian : The new function name for this functionality
+    """
+    import warnings
+    warnings.warn(
+        "write_data_gaussian() is deprecated and will be removed in a future version. "
+        "Please use save_data_gaussian() instead. "
+        "This change maintains consistency with HDF5 I/O naming conventions (load_*/save_*).",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return save_data_gaussian(*args, **kwargs)
+
+
+def write_data_multinomial(*args, **kwargs):
+    """
+    [DEPRECATED] Use save_data_multinomial() instead.
+
+    This function has been renamed to save_data_multinomial() to maintain consistency
+    with the HDF5 I/O naming convention (load_* / save_* for HDF5 operations).
+
+    The write_data_multinomial() function will be removed in a future version.
+    Please update your code to use save_data_multinomial() instead.
+
+    See Also
+    --------
+    save_data_multinomial : The new function name for this functionality
+    """
+    import warnings
+    warnings.warn(
+        "write_data_multinomial() is deprecated and will be removed in a future version. "
+        "Please use save_data_multinomial() instead. "
+        "This change maintains consistency with HDF5 I/O naming conventions (load_*/save_*).",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return save_data_multinomial(*args, **kwargs)
 
 
 

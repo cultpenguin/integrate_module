@@ -57,7 +57,7 @@ if inflateNoise != 1:
     f_data_old_h5 = f_data_h5
     f_data_h5 = 'DAUGAARD_AVG_gf%g.h5' % (gf) 
     ig.copy_hdf5_file(f_data_old_h5, f_data_h5)
-    ig.write_data_gaussian(D_obs, D_std=D_std, f_data_h5=f_data_h5, file_gex=file_gex)
+    ig.save_data_gaussian(D_obs, D_std=D_std, f_data_h5=f_data_h5, file_gex=file_gex)
 
     #ig.plot_data(f_data_old_h5)
     #ig.plot_data(f_data_h5)
