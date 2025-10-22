@@ -480,7 +480,7 @@ cmap, clim = ig.get_colormap_and_limits('resistivity')
 print("\nPlotting irregular grid profile...")
 ig.plot_profile(
     f_post_irregular_h5,
-    im=1,
+    im=2,
     ii=indices_irr,
     gap_threshold=50,
     xaxis='x',
@@ -497,7 +497,7 @@ plt.show()
 print("Plotting regular grid profile...")
 ig.plot_profile(
     f_post_regular_h5,
-    im=1,
+    im=2,
     ii=indices_reg,
     gap_threshold=grid_spacing*1.5,
     xaxis='x',
@@ -575,4 +575,9 @@ print("\n✓ Regular grid inversion example completed successfully!")
 f_post_arr = [f_post_regular_h5,f_post_irregular_h5]
 for f_post_h5 in f_post_arr:
     ig.plot_feature_2d(f_post_h5,im=1,iz=20,key='Mean', s=18, uselog=1)
+    plt.show()
+    
+for f_post_h5 in f_post_arr:
+   
+    ig.plot_feature_2d(f_post_h5,im=2,iz=10,key='Mode', s=18, uselog=0)
     plt.show()
