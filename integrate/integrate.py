@@ -299,19 +299,157 @@ def integrate_update_prior_attributes(f_prior_h5, **kwargs):
                         dataset.attrs['class_name'] = [str(x) for x in class_id]
 
 
-def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
+def _compute_continuous_stats_vectorized(m_post_all):
+    """
+    Compute continuous statistics for all data points simultaneously.
+
+    This function vectorizes the computation of mean, median, standard deviation,
+    and log-mean statistics across all data points, eliminating the need for
+    Python loops and providing significant performance improvements.
+
+    Parameters
+    ----------
+    m_post_all : ndarray
+        Posterior samples for all data points, shape (nsounding, nr, nm)
+        where nsounding is the number of data points, nr is the number of
+        samples per data point, and nm is the number of model parameters.
+
+    Returns
+    -------
+    dict
+        Dictionary containing computed statistics:
+        - 'Mean': Mean values, shape (nsounding, nm)
+        - 'Median': Median values, shape (nsounding, nm)
+        - 'LogMean': Geometric mean (exp of mean of logs), shape (nsounding, nm)
+        - 'Std': Standard deviation of log10 values, shape (nsounding, nm)
+
+    Notes
+    -----
+    All computations are performed along axis=1 (nr samples dimension),
+    resulting in statistics for each data point and parameter combination.
+    Handles negative and zero values appropriately for logarithmic operations.
+
+    Examples
+    --------
+    >>> m_post = np.random.randn(1200, 400, 40)  # 1200 points, 400 samples, 40 params
+    >>> stats = _compute_continuous_stats_vectorized(m_post)
+    >>> stats['Mean'].shape
+    (1200, 40)
+    """
+    stats = {}
+
+    # Compute statistics along axis=1 (nr samples)
+    # Mean: simple average across samples
+    stats['Mean'] = np.mean(m_post_all, axis=1)
+
+    # Median: 50th percentile across samples
+    stats['Median'] = np.median(m_post_all, axis=1)
+
+    # LogMean: geometric mean (exp of mean of logs)
+    # Handle potential negative values by taking absolute value or masking
+    with np.errstate(invalid='ignore', divide='ignore'):
+        log_values = np.log(np.abs(m_post_all))
+        stats['LogMean'] = np.exp(np.mean(log_values, axis=1))
+
+    # Std: standard deviation of log10 values
+    # Clamp minimum value to 1e-10 to avoid log(0)
+    with np.errstate(invalid='ignore', divide='ignore'):
+        log10_values = np.log10(np.maximum(m_post_all, 1e-10))
+        stats['Std'] = np.std(log10_values, axis=1)
+
+    return stats
+
+
+def _compute_discrete_stats_vectorized(m_post_all, class_id, n_classes, nr):
+    """
+    Compute discrete statistics for all data points simultaneously.
+
+    This function vectorizes the computation of class probabilities, mode,
+    and entropy for discrete/categorical data across all data points.
+
+    Parameters
+    ----------
+    m_post_all : ndarray
+        Posterior samples for all data points, shape (nsounding, nr, nm)
+        containing class identifiers (integers).
+    class_id : ndarray
+        Array of unique class identifiers, shape (n_classes,).
+    n_classes : int
+        Number of classes.
+    nr : int
+        Number of samples per data point.
+
+    Returns
+    -------
+    dict
+        Dictionary containing computed statistics:
+        - 'P': Class probabilities, shape (nsounding, n_classes, nm)
+        - 'Mode': Most probable class, shape (nsounding, nm)
+        - 'Entropy': Information entropy, shape (nsounding, nm)
+
+    Notes
+    -----
+    Uses vectorized comparison operations to avoid nested loops over classes.
+    Entropy is normalized by n_classes (using base=n_classes in scipy.stats.entropy).
+
+    Examples
+    --------
+    >>> m_post = np.random.randint(0, 5, (1200, 400, 40))  # 5 classes
+    >>> class_id = np.array([0, 1, 2, 3, 4])
+    >>> stats = _compute_discrete_stats_vectorized(m_post, class_id, 5, 400)
+    >>> stats['P'].shape
+    (1200, 5, 40)
+    """
+    import scipy as sp
+
+    nsounding, nr, nm = m_post_all.shape
+    stats = {}
+
+    # Initialize probability array
+    M_P = np.zeros((nsounding, n_classes, nm))
+
+    # Vectorized class probability computation
+    # For each class, compute mean of (m_post_all == class_val) across samples
+    for ic, class_val in enumerate(class_id):
+        # Broadcasting comparison: (nsounding, nr, nm) == scalar
+        # Mean along axis=1 gives probability: (nsounding, nm)
+        M_P[:, ic, :] = np.mean(m_post_all == class_val, axis=1)
+
+    stats['P'] = M_P
+
+    # Mode: class with highest probability
+    # argmax along axis=1 gives index of most probable class
+    mode_indices = np.argmax(M_P, axis=1)  # (nsounding, nm)
+    stats['Mode'] = class_id[mode_indices]
+
+    # Entropy: compute for each data point
+    # scipy.stats.entropy requires axis specification
+    M_entropy = np.zeros((nsounding, nm))
+    for iid in range(nsounding):
+        M_entropy[iid, :] = sp.stats.entropy(M_P[iid, :, :], base=n_classes)
+
+    stats['Entropy'] = M_entropy
+
+    return stats
+
+
+def integrate_posterior_stats(f_post_h5='POST.h5', ip_range=None, **kwargs):
     """
     Compute posterior statistics for datasets in an HDF5 file.
 
-    This function computes various statistics for datasets in an HDF5 file based 
-    on the posterior samples. The statistics include mean, median, standard 
-    deviation for continuous datasets, and mode, entropy, and class probabilities 
+    This function computes various statistics for datasets in an HDF5 file based
+    on the posterior samples. The statistics include mean, median, standard
+    deviation for continuous datasets, and mode, entropy, and class probabilities
     for discrete datasets. The computed statistics are stored in the same HDF5 file.
 
     Parameters
     ----------
     f_post_h5 : str, optional
         The path to the HDF5 file to process. Default is 'POST.h5'.
+    ip_range : array-like or None, optional
+        List of data point indices to compute statistics for. If None or empty,
+        computes statistics for all data points. Data points not in ip_range
+        will have NaN values in the output. Default is None.
     **kwargs : dict
         Additional keyword arguments.
         usePrior : bool, optional
@@ -320,7 +458,7 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
             Level of verbosity for output.
         updateGeometryFromData : bool, optional
             Whether to update geometry from data file. Default is True.
-    
+
     Returns
     -------
     None
@@ -379,7 +517,7 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
     except KeyError:
         print(f"Could not read 'i_use' from {f_post_h5}")
         #return
-    
+
     if usePrior:
         with h5py.File(f_prior_h5, 'r') as f_prior:
             N = f_prior['/M1'].shape[0]
@@ -387,7 +525,21 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
             nd=i_use.shape[0]
             # compute i_use of  (nd,nr), with random integer numbers between 0 and N-1
             i_use = np.random.randint(0, N, (nd,nr))
-    
+
+    # Handle ip_range parameter
+    nsounding = i_use.shape[0]
+    if ip_range is None or len(ip_range) == 0:
+        ip_range = np.arange(nsounding)
+        if showInfo > 0:
+            print(f'Computing statistics for all {nsounding} data points')
+    else:
+        ip_range = np.asarray(ip_range)
+        if showInfo > 0:
+            print(f'Computing statistics for {len(ip_range)} of {nsounding} data points')
+        # Validate ip_range
+        if np.any(ip_range < 0) or np.any(ip_range >= nsounding):
+            raise ValueError(f"ip_range contains indices outside valid range [0, {nsounding-1}]")
+
     # Process each dataset in f_prior_h5
     with h5py.File(f_prior_h5, 'r') as f_prior, h5py.File(f_post_h5, 'a') as f_post:
         for name, dataset in f_prior.items():
@@ -400,10 +552,11 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
                 nsounding, nr = i_use.shape
                 m_post = np.zeros((nm, nr))
 
-                M_logmean = np.zeros((nsounding,nm))
-                M_mean = np.zeros((nsounding,nm))
-                M_std = np.zeros((nsounding,nm))
-                M_median = np.zeros((nsounding,nm))
+                # Initialize with NaN for all data points
+                M_logmean = np.full((nsounding, nm), np.nan)
+                M_mean = np.full((nsounding, nm), np.nan)
+                M_std = np.full((nsounding, nm), np.nan)
+                M_median = np.full((nsounding, nm), np.nan)
 
                 if showInfo>0:
                     print('nm=%d, nsounding=%d, nr=%d' % (nm, nsounding, nr))
@@ -418,24 +571,55 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
                                 print('Creating %s in %s' % (dset,f_post_h5 ))
                             f_post.create_dataset(dset, (nsounding,nm))
 
-                #if dataset.size <= 1e6:  # arbitrary threshold for loading all data into memory
+                # Load all prior data into memory
                 M_all = dataset[:]
 
-                for iid in tqdm(range(nsounding), mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
-                    ir = np.int64(i_use[iid,:])
-                    m_post = M_all[ir,:]
+                # VECTORIZED COMPUTATION (Phase 1 optimization)
+                # Extract all posterior samples at once: (len(ip_range), nr, nm)
+                # Use advanced indexing to get samples for all data points simultaneously
+                if showInfo > 0:
+                    print(f'Computing statistics (vectorized) for {len(ip_range)} data points...')
 
-                    m_logmean = np.exp(np.mean(np.log(m_post), axis=0))
-                    m_mean = np.mean(m_post, axis=0)
-                    m_median = np.median(m_post, axis=0)
-                    # Handle negative and zero values when taking log10 for standard deviation
-                    with np.errstate(invalid='ignore', divide='ignore'):
-                        m_std = np.std(np.log10(np.maximum(m_post, 1e-10)), axis=0)
+                # Extract samples for all data points in ip_range
+                # i_use[ip_range] has shape (len(ip_range), nr)
+                # M_all[i_use[ip_range]] would ideally give (len(ip_range), nr, nm)
+                # However, advanced indexing requires explicit loop or different approach
 
-                    M_logmean[iid,:] = m_logmean
-                    M_mean[iid,:] = m_mean
-                    M_median[iid,:] = m_median
-                    M_std[iid,:] = m_std
+                # Memory check: estimate required memory
+                mem_required_mb = len(ip_range) * nr * nm * 8 / 1e6  # 8 bytes per float64
+
+                if mem_required_mb < 2000:  # Less than 2 GB - use full vectorization
+                    # Extract all samples at once using advanced indexing
+                    m_post_all = M_all[i_use[ip_range], :]  # (len(ip_range), nr, nm)
+
+                    # Compute all statistics using vectorized helper function
+                    stats = _compute_continuous_stats_vectorized(m_post_all)
+
+                    # Assign results to output arrays
+                    M_logmean[ip_range, :] = stats['LogMean']
+                    M_mean[ip_range, :] = stats['Mean']
+                    M_median[ip_range, :] = stats['Median']
+                    M_std[ip_range, :] = stats['Std']
+
+                else:
+                    # Fallback to sequential processing for very large datasets
+                    if showInfo > 0:
+                        print(f'  (using sequential fallback due to memory: {mem_required_mb:.0f} MB)')
+
+                    for iid in tqdm(ip_range, mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
+                        ir = np.int64(i_use[iid,:])
+                        m_post = M_all[ir,:]
+
+                        m_logmean = np.exp(np.mean(np.log(m_post), axis=0))
+                        m_mean = np.mean(m_post, axis=0)
+                        m_median = np.median(m_post, axis=0)
+                        with np.errstate(invalid='ignore', divide='ignore'):
+                            m_std = np.std(np.log10(np.maximum(m_post, 1e-10)), axis=0)
+
+                        M_logmean[iid,:] = m_logmean
+                        M_mean[iid,:] = m_mean
+                        M_median[iid,:] = m_median
+                        M_std[iid,:] = m_std
 
                 f_post['/%s/%s' % (name,'LogMean')][:] = M_logmean
                 f_post['/%s/%s' % (name,'Mean')][:] = M_mean
@@ -443,21 +627,20 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
                 f_post['/%s/%s' % (name,'Std')][:] = M_std
 
             elif name.upper().startswith('M') and 'is_discrete' in dataset.attrs and dataset.attrs['is_discrete'] == 1:
-                
-                nm = dataset.shape[1]
-                nsounding, nr = i_use.shape
-                nsounding, nr = i_use.shape
-                nm = dataset.shape[1]
-                # Get number of classes for name    
-                class_id = f_prior[name].attrs['class_id']                
-                n_classes = len(class_id)
-                
-                if showInfo>0:
-                    print('%s: DISCRETE, N_classes =%d' % (name,n_classes))    
 
-                M_mode = np.zeros((nsounding,nm))
-                M_entropy = np.zeros((nsounding,nm))
-                M_P= np.zeros((nsounding,n_classes,nm))
+                nm = dataset.shape[1]
+                nsounding, nr = i_use.shape
+                # Get number of classes for name
+                class_id = f_prior[name].attrs['class_id']
+                n_classes = len(class_id)
+
+                if showInfo>0:
+                    print('%s: DISCRETE, N_classes =%d' % (name,n_classes))
+
+                # Initialize with NaN for all data points
+                M_mode = np.full((nsounding, nm), np.nan)
+                M_entropy = np.full((nsounding, nm), np.nan)
+                M_P = np.full((nsounding, n_classes, nm), np.nan)
 
                 # Create datasets in h5 file
                 for stat in ['Mode', 'Entropy']:
@@ -475,26 +658,50 @@ def integrate_posterior_stats(f_post_h5='POST.h5', **kwargs):
                                 print('Creating %s' % dset)
                             f_post.create_dataset(dset, (nsounding,n_classes,nm))
 
+                # Load all prior data into memory
                 M_all = dataset[:]
 
-                for iid in tqdm(range(nsounding), mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
+                # VECTORIZED COMPUTATION (Phase 2 optimization)
+                # Compute discrete statistics for all data points simultaneously
+                if showInfo > 0:
+                    print(f'Computing discrete statistics (vectorized) for {len(ip_range)} data points...')
 
-                    # Get the indices of the rows to use
-                    ir = np.int64(i_use[iid,:])
-                    
-                    m_post = M_all[ir,:]
-                    
-                    # Compute the class probability
-                    n_count = np.zeros((n_classes,nm))
-                    for ic in range(n_classes):
-                        n_count[ic,:]=np.sum(class_id[ic]==m_post, axis=0)/nr    
-                    M_P[iid,:,:] = n_count
+                # Memory check: estimate required memory
+                mem_required_mb = len(ip_range) * nr * nm * 8 / 1e6  # 8 bytes per float64
 
-                    # Compute the mode
-                    M_mode[iid,:] = class_id[np.argmax(n_count, axis=0)]
+                if mem_required_mb < 2000:  # Less than 2 GB - use full vectorization
+                    # Extract all samples at once using advanced indexing
+                    m_post_all = M_all[i_use[ip_range], :]  # (len(ip_range), nr, nm)
 
-                    # Compute the entropy
-                    M_entropy[iid,:]=sp.stats.entropy(n_count, base=n_classes)
+                    # Compute all discrete statistics using vectorized helper function
+                    stats = _compute_discrete_stats_vectorized(m_post_all, class_id, n_classes, nr)
+
+                    # Assign results to output arrays
+                    M_P[ip_range, :, :] = stats['P']
+                    M_mode[ip_range, :] = stats['Mode']
+                    M_entropy[ip_range, :] = stats['Entropy']
+
+                else:
+                    # Fallback to sequential processing for very large datasets
+                    if showInfo > 0:
+                        print(f'  (using sequential fallback due to memory: {mem_required_mb:.0f} MB)')
+
+                    for iid in tqdm(ip_range, mininterval=1, disable=disableTqdm, desc='poststat', leave=False):
+                        # Get the indices of the rows to use
+                        ir = np.int64(i_use[iid,:])
+                        m_post = M_all[ir,:]
+
+                        # Compute the class probability
+                        n_count = np.zeros((n_classes,nm))
+                        for ic in range(n_classes):
+                            n_count[ic,:]=np.sum(class_id[ic]==m_post, axis=0)/nr
+                        M_P[iid,:,:] = n_count
+
+                        # Compute the mode
+                        M_mode[iid,:] = class_id[np.argmax(n_count, axis=0)]
+
+                        # Compute the entropy
+                        M_entropy[iid,:]=sp.stats.entropy(n_count, base=n_classes)
 
                 f_post['/%s/%s' % (name,'Mode')][:] = M_mode
                 f_post['/%s/%s' % (name,'Entropy')][:] = M_entropy
@@ -1318,44 +1525,48 @@ def prior_data_identity(f_prior_h5, id=0, im=1, N=0, doMakePriorCopy=False, **kw
     return f_prior_data_h5
 
 # %% PRIOR MODEL GENERATORS
-def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, 
-                        NLAY_min=3, NLAY_max=6, NLAY_deg=6, 
-                        RHO_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80, 
-                        N=100000, **kwargs):
+def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
+                        NLAY_min=3, NLAY_max=6, NLAY_deg=6,
+                        RHO_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80,
+                        N=100000, save_sparse=True, **kwargs):
     """
     Generate a prior model with layered structure.
 
     Parameters
     ----------
     lay_dist : str, optional
-        Distribution of the number of layers. Options are 'chi2' and 'uniform'. 
+        Distribution of the number of layers. Options are 'chi2' and 'uniform'.
         Default is 'uniform'.
     dz : float, optional
         Depth discretization step. Default is 1.
     z_max : float, optional
-        Maximum depth. Default is 90.
+        Maximum depth in m. Default is 90.
     NLAY_min : int, optional
         Minimum number of layers. Default is 3.
     NLAY_max : int, optional
         Maximum number of layers. Default is 6.
     NLAY_deg : int, optional
-        Degrees of freedom for chi-square distribution. Only applicable if 
+        Degrees of freedom for chi-square distribution. Only applicable if
         lay_dist is 'chi2'. Default is 6.
     RHO_dist : str, optional
-        Distribution of resistivity within each layer. Options are 'log-uniform', 
+        Distribution of resistivity within each layer. Options are 'log-uniform',
         'uniform', 'normal', and 'lognormal'. Default is 'log-uniform'.
     RHO_min : float, optional
         Minimum resistivity value. Default is 0.1.
     RHO_max : float, optional
         Maximum resistivity value. Default is 100.
     RHO_MEAN : float, optional
-        Mean resistivity value. Only applicable if RHO_dist is 'normal' or 
+        Mean resistivity value. Only applicable if RHO_dist is 'normal' or
         'lognormal'. Default is 100.
     RHO_std : float, optional
-        Standard deviation of resistivity value. Only applicable if RHO_dist is 
+        Standard deviation of resistivity value. Only applicable if RHO_dist is
         'normal' or 'lognormal'. Default is 80.
     N : int, optional
         Number of prior models to generate. Default is 100000.
+    save_sparse : bool, optional
+        Whether to save the sparse representation (M2: depth-resistivity pairs)
+        to the HDF5 file. Setting to False can reduce file size and processing
+        time for large priors. Default is True.
     **kwargs : dict
         Additional keyword arguments.
         f_prior_h5 : str, optional
@@ -1399,11 +1610,16 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     NLAY = NLAY[:, np.newaxis]
     
     z_min = 0
-    z = np.arange(z_min, z_max, dz)
-    nz= len(z)
+    # Ensure z_max is included in the array
+    nz = int(np.ceil((z_max - z_min) / dz)) + 1
+    z = np.linspace(z_min, z_max, nz)
     M_rho = np.zeros((N, nz))
     nm_sparse = NLAY_max+NLAY_max-1
-    M_rho_sparse = np.ones((N, nm_sparse))*np.nan
+    # Only allocate sparse matrix if needed
+    if save_sparse:
+        M_rho_sparse = np.ones((N, nm_sparse))*np.nan
+    else:
+        M_rho_sparse = None
     
 
     #% simulate the number of layers as in integer
@@ -1434,24 +1650,28 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
         for j in range(len(i_boundaries)):
             rho[i_boundaries[j]:] = rho_all[j+1]
 
-        M_rho[i]=rho        
+        M_rho[i]=rho
 
 
         # m_current should be the concatenation of z_boundaires and rho_alls
-        m_current = np.concatenate((z_boundaires, rho_all))
-        #print("m_current", m_current)
-        M_rho_sparse[i,0:len(m_current)] = m_current
+        # Only populate sparse representation if requested
+        if save_sparse:
+            m_current = np.concatenate((z_boundaires, rho_all))
+            #print("m_current", m_current)
+            M_rho_sparse[i,0:len(m_current)] = m_current
 
 
     if (showInfo>0):
         print("prior_model_layered: Saving prior model to %s" % f_prior_h5)
     
     # save to hdf5 file
-    
+    im=0
+
     if (showInfo>1):
         print("Saving '/M1' prior model  %s" % f_prior_h5)
+    im=im+1
     ig.save_prior_model(f_prior_h5,M_rho.astype(np.float32),
-                im=1,
+                im=im,
                 name='resistivity',
                 is_discrete = 0, 
                 x = z,
@@ -1461,23 +1681,27 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
                 showInfo=showInfo,
                 )
 
-    if (showInfo>1):
-        print("Saving '/M2' prior model  %s" % f_prior_h5)
-    ig.save_prior_model(f_prior_h5,M_rho_sparse.astype(np.float32),
-                im=2,
-                name='sparse - depth-resistivity',
-                is_discrete = 0, 
-                x = np.arange(0,nm_sparse),
-                z = np.arange(0,nm_sparse),
-                force_replace=True,
-                showInfo=showInfo,
-                )
+    # Only save sparse representation if requested
+    if save_sparse:
+        if (showInfo>1):
+            print("Saving '/M2' prior model  %s" % f_prior_h5)
+        im=im+1
+        ig.save_prior_model(f_prior_h5,M_rho_sparse.astype(np.float32),
+                    im=im,
+                    name='sparse - depth-resistivity',
+                    is_discrete = 0,
+                    x = np.arange(0,nm_sparse),
+                    z = np.arange(0,nm_sparse),
+                    force_replace=True,
+                    showInfo=showInfo,
+                    )
 
 
     if (showInfo>1):
         print("Saving '/M3' prior model  %s" % f_prior_h5)
+    im=im+1
     ig.save_prior_model(f_prior_h5,NLAY.astype(np.float32),
-                        im=3,
+                        im=im,
                         name = 'Number of layers',
                         is_discrete=0, 
                         x=np.array([0]), 
@@ -1697,9 +1921,12 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
     # Force NLAY to be a 2 dimensional numpy array (for when exporting to HDF5)
     NLAY = NLAY[:, np.newaxis]
     
+
     z_min = 0
-    z = np.arange(z_min, z_max, dz)
-    nz= len(z)
+    # Ensure z_max is included in the array
+    nz = int(np.ceil((z_max - z_min) / dz)) + 1
+    z = np.linspace(z_min, z_max, nz)
+    
     if showInfo>1:
         print('z_min, z_max, dz, nz = %g, %g, %g, %d' % (z_min, z_max, dz, nz))
     M_rho = np.zeros((N, nz))
@@ -2129,7 +2356,7 @@ def synthetic_case(case='Wedge', **kwargs):
 
 
 
-def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400, r_data=2, useLog=True, doPlot=False, plFile=None):
+def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400, r_data=2, useLog=True, doPlot=False, plFile=None, showInfo=0):
     """Calculate weights based on distance and data similarity to a reference point.
 
     This function computes three sets of weights:
@@ -2171,7 +2398,7 @@ def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400,
     import numpy as np
     import matplotlib.pyplot as plt
     X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-    DATA = ig.load_data(f_data_h5)
+    DATA = ig.load_data(f_data_h5, showInfo=showInfo)
     id=0
     d_obs = DATA['d_obs'][id]
     d_std = DATA['d_std'][id]
@@ -2800,7 +3027,13 @@ def timing_plot(f_timing=''):
     """
     import numpy as np
     import matplotlib.pyplot as plt
-    
+
+    def safe_show():
+        """Show plot only if using interactive backend, otherwise do nothing."""
+        backend = plt.get_backend()
+        if backend.lower() != 'agg':
+            safe_show()
+
     if len(f_timing)==0:
         print('No timing file provided')
         return
@@ -2853,7 +3086,7 @@ def timing_plot(f_timing=''):
     plt.ylim(1,1e+8)
     plt.tight_layout()
     plt.savefig('%s_total_sec' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
     plt.figure(figsize=(6,6)) 
@@ -2868,7 +3101,7 @@ def timing_plot(f_timing=''):
     #plt.xticks(ticks=N_arr, labels=[str(int(x)) for x in Nproc_arr])
     plt.ylim(1,1e+8)
     plt.savefig('%s_total_sec' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
 
@@ -2895,14 +3128,14 @@ def timing_plot(f_timing=''):
     
     plt.ylabel(r'Forward time - $[s]$')
     plt.xlabel('Number of processors')
-    plt.title('Forward calculation')
+    #plt.title('Forward calculation')
     plt.grid()
     plt.legend(N_arr, loc='upper left')
     plt.ylim(1e-1, 1e+4)
     plt.xlim(Nproc_arr[0], Nproc_arr[-1])
     plt.tight_layout()
     plt.savefig('%s_forward_sec_CPU' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
     ## Forward time per sounding - Nproc
@@ -2920,14 +3153,14 @@ def timing_plot(f_timing=''):
             pass
     plt.ylabel(r'Forward time - $[s]$')
     plt.xlabel('Number of models')
-    plt.title('Forward calculation')
+    #plt.title('Forward calculation')
     plt.grid()
     plt.legend(Nproc_arr, loc='upper left')
     #plt.ylim(1e-1, 1e+4)
     #plt.xlim(Nproc_arr[0], Nproc_arr[-1])
     plt.tight_layout()
     plt.savefig('%s_forward_sec_N' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
 
@@ -2937,12 +3170,12 @@ def timing_plot(f_timing=''):
     # plot line 
     plt.ylabel(r'Forward computations per second - $[s^{-1}]$')
     plt.xlabel('Number of processors')
-    plt.title('Forward calculation')
+    #plt.title('Forward calculation')
     plt.grid()
     plt.legend(N_arr)
     plt.tight_layout()
     plt.savefig('%s_forward_sounding_per_sec' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
     #
@@ -2950,14 +3183,14 @@ def timing_plot(f_timing=''):
     plt.plot(Nproc_arr, T_forward_sounding_per_sec_per_cpu.T, 'o-')
     plt.ylabel('Forward computations per second per cpu')
     plt.xlabel('Number of processors')
-    plt.title('Forward calculation')
+    #plt.title('Forward calculation')
     plt.grid()
     # Make yaxis start at 0
     plt.ylim(0, 80)    
     plt.xlim(Nproc_arr[0], Nproc_arr[-1])
     plt.legend(N_arr)
     plt.savefig('%s_forward_sounding_per_sec_per_cpu' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
     #
 
@@ -2973,7 +3206,7 @@ def timing_plot(f_timing=''):
     plt.grid()
     plt.legend(N_arr)
     plt.savefig('%s_forward_speedup' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
 
@@ -3016,7 +3249,7 @@ def timing_plot(f_timing=''):
     plt.tight_layout()
     plt.ylim(1e-1, 2e+3)
     plt.savefig('%s_rejection_sec_CPU' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
 
@@ -3040,7 +3273,7 @@ def timing_plot(f_timing=''):
     plt.tight_layout()
     plt.ylim(1e-1, 2e+3)
     plt.savefig('%s_rejection_sec_N' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
 
@@ -3057,7 +3290,7 @@ def timing_plot(f_timing=''):
     plt.grid()
     plt.legend(N_arr)
     plt.savefig('%s_rejection_speedup' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
 
@@ -3073,7 +3306,7 @@ def timing_plot(f_timing=''):
     plt.tight_layout()
     plt.ylim(1e-3, 1e+5)
     plt.savefig('%s_rejection_sounding_per_sec' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
     ## Rejection sec per sounding
@@ -3089,7 +3322,7 @@ def timing_plot(f_timing=''):
     plt.tight_layout()
     plt.ylim(1e-5, 1e+3)
     plt.savefig('%s_rejection_sec_per_sound' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
     ## Rejection sound per sec - N
@@ -3101,7 +3334,7 @@ def timing_plot(f_timing=''):
     plt.grid()
     plt.legend(Nproc_arr)
     plt.savefig('%s_rejection_sounding_per_sec_N' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
     ## Rejection sound per sec - per CPU
@@ -3113,7 +3346,7 @@ def timing_plot(f_timing=''):
     plt.grid()
     plt.legend(N_arr)
     plt.savefig('%s_rejection_sounding_per_sec_CPU' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
     ##  Sound per sec per CPU - N  
@@ -3127,7 +3360,7 @@ def timing_plot(f_timing=''):
     plt.grid()
     plt.legend(Nproc_arr)
     plt.savefig('%s_rejection_sounding_per_sec_per_cpu_N' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
 
@@ -3140,7 +3373,7 @@ def timing_plot(f_timing=''):
     plt.grid()
     plt.legend(N_arr)
     plt.savefig('%s_rejection_sounding_per_sec_per_cpu_CPU' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
 
@@ -3160,7 +3393,7 @@ def timing_plot(f_timing=''):
     plt.legend(N_arr)
     plt.tight_layout()
     plt.savefig('%s_poststat_sounding_per_sec' % file_out)
-    plt.show()
+    safe_show()
     plt.close()
 
     # plt.figure(figsize=(6,6))
@@ -3199,7 +3432,7 @@ def timing_plot(f_timing=''):
         plt.grid(True, which="both", ls="--")
         plt.tight_layout()
         plt.savefig('%s_Ncpu%d_cumT' % (file_out,Nproc_arr[i_proc]))
-        plt.show()
+        safe_show()
         plt.close()
 
         # The same as thea area plot but normalized to the total time
@@ -3213,8 +3446,264 @@ def timing_plot(f_timing=''):
         plt.tight_layout()
         plt.title('Normalized time, using %d processors' % Nproc_arr[i_proc])
         plt.savefig('%s_Ncpu%d_cumT_norm' % (file_out,Nproc_arr[i_proc]))
-        plt.show()
+        safe_show()
         plt.close()
 
+# Working will well data
 
+def compute_P_obs_from_log(depth_top, depth_bottom, lithology_obs, z, class_id, P_single=0.8, P_prior=None):
+    """
+    Compute discrete observation probability matrix from depth intervals and lithology observations.
+    
+    This function creates a probability matrix where each depth point is assigned 
+    probabilities based on observed lithology classes within specified depth intervals.
+    
+    Parameters
+    ----------
+    depth_top : array-like
+        Array of top depths for each observation interval.
+    depth_bottom : array-like
+        Array of bottom depths for each observation interval.
+    lithology_obs : array-like
+        Array of observed lithology class IDs for each interval.
+    z : array-like
+        Array of depth/position values where probabilities are computed.
+    class_id : array-like
+        Array of unique class identifiers (e.g., [0, 1, 2] for 3 lithology types).
+    P_single : float, optional
+        Probability assigned to the observed class. Default is 0.8.
+    P_prior : ndarray, optional
+        Prior probability matrix of shape (nclass, nm). If None, uses uniform distribution
+        for depths not covered by observations. Default is None.
+    
+    Returns
+    -------
+    P_obs : ndarray
+        Probability matrix of shape (nclass, nm) where nclass is the number of classes
+        and nm is the number of depth points. For each depth point covered by observations,
+        the observed class gets probability P_single and other classes share (1-P_single).
+        Depths not covered by any observation contain NaN or prior probabilities if provided.
+    
+    Examples
+    --------
+    >>> depth_top = [0, 10, 20]
+    >>> depth_bottom = [10, 20, 30]
+    >>> lithology_obs = [1, 2, 1]  # clay, sand, clay
+    >>> z = np.arange(30)
+    >>> class_id = [0, 1, 2]  # gravel, clay, sand
+    >>> P_obs = compute_P_obs_from_log(depth_top, depth_bottom, lithology_obs, z, class_id)
+    >>> print(P_obs.shape)  # (3, 30)
+    """
+    import numpy as np
+    
+    nm = len(z)
+    nclass = len(class_id)
+    
+    # Compute probability for non-hit classes
+    P_nohit = (1 - P_single) / (nclass - 1)
+    
+    # Initialize with NaN or prior
+    if P_prior is not None:
+        P_obs = P_prior.copy()
+    else:
+        P_obs = np.zeros((nclass, nm)) * np.nan
+    
+    # Loop through each depth point
+    for im in range(nm):
+        # Loop through each observation interval
+        for i in range(len(depth_top)):
+            # Check if current depth is within this interval
+            if z[im] >= depth_top[i] and z[im] < depth_bottom[i]:
+                # Assign probabilities for all classes
+                for ic in range(nclass):
+                    if class_id[ic] == lithology_obs[i]:
+                        P_obs[ic, im] = P_single
+                    else: 
+                        P_obs[ic, im] = P_nohit
+    
+    return P_obs
+
+def rescale_P_obs_temperature(P_obs, T=1.0):
+    """
+    Rescale discrete observation probabilities by temperature and renormalize.
+
+    This function applies temperature annealing to probability distributions by raising
+    each probability to the power (1/T), then renormalizing each column (depth point)
+    so that probabilities sum to 1. Higher temperatures (T > 1) flatten the distribution,
+    while lower temperatures (T < 1) sharpen it.
+
+    Parameters
+    ----------
+    P_obs : ndarray
+        Probability matrix of shape (nclass, nm) where nclass is the number of classes
+        and nm is the number of model parameters (e.g., depth points).
+        Each column should represent a probability distribution over classes.
+    T : float, optional
+        Temperature parameter for annealing. Default is 1.0 (no scaling).
+        - T = 1.0: No change (original probabilities)
+        - T > 1.0: Flattens distribution (less certain)
+        - T < 1.0: Sharpens distribution (more certain)
+        - T → ∞: Approaches uniform distribution
+        - T → 0: Approaches one-hot distribution
+
+    Returns
+    -------
+    P_obs_scaled : ndarray
+        Temperature-scaled and renormalized probability matrix of shape (nclass, nm).
+        Each column sums to 1.0. NaN values in input are preserved in output.
+
+    Examples
+    --------
+    >>> P_obs = np.array([[0.8, 0.6, 0.5],
+    ...                   [0.1, 0.2, 0.3],
+    ...                   [0.1, 0.2, 0.2]])
+    >>> P_scaled = rescale_P_obs_temperature(P_obs, T=2.0)
+    >>> print(P_scaled)  # More uniform distribution
+    >>> P_scaled = rescale_P_obs_temperature(P_obs, T=0.5)
+    >>> print(P_scaled)  # Sharper distribution
+
+    Notes
+    -----
+    The temperature scaling follows the Boltzmann distribution:
+        P_new(c) ∝ P_old(c)^(1/T)
+
+    After scaling, each column (depth point) is renormalized:
+        P_new(c) = P_new(c) / sum_c(P_new(c))
+
+    This is commonly used in simulated annealing and rejection sampling to control
+    the strength of discrete observations during Bayesian inference.
+    """
+    import numpy as np
+
+    # Copy to avoid modifying the original
+    P_obs_scaled = P_obs.copy()
+
+    # Get shape
+    nclass, nm = P_obs.shape
+
+    # Apply temperature scaling: p^(1/T)
+    # Handle special case where T=1 (no scaling needed)
+    if T != 1.0:
+        P_obs_scaled = np.power(P_obs_scaled, 1.0 / T)
+
+    # Renormalize each column (each depth point) to sum to 1
+    for im in range(nm):
+        col_sum = np.nansum(P_obs_scaled[:, im])
+
+        # Only renormalize if the sum is non-zero and not NaN
+        if col_sum > 0 and not np.isnan(col_sum):
+            P_obs_scaled[:, im] = P_obs_scaled[:, im] / col_sum
+
+    return P_obs_scaled
+
+def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False):
+    """
+    Convert point-based discrete probability observations to gridded data with distance-based weighting.
+
+    This function distributes discrete probability observations (e.g., from a borehole) across
+    a spatial grid using distance-based weighting. Observations at location (X, Y) are applied
+    to nearby grid points with decreasing influence based on distance. Temperature annealing
+    is used to reduce the strength of observations far from the source point.
+
+    Parameters
+    ----------
+    P_obs : ndarray
+        Probability matrix of shape (nclass, nm) where nclass is the number of classes
+        and nm is the number of model parameters (e.g., depth points).
+        Each column represents a probability distribution over discrete classes.
+    X : float
+        X coordinate (e.g., UTM Easting) of the observation point.
+    Y : float
+        Y coordinate (e.g., UTM Northing) of the observation point.
+    f_data_h5 : str
+        Path to HDF5 data file containing survey geometry (X, Y coordinates).
+    r_data : float, optional
+        Inner radius in meters within which observations have full strength.
+        Default is 10 meters.
+    r_dis : float, optional
+        Outer radius in meters for distance-based weighting. Beyond this distance,
+        observations are fully attenuated (temperature → ∞). Default is 100 meters.
+    doPlot : bool, optional
+        If True, creates diagnostic plots showing weight distributions.
+        Default is False.
+
+    Returns
+    -------
+    d_obs : ndarray
+        Gridded observation data of shape (nd, nclass, nm) where nd is the number
+        of spatial locations in the survey. Each location gets temperature-scaled
+        probabilities based on distance from (X, Y).
+    i_use : ndarray
+        Binary mask of shape (nd, 1) indicating which grid points should be used
+        (1) or ignored (0) in the inversion. Points with temperature < 100 are used.
+
+    Notes
+    -----
+    The function uses distance-based temperature annealing:
+    1. Computes distance-based weights using `get_weight_from_position()`
+    2. Converts distance weight to temperature: T = 1 / w_dis
+    3. Caps maximum temperature at 100 (very weak influence)
+    4. For each grid point:
+       - If T < 100: include point (i_use=1) and apply temperature scaling
+       - If T ≥ 100: exclude point (i_use=0) and set observations to NaN
+
+    Temperature scaling reduces probability certainty with distance:
+    - T = 1 (close to observation): Original probabilities preserved
+    - T > 1 (far from observation): Probabilities become more uniform
+    - T ≥ 100 (very far): Observations effectively ignored
+
+    Examples
+    --------
+    >>> # Borehole observation at specific location
+    >>> P_obs = compute_P_obs_from_log(depth_top, depth_bottom, lithology, z, class_id)
+    >>> X_well, Y_well = 543000.0, 6175800.0
+    >>> d_obs, i_use = Pobs_to_datagrid(P_obs, X_well, Y_well, 'survey_data.h5',
+    ...                                  r_data=10, r_dis=100)
+    >>> # Write to data file
+    >>> ig.write_data_multinomial(d_obs, i_use=i_use, id=2, f_data_h5='survey_data.h5')
+
+    See Also
+    --------
+    rescale_P_obs_temperature : Temperature scaling function
+    compute_P_obs_from_log : Create P_obs from depth intervals
+    get_weight_from_position : Distance-based weighting function
+    """
+    import numpy as np
+    import integrate as ig
+
+    # Get grid dimensions from data file
+    X_grid, Y_grid, _, _ = ig.get_geometry(f_data_h5)
+    nd = len(X_grid)
+    nclass, nm = P_obs.shape
+
+    # Initialize output arrays
+    i_use = np.zeros((nd, 1))
+    d_obs = np.zeros((nd, nclass, nm)) * np.nan
+
+    # Compute distance-based weights for all grid points
+    w_combined, w_dis, w_data, i_use_from_func = ig.get_weight_from_position(
+        f_data_h5, X, Y, r_data=r_data, r_dis=r_dis, doPlot=doPlot
+    )
+
+    # Convert distance weight to temperature
+    # w_dis is 1 at observation point, decreases with distance
+    # T = 1/w_dis means T increases with distance (weaker influence)
+    T_all = 1 / w_dis
+
+    # Cap maximum temperature at 100 (beyond this, observation has negligible effect)
+    T_all[T_all > 100] = 100
+
+    # Apply temperature scaling to each grid point
+    for ip in np.arange(nd):
+        T = T_all[ip]
+
+        # Only use points where temperature is reasonable (< 100)
+        if T < 100:
+            i_use[ip] = 1
+            # Scale probabilities based on distance (higher T = more uniform distribution)
+            P_obs_local = rescale_P_obs_temperature(P_obs, T=T)
+            d_obs[ip, :, :] = P_obs_local
+        # else: i_use[ip] = 0 and d_obs[ip] stays NaN
+
+    return d_obs, i_use
 

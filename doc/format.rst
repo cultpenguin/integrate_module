@@ -223,7 +223,7 @@ PRIOR.h5 contains ``N`` realizations of a prior model (represented as potentiall
      - [nm]
      - *
      - *
-     - Array of values describing each value in M1 (e.g. depth to layer)
+     - Array of values describing each value in M1 (e.g. depth to top of layer)
    * - /M1/name
      - [string]
      - *

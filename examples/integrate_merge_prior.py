@@ -120,7 +120,7 @@ f_prior_files.append(f_prior_6lay_high)
 # %% [markdown]
 # ## 2. FORWARD response
 
-# %% COMPUTE FORWARD RESPONSE
+# %%
 
 print("\\n" + "="*60)
 print("FORWARD MODELING")
@@ -232,7 +232,7 @@ with h5py.File(f_post_h5, 'r') as f_post:
             print(f"  Mode {int(mode)} ({class_name}): {count} locations ({percentage:.1f}%)")
 
 
-#%% 
+# %%
 # Plot per-class probability maps (M4_P) with correct scatter args
 from matplotlib import gridspec
 
@@ -251,7 +251,7 @@ fig.colorbar(sc, cax=cbar_ax, label='Probability')
 plt.show()
 
 
-#%% Plot the mode
+# %%
 plt.figure()
 # Normalize M4_entropy to control transparency (values between 0.1 and 1)
 normalized_alpha = (M4_entropy - np.min(M4_entropy)) / (np.max(M4_entropy) - np.min(M4_entropy)) * 0.9 + 0.001

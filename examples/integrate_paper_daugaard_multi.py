@@ -24,6 +24,7 @@ parallel = ig.use_parallel(showInfo=1)
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+plt.ion()
 import h5py
 
 from integrate.integrate_io import copy_prior
@@ -33,9 +34,22 @@ hardcopy=True
 # ## Download the data DAUGAARD data including non-trivial prior data realizations
 
 # %%
+cmap, clim = ig.get_colormap_and_limits('resistivity')
 useMergedPrior=True
-useGenericPrior=True
+useGenericPrior=False
+inflateNoise = 4
+useLogData = False
 N_use = 2000000
+N_use_org= N_use
+#N_use = 100000
+#N_use = 100000
+
+doEffectSize = False
+doTbase = True
+doPlotAll=True
+doTestInversion = False
+
+
 
 files = ig.get_case_data(case='DAUGAARD', loadType='prior_data') # Load data and prior+data realizations
 f_data_h5 = files[0]
@@ -50,8 +64,25 @@ ig.plot_geometry(f_data_h5, pl='NDATA', hardcopy= hardcopy, cmap='viridis')
 plt.show()
 
 
+# %% log-data?
+
+if useLogData:
+    f_data_h5_org = f_data_h5
+    f_data_h5 = 'DATA_LOGSPACE.h5'
+    ig.copy_hdf5_file(f_data_h5_org, f_data_h5)
+    DATA = ig.load_data(f_data_h5_org)
+    D_obs = DATA['d_obs'][0]
+    D_std = DATA['d_std'][0]
+    lD_obs = np.log10(D_obs)
+    lD_std_up = np.abs(np.log10(D_obs+D_std)-lD_obs)
+    lD_std_down = np.abs(np.log10(D_obs-D_std)-lD_obs)
+    corr_std = 0.02
+    lD_std = np.abs((lD_std_up+lD_std_down)/2) + corr_std
+    ig.save_data_gaussian(lD_obs, D_std = lD_std, f_data_h5 = f_data_h5, id=1, showInfo=0, is_log=1)
+
+
+
 # %% Load Dauagard data and increase std by a factor of 3
-inflateNoise = 1
 if inflateNoise != 1:
     gf=inflateNoise
     print("="*60)
@@ -63,13 +94,19 @@ if inflateNoise != 1:
     f_data_old_h5 = f_data_h5
     f_data_h5 = 'DAUGAARD_AVG_gf%g.h5' % (gf) 
     ig.copy_hdf5_file(f_data_old_h5, f_data_h5)
-    ig.write_data_gaussian(D_obs, D_std=D_std, f_data_h5=f_data_h5, file_gex=file_gex)
+    ig.save_data_gaussian(D_obs, D_std=D_std, f_data_h5=f_data_h5, file_gex=file_gex)
 
-ig.plot_data(f_data_h5, hardcopy= hardcopy)
+ig.plot_data(f_data_h5, useLog = 0, hardcopy= hardcopy)
 plt.show()
 
 # %% Get geometry and data info
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+
+with h5py.File(f_data_h5,'r') as f_data:
+    # find number of nan values on d_obs
+    NON_NAN = np.sum(~np.isnan(f_data['/%s' % 'D1']['d_obs']), axis=1)
+
+
 
 # Find a unique list of line number, then find the LINEnumber that occurs most frequently
 unique_lines, counts = np.unique(LINE, return_counts=True)
@@ -86,27 +123,66 @@ if len(id_line_cut) > 0:
     id_line = id_line[:id_line_cut[0]+1]
 
 # set id_line to 100,101...,1001
-id_line = np.arange(2000, 3001)
+id_line_1 = np.arange(755, 815)
+id_line_2 = np.arange(7720, 7730)
+id_line_3 = np.flip(np.arange(2705, 2731))
+id_line = np.concatenate((id_line_1, id_line_2, id_line_3))
+#id_liine = id_line_3
 
-# slect indexes to plot
+# Find points within buffer distance
+Xl = np.array([X[id_line][0], X[id_line][-1]])
+Yl = np.array([Y[id_line][0], Y[id_line][-1]])
+buffer = 10.0
+indices, distances, segment_ids = ig.find_points_along_line_segments(
+    X, Y, Xl, Yl, tolerance=buffer
+)
+id_line = indices
 
-i_plot_1 = 100
+# Find points within buffer distance
+Xl = np.array([np.min(X), np.max(X)])
+Yl = np.array([np.max(Y), np.min(Y)])
+buffer = 10.0
+indices, distances, segment_ids = ig.find_points_along_line_segments(
+    X, Y, Xl, Yl, tolerance=buffer
+)
+id_line = indices
+
+
+# Find points within buffer distance
+Xl = np.array([544000, 543550])
+Yl = np.array([6174500, 6176500])
+buffer = 10.0
+indices, distances, segment_ids = ig.find_points_along_line_segments(
+    X, Y, Xl, Yl, tolerance=buffer
+)
+id_line = indices
+
+i_plot_1 = indices[5]
 i_plot_2 = 1000
 
+
+
+
+
+# slect indexes to plot
+#i_plot_1 = 100
+#i_plot_2 = 1000
+
 plt.figure(figsize=(10, 6))
-plt.scatter(X, Y, c=ELEVATION, s=1,label='Survey Points')
-plt.plot(X[id_line],Y[id_line], 'k.', markersize=4, label='All Survey Points')
+plt.scatter(X, Y, c=NON_NAN, s=1,label='Survey Points')
+#plt.plot(X[id_line],Y[id_line], 'k-', markersize=8, label='Profile', zorder=2, linewidth=5)
+plt.plot(X[id_line],Y[id_line], 'r.', markersize=8, label='Profile', zorder=2, linewidth=5)
 plt.plot(X[i_plot_1],Y[i_plot_1], 'k*', markersize=10, label='P1')
 plt.plot(X[i_plot_2],Y[i_plot_2], 'k*', markersize=10, label='P2')
 plt.grid()
 plt.colorbar(label='Elevation (m)')
 plt.xlabel('X (m)')
 plt.ylabel('Y (m)')
-plt.title('Survey Points Colored by Elevation')
+plt.title('Survey Points Colored by Number of Non-NaN Data Points')
 plt.axis('equal')
 plt.legend()
 if hardcopy:
-    plt.savefig('DAUGAARD_survey_points_elevation.png', dpi=300)
+    plt.savefig('DAUGAARD_survey_points_nonnan.png', dpi=300)
 plt.show()
 
 i1=np.min(id_line)
@@ -120,6 +196,23 @@ f_prior_data_h5_list = []
 f_prior_data_h5_list.append('daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 f_prior_data_h5_list.append('daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 
+if useLogData == True:
+    f_prior_log_data_h5  = 'd_valley_log.h5'
+    ig.copy_hdf5_file(f_prior_data_h5_list[0], f_prior_log_data_h5, showInfo=2)
+    D,id =  ig.load_prior_data(f_prior_data_h5_list[0])
+    Dlog = np.log10(D[0])
+    ig.save_prior_data(f_prior_log_data_h5, Dlog, id=1, showInfo=2, force_delete=True)
+    f_prior_data_h5_list[0] = f_prior_log_data_h5
+
+    f_prior_log_data_h5  = 'd_out_log.h5'
+    ig.copy_hdf5_file(f_prior_data_h5_list[1], f_prior_log_data_h5, showInfo=2)
+    D,id =  ig.load_prior_data(f_prior_data_h5_list[1])
+    Dlog = np.log10(D[0])
+    ig.save_prior_data(f_prior_log_data_h5, Dlog, id=1, showInfo=2, force_delete=True)
+    f_prior_data_h5_list[1] = f_prior_log_data_h5
+        
+#%%
+
 if useMergedPrior:
     f_prior_data_merged_h5 = ig.merge_prior(f_prior_data_h5_list, f_prior_merged_h5='daugaard_merged.h5', showInfo=2)
     f_prior_data_h5_list.append(f_prior_data_merged_h5)
@@ -130,19 +223,23 @@ if useGenericPrior:
     f_prior_data_generic_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, NdoMakePriorCopy=True)
     f_prior_data_h5_list.append(f_prior_data_generic_h5)
 
-# %%
-# Select how many prior model realizations (N) should be generated
-
-f_post_h5_list = []
-
+#%% Plor prior data and observed data
 for i_prior in range(len(f_prior_data_h5_list)):
 
     f_prior_data_h5= f_prior_data_h5_list[i_prior]
     ig.integrate_update_prior_attributes(f_prior_data_h5)
-
-    # plot prior data and observed data
     ig.plot_data_prior(f_prior_data_h5, f_data_h5, i_plot=100, hardcopy=hardcopy)
-    
+
+
+# %%
+# Select how many prior model realizations (N) should be generated
+autoT=True
+nr=1000
+f_post_h5_list = []
+for i_prior in range(len(f_prior_data_h5_list)):
+
+    f_prior_data_h5= f_prior_data_h5_list[i_prior]
+  
     # Get filename without extension
     fileparts = os.path.splitext(f_prior_data_h5)
     f_post_h5 = 'post_%s_Nuse%d_inflateNoise%d.h5' % (fileparts[0], N_use,inflateNoise)
@@ -152,52 +249,417 @@ for i_prior in range(len(f_prior_data_h5_list)):
                                     f_post_h5, 
                                     N_use = N_use, 
                                     showInfo=1, 
+                                    nr=nr,
                                     parallel=True, 
+                                    autoT=autoT,
+                                    T_base=1,
                                     updatePostStat=False)
-    
-    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
-    ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+   
 
     f_post_h5_list.append(f_post_h5)    
-
 
 # %% 
 for i_post in range(len(f_post_h5_list)):
     ig.integrate_posterior_stats(f_post_h5_list[i_post], showInfo=1)
-    
+   
+
+ #%%
+ #if useMergedPrior:
+X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+
+# Compute hypothesis probabilities using the new function
+# This computes P(valley|data) and P(standard|data) from the evidence values in the posterior files
+P_from_EV, Mode_from_EV, ENT_from_EV = ig.compute_hypothesis_probability([f_post_h5_list[0], f_post_h5_list[1]], showInfo=1)
+P_valley = P_from_EV[:, 0]  # Probability of valley hypothesis
+P_standard = P_from_EV[:, 1]  # Probability of standard hypothesis
+
+# Load the probabilities from the merged prior approach (for comparison)
+with h5py.File(f_post_h5_list[2],'r') as f:
+    P = f['/M3/P'][:]
+P_valley_check = P[:,:,0]
+
+# Alternative manual calculation (should give identical results):
+# with h5py.File(f_post_h5_list[0],'r') as f:
+#     EV1 = f['/EV'][:]
+# with h5py.File(f_post_h5_list[1],'r') as f:
+#     EV2 = f['/EV'][:]
+# log_sum = np.logaddexp(EV1, EV2)
+# P_valley = np.exp(EV1 - log_sum)
+#P_valley = EV1/(EV1+EV2)
+# use cmap red white blue
+cmap_valley = plt.get_cmap('RdBu_r')
+plt.figure(figsize=(8, 6))
+plt.scatter(X, Y, c=P_valley, s=1, cmap=cmap_valley, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
+plt.savefig('DAUGAARD_Pvalley_EV_N%d_No%d_aT%d_l%d.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
+plt.figure(figsize=(8, 6))
+#plt.scatter(X, Y, c=P_valley_check[:,0], s=1, cmap=cmap_valley, vmin=.45, vmax=.55);plt.colorbar(label='P(Valley)');plt.axis('equal')
+plt.scatter(X, Y, c=P_valley_check[:,0], s=1, cmap=cmap_valley, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
+plt.savefig('DAUGAARD_Pvalley_MIXTURE_N%d_No%d_aT%d_l%d.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
+
+
+plt.figure(figsize=(4, 4))
+plt.plot(P_valley.flatten(),P_valley_check[:,0].flatten(),'k.', markersize=.1);plt.xlabel('P(Valley) from EV');plt.ylabel('P(Valley) from M3');plt.axis('equal' )
+plt.grid(True, which='both', alpha=0.3)
+plt.gca().set_xticks(np.arange(0, 1.1, 0.1))
+plt.gca().set_yticks(np.arange(0, 1.1, 0.1))
+plt.grid(True, which='major', alpha=0.7)
+plt.savefig('DAUGAARD_Pvalley_compare_N%d_No%d_aT%d_l%d.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
+
+
 #%%
+plLevel = 1    
 for i_post in range(len(f_post_h5_list)):
     f_post_h5 = f_post_h5_list[i_post]
-    
-    ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
-    
-    ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
 
-    ig.plot_profile(f_post_h5, i1=i1, i2=i2, hardcopy=hardcopy)
-
-# %% EFFECT OF SIZE
-
-N_use_arr = [1000,10000,100000,1000000]
-
-f_post_h5_N_list = []
-
-for N_use in N_use_arr:
-    for i_prior in range(len(f_prior_data_h5_list)):
-
-        f_prior_data_h5= f_prior_data_h5_list[i_prior]
-        # Get filename without extension
-        fileparts = os.path.splitext(f_prior_data_h5)
-        f_post_h5 = 'post_%s_Nuse%d_inflateNoise%d.h5' % (fileparts[0], N_use,inflateNoise)
-
-        f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
-                                        f_data_h5, 
-                                        f_post_h5, 
-                                        N_use = N_use, 
-                                        showInfo=1, 
-                                        parallel=True, 
-                                        updatePostStat=True)
+    if plLevel>0:
+        ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y', cmap=cmap, clim=clim,hardcopy=hardcopy)
         
+    if plLevel>1:
+
         ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
         ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+
+        ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
+
+        ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
+
+
+        ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Mean', uselog=1, s=10,hardcopy=hardcopy)
+        plt.show()
+        ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10,hardcopy=hardcopy)
+        plt.show()
+
+    try:
+        ig.plot_feature_2d(f_post_h5,im=3, key='Mode', uselog=1, s=10, cmap='jet', hardcopy=hardcopy)
+    except:
+        pass
+
+
+# %% [markdown]
+# ## Effect of size of prior data set
+
+# %% EFFECT OF SIZE
+f_post_h5_N_list = []
+
+if doEffectSize:
+    N_use_arr = [1000,10000,100000,1000000]
+    #N_use_arr = [1000,10000,10000]
+
+    for N_use in N_use_arr:
+        for i_prior in range(len(f_prior_data_h5_list)):
+
+            print('# ------')
+            print('TESTING N_use=%d, f_prior_data_h5=%s' % (N_use, f_prior_data_h5_list[i_prior]))
+            print('# ------')
+
+            f_prior_data_h5= f_prior_data_h5_list[i_prior]
+            # Get filename without extension
+            fileparts = os.path.splitext(f_prior_data_h5)
+            f_post_h5 = 'post_%s_Nuse%d_inflateNoise%d.h5' % (fileparts[0], N_use,inflateNoise)
+
+            f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
+                                            f_data_h5, 
+                                            f_post_h5, 
+                                            N_use = N_use, 
+                                            showInfo=1, 
+                                            parallel=True, 
+                                            updatePostStat=True)
+            
+            f_post_h5_N_list.append(f_post_h5)
+        
+            plLevel = 1
+            if plLevel>0:
+                ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y', hardcopy=hardcopy)
+
+
+
+
+# %% [markdown]
+# ## Effect of size of prior data set
+
+# %% T_base
+f_post_h5_T_list = [] 
+if doTbase:
+    T_base_arr = [1,2,10,20,100]
+    N_use = N_use_org
+    for T_base in T_base_arr:
+        for i_prior in range(len(f_prior_data_h5_list)):
+
+            print('# ------')
+            print('TESTING T_base=%d, f_prior_data_h5=%s' % (T_base, f_prior_data_h5_list[i_prior]))
+            print('# ------')
+                            
+            f_prior_data_h5= f_prior_data_h5_list[i_prior]
+            # Get filename without extension
+            fileparts = os.path.splitext(f_prior_data_h5)
+            f_post_h5 = 'post_%s_Nuse%d_T%d_inflateNoise%d.h5' % (fileparts[0], N_use,T_base,inflateNoise)
+
+            f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
+                                            f_data_h5, 
+                                            f_post_h5, 
+                                            T_base = T_base,
+                                            N_use = N_use,
+                                            autoT=False,
+                                            showInfo=1, 
+                                            parallel=True, 
+                                            updatePostStat=True)
+            
+            f_post_h5_T_list.append(f_post_h5)
+
+            plLevel = 1
+            if plLevel>0:
+                ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y', cmap=cmap, clim=clim, hardcopy=hardcopy)
+
+
+
+
+#%% 
+# concatenate f_post_h5_list, f_post_h5_N_list, f_post_h5_T_list
+
+if doPlotAll:
+    plLevel=2
+    f_post_h5_all_list = f_post_h5_list + f_post_h5_N_list + f_post_h5_T_list
+    
+    #f_post_h5_all_list = f_post_h5_T_list
+
+
+    for i_post in range(len(f_post_h5_all_list)):
+        f_post_h5 = f_post_h5_all_list[i_post]
+
+        ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y', cmap=cmap, clim=clim,hardcopy=hardcopy)
+        ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
+            
+        if plLevel>0:
+            ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
+            ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+    
+        if plLevel>1:
+            ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
+            ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
+            ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
+            ig.plot_T_EV(f_post_h5, pl='ND', hardcopy=hardcopy)
+
+            
+            ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='LogMean', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
+            plt.show()
+            ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
+            plt.show()
+            ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10, hardcopy=hardcopy)
+            plt.show()
+
+            try:
+                ig.plot_feature_2d(f_post_h5,im=3, key='Mode', uselog=1, s=10, cmap='jet', hardcopy=hardcopy)
+            except:
+                pass
+
+
+#%% #################################################################################################
+# TEST INVERSION
+# #################################################################################################
+
+#%% TEST INVERSION
+
+#f_prior_data_h5_list = ['daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5',
+# 'daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5',
+# 'daugaard_merged.h5']
+
+if doTestInversion:
+    D_D = []
+    D_idx = []
+    D_M = []
+
+    for i in np.arange(len(f_prior_data_h5_list)):
+        D_t, idx = ig.load_prior_data(f_prior_data_h5_list[i], Randomize=True, showInfo=1)
+        D_D.append(D_t)
+        D_idx.append(idx)
+        M_t, idx=ig.load_prior_model(f_prior_data_h5_list[i])
+        D_M.append(M_t)
+
+    DATA = ig.load_data(f_data_h5, id_arr = [1])
+        
+    # The data point to invert
+    ip = 1000 # Phyp=30,60
+    ip = 100 # Phyp=3,97
+
+    N=D_D[0][0].shape[0]
+    ipd=0    
+    print('data ipd=%d in first [%g,%g]' %  (ipd,D_D[0][0][ipd][0],D_D[2][0][ipd][0]))
+    print('data ipd=%d in 2nd dset [%g,%g]' % (ipd,D_D[1][0][ipd][0],D_D[2][0][ipd+N][0]))
+
+    d_obs = DATA['d_obs'][0][ip]
+    d_std = DATA['d_std'][0][ip]
+
+    # now invert data sat id
+    autoT=False
+    T_base = 1
+    nr=4000
+    EV_est=[]
+    EV_rej=[]
+    i_use_man=[]
+    i_use_rej=[]
+    for i in np.arange(len(D_D)):
+    #for i in np.arange(1):
+        OUT = ig.integrate_rejection_range(D=D_D[i], 
+                                        DATA = DATA,
+                                        idx = idx,                                                                   
+                                        autoT=autoT,
+                                        T_base = T_base,
+                                        ip_range = [ip],
+                                        useRandomData=True,
+                                        nr=nr,
+                                        showInfo=1)
+        i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range = OUT
+        i_use_rej.append(i_use.flatten())
+        
+        # compute logL manually
+        Ns = len(D_D[i][0])
+        logL_manual = np.zeros(Ns)
+        #print("Computing logL manually for %d samples" % Ns)
+        for j in range(Ns):
+            dd = D_D[i][0][j]-d_obs
+            logL_manual[j]   = -0.5 * np.nansum((dd / d_std)**2)
+
+        # compute logL using likelihood function
+        logL = ig.likelihood_gaussian_diagonal(D_D[i][0],d_obs,d_std)
+        P_acc = np.exp(logL-logL.max())
+        r = np.random.rand(len(logL))
+        i_use_temp = np.where(r < P_acc)[0]
+        i_use_man.append(i_use_temp)
+        #p=P_acc/np.sum(P_acc)
+        #i_use_temp2 = np.random.choice(len(P_acc), nr, p=p)
+        #i_use_man.append(i_use_temp2)
+
+        #print('logL manual = ')
+        #print(logL[0:3])
+
+        EV_est_single=np.log(np.mean(np.exp(logL)))
+        EV_est.append(EV_est_single.flatten())
+        EV_rej.append(EV.flatten())
+
+        print("logL (likelihood)=%g, logL(manual)=%g" % (logL[0],logL_manual[0]))
+        for k in np.arange(i):
+            print("EV(rej)=%g, EV(mix)=%g" % (EV_rej[k],EV_est[k]))
+
+        doPlot=True
+        if doPlot:
+            plt.figure(figsize=(4,3))
+            plt.semilogy(D_D[i][0][i_use_rej[i],:].T,'g-',linewidth=1,alpha=0.3)
+            plt.semilogy(D_D[i][0][i_use_man[i],:].T,'k-',linewidth=.5,alpha=0.3)
+            plt.semilogy(d_obs,'r:')
+            plt.title(f_prior_data_h5_list[i])
+            plt.show()  
     
 
+# %%%
+#a ** a
+# %% 
+
+
+if doTestInversion:
+
+    iHYP = D_M[2][2]
+    i_post_type_man = iHYP[i_use_man[2]]
+    i_post_type_rej = iHYP[i_use_rej[2]]
+
+    N_cat_rej = np.array([np.sum(i_post_type_rej==i) for i in [1,2]])
+    P_rej = N_cat_rej/np.sum(N_cat_rej)
+    N_cat_man = np.array([np.sum(i_post_type_man==i) for i in [1,2]])
+    P_man = N_cat_man/np.sum(N_cat_man)
+    print("P from MIXING (rejection): ", P_rej.flatten())
+    print("P from MIXING (manual): ", P_man.flatten())
+    print("Difference  = ", P_rej - P_man)
+
+    P_from_EV_man = np.exp(EV_est)/(np.exp(EV_est[0])+np.exp(EV_est[1]))
+    P_from_EV_rej = np.exp(EV_rej)/(np.exp(EV_rej[0])+np.exp(EV_rej[1]))
+    print("P from EV (manual): ", P_from_EV_man.flatten())
+    print("P from EV (rejection): ", P_from_EV_rej.flatten())
+
+# %% NOW CHECK THE INVERSION OF THE WHOLE AREA USING integrate_rejection_range()
+# DO we get the same if we call integrate_rejection_range() and integrate_rejection()
+
+if doTestInversion:
+    Nd=len(DATA['d_obs'][0])
+    ip_range = np.arange(Nd)
+    #ip_range = np.arange(0, Nd, 100)
+    i_use_compare=[]
+    EV_compare=[]
+
+    for i in np.arange(len(D_D)):
+    #for i in np.arange(1):
+        OUT = ig.integrate_rejection_range(D=D_D[i], 
+                                        DATA = DATA,
+                                        idx = idx,                                                                   
+                                        autoT=autoT,
+                                        T_base = T_base,
+                                        ip_range = ip_range,
+                                        # useRandomData=False,
+                                        nr=nr,
+                                        showInfo=1)
+        i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range_alt = OUT
+        i_use_compare.append(i_use)
+        EV_cplt.plot(P_compare_ev[:,0],P_valley_check[ip_range,0].flatten(),'g.', markersize=.1);plt.xlabel('P(Valley) from EV (_range)');plt.ylabel('P(Valley) from M3');plt.axis('equal' )
+    ompare.append(EV.flatten())
+
+#%%
+if doTestInversion:
+    Np = len(ip_range)
+    P_compare_mix = np.zeros((Np,2))
+    P_compare_ev = np.zeros((Np,2))
+
+    for i in np.arange(Np):
+        i_post_type_compare = iHYP[i_use_compare[2][i]]
+        Nc = np.array([np.sum(i_post_type_compare==i) for i in [1,2]])
+        P_compare_mix[i,:] = Nc/np.sum(Nc)
+
+        EV=np.array([EV_compare[0][i],EV_compare[1][i]])
+        P_compare_ev[i,:] = np.exp(EV)/(np.exp(EV[0])+np.exp(EV[1]))
+        
+    plt.figure(figsize=(14,4))
+    plt.plot(P_compare_mix[:,0],'k-', label='P(Valley) from Mixing')
+    plt.plot(P_compare_ev[:,0],'r-', label='P(Valley) from EV')
+    plt.plot(P_valley_check[ip_range,0],'b--', label='P(Valley) from M3')
+    plt.plot(P_valley[ip_range],'g--', label='P(Valley) from EV calc')
+    plt.grid(True, which='both', alpha=0.3)
+    plt.xlabel('P(Valley) from Mixing')
+    plt.ylabel('P(Valley) from EV')
+    plt.ylim(0,1)
+    plt.legend()
+
+    plt.figure(figsize=(8,8))
+    plt.subplot(2,2,1)
+    plt.scatter(X[ip_range], Y[ip_range], c=P_compare_mix[:,0], s=1, cmap=cmap, vmin=0, vmax=1)
+    plt.colorbar()
+    plt.title('P(Valley) from Mixing')
+    plt.axis('equal')
+    plt.subplot(2,2,2)
+    plt.scatter(X[ip_range], Y[ip_range], c=P_compare_ev[:,0], s=1, cmap=cmap, vmin=0, vmax=1)
+    plt.colorbar()
+    plt.title('P(Valley) from EV')  
+    plt.axis('equal')
+    try:
+        plt.subplot(2,2,3)
+        plt.scatter(X, Y, c=P_valley, s=1, cmap=cmap, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
+        plt.subplot(2,2,4)
+        plt.scatter(X, Y, c=P_valley_check[:,0], s=1, cmap=cmap, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
+    except:
+        pass
+
+
+    plt.figure(figsize=(4, 4))
+    plt.plot(P_valley.flatten(),P_valley_check[:,0].flatten(),'k.', markersize=.1);plt.xlabel('P(Valley) from EV');plt.ylabel('P(Valley) from M3');plt.axis('equal' )
+    plt.plot(P_compare_ev[:,0],P_compare_mix[:,0],'r.', markersize=.5);plt.xlabel('P(Valley) from EV');plt.ylabel('P(Valley) from Mixing');plt.axis('equal' )
+    plt.grid(True, which='both', alpha=0.3)
+
+    plt.figure(figsize=(4, 4))
+    #plt.plot(P_compare_ev[:,0],P_valley_check[ip_range,0].flatten(),'g.', markersize=.1);plt.xlabel('P(Valley) from EV (_range)');plt.ylabel('P(Valley) from M3 - integrate_rejection()');plt.axis('equal' )
+    plt.plot(P_compare_ev[:,0],P_valley.flatten()[ip_range].flatten(),'g.', markersize=.1);plt.xlabel('P(Valley) from EV (_range)');plt.ylabel('P(Valley) from EV - integrate_rejection()');plt.axis('equal' )
+    plt.plot(P_compare_ev[:,0],P_compare_mix[:,0],'r.', markersize=.5);#plt.xlabel('P(Valley) from EV');plt.ylabel('P(Valley) from Mixing');plt.axis('equal - integrate_rejection_range()' )
+    plt.grid(True, which='both', alpha=0.3)
+
+
+    plt.figure(figsize=(4, 4))
+    plt.plot(EV_compare[0],EV1,'.')
+    plt.xlabel('EV [] from integrate_rejection_range()');
+    plt.ylabel('EV [] from integrate_rejection()');plt.axis('equal' )
+    plt.title('EV1 (Valley) - %s' % f_prior_data_h5_list[0][0:19])
+    plt.grid(True, which='both', alpha=0.3)

@@ -80,6 +80,7 @@ f_prior_layered_uniform = ig.prior_model_layered(
     RHO_min=RHO_min,
     RHO_max=RHO_max,
     f_prior_h5='PRIOR_layered_uniform_log-uniform_N%d.h5' % N,
+    save_sparse=False,
     showInfo=1
 )
 

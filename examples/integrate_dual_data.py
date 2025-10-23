@@ -44,7 +44,7 @@ print("Using GEX file: %s" % file_gex)
 # ### 1a. first, a sample of the prior model parameters, $\rho(\mathbf{m})$, will be generated
 
 # %%
-N=100000
+N=25000
 # Layered model
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000)
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel, showInfo=0)
@@ -121,10 +121,10 @@ if useOldMethod:
         f.create_dataset('D2/d_std', data=D_std_high)
         f['D2'].attrs['noise_model'] = 'gaussian'
 else:
-    # Alternatively, use the ig.write_data_gaussian function
+    # Alternatively, use the ig.save_data_gaussian function
     ig.copy_hdf5_file(f_data_h5,f_data_dual_h5)
-    ig.write_data_gaussian(D_obs_low, D_std = D_std_low, f_data_h5 = f_data_dual_h5, id=1, showInfo=0)
-    ig.write_data_gaussian(D_obs_high, D_std = D_std_high, f_data_h5 = f_data_dual_h5, id=2, showInfo=0)
+    ig.save_data_gaussian(D_obs_low, D_std = D_std_low, f_data_h5 = f_data_dual_h5, id=1, showInfo=0)
+    ig.save_data_gaussian(D_obs_high, D_std = D_std_high, f_data_h5 = f_data_dual_h5, id=2, showInfo=0)
 
 
 
@@ -140,7 +140,7 @@ if useOldMethod:
         f.create_dataset('D1', data=D_low)
         f.create_dataset('D2', data=D_high)
 else:
-    # Alternatively, use the ig.write_data_gaussian function 
+    # Alternatively, use the ig.save_data_gaussian function 
     ig.save_prior_data(f_prior_data_dual_h5, D_low, id=1, force_delete=True)
     ig.save_prior_data(f_prior_data_dual_h5, D_high, id=2, force_delete=False)
 

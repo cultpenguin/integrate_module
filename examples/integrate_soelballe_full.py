@@ -70,7 +70,7 @@ if useAVG:
     LINE = np.concatenate(LINE_list, axis=0)
     f_data_h5 = f_xyz[0].replace('.xyz', '.h5')
     f_data_h5 = 'DATA_avg.h5'
-    ig.write_data_gaussian(D, D_std = D_std, f_data_h5=f_data_h5, 
+    ig.save_data_gaussian(D, D_std = D_std, f_data_h5=f_data_h5, 
                            file_gex=file_gex, showInfo=0, 
                            UTMX=XYZ[:,0], 
                            UTMY=XYZ[:,1],
@@ -80,7 +80,7 @@ if useAVG:
                            delete_if_exist=True,                        
     )
 
-    ig.write_data_gaussian(ALT.T, D_std = ALT.T*0+1, f_data_h5=f_data_h5, 
+    ig.save_data_gaussian(ALT.T, D_std = ALT.T*0+1, f_data_h5=f_data_h5, 
                         id=2,
                         showInfo=0, 
                         name='Altitude',
@@ -109,7 +109,7 @@ if useMOD:
     f_data_h5 = f_xyz[i].replace('.xyz', '.h5')
     f_data_h5 = 'DATA_mod.h5'
 
-    ig.write_data_gaussian(D, D_std = D_std, f_data_h5=f_data_h5,
+    ig.save_data_gaussian(D, D_std = D_std, f_data_h5=f_data_h5,
                         id=1, 
                         file_gex=file_gex, showInfo=2, 
                         UTMX=XYZ[:,0], 
@@ -120,7 +120,7 @@ if useMOD:
                         delete_if_exist=True                        
     )
 
-    ig.write_data_gaussian(ALT, D_std = ALT*0+1, f_data_h5=f_data_h5, 
+    ig.save_data_gaussian(ALT, D_std = ALT*0+1, f_data_h5=f_data_h5, 
                         id=2,
                         showInfo=2,
                         name='Altitude',

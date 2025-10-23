@@ -4,12 +4,15 @@ from integrate.integrate_rejection import integrate_rejection_range
 from integrate.integrate_rejection import integrate_posterior_chunk
 from integrate.integrate_rejection import integrate_posterior_main
 from integrate.integrate_rejection import likelihood_gaussian_diagonal
+from integrate.integrate_rejection import likelihood_gaussian_diagonal_old
 from integrate.integrate_rejection import likelihood_gaussian_full
 from integrate.integrate_rejection import likelihood_multinomial
+from integrate.integrate_rejection import likelihood_multinomial_old
 from integrate.integrate_rejection import select_subset_for_inversion
 from integrate.integrate_rejection import cleanup_shared_memory
 from integrate.integrate_rejection import reconstruct_shared_arrays
 from integrate.integrate_rejection import create_shared_memory
+from integrate.integrate_rejection import compute_hypothesis_probability
 
 # Import other functions from main module
 from integrate.integrate import integrate_update_prior_attributes   
@@ -35,6 +38,9 @@ from integrate.integrate import get_hypothesis_probability
 from integrate.integrate import sample_posterior_multiple_hypotheses
 from integrate.integrate import timing_compute
 from integrate.integrate import timing_plot
+from integrate.integrate import compute_P_obs_from_log
+from integrate.integrate import rescale_P_obs_temperature   
+from integrate.integrate import Pobs_to_datagrid
 
 from integrate.integrate_io import copy_prior
 from integrate.integrate_io import load_prior
@@ -54,8 +60,10 @@ from integrate.integrate_io import post_to_csv
 from integrate.integrate_io import copy_hdf5_file
 from integrate.integrate_io import hdf5_scan
 from integrate.integrate_io import get_case_data
-from integrate.integrate_io import write_data_gaussian
-from integrate.integrate_io import write_data_multinomial
+from integrate.integrate_io import save_data_gaussian
+from integrate.integrate_io import save_data_multinomial
+from integrate.integrate_io import write_data_gaussian  # Deprecated - use save_data_gaussian
+from integrate.integrate_io import write_data_multinomial  # Deprecated - use save_data_multinomial
 from integrate.integrate_io import check_data
 from integrate.integrate_io import merge_prior
 from integrate.integrate_io import merge_data
@@ -77,7 +85,9 @@ from integrate.integrate_plot import plot_data_prior
 from integrate.integrate_plot import plot_prior_stats
 from integrate.integrate_plot import plot_feature_2d
 from integrate.integrate_plot import plot_posterior_cumulative_thickness
-from integrate.integrate_plot import get_clim_cmap
+from integrate.integrate_plot import h5_get_clim_cmap
+from integrate.integrate_plot import get_colormap_and_limits
+from integrate.integrate_plot import find_points_along_line_segments
 
 # Import gex module functions
 from integrate.gex import read_gex as read_gex2

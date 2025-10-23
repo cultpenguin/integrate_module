@@ -8,7 +8,7 @@ echo "Executing notebooks..."
 #for notebook in *started_no*.ipynb; do
 for notebook in integrate*.ipynb; do
     echo "Processing $notebook..."
-    jupyter nbconvert --to notebook --execute --allow-errors "$notebook" --inplace
+    jupyter nbconvert --to notebook --execute --allow-errors --ClearOutputPreprocessor.enabled=True "$notebook" --inplace
     if [ $? -eq 0 ]; then
         echo "✓ $notebook executed successfully"
     else

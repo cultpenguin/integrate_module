@@ -40,8 +40,131 @@ Email: tmeha@geo.au.dk
 import os
 import numpy as np
 import h5py
-import integrate as ig
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+from integrate.integrate import integrate_posterior_stats
+from integrate.integrate_io import get_geometry, get_number_of_data
+from integrate.integrate import posterior_cumulative_thickness
+
+
+def get_colormap_and_limits(cmap_type='default', custom_clim=None):
+    """
+    Return colormap and associated limits for different visualization types.
+
+    Creates various colormaps and their associated color limits for different
+    geophysical data visualization needs, with a focus on resistivity and
+    electromagnetic data plotting.
+
+    Parameters
+    ----------
+    cmap_type : str, optional
+        Type of colormap to return (default is 'default'):
+        - 'default': Red-white-blue-black colormap for general use
+        - 'resistivity': Log-scale colormap optimized for resistivity data
+        - 'entropy': Grayscale colormap for uncertainty visualization
+        - 'discrete': Categorical colormap for discrete classifications
+        - 'temperature': Hot colormap for temperature/evidence fields
+        - 'elevation': Terrain-like colormap for topographic data
+        - 'seismic': Blue-white-red colormap for seismic data
+    custom_clim : list or tuple, optional
+        Custom color limits as [min, max]. If provided, overrides default
+        limits for the specified colormap type (default is None).
+
+    Returns
+    -------
+    cmap : matplotlib.colors.Colormap
+        The colormap object ready for use in matplotlib plotting functions.
+    clim : list
+        Color scale limits as [min, max] values appropriate for the colormap.
+
+    Notes
+    -----
+    Default colormap creates a smooth transition: red (low) → white (medium)
+    → blue (high) → black (very high), which is effective for resistivity
+    visualization where extreme values need emphasis.
+
+    Examples
+    --------
+    >>> cmap, clim = get_colormap_and_limits('default')
+    >>> # Use with matplotlib: plt.imshow(data, cmap=cmap, vmin=clim[0], vmax=clim[1])
+
+    >>> cmap, clim = get_colormap_and_limits('resistivity', custom_clim=[10, 1000])
+    >>> # Custom limits override defaults for resistivity colormap
+    """
+
+    if cmap_type == 'default':
+        # Red to white to blue to black colormap
+        colors = ['red', 'white', 'blue', 'black']
+        n_bins = 256
+        cmap = LinearSegmentedColormap.from_list('default', colors, N=n_bins)
+        clim = [1, 2600]
+
+    elif cmap_type == 'resistivity':
+        # Hardcoded resistivity colormap extracted from Daugaard HDF5 file
+        # Original source: daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5
+        # Shape: (3, 443) - RGB channels with 443 color entries
+        # From GEUS
+        resistivity_cmap_array = np.array([
+    # Red channel
+    [0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.004178, 0.004484, 0.004797, 0.005117, 0.005444, 0.005779, 0.006122, 0.006473, 0.006832, 0.007199, 0.007575, 0.007662, 0.007259, 0.006847, 0.006425, 0.005993, 0.005552, 0.005100, 0.004637, 0.004164, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.017649, 0.105370, 0.195134, 0.286988, 0.380983, 0.477166, 0.575590, 0.614686, 0.644298, 0.674600, 0.705608, 0.737337, 0.769806, 0.803031, 0.830849, 0.848855, 0.867281, 0.886135, 0.905429, 0.925172, 0.945375, 0.966048, 0.987203, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 0.999405, 0.995215, 0.990927, 0.986539, 0.982049, 0.977455, 0.972753, 0.967942, 0.963019, 0.957981, 0.952826, 0.944180, 0.927868, 0.911177, 0.894097, 0.876619, 0.858733, 0.840432, 0.821704, 0.802539, 0.786885, 0.774726, 0.762284, 0.749552, 0.736523, 0.723191, 0.709548, 0.695588, 0.681302, 0.666684, 0.652006, 0.643651, 0.635101, 0.626352, 0.617399, 0.608238, 0.598863, 0.589270, 0.579454, 0.569409, 0.559130, 0.548611, 0.537848, 0.526834, 0.515563, 0.504029, 0.502916, 0.501892, 0.500844, 0.499772, 0.498675, 0.497552, 0.496403, 0.495228, 0.494025, 0.492794, 0.491534, 0.490245, 0.488926, 0.487576, 0.486195, 0.484781, 0.483335, 0.481855, 0.480340, 0.478791, 0.477205, 0.475582, 0.473921, 0.472222, 0.470483, 0.468704, 0.466883, 0.465020, 0.463113, 0.461162, 0.459672, 0.458212, 0.456719, 0.455190, 0.453626, 0.452026, 0.450388, 0.448713, 0.446998, 0.445243, 0.443448, 0.441610, 0.439730, 0.437806, 0.435837, 0.433823, 0.431761, 0.429651, 0.427493, 0.425284, 0.423023, 0.420710, 0.418343, 0.415921, 0.413442, 0.410906, 0.408310, 0.405654, 0.402937, 0.400156, 0.397310, 0.394531, 0.394531, 0.394531, 0.394531, 0.394531, 0.394531, 0.394531, 0.394531, 0.394531, 0.394531, 0.394531, 0.394531],
+    # Green channel
+    [0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.005996, 0.010486, 0.015081, 0.019783, 0.024595, 0.029518, 0.034556, 0.039712, 0.044988, 0.050386, 0.055911, 0.061564, 0.067348, 0.073268, 0.079325, 0.085524, 0.091866, 0.098357, 0.104999, 0.111795, 0.118750, 0.125866, 0.133149, 0.140601, 0.148227, 0.156030, 0.164015, 0.172186, 0.180548, 0.189104, 0.197859, 0.202732, 0.206970, 0.211307, 0.215745, 0.220286, 0.224933, 0.229688, 0.234554, 0.239534, 0.244629, 0.249843, 0.255178, 0.260638, 0.266225, 0.271942, 0.277792, 0.283779, 0.289905, 0.296173, 0.302588, 0.309152, 0.315869, 0.322743, 0.329776, 0.336973, 0.344338, 0.351875, 0.359086, 0.366018, 0.373112, 0.380371, 0.387799, 0.395400, 0.403178, 0.411137, 0.419281, 0.427615, 0.436144, 0.444871, 0.453801, 0.462939, 0.472291, 0.481860, 0.491651, 0.501671, 0.511925, 0.522417, 0.533154, 0.544140, 0.554678, 0.564420, 0.574389, 0.584590, 0.595029, 0.605711, 0.616642, 0.627827, 0.639273, 0.650986, 0.662971, 0.675236, 0.687786, 0.700629, 0.713770, 0.727218, 0.740979, 0.750365, 0.757228, 0.764251, 0.771438, 0.778792, 0.786318, 0.794018, 0.801898, 0.809962, 0.818214, 0.826657, 0.835298, 0.844139, 0.853187, 0.862445, 0.872810, 0.883504, 0.894447, 0.905645, 0.917104, 0.928830, 0.940829, 0.953107, 0.965672, 0.978529, 0.991685, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 0.987917, 0.957677, 0.926732, 0.895066, 0.862663, 0.829505, 0.795575, 0.760854, 0.725325, 0.694938, 0.667846, 0.640122, 0.611752, 0.582721, 0.553015, 0.522616, 0.491509, 0.459678, 0.422602, 0.383502, 0.343492, 0.302549, 0.260653, 0.217780, 0.173910, 0.129017, 0.083079, 0.036070, 0.006763, 0.015584, 0.024611, 0.033849, 0.043301, 0.052974, 0.062872, 0.073000, 0.083365, 0.093971, 0.104824, 0.118996, 0.143518, 0.168611, 0.194289, 0.220565, 0.247453, 0.274967, 0.303123, 0.331934, 0.361416, 0.391585, 0.413115, 0.378949, 0.343987, 0.308210, 0.271600, 0.234138, 0.195802, 0.156574, 0.116432, 0.075355, 0.033321, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906],
+    # Blue channel
+    [0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.570312, 0.571016, 0.571970, 0.572948, 0.573947, 0.574971, 0.576018, 0.577089, 0.578185, 0.579307, 0.580455, 0.581630, 0.582832, 0.584063, 0.585321, 0.586609, 0.587928, 0.589276, 0.590657, 0.592069, 0.593514, 0.594993, 0.596507, 0.598055, 0.599640, 0.601262, 0.602921, 0.604619, 0.606357, 0.608135, 0.609955, 0.611817, 0.613722, 0.615671, 0.617667, 0.619708, 0.621797, 0.623935, 0.626123, 0.628361, 0.630652, 0.632996, 0.635394, 0.637849, 0.640360, 0.642931, 0.645561, 0.648252, 0.651006, 0.653824, 0.656708, 0.659659, 0.662678, 0.665768, 0.668930, 0.672166, 0.675477, 0.678865, 0.682332, 0.685880, 0.689510, 0.693225, 0.697027, 0.700917, 0.704898, 0.708703, 0.712295, 0.715971, 0.719733, 0.723582, 0.727521, 0.731551, 0.735676, 0.739896, 0.744215, 0.748635, 0.753157, 0.757785, 0.762521, 0.767366, 0.772325, 0.777399, 0.782592, 0.787905, 0.793342, 0.798906, 0.804599, 0.810425, 0.816387, 0.822488, 0.828730, 0.835118, 0.841655, 0.848344, 0.855189, 0.862194, 0.865477, 0.868126, 0.870836, 0.873610, 0.876448, 0.879353, 0.882325, 0.885366, 0.888478, 0.891663, 0.894921, 0.898256, 0.901668, 0.905160, 0.908733, 0.912390, 0.916131, 0.919960, 0.923878, 0.927887, 0.931990, 0.936188, 0.940484, 0.944880, 0.949378, 0.953981, 0.958691, 0.961661, 0.963047, 0.964466, 0.965918, 0.967403, 0.968924, 0.970479, 0.972071, 0.973700, 0.975367, 0.977073, 0.978818, 0.980604, 0.982432, 0.984302, 0.986216, 0.988174, 0.990178, 0.992229, 0.994327, 0.996474, 0.998672, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 0.984193, 0.941895, 0.898611, 0.854319, 0.808996, 0.762617, 0.715157, 0.666592, 0.616896, 0.555634, 0.480842, 0.404307, 0.325989, 0.245847, 0.163838, 0.079919, 0.007721, 0.007136, 0.006538, 0.005925, 0.005299, 0.004657, 0.004001, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.004054, 0.004454, 0.004863, 0.005282, 0.005711, 0.006150, 0.006599, 0.007058, 0.007528, 0.007649, 0.007241, 0.006822, 0.006394, 0.005957, 0.005509, 0.005050, 0.004581, 0.004101, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.003906, 0.004172, 0.004512, 0.004860, 0.005216, 0.005580, 0.005953, 0.006334, 0.006725, 0.007124, 0.007533, 0.022095, 0.066203, 0.111339, 0.157525, 0.204788, 0.253151, 0.302641, 0.353284, 0.405106, 0.458135, 0.512400, 0.563039, 0.598879, 0.635554, 0.673084, 0.711487, 0.750785, 0.790998, 0.832148, 0.874256, 0.917346, 0.961439, 0.999405, 0.995215, 0.990927, 0.986539, 0.982049, 0.977455, 0.972753, 0.967942, 0.963019, 0.957981, 0.952826, 0.944180, 0.927868, 0.911177, 0.894097, 0.876619, 0.858733, 0.840432, 0.821704, 0.802539, 0.786885, 0.774726, 0.762284, 0.749552, 0.736523, 0.723191, 0.709548, 0.695588, 0.681302, 0.666684, 0.652006, 0.643651, 0.635101, 0.626352, 0.617399, 0.608238, 0.598863, 0.589270, 0.579454, 0.569409, 0.559130, 0.548611, 0.537848, 0.526834, 0.515563, 0.504029, 0.502916, 0.501892, 0.500844, 0.499772, 0.498675, 0.497552, 0.496403, 0.495228, 0.494025, 0.492794, 0.491534, 0.490245, 0.488926, 0.487576, 0.486195, 0.484781, 0.483335, 0.481855, 0.480340, 0.478791, 0.477205, 0.475582, 0.473921, 0.472222, 0.470483, 0.468704, 0.466883, 0.465020, 0.463113, 0.461162, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938, 0.460938]
+])
+
+        from matplotlib.colors import ListedColormap
+        cmap = ListedColormap(resistivity_cmap_array.T)
+        clim = [0.1, 2600]
+
+    elif cmap_type == 'entropy':
+        # Grayscale for uncertainty/entropy
+        colors = ['white', 'gray', 'black']
+        cmap = LinearSegmentedColormap.from_list('entropy', colors, N=256)
+        clim = [0, 1]
+
+    elif cmap_type == 'discrete':
+        # Categorical colormap for discrete classifications
+        cmap = plt.cm.Set1
+        clim = [0.5, 8.5]  # Typical for 8 categories
+
+    elif cmap_type == 'temperature':
+        # Hot colormap for temperature/evidence fields
+        cmap = plt.cm.hot_r
+        clim = [1, 100]
+
+    elif cmap_type == 'elevation':
+        # Terrain-like colormap for elevation data
+        cmap = plt.cm.terrain
+        clim = [0, 100]  # Meters above sea level
+
+    elif cmap_type == 'evidence':
+        # XXX
+        colors = ['darkblue',  'darkred']
+        cmap = LinearSegmentedColormap.from_list('evidence', colors, N=256)
+        cmap = plt.cm.magma
+        clim = [-60,0]
+
+    elif cmap_type == 'seismic':
+        # Blue-white-red for seismic/anomaly data
+        colors = ['darkblue', 'blue', 'lightblue', 'white', 'lightcoral', 'red', 'darkred']
+        cmap = LinearSegmentedColormap.from_list('seismic', colors, N=256)
+        clim = [-1, 1]
+
+    else:
+        # Fallback to default if unknown type
+        colors = ['red', 'white', 'blue', 'black']
+        cmap = LinearSegmentedColormap.from_list('default', colors, N=256)
+        clim = [1, 2600]
+
+    # Override with custom limits if provided
+    if custom_clim is not None:
+        if len(custom_clim) == 2:
+            clim = list(custom_clim)
+        else:
+            raise ValueError("custom_clim must be a list or tuple of length 2 [min, max]")
+
+    return cmap, clim
 
 
 def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='median', usePrior=False, **kwargs):
@@ -89,7 +212,7 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
     if isinstance(icat, int):
         icat = np.array([icat])
 
-    out = ig.posterior_cumulative_thickness(f_post_h5, im=2, icat=icat, usePrior=usePrior, **kwargs)
+    out = posterior_cumulative_thickness(f_post_h5, im=2, icat=icat, usePrior=usePrior, **kwargs)
     if not isinstance(out, tuple):
         # Then output failed
         return
@@ -136,7 +259,7 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
 
     return fig
 
-def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, title_text='', hardcopy=False, cmap=[], clim=[], **kwargs):
+def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, title_text='', hardcopy=False, cmap=None, clim=None, **kwargs):
     """
     Create 2D spatial scatter plot of model parameter features.
 
@@ -206,14 +329,18 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
             name = dstr
 
         
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
     
     if showInfo>1:
-        print("f_prior_h5 = %d" % f_prior_h5)
-    clim_ref, cmap_ref = ig.get_clim_cmap(f_prior_h5,dstr)
-    if len(cmap)==0:
+        print("f_prior_h5 = %s" % f_prior_h5)
+
+
+    cmap_ref, clim_ref = get_colormap_and_limits('resistivity')
+    if cmap is None:
+        # Check prior file for colormap
         cmap = cmap_ref
-    if len(clim)==0:
+        
+    if clim_ref is None:
         clim = clim_ref
 
     if showInfo>2:
@@ -321,7 +448,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
     
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
     clim=(T_min,T_max)
 
     with h5py.File(f_post_h5,'r') as f_post:
@@ -373,14 +500,14 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         EV_max = 0
         EV_min = np.percentile(EV,1)
         #EV_min = -30
-        
+        cmap_ev, clim = get_colormap_and_limits(cmap_type='evidence', custom_clim=[EV_min, EV_max])
         #if 'vmin' not in kwargs:
         #    kwargs['vmin'] = EV_min
         #if 'vmax' not in kwargs:
         #    kwargs['vmax'] = EV_max
         #print('EV_min=%f, EV_max=%f' % (EV_min, EV_max))
         plt.figure(2, figsize=(20, 10))
-        plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],s=s,cmap='jet_r', vmin = EV_min, vmax=EV_max, **kwargs)            
+        plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],s=s,cmap=cmap_ev, vmin=clim[0], vmax=clim[1], **kwargs)            
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -430,15 +557,23 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             LOGL_min = 0
             LOGL_max = 5
             
-            # Create custom colormap: red -> white/green -> blue with white/green at value 1
-            from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
-            colors = ['red', 'green', 'blue']
-            custom_cmap = LinearSegmentedColormap.from_list('custom', colors, N=256)
+            # Create custom colormap: red -> white -> blue with white at value 1
+            # Red-white takes 1/5 (0 to 1), white-blue takes 4/5 (1 to 5)
+            from matplotlib.colors import LinearSegmentedColormap, Normalize
             
-            # Use TwoSlopeNorm to center the colormap at value 1
-            norm = TwoSlopeNorm(vmin=LOGL_min, vcenter=1, vmax=LOGL_max)
+            # Define color segments with proper proportions
+            # Value 1 should be at position 0.2 (1/5) in the colormap
+            colors = ['red', 'white', 'blue']
+            n_seg = len(colors) - 1
+            # Create segments: 0->1 takes 20% (0.0 to 0.2), 1->5 takes 80% (0.2 to 1.0)
+            segment_positions = [0.0, 0.2, 1.0]
+            custom_cmap = LinearSegmentedColormap.from_list('custom', list(zip(segment_positions, colors)), N=256)
+            
+            # Use standard normalization
+            norm = Normalize(vmin=LOGL_min, vmax=LOGL_max)
             
             plt.figure(4, figsize=(20, 10))
+            plt.plot(X[i1:i2], Y[i1:i2], color='lightgray', zorder=-1, marker='.', linestyle='None', markersize=2*s)  # Background points in light gray
             scatter = plt.scatter(X[i1:i2], Y[i1:i2], c=LOGL_mean_plot[i1:i2], s=s, 
                                 cmap=custom_cmap, norm=norm, **kwargs)
             plt.grid()
@@ -458,7 +593,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
     return
 
 
-def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcopy=False, ax=None, cmap='jet', **kwargs):
+def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', hardcopy=False, ax=None, cmap='jet', **kwargs):
     """
     Plot survey geometry data from INTEGRATE HDF5 files.
 
@@ -516,7 +651,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         if 'f5_prior' in f_data['/'].attrs:
             f_data_h5 = f_data['/'].attrs['f5_data']
     print('f_data_h5=%s' % f_data_h5)        
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
     
     wx = 10
     wy = (np.max(Y)-np.min(Y))/(np.max(X)-np.min(X)) * wx
@@ -564,11 +699,12 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
                 # get filename without extension        
                 f_png = '%s_%d_%d_LINE.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
                 plt.savefig(f_png)
-            plt.show()
+            #plt.show()
         else:
             current_ax.set_title('LINE')
             current_ax.set_aspect('equal')
-    
+        if pl == 'all':
+            plt.show()
 
     if ax is None and ((pl=='all') or (pl=='ELEVATION')):
         plt.figure(1, figsize=(20, 10))
@@ -585,7 +721,11 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             # get filename without extension        
             f_png = '%s_%d_%d_ELEVATION.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
             plt.savefig(f_png)
-        plt.show()
+
+        if pl == 'all':
+            plt.show()
+    
+
     elif ax is not None and pl == 'ELEVATION':
         scatter = ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap=cmap,**kwargs)            
         ax.grid()
@@ -593,6 +733,9 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         ax.set_ylabel('Y')
         ax.set_title('ELEVATION')
         ax.set_aspect('equal')
+
+        if pl == 'all':
+            plt.show()
 
     if ax is None and ((pl=='all') or (pl=='id')):
         plt.figure(1, figsize=(20, 10))
@@ -609,6 +752,10 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             # get filename without extension        
             f_png = '%s_%d_%d_id.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
             plt.savefig(f_png)
+
+        if pl == 'all':
+            plt.show()
+
     elif ax is not None and pl == 'id':
         scatter = ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap=cmap,**kwargs)
         ax.grid()
@@ -617,11 +764,13 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         ax.set_title('id')
         ax.set_aspect('equal')
 
+        if pl == 'all':
+            plt.show()
     if ax is None and ((pl=='all') or (pl=='NDATA')):
         # Get number of data using the new function
         try:
             # Get data counts for all datasets (returns 2D array)
-            data_counts = ig.get_number_of_data(f_data_h5, count_nan=False)
+            data_counts = get_number_of_data(f_data_h5, count_nan=False)
 
             # If multiple datasets, sum across datasets to get total valid data per location
             if data_counts.shape[0] > 1:
@@ -647,12 +796,14 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
         except Exception as e:
             print(f"Warning: Could not plot number of data: {e}")
             print("This requires valid d_obs datasets in the HDF5 file")
+        if pl == 'all':
+            plt.show()
 
     elif ax is not None and pl == 'NDATA':
         # Get number of data using the new function
         try:
             # Get data counts for all datasets (returns 2D array)
-            data_counts = ig.get_number_of_data(f_data_h5, count_nan=False)
+            data_counts = get_number_of_data(f_data_h5, count_nan=False)
 
             # If multiple datasets, sum across datasets to get total valid data per location
             if data_counts.shape[0] > 1:
@@ -670,32 +821,40 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='all', hardcop
             print(f"Warning: Could not plot number of data: {e}")
             print("This requires valid d_obs datasets in the HDF5 file")
 
+        if pl == 'all':
+            plt.show()
     return
 
 
 
-def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
+def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='index', gap_threshold=None, **kwargs):
     """
     Plot 1D profiles from posterior sampling results.
-    
+
     This function creates vertical profile plots showing the posterior distribution
     of model parameters as a function of depth or model layer. Automatically
     detects model type (discrete or continuous) and calls appropriate plotting function.
-    
+
     :param f_post_h5: Path to the HDF5 file containing posterior sampling results
     :type f_post_h5: str
     :param i1: Starting index for the data points to plot (1-based indexing)
     :type i1: int, optional
     :param i2: Ending index for the data points to plot (1-based indexing)
     :type i2: int, optional
+    :param ii: Specific array of indices to plot. If provided, overrides i1 and i2
+    :type ii: numpy.ndarray, optional
     :param im: Model identifier to plot. If 0, automatically detects and plots all models
     :type im: int, optional
+    :param xaxis: X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...)
+    :type xaxis: str, optional
+    :param gap_threshold: Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, the region becomes transparent. If None, no gap transparency is applied.
+    :type gap_threshold: float, optional
     :param kwargs: Additional plotting arguments passed to discrete/continuous plotting functions
     :type kwargs: dict
-    
+
     :returns: None (creates matplotlib plots)
     :rtype: None
-    
+
     .. note::
         The function automatically computes posterior statistics if not present in the file.
         For discrete models, calls plot_profile_discrete(). For continuous models,
@@ -713,7 +872,7 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
             print('No posterior stats found in %s - computing them now' % f_post_h5)
             updatePostStat = True
     if updatePostStat:
-            ig.integrate_posterior_stats(f_post_h5)
+            integrate_posterior_stats(f_post_h5)
             
     if (im==0):
         print('Plot profile for all model parameters')
@@ -723,9 +882,11 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
                 im = int(key[1:])
                 try:
                     if key[0]=='M':
-                        plot_profile(f_post_h5, i1, i2, im=im, **kwargs)
-                except:
-                    print('Error in plot_profile for key=%s' % key)
+                        plot_profile(f_post_h5, i1, i2, ii, im=im, xaxis=xaxis, gap_threshold=gap_threshold, **kwargs)
+                except Exception as e:
+                    print('Error in plot_profile for key=%s: %s' % (key, str(e)))
+                    import traceback
+                    traceback.print_exc()
         return 
     
     
@@ -735,12 +896,12 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, im=0, **kwargs):
     #print(Mstr)
     #print(is_discrete)
     if is_discrete:
-        plot_profile_discrete(f_post_h5, i1, i2, im, **kwargs)
+        plot_profile_discrete(f_post_h5, i1, i2, ii, im, xaxis, gap_threshold, **kwargs)
     elif not is_discrete:
-        plot_profile_continuous(f_post_h5, i1, i2, im, **kwargs)
+        plot_profile_continuous(f_post_h5, i1, i2, ii, im, xaxis, gap_threshold, **kwargs)
 
 
-def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
+def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='index', gap_threshold=None, **kwargs):
     """
     Create vertical profile plots for discrete categorical model parameters.
 
@@ -758,8 +919,14 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     i2 : float, optional
         Ending data point index for profile plotting. If larger than data size,
         uses all available data (default is 1e+9).
+    ii : numpy.ndarray, optional
+        Specific array of indices to plot. If provided, overrides i1 and i2 (default is empty array).
     im : int, optional
         Model index to plot (e.g., 1 for M1, 2 for M2, default is 1).
+    xaxis : str, optional
+        X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'id').
+    gap_threshold : float, optional
+        Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, regions after the gaps become completely transparent to indicate missing data. If None, no gap transparency is applied (default is None).
     **kwargs : dict
         Additional keyword arguments:
         - hardcopy : bool, save plot as PNG file (default False)
@@ -793,7 +960,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
     
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
 
     Mstr = '/M%d' % im
 
@@ -863,14 +1030,106 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     for i in range(nd):
         ZZ[:,i] = ELEVATION[i]-ZZ[:,i]
 
-    if i1<1: 
-        i1=0
-    if i2>nd-1:
-        i2=nd-1
+    # Index selection logic - use specific indices if provided, otherwise use range
+    if len(ii)==0:
+        if i1<1:
+            i1=0
+        if i2>nd-1:
+            i2=nd-1
+        ii = np.arange(i1,i2)
+    else:
+        # Ensure ii indices are within bounds
+        ii = np.array(ii)
+        ii = ii[ii < nd]  # Remove indices >= nd
+        ii = ii[ii >= 0]  # Remove negative indices
 
-    # Get center of grid cells
-    IID = ID[:,i1:i2]
-    IIZ = ZZ[:,i1:i2]
+    # Sort indices based on chosen x-axis to ensure monotonic ordering
+    if xaxis == 'x':
+        # Sort by X coordinates
+        x_vals = X[ii]
+        sort_order = np.argsort(x_vals)
+        ii = ii[sort_order]
+    elif xaxis == 'y':
+        # Sort by Y coordinates
+        y_vals = Y[ii]
+        sort_order = np.argsort(y_vals)
+        ii = ii[sort_order]
+    elif xaxis == 'id':
+        # Sort by data index (sort ii directly)
+        ii = np.sort(ii)
+    # For 'index', no additional sorting needed (will be sequential 0,1,2,3...)
+
+    # X-axis selection logic
+    if xaxis == 'id':
+        # Use data index (default behavior)
+        XAXIS_DATA, ZZ_XAXIS = np.meshgrid(id, z)
+        XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+        ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+        # compute the depth from the surface plus the elevation
+        for i in range(nd):
+            ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+        # Get center of grid cells
+        IID = XAXIS_DATA[:,ii]
+        IIZ = ZZ_XAXIS[:,ii]
+        # Create x-axis values for temperature plotting
+        x_axis_values = XAXIS_DATA[0,ii]
+    elif xaxis == 'x':
+        # Use X coordinates
+        XAXIS_DATA, ZZ_XAXIS = np.meshgrid(X, z)
+        XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+        ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+        # compute the depth from the surface plus the elevation
+        for i in range(nd):
+            ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+        # Get center of grid cells
+        IID = XAXIS_DATA[:,ii]
+        IIZ = ZZ_XAXIS[:,ii]
+        # Create x-axis values for temperature plotting
+        x_axis_values = XAXIS_DATA[0,ii]
+    elif xaxis == 'y':
+        # Use Y coordinates
+        XAXIS_DATA, ZZ_XAXIS = np.meshgrid(Y, z)
+        XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+        ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+        # compute the depth from the surface plus the elevation
+        for i in range(nd):
+            ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+        # Get center of grid cells
+        IID = XAXIS_DATA[:,ii]
+        IIZ = ZZ_XAXIS[:,ii]
+        # Create x-axis values for temperature plotting
+        x_axis_values = XAXIS_DATA[0,ii]
+    elif xaxis == 'index':
+        # Use sequential indices 0,1,2,3... for the SELECTED points only
+        # Create sequential x-axis for selected indices
+        n_selected = len(ii)
+        sequential_x = np.arange(n_selected)
+        XAXIS_SEQUENTIAL, ZZ_XAXIS = np.meshgrid(sequential_x, z)
+
+        # For depth, we still need to use the original indices for elevation
+        ZZ_ORIGINAL = np.zeros_like(ZZ_XAXIS)
+        for i, orig_idx in enumerate(ii):
+            ZZ_ORIGINAL[:,i] = ELEVATION[orig_idx] - z
+
+        # Get center of grid cells - now sequential
+        IID = XAXIS_SEQUENTIAL
+        IIZ = ZZ_ORIGINAL
+        # Create x-axis values for temperature plotting
+        x_axis_values = sequential_x
+    else:
+        # Default to 'id' if invalid option provided
+        print(f"Warning: Unknown xaxis option '{xaxis}'. Using 'id' instead.")
+        XAXIS_DATA, ZZ_XAXIS = np.meshgrid(id, z)
+        XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+        ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+        # compute the depth from the surface plus the elevation
+        for i in range(nd):
+            ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+        # Get center of grid cells
+        IID = XAXIS_DATA[:,ii]
+        IIZ = ZZ_XAXIS[:,ii]
+        # Create x-axis values for temperature plotting
+        x_axis_values = XAXIS_DATA[0,ii]
     # IID, IIZ is the center of the cell. Create new grids, DDc, ZZc, that hold the the cordńers if the grids. 
     # DDc should have cells of size 1, while ZZc should be the same as ZZ but with a row added at the bottom that is the same as the last row of ZZ plus 100
     DDc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
@@ -881,7 +1140,53 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     ZZc[:-1,:-1] = IIZ
     ZZc[-1,:] = ZZc[-2,:] + 1
-  
+
+    # Gap detection and transparency
+    gap_alpha = None
+    if gap_threshold is not None and len(x_axis_values) > 1:
+        showInfo = kwargs.get('showInfo', 0)
+        if showInfo > 0:
+            print(f"Gap transparency: threshold={gap_threshold}, x_values={x_axis_values}")
+
+        # Calculate distances between consecutive x-axis points
+        x_diffs = np.diff(x_axis_values)
+
+        # Create alpha mask for gaps: 1.0 for normal spacing, 0.0 for large gaps
+        gap_alpha = np.ones(IID.shape)  # Shape: (nz, n_selected)
+
+        # Find positions where gaps exceed threshold
+        large_gaps = x_diffs > gap_threshold
+
+        if np.any(large_gaps):
+            gap_count = np.sum(large_gaps)
+            if showInfo > 0:
+                print(f"Found {gap_count} large gaps (>{gap_threshold})")
+
+            # For each large gap, make cells that fall within the gap region transparent
+            for i, is_large_gap in enumerate(large_gaps):
+                if is_large_gap:
+                    # Gap exists between x_axis_values[i] and x_axis_values[i+1]
+                    gap_start = x_axis_values[i]
+                    gap_end = x_axis_values[i+1]
+
+                    if showInfo > 0:
+                        print(f"Gap {i}: from {gap_start:.1f} to {gap_end:.1f} (width: {x_diffs[i]:.1f})")
+
+                    # Find which cells in the DDc grid fall within this gap
+                    # DDc contains the corner coordinates of each cell
+                    for col in range(IID.shape[1]):
+                        # Get the x-coordinate range for this column
+                        cell_x_start = DDc[0, col]
+                        cell_x_end = DDc[0, col + 1]
+
+                        # Check if this cell overlaps with the gap region
+                        # Cell overlaps if: cell_start < gap_end AND cell_end > gap_start
+                        if cell_x_start < gap_end and cell_x_end > gap_start:
+                            # This cell is within or overlaps the gap region
+                            gap_alpha[:, col] = 0.0
+                            if showInfo > 1:  # More verbose debugging
+                                print(f"  Made column {col} transparent (cell range: {cell_x_start:.1f}-{cell_x_end:.1f})")
+
     # ii is a numpy array from i1 to i2
     # ii = np.arange(i1,i2)
 
@@ -889,36 +1194,53 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
 
     # MODE
-    im1 = ax[0].pcolormesh(DDc, ZZc, Mode[:,i1:i2], 
-            cmap=cmap,            
+    mode_data = Mode[:,ii]
+    if gap_alpha is not None:
+        # Use masked array to hide transparent regions
+        mode_data = np.ma.masked_where(gap_alpha == 0.0, mode_data)
+
+    im1 = ax[0].pcolormesh(DDc, ZZc, mode_data,
+            cmap=cmap,
+            vmin=clim[0]-.5,
+            vmax=clim[1]+.5,
             shading='auto')
-    im1.set_clim(clim[0]-.5,clim[1]+.5)        
 
     ax[0].set_title('Mode')
-    # /fix set the ticks to be 1 to n_class, and use class_name as tick labels
+    # Set the ticks at the center of each color band (at class_id values)
     cbar1 = fig.colorbar(im1, ax=ax[0], label='label')
-    cbar1.set_ticks(np.arange(n_class)+1)
+    cbar1.set_ticks(class_id)
     cbar1.set_ticklabels(class_name)
     cbar1.ax.invert_yaxis()
 
     # ENTROPY
-    im2 = ax[1].pcolormesh(DDc, ZZc, Entropy[:,i1:i2],
-            cmap='hot_r', 
+    entropy_data = Entropy[:,ii]
+    if gap_alpha is not None:
+        # Use masked array to hide transparent regions
+        entropy_data = np.ma.masked_where(gap_alpha == 0.0, entropy_data)
+
+    im2 = ax[1].pcolormesh(DDc, ZZc, entropy_data,
+            cmap='hot_r',
             shading='auto')
     im2.set_clim(0,1)
     ax[1].set_title('Entropy')
     fig.colorbar(im2, ax=ax[1], label='Entropy')
 
-    # MODE with transparency set using entropy
-    im3 = ax[2].pcolormesh(DDc, ZZc, Mode[:,i1:i2],
-            cmap=cmap, 
+    # MODE with transparency set using entropy (and gaps if available)
+    mode_entropy_data = Mode[:,ii]
+    if gap_alpha is not None:
+        # Use masked array to hide gap regions completely
+        mode_entropy_data = np.ma.masked_where(gap_alpha == 0.0, mode_entropy_data)
+
+    im3 = ax[2].pcolormesh(DDc, ZZc, mode_entropy_data,
+            cmap=cmap,
+            vmin=clim[0]-.5,
+            vmax=clim[1]+.5,
             shading='auto',
-            alpha=1-Entropy[:,i1:i2])
-    im3.set_clim(clim[0]-.5,clim[1]+.5)
+            alpha=1-Entropy[:,ii])  # Keep entropy transparency
     ax[2].set_title('Mode with transparency')
     #fig.colorbar(im3, ax=ax[2], label='label')
     cbar3 = fig.colorbar(im3, ax=ax[2], label='label')
-    cbar3.set_ticks(np.arange(n_class)+1)
+    cbar3.set_ticks(class_id)
     cbar3.set_ticklabels(class_name)
     cbar3.ax.invert_yaxis()
 
@@ -926,9 +1248,9 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     ax[0].set_xticks([])
     ax[1].set_xticks([])
     ax[2].set_xticks([])
-    
-    im4 = ax[3].semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
-    ax[3].set_xlim(ID[0,i1], ID[0,i2])
+
+    im4 = ax[3].semilogy(x_axis_values,T[ii], 'k.', label='T')
+    ax[3].set_xlim(x_axis_values.min(), x_axis_values.max())
     ax[3].set_ylim(0.99, 200)
     ax[3].set_ylabel('Temperature', color='k')
     ax[3].tick_params(axis='y', labelcolor='k')
@@ -936,7 +1258,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     if LOGL_mean is not None:
         # Create second y-axis for LOGL_mean
         ax3_twin = ax[3].twinx()
-        ax3_twin.plot(ID[0,i1:i2], LOGL_mean[i1:i2], 'r', label='LOGL_mean')
+        ax3_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
         # Add dotted red line at y=1
         ax3_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
         ax3_twin.set_ylim(0, 5)
@@ -963,13 +1285,13 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     # get filename without extension
     if kwargs['hardcopy']:
-        f_png = '%s_%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],i1,i2,Mstr[1:],txt)
+        f_png = '%s__%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],ii[0],ii[-1],Mstr[1:],txt)
         plt.savefig(f_png)
     plt.show()
 
     return
 
-def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
+def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='index', gap_threshold=None, **kwargs):
     """
     Create vertical profile plots for continuous model parameters.
 
@@ -986,8 +1308,14 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     i2 : float, optional
         Ending data point index for profile plotting. If larger than data size,
         uses all available data (default is 1e+9).
+    ii : numpy.ndarray, optional
+        Specific array of indices to plot. If provided, overrides i1 and i2 (default is empty array).
     im : int, optional
         Model index to plot (e.g., 1 for M1, 2 for M2, default is 1).
+    xaxis : str, optional
+        X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'id').
+    gap_threshold : float, optional
+        Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, regions after the gaps become completely transparent to indicate missing data. If None, no gap transparency is applied (default is None).
     **kwargs : dict
         Additional keyword arguments:
         - hardcopy : bool, save plot as PNG file (default False)
@@ -1022,8 +1350,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     """
     from matplotlib.colors import LogNorm
 
+    cmap_def, clim_def = get_colormap_and_limits('resistivity')
+    
     kwargs.setdefault('hardcopy', False)
-    kwargs.setdefault('cmap', 'jet')
+    kwargs.setdefault('cmap', None)
+    kwargs.setdefault('clim', None)
     
     alpha = kwargs.get('alpha',0.0)
     key = kwargs.get('key','Median')
@@ -1038,10 +1369,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
             name = f_prior['/M%d' % im].attrs['name']
         else:
             name='M%d' % im
-    
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
 
     Mstr = '/M%d' % im
+    clim_ref, cmap_ref = h5_get_clim_cmap(f_prior_h5, Mstr)
 
     if showInfo>0:
         print("Plotting profile %s from %s" % (Mstr, f_post_h5))
@@ -1054,25 +1386,30 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         else:
             z=np.array(0)
         is_discrete = f_prior[Mstr].attrs['is_discrete']
-        if 'clim' in f_prior[Mstr].attrs.keys():
+
+        ## climits
+        if 'clim' in kwargs and kwargs['clim'] is not None:
+            #print('using clim from kwargs')
+            clim = kwargs['clim']
+        elif 'clim' in f_prior[Mstr].attrs.keys():
+            #print('Getting clim from attribute')
             clim = f_prior[Mstr].attrs['clim'][:].flatten()
         else:
-            # if clim set in kwargs, use it, otherwise use default
-            if 'clim' in kwargs:
-                clim = kwargs['clim']
-            else:
-                clim = [.1, 2600]
-                clim = [10, 500]
-        if 'cmap' in f_prior[Mstr].attrs.keys():
+            #print('using clim from prior attributes or default')
+            clim = clim_def
+        
+        ## climits
+        if 'cmap' in kwargs and kwargs['cmap'] is not None:
+            #print('using cmap from kwargs')
+            cmap = kwargs['cmap']
+        elif 'cmap' in f_prior[Mstr].attrs.keys():
+            #print('Getting cmap from attribute')
             cmap = f_prior[Mstr].attrs['cmap'][:]
             from matplotlib.colors import ListedColormap
             cmap = ListedColormap(cmap.T)
         else:
-            cmap = kwargs['cmap']
-
-        if showInfo>1:
-            print(cmap)
-            print(clim)
+            #print('using default cmap')
+            cmap = cmap_ref
 
     if is_discrete:
         print("%s refers to a discrete model. Use plot_profile_discrete instead" % Mstr)
@@ -1126,12 +1463,106 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         for i in range(nd):
             ZZ[:,i] = ELEVATION[i]-ZZ[:,i]
 
+        # Index selection logic - use specific indices if provided, otherwise use range
+        if len(ii)==0:
+            if i1<1:
+                i1=0
+            if i2>nd-1:
+                i2=nd-1
+            ii = np.arange(i1,i2)
+        else:
+            # Ensure ii indices are within bounds
+            ii = np.array(ii)
+            ii = ii[ii < nd]  # Remove indices >= nd
+            ii = ii[ii >= 0]  # Remove negative indices
 
+        # Sort indices based on chosen x-axis to ensure monotonic ordering
+        if xaxis == 'x':
+            # Sort by X coordinates
+            x_vals = X[ii]
+            sort_order = np.argsort(x_vals)
+            ii = ii[sort_order]
+        elif xaxis == 'y':
+            # Sort by Y coordinates
+            y_vals = Y[ii]
+            sort_order = np.argsort(y_vals)
+            ii = ii[sort_order]
+        elif xaxis == 'id':
+            # Sort by data index (sort ii directly)
+            ii = np.sort(ii)
+        # For 'index', no additional sorting needed ('index' will be sequential)
 
+        # X-axis selection logic
+        if xaxis == 'id':
+            # Use data index (default behavior)
+            XAXIS_DATA, ZZ_XAXIS = np.meshgrid(id, z)
+            XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+            ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+            # compute the depth from the surface plus the elevation
+            for i in range(nd):
+                ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+            # Get center of grid cells
+            IID = XAXIS_DATA[:,ii]
+            IIZ = ZZ_XAXIS[:,ii]
+            # Create x-axis values for temperature plotting
+            x_axis_values = XAXIS_DATA[0,ii]
+        elif xaxis == 'x':
+            # Use X coordinates
+            XAXIS_DATA, ZZ_XAXIS = np.meshgrid(X, z)
+            XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+            ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+            # compute the depth from the surface plus the elevation
+            for i in range(nd):
+                ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+            # Get center of grid cells
+            IID = XAXIS_DATA[:,ii]
+            IIZ = ZZ_XAXIS[:,ii]
+            # Create x-axis values for temperature plotting
+            x_axis_values = XAXIS_DATA[0,ii]
+        elif xaxis == 'y':
+            # Use Y coordinates
+            XAXIS_DATA, ZZ_XAXIS = np.meshgrid(Y, z)
+            XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+            ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+            # compute the depth from the surface plus the elevation
+            for i in range(nd):
+                ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+            # Get center of grid cells
+            IID = XAXIS_DATA[:,ii]
+            IIZ = ZZ_XAXIS[:,ii]
+            # Create x-axis values for temperature plotting
+            x_axis_values = XAXIS_DATA[0,ii]
+        elif xaxis == 'index':
+            # Use sequential indices 0,1,2,3... for the SELECTED points only
+            # Create sequential x-axis for selected indices
+            n_selected = len(ii)
+            sequential_x = np.arange(n_selected)
+            XAXIS_SEQUENTIAL, ZZ_XAXIS = np.meshgrid(sequential_x, z)
 
-        # Get center of grid cells
-        IID = ID[:,i1:i2]
-        IIZ = ZZ[:,i1:i2]
+            # For depth, we still need to use the original indices for elevation
+            ZZ_ORIGINAL = np.zeros_like(ZZ_XAXIS)
+            for i, orig_idx in enumerate(ii):
+                ZZ_ORIGINAL[:,i] = ELEVATION[orig_idx] - z
+
+            # Get center of grid cells - now sequential
+            IID = XAXIS_SEQUENTIAL
+            IIZ = ZZ_ORIGINAL
+            # Create x-axis values for temperature plotting
+            x_axis_values = sequential_x
+        else:
+            # Default to 'id' if invalid option provided
+            print(f"Warning: Unknown xaxis option '{xaxis}'. Using 'id' instead.")
+            XAXIS_DATA, ZZ_XAXIS = np.meshgrid(id, z)
+            XAXIS_DATA = np.sort(XAXIS_DATA, axis=0)
+            ZZ_XAXIS = np.sort(ZZ_XAXIS, axis=0)
+            # compute the depth from the surface plus the elevation
+            for i in range(nd):
+                ZZ_XAXIS[:,i] = ELEVATION[i]-ZZ_XAXIS[:,i]
+            # Get center of grid cells
+            IID = XAXIS_DATA[:,ii]
+            IIZ = ZZ_XAXIS[:,ii]
+            # Create x-axis values for temperature plotting
+            x_axis_values = XAXIS_DATA[0,ii]
         # IID, IIZ is the center of the cell. Create new grids, DDc, ZZc, that hold the the cordńers if the grids. 
         # DDc should have cells of size 1, while ZZc should be the same as ZZ but with a row added at the bottom that is the same as the last row of ZZ plus 100
         DDc = np.zeros((IID.shape[0]+1,IID.shape[1]+1))
@@ -1142,7 +1573,53 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
         ZZc[:-1,:-1] = IIZ
         ZZc[-1,:] = ZZc[-2,:] + 1
-    
+
+        # Gap detection and transparency
+        gap_alpha = None
+        if gap_threshold is not None and len(x_axis_values) > 1:
+            showInfo = kwargs.get('showInfo', 0)
+            if showInfo > 0:
+                print(f"Gap transparency: threshold={gap_threshold}, x_values={x_axis_values}")
+
+            # Calculate distances between consecutive x-axis points
+            x_diffs = np.diff(x_axis_values)
+
+            # Create alpha mask for gaps: 1.0 for normal spacing, 0.0 for large gaps
+            gap_alpha = np.ones(IID.shape)  # Shape: (nz, n_selected)
+
+            # Find positions where gaps exceed threshold
+            large_gaps = x_diffs > gap_threshold
+
+            if np.any(large_gaps):
+                gap_count = np.sum(large_gaps)
+                if showInfo > 0:
+                    print(f"Found {gap_count} large gaps (>{gap_threshold})")
+
+                # For each large gap, make cells that fall within the gap region transparent
+                for i, is_large_gap in enumerate(large_gaps):
+                    if is_large_gap:
+                        # Gap exists between x_axis_values[i] and x_axis_values[i+1]
+                        gap_start = x_axis_values[i]
+                        gap_end = x_axis_values[i+1]
+
+                        if showInfo > 0:
+                            print(f"Gap {i}: from {gap_start:.1f} to {gap_end:.1f} (width: {x_diffs[i]:.1f})")
+
+                        # Find which cells in the DDc grid fall within this gap
+                        # DDc contains the corner coordinates of each cell
+                        for col in range(IID.shape[1]):
+                            # Get the x-coordinate range for this column
+                            cell_x_start = DDc[0, col]
+                            cell_x_end = DDc[0, col + 1]
+
+                            # Check if this cell overlaps with the gap region
+                            # Cell overlaps if: cell_start < gap_end AND cell_end > gap_start
+                            if cell_x_start < gap_end and cell_x_end > gap_start:
+                                # This cell is within or overlaps the gap region
+                                gap_alpha[:, col] = 0.0
+                                if showInfo > 1:  # More verbose debugging
+                                    print(f"  Made column {col} transparent (cell range: {cell_x_start:.1f}-{cell_x_end:.1f})")
+
     # Create a figure with 3 subplots sharing the same Xaxis!
     fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
     
@@ -1152,27 +1629,38 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     if (nm>1)&(key=='Mean'):
         isp=1
         # MEAN
-        im1 = ax[isp].pcolormesh(DDc, ZZc, Mean[:,i1:i2], 
-                cmap=cmap,            
+        mean_data = Mean[:,ii]
+        if gap_alpha is not None:
+            # Use masked array to hide gap regions completely
+            mean_data = np.ma.masked_where(gap_alpha == 0.0, mean_data)
+
+        im1 = ax[isp].pcolormesh(DDc, ZZc, mean_data,
+                cmap=cmap,
                 shading='auto',
                 norm=LogNorm())
-        im1.set_clim(clim[0],clim[1])        
-        # if transp>0, set alpha
+        im1.set_clim(clim[0],clim[1])
+        # Apply uncertainty-based transparency if enabled
         if alpha>0:
-            im1.set_alpha(A[:,i1:i2])
+            im1.set_alpha(A[:,ii])
         ax[isp].set_title('Mean %s' % name)
         fig.colorbar(im1, ax=ax[isp], label='%s' % name)
     
     if (nm>1)&(key=='Median'):
         isp=1
         # MEDIAN
-        im2 = ax[isp].pcolormesh(DDc, ZZc, Median[:,i1:i2], 
-                cmap=cmap,            
+        median_data = Median[:,ii]
+        if gap_alpha is not None:
+            # Use masked array to hide gap regions completely
+            median_data = np.ma.masked_where(gap_alpha == 0.0, median_data)
+
+        im2 = ax[isp].pcolormesh(DDc, ZZc, median_data,
+                cmap=cmap,
                 shading='auto',
                 norm=LogNorm())  # Set color scale to logarithmic
-        im2.set_clim(clim[0],clim[1])        
+        im2.set_clim(clim[0],clim[1])
+        # Apply uncertainty-based transparency if enabled
         if alpha>0:
-            im2.set_alpha(A[:,i1:i2])
+            im2.set_alpha(A[:,ii])
         ax[isp].set_title('Median %s' % name)
         fig.colorbar(im2, ax=ax[isp], label='%s' % name) 
 
@@ -1180,8 +1668,13 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         isp=2
         # STD
         import matplotlib
-        im3 = ax[isp].pcolormesh(DDc, ZZc, Std[:,i1:i2], 
-                    cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]), 
+        std_data = Std[:,ii]
+        if gap_alpha is not None:
+            # Use masked array to hide gap regions completely
+            std_data = np.ma.masked_where(gap_alpha == 0.0, std_data)
+
+        im3 = ax[isp].pcolormesh(DDc, ZZc, std_data,
+                    cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]),
                     shading='auto')
         im3.set_clim(0,1)
         ax[isp].set_title('Std %s' % name)
@@ -1189,11 +1682,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     else:
         isp=2
         
-        im3 = ax[2].plot(id[i1:i2],Mean[:,i1:i2].T, 'k', label='Mean')
-        ax[2].plot(id[i1:i2],Mean[:,i1:i2].T+2*Std[:,i1:i2].T, 'k:', label='P97.5')
-        ax[2].plot(id[i1:i2],Mean[:,i1:i2].T-2*Std[:,i1:i2].T, 'k:', label='P2.5')
-        
-        ax[2].plot(id[i1:i2],Median[:,i1:i2].T, 'r', label='Median')
+        im3 = ax[2].plot(id[ii],Mean[:,ii].T, 'k', label='Mean')
+        ax[2].plot(id[ii],Mean[:,ii].T+2*Std[:,ii].T, 'k:', label='P97.5')
+        ax[2].plot(id[ii],Mean[:,ii].T-2*Std[:,ii].T, 'k:', label='P2.5')
+
+        ax[2].plot(id[ii],Median[:,ii].T, 'r', label='Median')
         # add legend
         ax[2].legend(loc='upper right')
         # add grd on
@@ -1201,7 +1694,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
         # hide ax[0]
 
         # set axis on ax[3] to be the same as on ax[4]
-        ax[2].set_xlim(i1,i2)
+        ax[2].set_xlim(ii.min(),ii.max())
         ax[2].set_title(name)
         ax[0].axis('off')
         ax[1].axis('off')
@@ -1211,8 +1704,8 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     ax[1].set_xticks([])
     ax[2].set_xticks([])
     
-    im4 = ax[3].semilogy(ID[0,i1:i2],T[i1:i2], 'k', label='T')
-    ax[3].set_xlim(ID[0,i1], ID[0,i2])
+    im4 = ax[3].semilogy(x_axis_values,T[ii], 'k.', label='T')
+    ax[3].set_xlim(x_axis_values.min(), x_axis_values.max())
     ax[3].set_ylim(0.99, 200)
     ax[3].set_ylabel('Temperature', color='k')
     ax[3].tick_params(axis='y', labelcolor='k')
@@ -1220,7 +1713,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
     if LOGL_mean is not None:
         # Create second y-axis for LOGL_mean
         ax3_twin = ax[3].twinx()
-        ax3_twin.plot(ID[0,i1:i2], LOGL_mean[i1:i2], 'r', label='LOGL_mean')
+        ax3_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
         # Add dotted red line at y=1
         ax3_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
         ax3_twin.set_ylim(0, 5)
@@ -1248,7 +1741,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, im=1, **kwargs):
 
     # get filename without extension
     if kwargs['hardcopy']:
-        f_png = '%s_%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],i1,i2,Mstr[1:],txt)
+        f_png = '%s__%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],ii[0],ii[-1],Mstr[1:],txt)
         plt.savefig(f_png)
     plt.show()
 
@@ -1307,7 +1800,7 @@ def plot_data_xy(f_data_h5, Dkey='D1', data_key='d_obs', data_channel=0, uselog=
     kwargs.setdefault('cmap', 'viridis')
     
     # Get geometry
-    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
     
     # Load data
     with h5py.File(f_data_h5, 'r') as f:
@@ -1944,7 +2437,142 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
             else:
                 plt.savefig('%s_%s_id%05d.png' % (os.path.splitext(f_post_h5)[0],Dkey,i_plot))
         plt.show()
-    
+
+
+def find_points_along_line_segments(X, Y, Xl, Yl, ID=None, tolerance=None, method='closest'):
+    """
+    Find point indices that lie along or near specified line segments.
+
+    Parameters:
+    -----------
+    X : array-like
+        X coordinates of points
+    Y : array-like
+        Y coordinates of points
+    Xl : array-like
+        X coordinates defining line segment endpoints (length = number of segments)
+    Yl : array-like
+        Y coordinates defining line segment endpoints (length = number of segments)
+    ID : array-like, optional
+        Point identifiers (same length as X, Y)
+    tolerance : float, optional
+        Maximum distance from line segments to include points
+        If None, uses 1% of the maximum coordinate range
+    method : str, optional
+        Selection method: 'closest' (default), 'within_tolerance', or 'perpendicular'
+
+    Returns:
+    --------
+    indices : numpy.ndarray
+        Indices of points that lie along the line segments
+    distances : numpy.ndarray
+        Distances from selected points to their nearest line segments
+    segment_ids : numpy.ndarray
+        Which line segment each selected point is closest to
+
+    Notes:
+    ------
+    For 3 line segments, len(Xl) = len(Yl) = 3, defining segments:
+    - Segment 0: from (Xl[0], Yl[0]) to (Xl[1], Yl[1])
+    - Segment 1: from (Xl[1], Yl[1]) to (Xl[2], Yl[2])
+    - etc.
+
+    Examples:
+    ---------
+    >>> X = np.array([1, 2, 3, 4, 5])
+    >>> Y = np.array([1, 2, 3, 4, 5])
+    >>> Xl = np.array([0, 3, 6])  # Two line segments
+    >>> Yl = np.array([0, 3, 6])
+    >>> indices, distances, seg_ids = find_points_along_line_segments(X, Y, Xl, Yl)
+    """
+    import numpy as np
+
+    X = np.array(X)
+    Y = np.array(Y)
+    Xl = np.array(Xl)
+    Yl = np.array(Yl)
+
+    if len(X) != len(Y):
+        raise ValueError("X and Y must have the same length")
+
+    if len(Xl) != len(Yl):
+        raise ValueError("Xl and Yl must have the same length")
+
+    if len(Xl) < 2:
+        raise ValueError("Need at least 2 points to define line segments")
+
+    if ID is not None:
+        ID = np.array(ID)
+        if len(ID) != len(X):
+            raise ValueError("ID must have the same length as X and Y")
+
+    # Set default tolerance if not provided
+    if tolerance is None:
+        x_range = np.max(X) - np.min(X)
+        y_range = np.max(Y) - np.min(Y)
+        tolerance = 0.01 * max(x_range, y_range)
+
+    n_points = len(X)
+    n_segments = len(Xl) - 1
+
+    # Store results for each point
+    min_distances = np.full(n_points, np.inf)
+    closest_segments = np.full(n_points, -1, dtype=int)
+
+    # Calculate distance from each point to each line segment
+    for seg_idx in range(n_segments):
+        # Line segment endpoints
+        x1, y1 = Xl[seg_idx], Yl[seg_idx]
+        x2, y2 = Xl[seg_idx + 1], Yl[seg_idx + 1]
+
+        # Vector from start to end of segment
+        dx = x2 - x1
+        dy = y2 - y1
+        segment_length_sq = dx*dx + dy*dy
+
+        if segment_length_sq < 1e-12:  # Degenerate segment (same start/end point)
+            # Distance to single point
+            distances = np.sqrt((X - x1)**2 + (Y - y1)**2)
+        else:
+            # Calculate perpendicular distance to line segment
+            # Project each point onto the line segment
+            t = ((X - x1) * dx + (Y - y1) * dy) / segment_length_sq
+
+            # Clamp t to [0, 1] to stay within segment bounds
+            t = np.clip(t, 0, 1)
+
+            # Find closest points on segment
+            closest_x = x1 + t * dx
+            closest_y = y1 + t * dy
+
+            # Calculate distances
+            distances = np.sqrt((X - closest_x)**2 + (Y - closest_y)**2)
+
+        # Update minimum distances and closest segments
+        mask = distances < min_distances
+        min_distances[mask] = distances[mask]
+        closest_segments[mask] = seg_idx
+
+    # Select points based on method
+    if method == 'closest':
+        # Select points within tolerance of their closest segment
+        selected_mask = min_distances <= tolerance
+    elif method == 'within_tolerance':
+        # Same as closest for this implementation
+        selected_mask = min_distances <= tolerance
+    elif method == 'perpendicular':
+        # Select points within tolerance and prefer perpendicular distances
+        selected_mask = min_distances <= tolerance
+    else:
+        raise ValueError(f"Unknown method: {method}")
+
+    # Get indices of selected points
+    selected_indices = np.where(selected_mask)[0]
+
+    return (selected_indices,
+            min_distances[selected_indices],
+            closest_segments[selected_indices])
+
 
 def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
     """
@@ -2031,7 +2659,7 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
 
     M = f_prior[Mkey][:]
     N, Nm = M.shape
-    clim,cmap = ig.get_clim_cmap(f_prior_h5, Mstr=Mkey)
+    clim,cmap = h5_get_clim_cmap(f_prior_h5, Mstr=Mkey)
 
     is_discrete = f_prior['/%s'%Mkey].attrs['is_discrete']    
     
@@ -2183,7 +2811,7 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
 
 
 # function that reads cmap and clim if they are set
-def get_clim_cmap(f_prior_h5, Mstr='/M1'):
+def h5_get_clim_cmap(f_prior_h5, Mstr='/M1'):
     """
     Retrieve color scale limits and colormap from prior model attributes.
 

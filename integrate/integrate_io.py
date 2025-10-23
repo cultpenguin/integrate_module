@@ -622,7 +622,6 @@ def load_data(f_data_h5, id_arr=[], ii=None, **kwargs):
     DATA['id_use'] = id_use        
     # return noise_model, d_obs, d_std, Cd, id_arr
 
-
     if showInfo>0:
         for i in range(len(id_arr)):
             print('  - D%d: id_use=%d, %11s, Using %d/%d data' % (id_arr[i], id_use[i], noise_model[i],  DATA['d_obs'][i].shape[0],  DATA['d_obs'][i].shape[1]))
@@ -1645,45 +1644,93 @@ def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, c
 
     return output_filename
 
-def copy_prior(input_filename, output_filename, idx=None, **kwargs):
+def copy_prior(input_filename, output_filename, idx=None, N_use=None, loadtomem=False, **kwargs):
     """
-    Copy a PRIOR file (potentially containing M1, M2, ... and D1, D2, ...) 
-    using only a specific subset of data as indicated by idx.
-    
-    :param input_filename: The path to the input PRIOR HDF5 file.
-    :type input_filename: str
-    :param output_filename: The path to the output PRIOR HDF5 file.
-    :type output_filename: str
-    :param idx: Indices to copy. If None, a simple complete copy is made.
-                If set, copy should be made with all attributes, but using only 
-                data ids of M1, M2..., D1, D2... as indicated by idx.
-                Thus if idx=[0,1,2] the size of /M1 should be (3,nd).
-    :type idx: array-like or None, optional
-    
-    :return: output_filename
+    Copy a PRIOR file, optionally subsetting the data.
+
+    This function copies an HDF5 PRIOR file, which may contain model parameters
+    (M1, M2, ...) and forward-modeled data (D1, D2, ...). It allows for
+    copying only a specific subset of samples using either an index array (`idx`)
+    or a specified number of random samples (`N_use`).
+
+    Parameters
+    ----------
+    input_filename : str
+        Path to the input PRIOR HDF5 file.
+    output_filename : str
+        Path to the output PRIOR HDF5 file.
+    idx : array-like, optional
+        An array of indices to copy. If provided, only the data corresponding
+        to these indices will be included in the new file. This takes
+        precedence over `N_use`. Default is None (copy all data).
+    N_use : int, optional
+        The number of random samples to select and copy. This is ignored if
+        `idx` is provided. Default is None.
+    loadtomem : bool, optional
+        If True, datasets are loaded entirely into memory before slicing.
+        This can significantly speed up copying large subsets of data but
+        increases memory consumption. Default is False.
+    **kwargs : dict
+        Additional keyword arguments (e.g., `showInfo`, `compress`).
+
+    Returns
+    -------
+    str
+        The path to the output HDF5 file (`output_filename`).
+
+    Raises
+    ------
+    ValueError
+        If `N_use` is greater than the total number of samples in the file,
+        or if no datasets are found to determine the size for random sampling.
     """
     import time
     import numpy as np
-    
+
     showInfo = kwargs.get('showInfo', 0)
     delay_after_close = kwargs.get('delay_after_close', 0.1)
     compress = kwargs.get('compress', True)
-    
+
     input_file = None
     output_file = None
-    
+
     try:
+        # Open the input file to determine dataset size if needed
+        input_file = h5py.File(input_filename, 'r')
+
+        # Handle N_use parameter: generate random indices if N_use is set and idx is not
+        if idx is None and N_use is not None:
+            # Find the first dataset to determine the total number of samples
+            first_dataset_name = None
+            for name in input_file:
+                if isinstance(input_file[name], h5py.Dataset) and input_file[name].ndim > 0:
+                    first_dataset_name = name
+                    break
+
+            if first_dataset_name is None:
+                raise ValueError("Could not find any dataset in the prior file to determine size")
+
+            N_total = input_file[first_dataset_name].shape[0]
+
+            if N_use > N_total:
+                raise ValueError(f"N_use ({N_use}) exceeds total number of samples ({N_total})")
+
+            # Generate random indices
+            idx = np.random.choice(N_total, size=N_use, replace=False)
+            idx = np.sort(idx)  # Sort for better HDF5 read performance
+
+            if showInfo > 0:
+                print(f'Randomly selected {N_use} samples from {N_total} total samples')
+
         # Open the input file
         if showInfo > 0:
             print('Copying PRIOR file %s to %s' % (input_filename, output_filename))
             if idx is not None:
                 print('Using subset with %d indices' % len(idx))
-        
-        input_file = h5py.File(input_filename, 'r')
-        
+
         # Create the output file
         output_file = h5py.File(output_filename, 'w')
-        
+
         # Convert idx to numpy array if provided
         if idx is not None:
             idx = np.asarray(idx)
@@ -1698,12 +1745,16 @@ def copy_prior(input_filename, output_filename, idx=None, **kwargs):
                 dataset = input_file[name]
                 
                 if idx is not None and dataset.ndim > 0:
-                    # Apply subsetting to the first dimension
                     if len(idx) > dataset.shape[0]:
                         raise ValueError(f"Index array length ({len(idx)}) exceeds dataset size ({dataset.shape[0]}) for {name}")
                     
                     # Get the subset of data
-                    data = dataset[idx]
+                    if loadtomem:
+                        if showInfo > 1:
+                            print(f"Loading '{name}' to memory before slicing.")
+                        data = dataset[:][idx]
+                    else:
+                        data = dataset[idx]
                 else:
                     # Copy all data
                     data = dataset[:]
@@ -2139,9 +2190,9 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
 
 
 
-def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_data_h5='data.h5', UTMX=None, UTMY=None, LINE=None, ELEVATION=None, delete_if_exist=False, name=None, **kwargs):
+def save_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, i_use=None, is_log = 0, f_data_h5='data.h5', UTMX=None, UTMY=None, LINE=None, ELEVATION=None, delete_if_exist=False, name=None, **kwargs):
     """
-    Write observational data with Gaussian noise model to HDF5 file.
+    Save observational data with Gaussian noise model to HDF5 file.
 
     Creates HDF5 datasets for electromagnetic or other geophysical measurements
     assuming Gaussian-distributed uncertainties. Handles both diagonal and full
@@ -2163,6 +2214,10 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
         If provided, takes precedence over D_std (default is []).
     id : int, optional
         Dataset identifier for HDF5 group naming ('/D{id}', default is 1).
+    i_use : numpy.ndarray, optional
+        Binary mask indicating which data points to use in inversion, shape (N_stations,) or (N_stations,1).
+        Values of 1 indicate data should be used, 0 indicates data should be excluded.
+        If None, creates array of ones (all data used by default, default is None).
     is_log : int, optional
         Flag indicating logarithmic data scaling (0=linear, 1=log, default is 0).
     f_data_h5 : str, optional
@@ -2240,8 +2295,8 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
 
     # Ensure D_obs is 2D with shape (N_stations, N_channels)
     D_obs = np.atleast_2d(D_obs)
-    if D_obs.shape[0] == 1 and D_obs.shape[1] > 1:
-        D_obs = D_obs.T
+    #if D_obs.shape[0] == 1 and D_obs.shape[1] > 1:
+    #    D_obs = D_obs.T
 
     if len(D_std)==0:
         if len(d_std)==0:
@@ -2250,12 +2305,21 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
     else:
         # Ensure D_std is 2D with same shape as D_obs
         D_std = np.atleast_2d(D_std)
-        if D_std.shape[0] == 1 and D_std.shape[1] > 1:
-            D_std = D_std.T
+        #if D_std.shape[0] == 1 and D_std.shape[1] > 1:
+        #    D_std = D_std.T
 
     D_str = 'D%d' % id
     ns,nd=D_obs.shape
-    
+    print('Data has %d stations and %d channels' % (ns,nd))
+
+    # Handle i_use parameter
+    if i_use is None:
+        i_use = np.ones((ns, 1))
+    else:
+        i_use = np.atleast_2d(i_use)
+        if i_use.shape[0] == 1 and i_use.shape[1] > 1:
+            i_use = i_use.T
+
     # Handle geometry data
     coord_provided = any(coord is not None for coord in [UTMX, UTMY, LINE, ELEVATION])
     
@@ -2310,6 +2374,8 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
             print('Adding group %s:%s ' % (f_data_h5,D_str))
 
         f.create_dataset('/%s/d_obs' % D_str, data=D_obs)
+        f.create_dataset('/%s/i_use' % D_str, data=i_use)
+
         # Write either Cd or d_std
         if len(Cd) == 0:
             f.create_dataset('/%s/d_std' % D_str, data=D_std)
@@ -2326,9 +2392,9 @@ def write_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, is_log = 0, f_
     
     return f_data_h5
 
-def write_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='data.h5', **kwargs):
+def save_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='data.h5', **kwargs):
     """
-    Writes observed data to an HDF5 file in a specified group with a multinomial noise model.
+    Save observed data to an HDF5 file in a specified group with a multinomial noise model.
 
     :param D_obs: The observed data array to be written to the file.
     :type D_obs: numpy.ndarray
@@ -2347,7 +2413,14 @@ def write_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='da
     if np.ndim(D_obs)==1:
         D_obs = np.atleast_2d(D_obs).T
 
-    # f_data_h5 is a HDF% file grousp "/D1/", "/D2". 
+    # Handle 2D input: assume shape (ns, nclass) and expand to (ns, nclass, 1)
+    if np.ndim(D_obs)==2:
+        if showInfo>0:
+            print(f"Converting 2D input with shape {D_obs.shape} to 3D with shape {D_obs.shape + (1,)}")
+            print("Assuming input has shape (ns, nclass) and setting nm=1")
+        D_obs = D_obs[:, :, np.newaxis]
+
+    # f_data_h5 is a HDF% file grousp "/D1/", "/D2".
     # FInd the is with for the maximum '/D*' group
     if not id:
         with h5py.File(f_data_h5, 'a') as f:
@@ -2361,7 +2434,7 @@ def write_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='da
 
     D_str = 'D%d' % id
 
-    if showInfo>0:
+    if showInfo>-1:
         print("Trying to write %s to %s" % (D_str,f_data_h5))
 
     ns,nclass,nm=D_obs.shape
@@ -2379,7 +2452,7 @@ def write_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='da
         if D_str in f:
             if showInfo>-1:
                 print('Removing group %s:%s ' % (f_data_h5,D_str))
-                del f[D_str]
+            del f[D_str]
 
 
     # Write DATA
@@ -2396,7 +2469,7 @@ def write_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='da
         # write attribute noise_model as 'multinomial'
         f['/%s/' % D_str].attrs['noise_model'] = 'multinomial'
         
-    return f_data_h5
+    return id, f_data_h5
 
 
 def check_data(f_data_h5='data.h5', **kwargs):
@@ -2829,7 +2902,7 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
     # First pass: collect all model parameters and data arrays
     for i, f_prior_h5 in enumerate(f_prior_h5_files):
         if showInfo > 1:
-            print('.. Processing file %d: %s' % (i, f_prior_h5))
+            print('.. Processing file %d/%d: %s' % (i+1,nf, f_prior_h5))
         
         with h5py.File(f_prior_h5, 'r') as f:
             # Count samples in this file (use M1 as reference)
@@ -3319,6 +3392,60 @@ def read_usf_mul(directory: str = ".", ext: str = ".usf") -> List[Dict[str, Any]
 
     print(f"Read {len(usf_list)} out of {len(usf_files)} files.")
     return D_obs, D_rel_err, usf_list
+
+
+# ============================================================================
+# DEPRECATED FUNCTIONS - Maintained for backward compatibility
+# ============================================================================
+
+def write_data_gaussian(*args, **kwargs):
+    """
+    [DEPRECATED] Use save_data_gaussian() instead.
+
+    This function has been renamed to save_data_gaussian() to maintain consistency
+    with the HDF5 I/O naming convention (load_* / save_* for HDF5 operations).
+
+    The write_data_gaussian() function will be removed in a future version.
+    Please update your code to use save_data_gaussian() instead.
+
+    See Also
+    --------
+    save_data_gaussian : The new function name for this functionality
+    """
+    import warnings
+    warnings.warn(
+        "write_data_gaussian() is deprecated and will be removed in a future version. "
+        "Please use save_data_gaussian() instead. "
+        "This change maintains consistency with HDF5 I/O naming conventions (load_*/save_*).",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return save_data_gaussian(*args, **kwargs)
+
+
+def write_data_multinomial(*args, **kwargs):
+    """
+    [DEPRECATED] Use save_data_multinomial() instead.
+
+    This function has been renamed to save_data_multinomial() to maintain consistency
+    with the HDF5 I/O naming convention (load_* / save_* for HDF5 operations).
+
+    The write_data_multinomial() function will be removed in a future version.
+    Please update your code to use save_data_multinomial() instead.
+
+    See Also
+    --------
+    save_data_multinomial : The new function name for this functionality
+    """
+    import warnings
+    warnings.warn(
+        "write_data_multinomial() is deprecated and will be removed in a future version. "
+        "Please use save_data_multinomial() instead. "
+        "This change maintains consistency with HDF5 I/O naming conventions (load_*/save_*).",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return save_data_multinomial(*args, **kwargs)
 
 
 
