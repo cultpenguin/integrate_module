@@ -44,7 +44,7 @@ if not os.path.isfile(file_gex):
 
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
-# %% Load Dauagard data and increase std by a factor of 3
+# %%
 inflateNoise = 3
 if inflateNoise != 1:
     gf=inflateNoise
@@ -71,7 +71,7 @@ f_prior_h5_list = []
 f_prior_h5_list.append('daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 f_prior_h5_list.append('daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 
-#%% Split PRIOR mdoel and data into two
+# %%
 # read f_prior_h5, and split it itp two priors with half the data in each
 # first use ig.load_prior_data() and ig.save_prior_data()
 useSubset = True
@@ -92,7 +92,7 @@ if useSubset:
         
         ig.copy_prior(f_prior_h5, f_prior_data_h5, idx=idx)
         f_prior_h5_list.append(f_prior_data_h5)
-#%%
+# %%
 
 # Go through f_prior_data_h5_list. If the file does not exist the compute, it by runinng ig.prior_data_gaaem
 f_prior_data_h5_list = []
@@ -115,7 +115,7 @@ for i in range(len(f_prior_h5_list)):
 
     ig.plot_prior_stats(f_prior_h5)
 
-# %% 
+# %%
 # Set random seed
 np.random.seed(42)
 
@@ -235,7 +235,7 @@ plt.grid()
 plt.savefig('%s_Pin.png' % (txt), dpi=600)
 plt.show()
 
-#%%
+# %%
 plt.figure(figsize=(10,6), dpi=600)
 plt.subplot(1,1,1)
 plt.plot(X, Y, '.', markersize=3, color='gray')
@@ -250,7 +250,7 @@ plt.ylabel('UTMY [m]')
 plt.savefig('%s_Pout.png' % (txt), dpi=600)
 plt.show()
 
-#%%
+# %%
 plTest=False
 if plTest:
     import matplotlib.colors as mcolors
@@ -321,7 +321,7 @@ f_post_h5_merged = ig.integrate_rejection(f_prior_data_h5_merged, f_data_h5,
                             updatePostStat=updatePostStat,                                     
                             showInfo=1, f_post_h5=f_post_h5_merged)
 
-#%%
+# %%
 # Plot P(InValley)
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 # load 'M4/P' from f_post_data_h5_merged
@@ -330,7 +330,7 @@ with h5py.File(f_post_h5_merged, 'r') as f_post:
 
 ig.plot_T_EV(f_post_h5_merged, pl='T')  
 
-#%%
+# %%
 plt.figure(figsize=(10,6), dpi=600)
 plt.subplot(1,1,1)
 plt.plot(X, Y, '.', markersize=3, color='gray')

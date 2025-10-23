@@ -225,7 +225,7 @@ for i_channel in range(n_channels):
 
 print(f"✓ Interpolation complete")
 
-# %% Plot distance scaling
+# %%
 plt.figure(figsize=(12, 5))
 
 plt.subplot(1, 2, 1)
@@ -253,7 +253,7 @@ if hardcopy:
     plt.savefig('REGULAR_GRID_distance_scaling.png', dpi=300, bbox_inches='tight')
 plt.show()
 
-# %%  Only use data less d_max m from a measurement
+# %%
 i_use = np.ones((len(Xg_flat),1))
 # set i_use = 0 when distances> d_max
 i_use[distances > d_max] = 0
@@ -560,15 +560,15 @@ print(f"  Regular grid: mean={np.nanmean(T_reg):.2f}, median={np.nanmedian(T_reg
 # - Uncertainty scaling accounts for interpolation quality
 # - Both approaches should yield similar results where data coverage is good
 # - Regular grids may show smoother features due to interpolation
-
-print("\n" + "="*70)
-print("EXAMPLE COMPLETE")
-print("="*70)
-print("\nGenerated files:")
-print(f"  Regular grid data: {f_data_regular_h5}")
-print(f"  Irregular posterior: {f_post_irregular_h5}")
-print(f"  Regular posterior: {f_post_regular_h5}")
-print("\n✓ Regular grid inversion example completed successfully!")
+#
+# print("\n" + "="*70)
+# print("EXAMPLE COMPLETE")
+# print("="*70)
+# print("\nGenerated files:")
+# print(f"  Regular grid data: {f_data_regular_h5}")
+# print(f"  Irregular posterior: {f_post_irregular_h5}")
+# print(f"  Regular posterior: {f_post_regular_h5}")
+# print("\n✓ Regular grid inversion example completed successfully!")
 
 # %%
 
