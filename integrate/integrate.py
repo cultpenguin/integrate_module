@@ -1525,44 +1525,48 @@ def prior_data_identity(f_prior_h5, id=0, im=1, N=0, doMakePriorCopy=False, **kw
     return f_prior_data_h5
 
 # %% PRIOR MODEL GENERATORS
-def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90, 
-                        NLAY_min=3, NLAY_max=6, NLAY_deg=6, 
-                        RHO_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80, 
-                        N=100000, **kwargs):
+def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
+                        NLAY_min=3, NLAY_max=6, NLAY_deg=6,
+                        RHO_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80,
+                        N=100000, save_sparse=True, **kwargs):
     """
     Generate a prior model with layered structure.
 
     Parameters
     ----------
     lay_dist : str, optional
-        Distribution of the number of layers. Options are 'chi2' and 'uniform'. 
+        Distribution of the number of layers. Options are 'chi2' and 'uniform'.
         Default is 'uniform'.
     dz : float, optional
         Depth discretization step. Default is 1.
     z_max : float, optional
-        Maximum depth. Default is 90.
+        Maximum depth in m. Default is 90.
     NLAY_min : int, optional
         Minimum number of layers. Default is 3.
     NLAY_max : int, optional
         Maximum number of layers. Default is 6.
     NLAY_deg : int, optional
-        Degrees of freedom for chi-square distribution. Only applicable if 
+        Degrees of freedom for chi-square distribution. Only applicable if
         lay_dist is 'chi2'. Default is 6.
     RHO_dist : str, optional
-        Distribution of resistivity within each layer. Options are 'log-uniform', 
+        Distribution of resistivity within each layer. Options are 'log-uniform',
         'uniform', 'normal', and 'lognormal'. Default is 'log-uniform'.
     RHO_min : float, optional
         Minimum resistivity value. Default is 0.1.
     RHO_max : float, optional
         Maximum resistivity value. Default is 100.
     RHO_MEAN : float, optional
-        Mean resistivity value. Only applicable if RHO_dist is 'normal' or 
+        Mean resistivity value. Only applicable if RHO_dist is 'normal' or
         'lognormal'. Default is 100.
     RHO_std : float, optional
-        Standard deviation of resistivity value. Only applicable if RHO_dist is 
+        Standard deviation of resistivity value. Only applicable if RHO_dist is
         'normal' or 'lognormal'. Default is 80.
     N : int, optional
         Number of prior models to generate. Default is 100000.
+    save_sparse : bool, optional
+        Whether to save the sparse representation (M2: depth-resistivity pairs)
+        to the HDF5 file. Setting to False can reduce file size and processing
+        time for large priors. Default is True.
     **kwargs : dict
         Additional keyword arguments.
         f_prior_h5 : str, optional
@@ -1606,11 +1610,16 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     NLAY = NLAY[:, np.newaxis]
     
     z_min = 0
-    z = np.arange(z_min, z_max, dz)
-    nz= len(z)
+    # Ensure z_max is included in the array
+    nz = int(np.ceil((z_max - z_min) / dz)) + 1
+    z = np.linspace(z_min, z_max, nz)
     M_rho = np.zeros((N, nz))
     nm_sparse = NLAY_max+NLAY_max-1
-    M_rho_sparse = np.ones((N, nm_sparse))*np.nan
+    # Only allocate sparse matrix if needed
+    if save_sparse:
+        M_rho_sparse = np.ones((N, nm_sparse))*np.nan
+    else:
+        M_rho_sparse = None
     
 
     #% simulate the number of layers as in integer
@@ -1641,24 +1650,28 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
         for j in range(len(i_boundaries)):
             rho[i_boundaries[j]:] = rho_all[j+1]
 
-        M_rho[i]=rho        
+        M_rho[i]=rho
 
 
         # m_current should be the concatenation of z_boundaires and rho_alls
-        m_current = np.concatenate((z_boundaires, rho_all))
-        #print("m_current", m_current)
-        M_rho_sparse[i,0:len(m_current)] = m_current
+        # Only populate sparse representation if requested
+        if save_sparse:
+            m_current = np.concatenate((z_boundaires, rho_all))
+            #print("m_current", m_current)
+            M_rho_sparse[i,0:len(m_current)] = m_current
 
 
     if (showInfo>0):
         print("prior_model_layered: Saving prior model to %s" % f_prior_h5)
     
     # save to hdf5 file
-    
+    im=0
+
     if (showInfo>1):
         print("Saving '/M1' prior model  %s" % f_prior_h5)
+    im=im+1
     ig.save_prior_model(f_prior_h5,M_rho.astype(np.float32),
-                im=1,
+                im=im,
                 name='resistivity',
                 is_discrete = 0, 
                 x = z,
@@ -1668,23 +1681,27 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
                 showInfo=showInfo,
                 )
 
-    if (showInfo>1):
-        print("Saving '/M2' prior model  %s" % f_prior_h5)
-    ig.save_prior_model(f_prior_h5,M_rho_sparse.astype(np.float32),
-                im=2,
-                name='sparse - depth-resistivity',
-                is_discrete = 0, 
-                x = np.arange(0,nm_sparse),
-                z = np.arange(0,nm_sparse),
-                force_replace=True,
-                showInfo=showInfo,
-                )
+    # Only save sparse representation if requested
+    if save_sparse:
+        if (showInfo>1):
+            print("Saving '/M2' prior model  %s" % f_prior_h5)
+        im=im+1
+        ig.save_prior_model(f_prior_h5,M_rho_sparse.astype(np.float32),
+                    im=im,
+                    name='sparse - depth-resistivity',
+                    is_discrete = 0,
+                    x = np.arange(0,nm_sparse),
+                    z = np.arange(0,nm_sparse),
+                    force_replace=True,
+                    showInfo=showInfo,
+                    )
 
 
     if (showInfo>1):
         print("Saving '/M3' prior model  %s" % f_prior_h5)
+    im=im+1
     ig.save_prior_model(f_prior_h5,NLAY.astype(np.float32),
-                        im=3,
+                        im=im,
                         name = 'Number of layers',
                         is_discrete=0, 
                         x=np.array([0]), 
@@ -1904,9 +1921,12 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
     # Force NLAY to be a 2 dimensional numpy array (for when exporting to HDF5)
     NLAY = NLAY[:, np.newaxis]
     
+
     z_min = 0
-    z = np.arange(z_min, z_max, dz)
-    nz= len(z)
+    # Ensure z_max is included in the array
+    nz = int(np.ceil((z_max - z_min) / dz)) + 1
+    z = np.linspace(z_min, z_max, nz)
+    
     if showInfo>1:
         print('z_min, z_max, dz, nz = %g, %g, %g, %d' % (z_min, z_max, dz, nz))
     M_rho = np.zeros((N, nz))

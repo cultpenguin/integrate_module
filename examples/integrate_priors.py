@@ -80,9 +80,12 @@ f_prior_layered_uniform = ig.prior_model_layered(
     RHO_min=RHO_min,
     RHO_max=RHO_max,
     f_prior_h5='PRIOR_layered_uniform_log-uniform_N%d.h5' % N,
+    save_sparse=False,
     showInfo=1
 )
+ig.plot_prior_stats(f_prior_layered_uniform)
 
+#%%
 # ### 1b. Layered model with chi2 layer distribution and uniform resistivity  
 print(f"\n1b. Layered model: chi2 layers (3-8), uniform resistivity")
 f_prior_layered_chi2 = ig.prior_model_layered(
