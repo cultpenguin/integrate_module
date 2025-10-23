@@ -14,8 +14,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # # # #%load_ext autoreload
-    # # # # # # # # #%autoreload 2
+    # # # # # # # # # # #%load_ext autoreload
+    # # # # # # # # # # #%autoreload 2
     pass
 
 import integrate as ig
@@ -58,12 +58,12 @@ with h5py.File(f_data_h5, 'a') as f:
 
 print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 
-fig=ig.plot_data_xy(f_data_h5)
+fig=ig.plot_data_xy(f_data_h5, data_channel=5)
 
 # %%
 # Lets first make a small copy of the large data set available
 f_prior_org_h5 = 'prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
-N_small = 50000000000
+N_small = 100000
 f_prior_h5 = ig.copy_hdf5_file(f_prior_org_h5, 'prior_test.h5',N=N_small,showInfo=3)
 
 print("Keys in DATA")
@@ -121,7 +121,7 @@ D_obs = np.zeros((len(X),2))
 D_obs[:,0] = Pcat0
 D_obs[:,1] = 1-Pcat0
 
-plt.figure()
+plt.figure(figsize=(8,8))
 for ic in range(nclasses):
     plt.subplot(2,1,ic+1)
     sc = plt.scatter(X, Y, c=D_obs[:,ic], cmap='jet', vmin=0, vmax=1, s=1)
@@ -135,7 +135,7 @@ plt.show()
 # If the 'id' is not set, it will be set to the next available id
 #ig.save_data_multinomial(D_obs, f_data_h5 = f_data_h5, showInfo=2)
 # If the if is set, the data will be written to the given id, even if it allready exists
-ig.save_data_multinomial(D_obs, id=2, f_data_h5 = f_data_h5, showInfo=2)
+ig.save_data_multinomial(D_obs, id=2, f_data_h5 = f_data_h5, showInfo=-1)
 
 
 
@@ -167,14 +167,13 @@ P0_mul = []
 for i in range(len(id_use_arr)):
 
     id_use = id_use_arr[i]
-    N_use = 100000
     updatePostStat =True
     f_post_h5 = ig.integrate_rejection(f_prior_h5, f_data_h5, 
-                                    N_use = N_use, 
                                     parallel=parallel, 
                                     updatePostStat=updatePostStat, 
-                                    showInfo=1,
+                                    showInfo=0,
                                     Ncpu=8,
+                                    nr=1000,
                                     id_use = id_use)
     f_post_h5_arr.append(f_post_h5)
 
@@ -190,14 +189,15 @@ for i in range(len(id_use_arr)):
     P0_mul.append(P)
 
 
-    plt.figure()
+    plt.figure(figsize=(8,8))
     for ic in range(nclasses):
         plt.subplot(2,1,ic+1)
         #sc = plt.scatter(X, Y, c=D_obs[:,ic], cmap='jet', vmin=0, vmax=1, s=20)
-        sc = plt.scatter(X, Y, c=P[:,ic], cmap='jet', vmin=0, vmax=1, s=2)
+        sc = plt.scatter(X, Y, c=P[:,ic], cmap='jet', vmin=0, vmax=1, s=1)
         plt.colorbar(sc)
         plt.title('P(D2==%d)'%(ic))
         plt.axis('equal')
+        plt.grid()
     plt.suptitle(' id_use=%s' % (id_use))
     plt.show()
 
@@ -205,10 +205,10 @@ for i in range(len(id_use_arr)):
 
 # %%
 n=len(f_post_h5_arr)
-plt.figure(figsize=(8,1.5*n))
+plt.figure(figsize=(12,2.5*n))
 for i in range(n):
     plt.subplot(2,2,i+1)
-    sc = plt.scatter(X/1000, Y/1000, c=P0_mul[i][:,0], cmap='jet', vmin=0, vmax=1, s=2)
+    sc = plt.scatter(X/1000, Y/1000, c=P0_mul[i][:,0], cmap='jet', vmin=0, vmax=1, s=1)
     plt.colorbar(sc)
     plt.grid()
     plt.title('P(D2==%d)'%(ic))

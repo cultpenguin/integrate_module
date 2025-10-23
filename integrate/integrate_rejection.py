@@ -1315,7 +1315,10 @@ def likelihood_multinomial(D, P_obs, class_id=None, class_is_idx=False, entropyF
 
     # Vectorized log-likelihood calculation
     # Sum log probabilities along features axis
-    logL = np.sum(np.log(probs), axis=1)
+    # Use np.errstate to suppress divide-by-zero warnings when probs=0
+    # log(0) = -inf is mathematically correct (zero probability events)
+    with np.errstate(divide='ignore'):
+        logL = np.sum(np.log(probs), axis=1)
 
     return logL
 

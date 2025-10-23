@@ -2413,7 +2413,14 @@ def save_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='dat
     if np.ndim(D_obs)==1:
         D_obs = np.atleast_2d(D_obs).T
 
-    # f_data_h5 is a HDF% file grousp "/D1/", "/D2". 
+    # Handle 2D input: assume shape (ns, nclass) and expand to (ns, nclass, 1)
+    if np.ndim(D_obs)==2:
+        if showInfo>0:
+            print(f"Converting 2D input with shape {D_obs.shape} to 3D with shape {D_obs.shape + (1,)}")
+            print("Assuming input has shape (ns, nclass) and setting nm=1")
+        D_obs = D_obs[:, :, np.newaxis]
+
+    # f_data_h5 is a HDF% file grousp "/D1/", "/D2".
     # FInd the is with for the maximum '/D*' group
     if not id:
         with h5py.File(f_data_h5, 'a') as f:
@@ -2427,7 +2434,7 @@ def save_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='dat
 
     D_str = 'D%d' % id
 
-    if showInfo>0:
+    if showInfo>-1:
         print("Trying to write %s to %s" % (D_str,f_data_h5))
 
     ns,nclass,nm=D_obs.shape
@@ -2445,7 +2452,7 @@ def save_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='dat
         if D_str in f:
             if showInfo>-1:
                 print('Removing group %s:%s ' % (f_data_h5,D_str))
-                del f[D_str]
+            del f[D_str]
 
 
     # Write DATA
