@@ -1527,7 +1527,7 @@ def prior_data_identity(f_prior_h5, id=0, im=1, N=0, doMakePriorCopy=False, **kw
 # %% PRIOR MODEL GENERATORS
 def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
                         NLAY_min=3, NLAY_max=6, NLAY_deg=6,
-                        RHO_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80,
+                        RHO_dist='log-uniform', RHO_min=0.1, RHO_max=5000, RHO_mean=100, RHO_std=80,
                         N=100000, save_sparse=True, **kwargs):
     """
     Generate a prior model with layered structure.
@@ -1555,7 +1555,7 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
         Minimum resistivity value. Default is 0.1.
     RHO_max : float, optional
         Maximum resistivity value. Default is 100.
-    RHO_MEAN : float, optional
+    RHO_mean : float, optional
         Mean resistivity value. Only applicable if RHO_dist is 'normal' or
         'lognormal'. Default is 100.
     RHO_std : float, optional
@@ -1636,15 +1636,19 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
 
         ### simulate the resistivity in each layer
         if RHO_dist=='log-normal':
-            rho_all=np.random.lognormal(mean=np.log(RHO_MEAN), sigma=np.log(RHO_std), size=NLAY[i])
-        elif RHO_dist=='normal':
-            rho_all=np.random.normal(loc=RHO_MEAN, scale=RHO_std, size=NLAY[i])
+            rho_all=np.random.lognormal(mean=np.log(RHO_mean), sigma=np.log(RHO_std), size=NLAY[i])
+        elif RHO_dist=='normal':            
+            rho_all=np.random.normal(loc=RHO_mean, scale=RHO_std, size=NLAY[i])
         elif RHO_dist=='log-uniform':
             rho_all=np.exp(np.random.uniform(np.log(RHO_min), np.log(RHO_max), NLAY[i]))
         elif RHO_dist=='uniform':
             rho_all=np.random.uniform(RHO_min, RHO_max, NLAY[i])
 
 
+        # Set all resistivity values less than RHO_min to RHO_min
+        rho_all[rho_all < RHO_min] = RHO_min
+        # Set all resistivity values greater than RHO_max to RHO_max
+        rho_all[rho_all > RHO_max] = RHO_max        
 
         rho = np.zeros(nz)+rho_all[0]
         for j in range(len(i_boundaries)):
