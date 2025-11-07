@@ -3056,6 +3056,8 @@ def timing_plot(f_timing=''):
     N_arr = data['N_arr']
     Nproc_arr = data['Nproc_arr']
 
+    xlim_N = xlim_N = [np.min([800,np.min(N_arr)]),np.max([1.2e+6,np.max(N_arr)])]
+    xlim_Nproc = np.min([.95,np.min(Nproc_arr)]),np.max([34,np.max(Nproc_arr)])
     try:
         T_total = data['T_total']
     except:
@@ -3066,6 +3068,11 @@ def timing_plot(f_timing=''):
     except:
         nobs=11693
 
+
+    # ############################################
+    # TOTAL TIME
+    # ############################################
+
     # Plot
     # LSQ, Assumed time, in seconds, for least squares inversion of a single sounding
     t_lsq = 2.0
@@ -3074,7 +3081,6 @@ def timing_plot(f_timing=''):
 
     total_lsq = np.array([nobs*t_lsq, nobs*t_lsq/Nproc_arr[-1]])
     total_mcmc = np.array([nobs*t_mcmc, nobs*t_mcmc/Nproc_arr[-1]])
-
 
     # loglog(T_total.T)
     plt.figure(figsize=(6,6))    
@@ -3087,9 +3093,10 @@ def timing_plot(f_timing=''):
     plt.plot([Nproc_arr[0], Nproc_arr[-1]], total_mcmc, 'r--', label='MCMC')
     plt.legend(loc='upper right')
     plt.xticks(ticks=Nproc_arr, labels=[str(int(x)) for x in Nproc_arr])
-    plt.ylim(1,1e+8)
     plt.tight_layout()
-    plt.savefig('%s_total_sec' % file_out)
+    plt.ylim(1,1e+8)
+    plt.xlim(xlim_Nproc)
+    plt.savefig('%s_total_sec_CPU' % file_out)
     safe_show()
     plt.close()
 
@@ -3104,11 +3111,16 @@ def timing_plot(f_timing=''):
     plt.legend(loc='upper left')
     #plt.xticks(ticks=N_arr, labels=[str(int(x)) for x in Nproc_arr])
     plt.ylim(1,1e+8)
-    plt.savefig('%s_total_sec' % file_out)
+    #plt.xlim(np.min([1000,np.min(N_arr)]),np.max([1e+6,np.max(N_arr)]))
+    plt.xlim(xlim_N)
+    plt.savefig('%s_total_sec_N' % file_out)
     safe_show()
     plt.close()
 
-
+    # ############################################
+    # FORWARD MODELING
+    # ############################################
+    
     #### Plot timing results for forward modeling - GAAEM
     # Average timer per sounding 
     T_forward_sounding = T_forward/N_arr[:,np.newaxis]
@@ -3134,9 +3146,10 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     #plt.title('Forward calculation')
     plt.grid()
-    plt.legend(N_arr, loc='upper left')
-    plt.ylim(1e-1, 1e+4)
-    plt.xlim(Nproc_arr[0], Nproc_arr[-1])
+    plt.legend(N_arr, loc='upper right')
+    plt.ylim(1e-1, 1e+5)
+    #plt.xlim(Nproc_arr[0], Nproc_arr[-1])
+    plt.xlim(xlim_Nproc)
     plt.tight_layout()
     plt.savefig('%s_forward_sec_CPU' % file_out)
     safe_show()
@@ -3160,8 +3173,9 @@ def timing_plot(f_timing=''):
     #plt.title('Forward calculation')
     plt.grid()
     plt.legend(Nproc_arr, loc='upper left')
-    #plt.ylim(1e-1, 1e+4)
+    plt.ylim(1e+0, 1e+5)
     #plt.xlim(Nproc_arr[0], Nproc_arr[-1])
+    plt.xlim(xlim_N)
     plt.tight_layout()
     plt.savefig('%s_forward_sec_N' % file_out)
     safe_show()
@@ -3176,7 +3190,9 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     #plt.title('Forward calculation')
     plt.grid()
-    plt.legend(N_arr)
+    plt.legend(N_arr, loc='lower right')
+    plt.xlim(xlim_Nproc)    
+    plt.ylim(10,1000)
     plt.tight_layout()
     plt.savefig('%s_forward_sounding_per_sec' % file_out)
     safe_show()
@@ -3190,9 +3206,11 @@ def timing_plot(f_timing=''):
     #plt.title('Forward calculation')
     plt.grid()
     # Make yaxis start at 0
-    plt.ylim(0, 80)    
+    plt.ylim(0, 140)    
     plt.xlim(Nproc_arr[0], Nproc_arr[-1])
+    plt.xlim(xlim_Nproc)
     plt.legend(N_arr)
+    plt.tight_layout()
     plt.savefig('%s_forward_sounding_per_sec_per_cpu' % file_out)
     safe_show()
     plt.close()
@@ -3209,13 +3227,17 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(N_arr)
+    plt.xlim(xlim_Nproc)    
+    plt.ylim(0.5, 30)    
+    plt.tight_layout()
     plt.savefig('%s_forward_speedup' % file_out)
     safe_show()
     plt.close()
 
-
-
-    ### STATS FOR REJECTION SAMPLING
+    # ############################################
+    # REJECTION SAMPLING
+    # ############################################
+    
     # Average timer per sounding
     T_rejection_sounding = T_rejection/N_arr[:,np.newaxis]
     T_rejection_sounding_per_sec = N_arr[:,np.newaxis]/T_rejection
@@ -3252,6 +3274,7 @@ def timing_plot(f_timing=''):
     plt.legend(N_arr)
     plt.tight_layout()
     plt.ylim(1e-1, 2e+3)
+    plt.xlim(xlim_Nproc)
     plt.savefig('%s_rejection_sec_CPU' % file_out)
     safe_show()
     plt.close()
@@ -3274,8 +3297,9 @@ def timing_plot(f_timing=''):
     plt.xlabel('Lookup table size')
     plt.grid()
     plt.legend(Nproc_arr)
-    plt.tight_layout()
     plt.ylim(1e-1, 2e+3)
+    plt.xlim(xlim_N)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sec_N' % file_out)
     safe_show()
     plt.close()
@@ -3292,6 +3316,7 @@ def timing_plot(f_timing=''):
     plt.ylabel('Rejection sampling - speedup compared to 1 processor')
     plt.xlabel('Number of processors')
     plt.grid()
+    plt.xlim(xlim_Nproc)
     plt.legend(N_arr)
     plt.savefig('%s_rejection_speedup' % file_out)
     safe_show()
@@ -3307,8 +3332,9 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(loc='lower left')
-    plt.tight_layout()
     plt.ylim(1e-3, 1e+5)
+    plt.xlim(xlim_Nproc)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sounding_per_sec' % file_out)
     safe_show()
     plt.close()
@@ -3323,8 +3349,9 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(loc='upper right')
-    plt.tight_layout()
     plt.ylim(1e-5, 1e+3)
+    plt.xlim(xlim_Nproc)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sec_per_sound' % file_out)
     safe_show()
     plt.close()
@@ -3337,6 +3364,8 @@ def timing_plot(f_timing=''):
     plt.xlabel('Lookup table size')
     plt.grid()
     plt.legend(Nproc_arr)
+    plt.xlim(xlim_N)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sounding_per_sec_N' % file_out)
     safe_show()
     plt.close()
@@ -3349,6 +3378,8 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(N_arr)
+    plt.xlim(xlim_Nproc)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sounding_per_sec_CPU' % file_out)
     safe_show()
     plt.close()
@@ -3363,6 +3394,8 @@ def timing_plot(f_timing=''):
     plt.xlabel('Lookup table size')
     plt.grid()
     plt.legend(Nproc_arr)
+    plt.xlim(xlim_N)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sounding_per_sec_per_cpu_N' % file_out)
     safe_show()
     plt.close()
@@ -3376,13 +3409,17 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(N_arr)
+    plt.xlim(xlim_Nproc)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sounding_per_sec_per_cpu_CPU' % file_out)
     safe_show()
     plt.close()
 
 
-
-    #### STATS FOR POSTERIOR STATISTICS
+    # ############################################
+    # POSTERIOR STATISTICS
+    # ############################################
+    
     # Average timer per sounding
     T_poststat_sounding = T_poststat/N_arr[:,np.newaxis]
     T_poststat_sounding_per_sec = N_arr[:,np.newaxis]/T_poststat
@@ -3395,6 +3432,7 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(N_arr)
+    plt.xlim(xlim_Nproc)
     plt.tight_layout()
     plt.savefig('%s_poststat_sounding_per_sec' % file_out)
     safe_show()
