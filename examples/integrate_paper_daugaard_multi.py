@@ -37,7 +37,7 @@ hardcopy=True
 cmap, clim = ig.get_colormap_and_limits('resistivity')
 useMergedPrior=True
 useGenericPrior=False
-inflateNoise = 4
+inflateNoise = 2 # 1,2, 4
 useLogData = False
 N_use = 2000000
 N_use_org= N_use
@@ -175,7 +175,8 @@ plt.plot(X[id_line],Y[id_line], 'r.', markersize=8, label='Profile', zorder=2, l
 plt.plot(X[i_plot_1],Y[i_plot_1], 'k*', markersize=10, label='P1')
 plt.plot(X[i_plot_2],Y[i_plot_2], 'k*', markersize=10, label='P2')
 plt.grid()
-plt.colorbar(label='Elevation (m)')
+#plt.colorbar(label='Elevation (m)')
+plt.colorbar(label='Number of non-Nan data points')
 plt.xlabel('X (m)')
 plt.ylabel('Y (m)')
 plt.title('Survey Points Colored by Number of Non-NaN Data Points')
@@ -230,6 +231,9 @@ for i_prior in range(len(f_prior_data_h5_list)):
     ig.integrate_update_prior_attributes(f_prior_data_h5)
     ig.plot_data_prior(f_prior_data_h5, f_data_h5, i_plot=100, hardcopy=hardcopy)
 
+#%% 
+for i_prior in range(len(f_prior_data_h5_list)):
+    ig.plot_prior_stats(f_prior_data_h5_list[i_prior])
 
 # %%
 # Select how many prior model realizations (N) should be generated
@@ -262,6 +266,23 @@ for i_prior in range(len(f_prior_data_h5_list)):
 for i_post in range(len(f_post_h5_list)):
     ig.integrate_posterior_stats(f_post_h5_list[i_post], showInfo=1)
    
+# %% Get SHAPE FILES
+useShapeFiles = True
+try:
+    files = ig.get_case_data(case='DAUGAARD', loadType='shapefiles')
+    import geopandas as gpd
+    gdf = gpd.read_file('Begravet dal.shp')
+    line_coords = gdf[gdf.geometry.type == 'LineString'].geometry.apply(lambda geom: list(geom.coords))
+    line1=np.array(line_coords[0])
+    line2=np.array(line_coords[1])
+    gdf = gpd.read_file('Erosion øvre.shp')
+    line_coords = gdf[gdf.geometry.type == 'LineString'].geometry.apply(lambda geom: list(geom.coords))
+    line1_erosion=np.array(line_coords[0])
+    line2_erosion=np.array(line_coords[1])
+except:
+    useShapeFiles = False
+    print("Could not load shapefiles for buried valleys.")
+
 
  #%%
  #if useMergedPrior:
@@ -290,11 +311,32 @@ P_valley_check = P[:,:,0]
 cmap_valley = plt.get_cmap('RdBu_r')
 plt.figure(figsize=(8, 6))
 plt.scatter(X, Y, c=P_valley, s=1, cmap=cmap_valley, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
+plt.grid()
 plt.savefig('DAUGAARD_Pvalley_EV_N%d_No%d_aT%d_l%d.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
+if useShapeFiles:
+    plt.plot(line1[:,0],line1[:,1],'y-',linewidth=6, alpha=0.4)
+    plt.plot(line1[:,0],line1[:,1],'k--',linewidth=2)
+    plt.plot(line2[:,0],line2[:,1],'y-',linewidth=6, alpha=0.4)
+    plt.plot(line2[:,0],line2[:,1],'k--',linewidth=2)
+    #plt.plot(line1_erosion[:,0],line1_erosion[:,1],'c-',linewidth=6)
+    #plt.plot(line2_erosion[:,0],line2_erosion[:,1],'r-',linewidth=6)
+    plt.savefig('DAUGAARD_Pvalley_EV_N%d_No%d_aT%d_l%d_shape.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
+
 plt.figure(figsize=(8, 6))
 #plt.scatter(X, Y, c=P_valley_check[:,0], s=1, cmap=cmap_valley, vmin=.45, vmax=.55);plt.colorbar(label='P(Valley)');plt.axis('equal')
 plt.scatter(X, Y, c=P_valley_check[:,0], s=1, cmap=cmap_valley, vmin=0, vmax=1);plt.colorbar(label='P(Valley)');plt.axis('equal')
+plt.grid()
 plt.savefig('DAUGAARD_Pvalley_MIXTURE_N%d_No%d_aT%d_l%d.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
+if useShapeFiles:
+    plt.plot(line1[:,0],line1[:,1],'y-',linewidth=6, alpha=0.4)
+    plt.plot(line1[:,0],line1[:,1],'k--',linewidth=2)
+    plt.plot(line2[:,0],line2[:,1],'y-',linewidth=6, alpha=0.4)
+    plt.plot(line2[:,0],line2[:,1],'k--',linewidth=2)
+    #plt.plot(line1_erosion[:,0],line1_erosion[:,1],'c-',linewidth=6)
+    #plt.plot(line2_erosion[:,0],line2_erosion[:,1],'r-',linewidth=6)
+plt.savefig('DAUGAARD_Pvalley_MIXTURE_N%d_No%d_aT%d_l%d_shape.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
+
+
 
 
 plt.figure(figsize=(4, 4))
@@ -445,6 +487,10 @@ if doPlotAll:
             ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
             plt.show()
             ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10, hardcopy=hardcopy)
+            plt.show()
+            ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
+            plt.show()
+            ig.plot_feature_2d(f_post_h5,im=2,iz=5, key='Mode', uselog=0, s=10, hardcopy=hardcopy)
             plt.show()
 
             try:
