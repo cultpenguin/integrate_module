@@ -2209,26 +2209,67 @@ def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **
 
 # %% Synthetic data
 
+def _interpolate_resistivity(rho_values, nx):
+    """
+    Interpolate resistivity values along a profile.
+
+    Parameters
+    ----------
+    rho_values : array_like
+        Resistivity values at control points. Can be:
+        - Single value [v]: constant resistivity
+        - Two values [v1, v2]: linear from left to right
+        - Multiple values [v1, v2, ..., vN]: interpolated through all points
+    nx : int
+        Number of x positions to interpolate to.
+
+    Returns
+    -------
+    ndarray
+        Interpolated resistivity values of length nx.
+    """
+    rho_values = np.atleast_1d(rho_values)
+    n_control = len(rho_values)
+
+    if n_control == 1:
+        # Constant value
+        return np.full(nx, rho_values[0])
+    else:
+        # Interpolate through control points
+        control_indices = np.linspace(0, nx-1, n_control)
+        x_indices = np.arange(nx)
+        return np.interp(x_indices, control_indices, rho_values)
+
+
 def synthetic_case(case='Wedge', **kwargs):
     """
     Generate synthetic geological models for different cases.
-    
-    This function creates synthetic 2D geological models for testing and validation 
+
+    This function creates synthetic 2D geological models for testing and validation
     purposes. Supports 'Wedge' and '3Layer' model types with customizable parameters.
-    
+
     Parameters
     ----------
     case : str, optional
-        The type of synthetic case to generate. Options are 'Wedge' and '3Layer'. 
+        The type of synthetic case to generate. Options are 'Wedge' and '3Layer'.
         Default is 'Wedge'.
     **kwargs : dict
         Additional parameters for synthetic case generation.
-        
+
         Common Parameters
         -----------------
         showInfo : int, optional
             If greater than 0, print information about the generated case. Default is 0.
-        
+        rho_1 : list or array_like, optional
+            Resistivity values for layer 1 along the profile. If a single value [v],
+            resistivity is constant at v. If multiple values [v1, v2, ...], resistivity
+            varies from v1 (left) to v2 (middle) to vN (right) using interpolation.
+            Only used when rho_1, rho_2, and rho_3 are all provided.
+        rho_2 : list or array_like, optional
+            Resistivity values for layer 2 along the profile. Same format as rho_1.
+        rho_3 : list or array_like, optional
+            Resistivity values for layer 3 along the profile. Same format as rho_1.
+
         Parameters for 'Wedge' case
         ---------------------------
         x_max : int, optional
@@ -2243,9 +2284,10 @@ def synthetic_case(case='Wedge', **kwargs):
             Depth at which the wedge starts. Default is z_max/10.
         rho : list, optional
             Density values for different layers. Default is [100, 200, 120].
+            Overridden by rho_1, rho_2, rho_3 if all three are provided.
         wedge_angle : float, optional
             Angle of the wedge in degrees. Default is 1.
-        
+
         Parameters for '3Layer' case
         ----------------------------
         x_max : int, optional
@@ -2264,27 +2306,55 @@ def synthetic_case(case='Wedge', **kwargs):
             Thickness of the second layer. Default is z_max/2.
         rho1_1 : float, optional
             Density at the start of the first layer. Default is 120.
+            Overridden by rho_1 if provided.
         rho1_2 : float, optional
             Density at the end of the first layer. Default is 10.
+            Overridden by rho_1 if provided.
         rho2_1 : float, optional
             Density at the start of the second layer. Default is rho1_2.
+            Overridden by rho_2 if provided.
         rho2_2 : float, optional
             Density at the end of the second layer. Default is rho1_1.
+            Overridden by rho_2 if provided.
         rho3 : float, optional
             Density of the third layer. Default is 120.
+            Overridden by rho_3 if provided.
 
     Returns
     -------
-    tuple
-        A tuple containing (M, x, z) where M is the generated synthetic model, 
-        x is x-coordinates, z is z-coordinates.
+    M : ndarray
+        The generated synthetic resistivity model of shape (nx, nz).
+    x : ndarray
+        X-coordinates of the model.
+    z : ndarray
+        Z-coordinates (depth) of the model.
+    M_ref_lith : ndarray
+        Lithology/layer number for each pixel, same shape as M. Values are 1, 2, 3
+        corresponding to the layer number.
+
+    Examples
+    --------
+    >>> # Constant resistivity in each layer
+    >>> M, x, z, M_lith = ig.synthetic_case(case='3layer', rho_1=[10], rho_2=[80], rho_3=[10])
+    >>>
+    >>> # Linear variation from left to right
+    >>> M, x, z, M_lith = ig.synthetic_case(case='3layer', rho_1=[10, 80], rho_2=[80, 10], rho_3=[10, 10])
+    >>>
+    >>> # Three-point variation (left, middle, right)
+    >>> M, x, z, M_lith = ig.synthetic_case(case='3layer', rho_1=[10, 80, 10], rho_2=[50, 100, 50], rho_3=[10, 10, 10])
     """
     
     showInfo = kwargs.get('showInfo', 0)
 
+    # Check if rho_1, rho_2, rho_3 are all provided
+    rho_1 = kwargs.get('rho_1', None)
+    rho_2 = kwargs.get('rho_2', None)
+    rho_3 = kwargs.get('rho_3', None)
+    use_rho_arrays = (rho_1 is not None) and (rho_2 is not None) and (rho_3 is not None)
+
     if case.lower() == 'wedge':
-        # Create synthetic wedhge model
-        
+        # Create synthetic wedge model
+
         # variables
         x_max = kwargs.get('x_max', 1000)
         dx = kwargs.get('dx', 1000./x_max)
@@ -2295,7 +2365,7 @@ def synthetic_case(case='Wedge', **kwargs):
         wedge_angle = kwargs.get('wedge_angle', 1)
 
         if showInfo>0:
-            print('Creating synthetic %s case with wedge angle=%f' % (case,ẃedge_angle))
+            print('Creating synthetic %s case with wedge angle=%f' % (case,wedge_angle))
 
         z = np.arange(0,z_max,dz)
         x = np.arange(0,x_max,dx)
@@ -2303,19 +2373,45 @@ def synthetic_case(case='Wedge', **kwargs):
         nx = x.shape[0]
         nz = z.shape[0]
 
-        M = np.zeros((nx,nz))+rho[0]
-        # set M=rho[3] of all iz> (z==z1)
-        iz = np.where(z>=z1)[0]
-        M[:,iz] = rho[2]
-        for ix in range(nx):
-            wedge_angle_rad = np.deg2rad(wedge_angle)
-            z2 = z1 + x[ix]*np.tan(wedge_angle_rad)            
-            #find iz where  (z>=z1) and (z<=z2)
-            iz = np.where((z>=z1) & (z<=z2))[0]
-            #print(z[iz[0]])
-            M[ix,iz] = rho[1]
+        # Initialize M and M_ref_lith
+        M = np.zeros((nx,nz))
+        M_ref_lith = np.ones((nx,nz), dtype=int)  # Layer 1 by default
 
-        return M, x, z
+        if use_rho_arrays:
+            # Convert to numpy arrays
+            rho_1 = np.atleast_1d(rho_1)
+            rho_2 = np.atleast_1d(rho_2)
+            rho_3 = np.atleast_1d(rho_3)
+
+            # Interpolate resistivity values along the profile
+            rho1_interp = _interpolate_resistivity(rho_1, nx)
+            rho2_interp = _interpolate_resistivity(rho_2, nx)
+            rho3_interp = _interpolate_resistivity(rho_3, nx)
+        else:
+            # Use constant values from rho array
+            rho1_interp = np.full(nx, rho[0])
+            rho2_interp = np.full(nx, rho[1])
+            rho3_interp = np.full(nx, rho[2])
+
+        # Build the model
+        for ix in range(nx):
+            # Layer 1 (top layer)
+            M[ix,:] = rho1_interp[ix]
+            M_ref_lith[ix,:] = 1
+
+            # Layer 3 (bottom layer, below z1)
+            iz3 = np.where(z>=z1)[0]
+            M[ix,iz3] = rho3_interp[ix]
+            M_ref_lith[ix,iz3] = 3
+
+            # Layer 2 (wedge)
+            wedge_angle_rad = np.deg2rad(wedge_angle)
+            z2 = z1 + x[ix]*np.tan(wedge_angle_rad)
+            iz2 = np.where((z>=z1) & (z<=z2))[0]
+            M[ix,iz2] = rho2_interp[ix]
+            M_ref_lith[ix,iz2] = 2
+
+        return M, x, z, M_ref_lith
 
     elif case.lower() == '3layer':
         # Create synthetic 3 layer model
@@ -2328,16 +2424,15 @@ def synthetic_case(case='Wedge', **kwargs):
         dz = kwargs.get('dz', 1)
         z1 = kwargs.get('z1', z_max/3)
         z_thick = kwargs.get('z_thick', z_max/2)
-        
 
         rho1_1 = kwargs.get('rho1_1', 120)
         rho1_2 = kwargs.get('rho1_2', 10)
-        rho2_1 = kwargs.get('rho1_2', rho1_2)
+        rho2_1 = kwargs.get('rho2_1', rho1_2)
         rho2_2 = kwargs.get('rho2_2', rho1_1)
         rho3 = kwargs.get('rho3', 120)
 
         if showInfo>0:
-            print('Creating synthetic %s case with wedge angle=%f' % (case,ẃedge_angle))
+            print('Creating synthetic %s case' % case)
 
         z = np.arange(0,z_max,dz)
         x = np.arange(0,x_max,dx)
@@ -2345,18 +2440,58 @@ def synthetic_case(case='Wedge', **kwargs):
         nx = x.shape[0]
         nz = z.shape[0]
 
-        M = np.zeros((nx,nz))+rho3
-        iz1 = np.where(z<=z1)[0]
-        for ix in range(nx):
-            rho1 = rho1_1 + (rho1_2 - rho1_1) * x[ix]/x_max
-            rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
-            M[ix,iz1] = rho1
-            z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))            
-            rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
-            iz2 = np.where((z>=z1) & (z<=z2))[0]
-            M[ix,iz2] = rho2
+        # Initialize M and M_ref_lith
+        M = np.zeros((nx,nz))
+        M_ref_lith = np.zeros((nx,nz), dtype=int)
 
-        return M, x, z
+        if use_rho_arrays:
+            # Convert to numpy arrays
+            rho_1 = np.atleast_1d(rho_1)
+            rho_2 = np.atleast_1d(rho_2)
+            rho_3 = np.atleast_1d(rho_3)
+
+            # Interpolate resistivity values along the profile
+            rho1_interp = _interpolate_resistivity(rho_1, nx)
+            rho2_interp = _interpolate_resistivity(rho_2, nx)
+            rho3_interp = _interpolate_resistivity(rho_3, nx)
+
+            # Build model with variable resistivity
+            for ix in range(nx):
+                # Layer 3 (bottom layer) - default
+                M[ix,:] = rho3_interp[ix]
+                M_ref_lith[ix,:] = 3
+
+                # Layer 1 (top layer)
+                iz1 = np.where(z<=z1)[0]
+                M[ix,iz1] = rho1_interp[ix]
+                M_ref_lith[ix,iz1] = 1
+
+                # Layer 2 (middle layer with varying thickness)
+                z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))
+                iz2 = np.where((z>=z1) & (z<=z2))[0]
+                M[ix,iz2] = rho2_interp[ix]
+                M_ref_lith[ix,iz2] = 2
+        else:
+            # Use original linear variation from rho1_1 to rho1_2
+            for ix in range(nx):
+                # Layer 3 (bottom layer) - default
+                M[ix,:] = rho3
+                M_ref_lith[ix,:] = 3
+
+                # Layer 1 (top layer)
+                iz1 = np.where(z<=z1)[0]
+                rho1 = rho1_1 + (rho1_2 - rho1_1) * x[ix]/x_max
+                M[ix,iz1] = rho1
+                M_ref_lith[ix,iz1] = 1
+
+                # Layer 2 (middle layer with varying thickness)
+                z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))
+                rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
+                iz2 = np.where((z>=z1) & (z<=z2))[0]
+                M[ix,iz2] = rho2
+                M_ref_lith[ix,iz2] = 2
+
+        return M, x, z, M_ref_lith
 
 
 
