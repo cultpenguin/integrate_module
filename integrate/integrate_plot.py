@@ -2575,7 +2575,7 @@ def find_points_along_line_segments(X, Y, Xl, Yl, ID=None, tolerance=None, metho
             closest_segments[selected_indices])
 
 
-def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
+def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, use_log=None, showInfo=0, **kwargs):
     """
     Visualize prior model parameter distributions and sample realizations.
 
@@ -2593,6 +2593,17 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
     nr : int, optional
         Maximum number of realizations to display in realization plots.
         Actual number used is minimum of nr and available realizations (default is 100).
+    use_log : bool or None, optional
+        Whether to use log10 scale for both histogram and realizations plot. If None
+        (default), automatically determines scale based on data range:
+        - Discrete parameters: always linear
+        - Continuous parameters: log if data spans > 2 orders of magnitude, else linear
+        Set to True to force log10 scale, or False to force linear scale.
+        For continuous parameters, this controls both the histogram bins (log10 values)
+        and the color normalization in the realizations plot (LogNorm vs linear).
+    showInfo : int, optional
+        Verbosity level for diagnostic output. If > 0, prints data range and
+        auto-selected scale choice (default is 0).
     **kwargs : dict
         Additional keyword arguments:
         - hardcopy : bool, save plots as PNG files (default True)
@@ -2604,29 +2615,54 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
 
     Notes
     -----
-    For continuous parameters, creates a 2x2 subplot layout:
-    - Top left: Linear histogram of parameter values
-    - Top right: Log10 histogram with scientific notation tick labels
-    - Bottom: Realizations plot showing parameter variation
-    
+    For continuous parameters, creates a 1x2 subplot layout with custom width ratios:
+    - Left (narrow): Histogram (log10 or linear) with horizontal orientation
+    - Right (wide, 2x wider): Realizations plot with corresponding normalization
+      (LogNorm for log scale, linear for linear scale)
+
     For discrete parameters, creates similar layout but with:
-    - Class-based histograms with appropriate colormaps
-    - Categorical realizations with class names and colors
-    
+    - Left (narrow): Class distribution histogram with class names (always linear)
+    - Right (wide): Categorical realizations with class names and colors (always linear)
+
+    The `use_log` parameter controls scaling for BOTH subplots:
+    - Histogram: log10(values) vs linear values on y-axis
+    - Realizations: LogNorm vs linear colormap normalization
+
+    **Automatic Scale Selection (when use_log=None):**
+    For continuous parameters, the function automatically chooses between log and
+    linear scale based on the data range. Log scale is used if the data spans more
+    than 2 orders of magnitude (e.g., 0.1 to 100 or larger), otherwise linear scale
+    is used. This ensures appropriate visualization for both wide-range parameters
+    (like resistivity) and narrow-range parameters (like thickness in meters).
+
     Color limits and colormaps are automatically retrieved from file attributes.
     Multi-dimensional parameters show spatial patterns, while single parameters
     show temporal variation.
+
+    The layout uses matplotlib GridSpec with width_ratios=[1, 2] to make the
+    realizations subplot wider than the histogram subplot.
+
+    Examples
+    --------
+    >>> # Plot with default (log10 for continuous, linear for discrete)
+    >>> plot_prior_stats('prior.h5', Mkey='M1')
+    >>>
+    >>> # Force linear scale for continuous parameter
+    >>> plot_prior_stats('prior.h5', Mkey='M1', use_log=False)
+    >>>
+    >>> # Force log scale
+    >>> plot_prior_stats('prior.h5', Mkey='M1', use_log=True)
     """
     from matplotlib.colors import LogNorm
     
     f_prior = h5py.File(f_prior_h5,'r')
 
-    # If Mkey is not set, plot for all M* keys in prior and return 
+    # If Mkey is not set, plot for all M* keys in prior and return
     if len(Mkey)==0:
         for key in f_prior.keys():
             if (key[0]=='M'):
-                plot_prior_stats(f_prior_h5, Mkey=key, nr=nr, **kwargs)
-        
+                plot_prior_stats(f_prior_h5, Mkey=key, nr=nr, use_log=use_log, showInfo=showInfo, **kwargs)
+
         f_prior.close()
         return  
 
@@ -2641,6 +2677,9 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
     # check if name is in the attributes of key Mkey
     if 'name' in f_prior['/%s'%Mkey].attrs.keys():
         name = '%s:%s' %  (Mkey[1::],f_prior['/%s'%Mkey].attrs['name'][:])
+        name = '%s' %  (f_prior['/%s'%Mkey].attrs['name'][:])
+
+
         #print(name)
     else:
         name = Mkey
@@ -2662,70 +2701,107 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
     N, Nm = M.shape
     clim,cmap = h5_get_clim_cmap(f_prior_h5, Mstr=Mkey)
 
-    is_discrete = f_prior['/%s'%Mkey].attrs['is_discrete']    
-    
+    is_discrete = f_prior['/%s'%Mkey].attrs['is_discrete']
+
+    # Determine whether to use log scale
+    if use_log is None:
+        # Automatic selection based on data characteristics
+        if is_discrete:
+            # Always use linear for discrete parameters
+            use_log_scale = False
+        else:
+            # For continuous parameters, check if data spans many orders of magnitude
+            M_positive = M[M > 0]  # Only consider positive values
+            if len(M_positive) > 0:
+                data_min = np.min(M_positive)
+                data_max = np.max(M_positive)
+                # Use log if data spans more than 2 orders of magnitude
+                orders_of_magnitude = np.log10(data_max / data_min)
+                use_log_scale = orders_of_magnitude > 2.0
+                if showInfo > 0:
+                    print(f'plot_prior_stats: Data range: {data_min:.2e} to {data_max:.2e} ({orders_of_magnitude:.1f} orders of magnitude)')
+                    print(f'plot_prior_stats: Auto-selected {"log" if use_log_scale else "linear"} scale')
+            else:
+                # No positive values, use linear
+                use_log_scale = False
+    else:
+        # User explicitly set use_log
+        use_log_scale = use_log
+
     if not is_discrete:
         # CONTINUOUS
-        
-        # PLOT Mkey histrogram  and log10 histogram
-        fig, ax = plt.subplots(2,2,figsize=(10,10))
-        m0 = ax[0,0].hist(M.flatten(),101)
-        ax[0,0].set_xlabel(name)
-        ax[0,0].set_ylabel('Distribution')
 
-        # Handle log(0) by filtering out zeros and negative values
-        M_log = M.flatten()
-        M_log = M_log[M_log > 0]  # Remove zeros and negative values
-        if len(M_log) > 0:
-            m1 = ax[0,1].hist(np.log10(M_log), 101)
+        # Create figure with GridSpec for custom layout (left narrow, right wide)
+        fig = plt.figure(figsize=(14, 6))
+        import matplotlib.gridspec as gridspec
+        gs = gridspec.GridSpec(1, 2, width_ratios=[1, 2], figure=fig)
+
+        # Left subplot: Histogram (log or linear)
+        ax_left = fig.add_subplot(gs[0])
+
+        if use_log_scale:
+            # Log10 histogram
+            M_hist = M.flatten()
+            M_hist = M_hist[M_hist > 0]  # Remove zeros and negative values
+            if len(M_hist) > 0:
+                m1 = ax_left.hist(np.log10(M_hist), 101, orientation='horizontal')
+            else:
+                # If no positive values, create empty histogram
+                m1 = ax_left.hist([], 101, orientation='horizontal')
+
+            ax_left.set_ylabel('log10(%s)' % name)
+
+            # Set ytick labels as 10^x where x is the ytick value
+            ax_left.set_yticks(ax_left.get_yticks())  # Ensure ticks are set
+            ticks = ax_left.get_yticks()
+            ax_left.set_yticks(ticks)
+            ax_left.set_yticklabels(['$10^{%3.1f}$'%i for i in ticks])
         else:
-            # If no positive values, create empty histogram
-            m1 = ax[0,1].hist([], 101)
-        ax[0,1].set_xlabel('log10(%s)' % name)
+            # Linear histogram
+            M_hist = M.flatten()
+            m1 = ax_left.hist(M_hist, 101, orientation='horizontal')
+            ax_left.set_ylabel(name)
 
-        # set xtcik labels as 10^x where x i the xtick valye
-        ax[0,1].set_xticks(ax[0,1].get_xticks())  # Ensure ticks are set
-        ticks = ax[0,1].get_xticks()
-        ax[0,1].set_xticks(ticks)
-        ax[0,1].set_xticklabels(['$10^{%3.1f}$'%i for i in ticks])
-        ax[0,1].set_ylabel('Distribution')
+        ax_left.set_xlabel('Counts')
+        ax_left.grid()
 
-        ax[0, 0].grid()
-        ax[0, 1].grid()
-        ax[1, 0].axis('off')    
-        ax[1, 1].axis('off')
-        
-        # Plot actual realizatrions
-        ax[1, 0] = plt.subplot2grid((2, 2), (1, 0), colspan=2)
+        # Right subplot: Realizations (wider)
+        ax_right = fig.add_subplot(gs[1])
+
         X,Y = np.meshgrid(np.arange(1,nr+1),z)
-        ax[1,0].invert_yaxis()
+        ax_right.invert_yaxis()
         if Nm>1:
-            m2 = ax[1,0].pcolor(X,Y,M[0:nr,:].T, 
-                            cmap=cmap, 
-                            shading='auto',
-                            norm=LogNorm())
+            # Apply log or linear normalization based on use_log_scale
+            if use_log_scale:
+                m2 = ax_right.pcolor(X,Y,M[0:nr,:].T,
+                                cmap=cmap,
+                                shading='auto',
+                                norm=LogNorm())
+            else:
+                m2 = ax_right.pcolor(X,Y,M[0:nr,:].T,
+                                cmap=cmap,
+                                shading='auto')
             # set clim to clim
             m2.set_clim(clim[0],clim[1])
-            #m2.set_clim(clim[0]-.5,clim[1]+.5)      
-            fig.colorbar(m2, ax=ax[1,0], label=Mkey[1::])
+            fig.colorbar(m2, ax=ax_right, label=Mkey[1::])
         else:
-            m2 = ax[1,0].plot(np.arange(1,nr+1),M[0:nr,:].flatten()) 
-            ax[1,0].set_xlim(1,nr)
+            m2 = ax_right.plot(np.arange(1,nr+1),M[0:nr,:].flatten())
+            ax_right.set_xlim(1,nr)
 
-        ax[1,0].set_xlabel('Realization #')
-        ax[1,0].set_ylabel(name)
-        
-        tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name) 
+        ax_right.set_xlabel('Realization #')
+        ax_right.set_ylabel(name)
+
+        tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name)
         plt.suptitle(tit)
 
     else:
         # DISCRETE
-        
+
         # get attribute class_name if it exist
-        
+
         if 'class_id' in f_prior[Mkey].attrs.keys():
             class_id = f_prior[Mkey].attrs['class_id'][:].flatten()
-        else:   
+        else:
             print('No class_id found')
         if 'class_name' in f_prior[Mkey].attrs.keys():
             class_name = f_prior[Mkey].attrs['class_name'][:].flatten()
@@ -2733,73 +2809,45 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
             class_name = []
         n_class = len(class_name)
 
-        
-        # PLOT Mkey histrogram  and log10 histogram
-        fig, ax = plt.subplots(2,2,figsize=(10,10))
+        # Create figure with GridSpec for custom layout (left narrow, right wide)
+        fig = plt.figure(figsize=(14, 6))
+        import matplotlib.gridspec as gridspec
+        gs = gridspec.GridSpec(1, 2, width_ratios=[1, 3], figure=fig)
 
-        m0 = ax[0,0].hist(M.flatten(),101)
-        ax[0,0].set_xlabel(name)
-        ax[0,0].set_ylabel('Distribution')
-        
-        m1 = ax[0,1].hist(np.log10(M.flatten()),101)
-        ax[0,1].set_xlabel(name)
+        # Left subplot: Histogram (for discrete, we can show class distribution)
+        ax_left = fig.add_subplot(gs[0])
 
-        # set xtcik labels as 10^x where x i the xtick valye
-        ax[0,1].set_xticks(ax[0,1].get_xticks())  # Ensure ticks are set
-        ax[0,1].set_xticklabels(['$10^{%3.1f}$'%i for i in ax[0,1].get_xticks()])
-        ax[0,1].set_ylabel('Distribution')
+        # Create histogram with class boundaries
+        m1 = ax_left.hist(M.flatten(), bins=np.arange(0.5, n_class+1.5, 1), orientation='horizontal')
+        ax_left.set_ylabel(name)
+        ax_left.set_xlabel('Counts')
+        ax_left.set_yticks(np.arange(n_class)+1)
+        ax_left.set_yticklabels(class_name)
+        ax_left.grid()
 
-        ax[0, 0].grid()
-        ax[0, 1].grid()
-        ax[1, 0].axis('off')    
-        ax[1, 1].axis('off')
-        
-       # Plot actual realizations
-        ax[1, 0] = plt.subplot2grid((2, 2), (1, 0), colspan=2)
+        # Right subplot: Realizations (wider)
+        ax_right = fig.add_subplot(gs[1])
+
         X,Y = np.meshgrid(np.arange(1,nr+1),z)
-        ax[1,0].invert_yaxis()
+        ax_right.invert_yaxis()
         if Nm>1:
-            m2 = ax[1,0].pcolor(X,Y,M[0:nr,:].T, 
-                            cmap=cmap, 
+            m2 = ax_right.pcolor(X,Y,M[0:nr,:].T,
+                            cmap=cmap,
                             shading='auto')
             # set clim to clim
-            m2.set_clim(clim[0],clim[1])
-
-
-            #m2.set_clim(clim[0],clim[1])
-            #m2.set_clim(clim[0]-.5,clim[1]+.5)      
-            #fig.colorbar(m2, ax=ax[1,0], label=Mkey[1::])
-            m2.set_clim(clim[0]-.5,clim[1]+.5)      
-            #fig.colorbar(m2, ax=ax[1,0], label=Mkey)
-            cbar1 = fig.colorbar(m2, ax=ax[1,0], label=name)
+            m2.set_clim(clim[0]-.5,clim[1]+.5)
+            cbar1 = fig.colorbar(m2, ax=ax_right, label='%s : %s' %(Mkey[1::],name))
             cbar1.set_ticks(np.arange(n_class)+1)
             cbar1.set_ticklabels(class_name)
             cbar1.ax.invert_yaxis()
-            
-
-            '''
-            im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mode[:,i1:i2], 
-                cmap=cmap,            
-                shading='auto')
-            im1.set_clim(clim[0]-.5,clim[1]+.5)        
-
-            ax[0].set_title('Mode')
-            # /fix set the ticks to be 1 to n_class, and use class_name as tick labels
-            cbar1 = fig.colorbar(im1, ax=ax[0], label='label')
-            cbar1.set_ticks(np.arange(n_class)+1)
-            cbar1.set_ticklabels(class_name)
-            cbar1.ax.invert_yaxis()
-            '''
-
-
         else:
-            m2 = ax[1,0].plot(np.arange(1,101),M[0:nr,:].flatten()) 
-            ax[1,0].set_xlim(1,nr)
+            m2 = ax_right.plot(np.arange(1,nr+1),M[0:nr,:].flatten())
+            ax_right.set_xlim(1,nr)
 
-        ax[1,0].set_xlabel('Realization #')
-        ax[1,0].set_ylabel(name)
-        
-        #tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name) 
+        ax_right.set_xlabel('Realization #')
+        ax_right.set_ylabel('Depth (m)')
+
+        tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name)
         #plt.suptitle(tit)
 
     f_prior.close()

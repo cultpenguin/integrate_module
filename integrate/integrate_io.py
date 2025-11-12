@@ -2807,13 +2807,13 @@ def merge_posterior(f_post_h5_files, f_data_h5_files, f_post_merged_h5='', showI
     return f_post_merged_h5, f_data_merged_h5
 
 
-def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
+def merge_prior(f_prior_h5_files, f_prior_merged_h5='', shuffle=True, showInfo=0):
     """
     Merge multiple prior model files into a single combined HDF5 file.
 
     Combines prior model parameters and forward-modeled data from multiple
-    HDF5 files into a unified dataset. Creates a new model parameter (MX where 
-    X is the next available number) that tracks the source file index for each 
+    HDF5 files into a unified dataset. Creates a new model parameter (MX where
+    X is the next available number) that tracks the source file index for each
     sample, enabling traceability of merged data origins.
 
     Parameters
@@ -2824,6 +2824,11 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
     f_prior_merged_h5 : str, optional
         Output path for the merged prior file. If empty, generates default
         name 'PRIOR_merged_N{number_of_files}.h5' (default is '').
+    shuffle : bool, optional
+        If True (default), randomly shuffle the order of realizations in the merged
+        output. The same permutation is applied to all datasets (M1, M2, D1, D2, etc.)
+        to maintain consistency. This is useful for ensuring realizations from different
+        source files are well-mixed. If False, realizations are concatenated in order.
     showInfo : int, optional
         Verbosity level for progress information. Higher values provide more
         detailed output (default is 0).
@@ -2846,8 +2851,17 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
     - Concatenates all model parameters (M1, M2, M3, ...) across files
     - Concatenates all data arrays (D1, D2, D3, ...) across files
     - Creates new MX parameter (where X is next available number) containing source file indices (1-based)
+    - Optionally shuffles realizations using a consistent permutation across all arrays
     - Preserves HDF5 attributes that are identical across all input files
     - Updates metadata to reflect merged status
+
+    **Shuffling Behavior:**
+    When shuffle=True (default), a random permutation is applied to all realizations:
+    - A single permutation is generated and applied to ALL datasets (M1, M2, D1, D2, etc.)
+    - This ensures realizations remain synchronized across all parameters
+    - Uses fixed random seed (42) for reproducibility
+    - Useful for mixing realizations from different source files
+    - The source file tracking parameter (MX) is also shuffled to maintain traceability
 
     **Attribute Preservation:**
     The function intelligently copies dataset attributes from input files to the merged file:
@@ -2877,9 +2891,16 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
 
     Examples
     --------
+    >>> # Default: merge with shuffling
     >>> f_files = ['prior1.h5', 'prior2.h5', 'prior3.h5']
     >>> merged_file = merge_prior(f_files, 'combined_prior.h5')
     >>> print(f"Merged {len(f_files)} files into {merged_file}")
+
+    >>> # Merge without shuffling (preserves original order)
+    >>> merged_file = merge_prior(f_files, 'combined_prior.h5', shuffle=False)
+
+    >>> # Merge with verbose output
+    >>> merged_file = merge_prior(f_files, 'combined_prior.h5', showInfo=1)
     """
     import h5py
     import numpy as np
@@ -2997,11 +3018,34 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
     
     # Create the new model parameter array (source file indices) - must be shape (Ntotal, 1)
     M_merged[next_param_key] = np.array(source_file_values).reshape(-1, 1)
-    
+
+    # Apply shuffling if requested
+    if shuffle:
+        if showInfo > 1:
+            print('.. Shuffling realizations')
+
+        # Get total number of samples
+        total_samples = sum(sample_counts)
+
+        # Create a single random permutation to apply to all arrays
+        rng = np.random.RandomState(42)  # Fixed seed for reproducibility
+        shuffle_indices = rng.permutation(total_samples)
+
+        if showInfo > 0:
+            print(f'Shuffling {total_samples} realizations (seed=42 for reproducibility)')
+
+        # Apply the same permutation to all M arrays
+        for key in M_merged.keys():
+            M_merged[key] = M_merged[key][shuffle_indices]
+
+        # Apply the same permutation to all D arrays
+        for key in D_merged.keys():
+            D_merged[key] = D_merged[key][shuffle_indices]
+
     # Write merged file
     if showInfo > 1:
         print('.. Writing merged file')
-    
+
     with h5py.File(f_prior_merged_h5, 'w') as f_out:
         # Write all model parameters including M4
         for key, data in M_merged.items():

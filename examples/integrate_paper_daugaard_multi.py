@@ -54,6 +54,7 @@ doTestInversion = False
 files = ig.get_case_data(case='DAUGAARD', loadType='prior_data') # Load data and prior+data realizations
 f_data_h5 = files[0]
 file_gex= ig.get_gex_file_from_data(f_data_h5)
+
 # check that file_gex exists
 if not os.path.isfile(file_gex):
     print("file_gex=%s does not exist in the current folder." % file_gex)
@@ -213,11 +214,15 @@ if useLogData == True:
     f_prior_data_h5_list[1] = f_prior_log_data_h5
         
 #%%
-
 if useMergedPrior:
-    f_prior_data_merged_h5 = ig.merge_prior(f_prior_data_h5_list, f_prior_merged_h5='daugaard_merged.h5', showInfo=2)
+    f_prior_data_merged_h5 = ig.merge_prior(f_prior_data_h5_list, 
+                                            f_prior_merged_h5='daugaard_merged.h5', 
+                                            showInfo=2,
+                                            shuffle=True)
+    ig.hdf5_info(f_prior_data_merged_h5)
     f_prior_data_h5_list.append(f_prior_data_merged_h5)
 
+# %% 
 if useGenericPrior:
     N=N_use
     f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR.h5')
