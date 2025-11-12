@@ -2844,10 +2844,17 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
     -----
     The merging process:
     - Concatenates all model parameters (M1, M2, M3, ...) across files
-    - Concatenates all data arrays (D1, D2, D3, ...) across files  
+    - Concatenates all data arrays (D1, D2, D3, ...) across files
     - Creates new MX parameter (where X is next available number) containing source file indices (1-based)
-    - Preserves HDF5 attributes from the first file
+    - Preserves HDF5 attributes that are identical across all input files
     - Updates metadata to reflect merged status
+
+    **Attribute Preservation:**
+    The function intelligently copies dataset attributes from input files to the merged file:
+    - Only attributes that are **identical** across all input files are copied
+    - This includes important attributes like `class_name`, `class_id`, `is_discrete`, `clim`, `cmap`, etc.
+    - Attributes for data arrays (D1, D2, ...) like `method`, `type`, `Nfreq`, etc. are preserved
+    - Special handling for `x` and `z` attributes to match potentially padded dimensions
 
     **Source File Tracking:**
     The new MX parameter is a DISCRETE integer array with shape (Ntotal, 1) where
@@ -3027,18 +3034,61 @@ def merge_prior(f_prior_h5_files, f_prior_merged_h5='', showInfo=0):
             f_out[next_param_key].attrs['class_id'] = np.arange(1, nf + 1)  # 1-based class IDs
         
         # Copy attributes from existing model parameters to maintain consistency
-        with h5py.File(f_prior_h5_files[0], 'r') as f_first:
-            # Copy attributes from other M parameters while preserving their continuous nature
-            for key in M_merged.keys():
-                if key != next_param_key and key in f_first:
-                    for attr_name, attr_value in f_first[key].attrs.items():
-                        if attr_name in ['is_discrete', 'name', 'method', 'clim', 'cmap']:
-                            f_out[key].attrs[attr_name] = attr_value
-                        elif attr_name in ['x', 'z']:
-                            # Update x/z attributes to match padded dimensions
-                            new_dim = M_merged[key].shape[1]
-                            f_out[key].attrs[attr_name] = np.arange(new_dim)
-        
+        # First, check which attributes are identical across all files
+        common_attrs = {}  # key -> {attr_name: attr_value}
+
+        for key in list(M_merged.keys()) + list(D_merged.keys()):
+            if key == next_param_key:
+                continue  # Skip the new tracking parameter
+
+            common_attrs[key] = {}
+
+            # Collect attributes from first file
+            with h5py.File(f_prior_h5_files[0], 'r') as f_first:
+                if key not in f_first:
+                    continue
+
+                for attr_name, attr_value in f_first[key].attrs.items():
+                    # Check if this attribute is the same in all files
+                    is_common = True
+
+                    for f_path in f_prior_h5_files[1:]:
+                        with h5py.File(f_path, 'r') as f_other:
+                            if key not in f_other or attr_name not in f_other[key].attrs:
+                                is_common = False
+                                break
+
+                            other_value = f_other[key].attrs[attr_name]
+
+                            # Compare values (handle arrays and scalars)
+                            try:
+                                if isinstance(attr_value, np.ndarray) and isinstance(other_value, np.ndarray):
+                                    if not np.array_equal(attr_value, other_value):
+                                        is_common = False
+                                        break
+                                else:
+                                    if attr_value != other_value:
+                                        is_common = False
+                                        break
+                            except (ValueError, TypeError):
+                                # If comparison fails, don't include this attribute
+                                is_common = False
+                                break
+
+                    if is_common:
+                        common_attrs[key][attr_name] = attr_value
+
+        # Now copy the common attributes to the merged file
+        for key, attrs in common_attrs.items():
+            if key in f_out:
+                for attr_name, attr_value in attrs.items():
+                    # Special handling for x/z attributes - update to match padded dimensions
+                    if attr_name in ['x', 'z'] and key in M_merged:
+                        new_dim = M_merged[key].shape[1]
+                        f_out[key].attrs[attr_name] = np.arange(new_dim)
+                    else:
+                        f_out[key].attrs[attr_name] = attr_value
+
         # Add merge-specific attributes
         f_out.attrs['merged_from_files'] = [f.encode('utf-8') for f in f_prior_h5_files]
         f_out.attrs['n_merged_files'] = nf

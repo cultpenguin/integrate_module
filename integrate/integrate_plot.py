@@ -593,7 +593,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
     return
 
 
-def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', hardcopy=False, ax=None, cmap='jet', **kwargs):
+def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=1, pl='ELEVATION', hardcopy=False, ax=None, cmap='jet', **kwargs):
     """
     Plot survey geometry data from INTEGRATE HDF5 files.
 
@@ -671,6 +671,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
             i2=nd
         ii = np.arange(i1,i2)
 
+    markersize = kwargs.pop('markersize', .1)
 
     tit = f_png = '%s_%d_%d.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
 
@@ -680,7 +681,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
     
     if (pl=='all') or (pl=='LINE'):
         if ax is None:
-            plt.figure(1, figsize=(20, 10))
+            plt.figure(figsize=(wx,wy))
             current_ax = plt.gca()
         else:
             current_ax = ax
@@ -707,7 +708,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
             plt.show()
 
     if ax is None and ((pl=='all') or (pl=='ELEVATION')):
-        plt.figure(1, figsize=(20, 10))
+        plt.figure(figsize=(wx,wy))
         current_ax = plt.gca()
             
         scatter = current_ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap=cmap,**kwargs)            
@@ -738,7 +739,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
             plt.show()
 
     if ax is None and ((pl=='all') or (pl=='id')):
-        plt.figure(1, figsize=(20, 10))
+        plt.figure(figsize=(wx,wy))
         current_ax = plt.gca()
             
         scatter = current_ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap=cmap,**kwargs)  
@@ -778,7 +779,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
             else:
                 n_data_per_location = data_counts[0, :]
 
-            plt.figure(1, figsize=(20, 10))
+            plt.figure(figsize=(wx,wy))
             current_ax = plt.gca()
 
             scatter = current_ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],s=s,cmap=cmap,**kwargs)
@@ -2770,7 +2771,7 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
             #fig.colorbar(m2, ax=ax[1,0], label=Mkey[1::])
             m2.set_clim(clim[0]-.5,clim[1]+.5)      
             #fig.colorbar(m2, ax=ax[1,0], label=Mkey)
-            cbar1 = fig.colorbar(m2, ax=ax[1,0], label='label')
+            cbar1 = fig.colorbar(m2, ax=ax[1,0], label=name)
             cbar1.set_ticks(np.arange(n_class)+1)
             cbar1.set_ticklabels(class_name)
             cbar1.ax.invert_yaxis()
