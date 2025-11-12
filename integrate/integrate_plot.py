@@ -2799,8 +2799,8 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
         ax[1,0].set_xlabel('Realization #')
         ax[1,0].set_ylabel(name)
         
-        tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name) 
-        plt.suptitle(tit)
+        #tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name) 
+        #plt.suptitle(tit)
 
     f_prior.close()
 
