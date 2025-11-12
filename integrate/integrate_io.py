@@ -3707,33 +3707,33 @@ def _analyze_prior_file(f, print_line, load_data=False):
             name = attrs['name']
             if isinstance(name, bytes):
                 name = name.decode('utf-8')
-            print_line(f"  Name: {name}", 1)
+            print_line(f"  name: {name}", 1)
 
         if 'is_discrete' in attrs:
             is_discrete = attrs['is_discrete']
-            print_line(f"  Type: {'Discrete' if is_discrete else 'Continuous'}", 1)
+            print_line(f"  is_discrete: {is_discrete}", 1)
 
             if is_discrete:
                 if 'class_id' in attrs:
                     class_ids = attrs['class_id']
-                    print_line(f"  Class IDs: {class_ids}", 1)
+                    print_line(f"  class_id: {class_ids}", 1)
 
                 if 'class_name' in attrs:
                     class_names = attrs['class_name']
                     if isinstance(class_names, bytes):
                         class_names = class_names.decode('utf-8')
-                    print_line(f"  Class Names: {class_names}", 1)
+                    print_line(f"  class_name: {class_names}", 1)
 
         if 'x' in attrs:
             x = attrs['x']
             if hasattr(x, '__len__'):
-                print_line(f"  X-values: {len(x)} values, range=[{np.min(x):.2f}, {np.max(x):.2f}]", 1)
+                print_line(f"  x: {len(x)} values, range=[{np.min(x):.2f}, {np.max(x):.2f}]", 1)
             else:
-                print_line(f"  X-value: {x}", 1)
+                print_line(f"  x: {x}", 1)
 
         if 'clim' in attrs:
             clim = attrs['clim']
-            print_line(f"  Color limits: {clim}", 1)
+            print_line(f"  clim: {clim}", 1)
 
         # Show data range only if load_data=True
         if load_data and dataset.size > 0:
@@ -3760,11 +3760,11 @@ def _analyze_prior_file(f, print_line, load_data=False):
             forward_file = attrs['f5_forward']
             if isinstance(forward_file, bytes):
                 forward_file = forward_file.decode('utf-8')
-            print_line(f"  Forward model file: {forward_file}", 1)
+            print_line(f"  f5_forward: {forward_file}", 1)
 
         if 'with_noise' in attrs:
             with_noise = attrs['with_noise']
-            print_line(f"  Noise added: {'Yes' if with_noise else 'No'}", 1)
+            print_line(f"  with_noise: {with_noise}", 1)
 
         # Show data range only if load_data=True
         if load_data and dataset.size > 0:
@@ -3817,13 +3817,13 @@ def _analyze_post_file(f, print_line, load_data=False):
         data_file = attrs['f5_data']
         if isinstance(data_file, bytes):
             data_file = data_file.decode('utf-8')
-        print_line(f"  Data file reference: {data_file}", 1)
+        print_line(f"  f5_data: {data_file}", 1)
 
     if 'f5_prior' in attrs:
         prior_file = attrs['f5_prior']
         if isinstance(prior_file, bytes):
             prior_file = prior_file.decode('utf-8')
-        print_line(f"  Prior file reference: {prior_file}", 1)
+        print_line(f"  f5_prior: {prior_file}", 1)
 
     print_line()
 
