@@ -3448,5 +3448,510 @@ def write_data_multinomial(*args, **kwargs):
     return save_data_multinomial(*args, **kwargs)
 
 
+def hdf5_info(f_h5, verbose=True, load_data=False):
+    """
+    Get and print comprehensive information about an HDF5 file.
+
+    This function reads an HDF5 file (DATA, PRIOR, POST, or FORWARD) and prints
+    detailed information about its contents, including datasets, dimensions,
+    attributes, and file-type-specific metadata.
+
+    By default, only metadata (shapes, dtypes, attributes) is read for fast
+    analysis. Set load_data=True to also compute data ranges and statistics.
+
+    Parameters
+    ----------
+    f_h5 : str
+        Path to the HDF5 file to analyze.
+    verbose : bool, optional
+        If True, prints detailed information. If False, returns dictionary only
+        (default is True).
+    load_data : bool, optional
+        If True, loads actual data to compute ranges and statistics. If False,
+        only reads metadata (much faster, default is False).
+
+    Returns
+    -------
+    info : dict
+        Dictionary containing file information with keys:
+        - 'file_type': Detected file type ('DATA', 'PRIOR', 'POST', 'FORWARD', or 'UNKNOWN')
+        - 'datasets': List of dataset paths
+        - 'attributes': Dictionary of root-level attributes
+        - 'structure': Nested dictionary of file structure
+
+    Examples
+    --------
+    >>> hdf5_info('PRIOR.h5')
+    >>> info = hdf5_info('DATA.h5', verbose=False)
+    >>> info = hdf5_info('POST.h5', load_data=True)  # Include data ranges
+
+    Notes
+    -----
+    The function determines file type based on the presence of characteristic
+    datasets:
+    - DATA files: contain /UTMX, /UTMY, /ELEVATION, /LINE and /D1/, /D2/, etc.
+    - PRIOR files: contain /M1, /M2, /D1, /D2 arrays
+    - POST files: contain /i_use, /T, /EV attributes
+    - FORWARD files: contain /method attribute
+
+    Performance:
+    - With load_data=False (default): Very fast, only reads file metadata
+    - With load_data=True: Slower, reads all data to compute ranges/statistics
+
+    See Also
+    --------
+    load_prior : Load prior model and data
+    load_data : Load observational data
+    load_posterior : Load posterior results
+    """
+    import os
+
+    if not os.path.exists(f_h5):
+        print(f"ERROR: File not found: {f_h5}")
+        return None
+
+    info = {
+        'file_type': 'UNKNOWN',
+        'datasets': [],
+        'attributes': {},
+        'structure': {},
+        'load_data': load_data
+    }
+
+    def print_line(text='', indent=0):
+        """Helper function to print with indentation."""
+        if verbose:
+            print('  ' * indent + text)
+
+    def get_attrs_dict(h5_obj):
+        """Convert HDF5 attributes to dictionary."""
+        attrs = {}
+        for key, val in h5_obj.attrs.items():
+            if isinstance(val, bytes):
+                attrs[key] = val.decode('utf-8')
+            else:
+                attrs[key] = val
+        return attrs
+
+    def visit_item(name, obj):
+        """Visitor function to catalog all datasets."""
+        if isinstance(obj, h5py.Dataset):
+            info['datasets'].append(name)
+
+    try:
+        with h5py.File(f_h5, 'r') as f:
+            # Get root attributes
+            info['attributes'] = get_attrs_dict(f)
+
+            # Catalog all datasets
+            f.visititems(visit_item)
+
+            # Determine file type
+            file_type = _detect_file_type(f, info['datasets'])
+            info['file_type'] = file_type
+
+            # Print header
+            print_line()
+            print_line("=" * 80)
+            print_line(f"HDF5 FILE ANALYSIS: {os.path.basename(f_h5)}")
+            print_line("=" * 80)
+            print_line(f"File path: {f_h5}")
+            print_line(f"File type: {file_type}")
+            print_line(f"File size: {os.path.getsize(f_h5) / (1024**2):.2f} MB")
+            if not load_data:
+                print_line("Mode: Metadata only (use load_data=True for data ranges)")
+            else:
+                print_line("Mode: Full analysis with data ranges")
+            print_line()
+
+            # Root-level attributes
+            if info['attributes']:
+                print_line("Root Attributes:")
+                print_line("-" * 80)
+                for key, val in info['attributes'].items():
+                    print_line(f"  {key}: {val}", 0)
+                print_line()
+
+            # Type-specific analysis
+            if file_type == 'DATA':
+                _analyze_data_file(f, print_line, load_data)
+            elif file_type == 'PRIOR':
+                _analyze_prior_file(f, print_line, load_data)
+            elif file_type == 'POST':
+                _analyze_post_file(f, print_line, load_data)
+            elif file_type == 'FORWARD':
+                _analyze_forward_file(f, print_line, load_data)
+            else:
+                _analyze_unknown_file(f, print_line, load_data)
+
+            print_line("=" * 80)
+            print_line()
+
+    except Exception as e:
+        print(f"ERROR analyzing file: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+    return info
+
+
+def _detect_file_type(f, datasets):
+    """Detect the type of HDF5 file (DATA, PRIOR, POST, FORWARD)."""
+    # Check for DATA file characteristics
+    has_geometry = any(ds in datasets for ds in ['UTMX', 'UTMY', 'ELEVATION', 'LINE'])
+    has_data_groups = any(ds.startswith('D') and '/' in ds for ds in datasets)
+
+    # Check for PRIOR file characteristics
+    has_model = any(ds.startswith('M') and len(ds) == 2 for ds in datasets)
+
+    # Check for POST file characteristics
+    has_post = any(ds in datasets for ds in ['i_use', 'T', 'EV'])
+
+    # Check for FORWARD file characteristics
+    has_forward_method = 'method' in f.attrs
+
+    if has_post:
+        return 'POST'
+    elif has_model:
+        # PRIOR files can have model parameters with or without forward data
+        return 'PRIOR'
+    elif has_geometry and has_data_groups:
+        return 'DATA'
+    elif has_forward_method:
+        return 'FORWARD'
+    else:
+        return 'UNKNOWN'
+
+
+def _analyze_data_file(f, print_line, load_data=False):
+    """Analyze DATA.h5 file structure."""
+    print_line("DATA FILE CONTENTS:")
+    print_line("-" * 80)
+
+    # Geometry datasets
+    print_line("Geometry Information:", 0)
+    for ds_name in ['UTMX', 'UTMY', 'ELEVATION', 'LINE']:
+        if ds_name in f:
+            ds = f[ds_name]
+            print_line(f"  /{ds_name}: shape={ds.shape}, dtype={ds.dtype}", 1)
+            if load_data and ds.size > 0:
+                print_line(f"    Range: [{np.min(ds[...]):.2f}, {np.max(ds[...]):.2f}]", 1)
+
+    Np = f['UTMX'].shape[0] if 'UTMX' in f else 0
+    print_line(f"  Number of data locations (Np): {Np}", 1)
+    print_line()
+
+    # Data groups
+    data_groups = sorted([key for key in f.keys() if key.startswith('D') and len(key) == 2])
+    print_line(f"Data Groups: {len(data_groups)} found", 0)
+    print_line()
+
+    for dg in data_groups:
+        print_line(f"/{dg}/ - Data Type {dg}", 0)
+        group = f[dg]
+
+        # Attributes
+        attrs = dict(group.attrs)
+        if attrs:
+            print_line("  Attributes:", 1)
+            for key, val in attrs.items():
+                if isinstance(val, bytes):
+                    val = val.decode('utf-8')
+                print_line(f"    {key}: {val}", 1)
+
+        # Datasets in group
+        print_line("  Datasets:", 1)
+        for ds_name in sorted(group.keys()):
+            ds = group[ds_name]
+            if isinstance(ds, h5py.Dataset):
+                print_line(f"    {ds_name}: shape={ds.shape}, dtype={ds.dtype}", 1)
+
+                # Show attributes of dataset
+                ds_attrs = dict(ds.attrs)
+                if ds_attrs:
+                    for key, val in ds_attrs.items():
+                        if isinstance(val, bytes):
+                            val = val.decode('utf-8')
+                        print_line(f"      @{key}: {val}", 1)
+        print_line()
+
+
+def _analyze_prior_file(f, print_line, load_data=False):
+    """Analyze PRIOR.h5 file structure."""
+    print_line("PRIOR FILE CONTENTS:")
+    print_line("-" * 80)
+
+    # Determine number of realizations
+    N = None
+    model_keys = sorted([key for key in f.keys() if key.startswith('M') and len(key) == 2])
+    if model_keys:
+        N = f[model_keys[0]].shape[0]
+
+    print_line(f"Number of realizations (N): {N}", 0)
+    print_line()
+
+    # Model parameters
+    print_line(f"Model Parameters: {len(model_keys)} found", 0)
+    print_line()
+
+    for mk in model_keys:
+        dataset = f[mk]
+        print_line(f"/{mk}/ - Model Parameter", 0)
+        print_line(f"  Shape: {dataset.shape} (N x Nm{mk[1:]})", 1)
+        print_line(f"  Dtype: {dataset.dtype}", 1)
+
+        # Attributes
+        attrs = dict(dataset.attrs)
+        if 'name' in attrs:
+            name = attrs['name']
+            if isinstance(name, bytes):
+                name = name.decode('utf-8')
+            print_line(f"  Name: {name}", 1)
+
+        if 'is_discrete' in attrs:
+            is_discrete = attrs['is_discrete']
+            print_line(f"  Type: {'Discrete' if is_discrete else 'Continuous'}", 1)
+
+            if is_discrete:
+                if 'class_id' in attrs:
+                    class_ids = attrs['class_id']
+                    print_line(f"  Class IDs: {class_ids}", 1)
+
+                if 'class_name' in attrs:
+                    class_names = attrs['class_name']
+                    if isinstance(class_names, bytes):
+                        class_names = class_names.decode('utf-8')
+                    print_line(f"  Class Names: {class_names}", 1)
+
+        if 'x' in attrs:
+            x = attrs['x']
+            if hasattr(x, '__len__'):
+                print_line(f"  X-values: {len(x)} values, range=[{np.min(x):.2f}, {np.max(x):.2f}]", 1)
+            else:
+                print_line(f"  X-value: {x}", 1)
+
+        if 'clim' in attrs:
+            clim = attrs['clim']
+            print_line(f"  Color limits: {clim}", 1)
+
+        # Show data range only if load_data=True
+        if load_data and dataset.size > 0:
+            data_min = np.min(dataset[...])
+            data_max = np.max(dataset[...])
+            print_line(f"  Data range: [{data_min:.4f}, {data_max:.4f}]", 1)
+
+        print_line()
+
+    # Data groups
+    data_groups = sorted([key for key in f.keys() if key.startswith('D') and len(key) == 2])
+    print_line(f"Data Realizations: {len(data_groups)} found", 0)
+    print_line()
+
+    for dg in data_groups:
+        dataset = f[dg]
+        print_line(f"/{dg}/ - Forward Data", 0)
+        print_line(f"  Shape: {dataset.shape} (N x Nd{dg[1:]})", 1)
+        print_line(f"  Dtype: {dataset.dtype}", 1)
+
+        # Attributes
+        attrs = dict(dataset.attrs)
+        if 'f5_forward' in attrs:
+            forward_file = attrs['f5_forward']
+            if isinstance(forward_file, bytes):
+                forward_file = forward_file.decode('utf-8')
+            print_line(f"  Forward model file: {forward_file}", 1)
+
+        if 'with_noise' in attrs:
+            with_noise = attrs['with_noise']
+            print_line(f"  Noise added: {'Yes' if with_noise else 'No'}", 1)
+
+        # Show data range only if load_data=True
+        if load_data and dataset.size > 0:
+            data_min = np.min(dataset[...])
+            data_max = np.max(dataset[...])
+            print_line(f"  Data range: [{data_min:.4e}, {data_max:.4e}]", 1)
+
+        print_line()
+
+
+def _analyze_post_file(f, print_line, load_data=False):
+    """Analyze POST.h5 file structure."""
+    print_line("POSTERIOR FILE CONTENTS:")
+    print_line("-" * 80)
+
+    # Core posterior datasets
+    print_line("Core Posterior Information:", 0)
+
+    if 'i_use' in f:
+        i_use = f['i_use']
+        N, Nr = i_use.shape
+        print_line(f"  Posterior indices (/i_use): shape={i_use.shape}", 1)
+        print_line(f"    Number of data locations (N): {N}", 1)
+        print_line(f"    Number of realizations per location (Nr): {Nr}", 1)
+
+    if 'T' in f:
+        print_line(f"  Temperature (/T): shape={f['T'].shape}", 1)
+        if load_data:
+            T = f['T'][...]
+            if T.size > 0:
+                print_line(f"    Range: [{np.min(T):.4f}, {np.max(T):.4f}]", 1)
+
+    if 'EV' in f:
+        print_line(f"  Evidence (/EV): shape={f['EV'].shape}", 1)
+        if load_data:
+            EV = f['EV'][...]
+            if EV.size > 0:
+                print_line(f"    Range: [{np.min(EV):.4e}, {np.max(EV):.4e}]", 1)
+
+    if 'LOGL_mean' in f:
+        print_line(f"  Mean log-likelihood (/LOGL_mean): shape={f['LOGL_mean'].shape}", 1)
+        if load_data:
+            logl = f['LOGL_mean'][...]
+            if logl.size > 0:
+                print_line(f"    Range: [{np.min(logl):.4f}, {np.max(logl):.4f}]", 1)
+
+    # Attributes
+    attrs = dict(f.attrs)
+    if 'f5_data' in attrs:
+        data_file = attrs['f5_data']
+        if isinstance(data_file, bytes):
+            data_file = data_file.decode('utf-8')
+        print_line(f"  Data file reference: {data_file}", 1)
+
+    if 'f5_prior' in attrs:
+        prior_file = attrs['f5_prior']
+        if isinstance(prior_file, bytes):
+            prior_file = prior_file.decode('utf-8')
+        print_line(f"  Prior file reference: {prior_file}", 1)
+
+    print_line()
+
+    # Model statistics
+    model_keys = sorted([key for key in f.keys() if key.startswith('M') and len(key) == 2])
+    print_line(f"Model Parameter Statistics: {len(model_keys)} found", 0)
+    print_line()
+
+    for mk in model_keys:
+        group = f[mk]
+        print_line(f"/{mk}/ - Model Parameter Statistics", 0)
+
+        # Check if discrete or continuous
+        has_mode = 'Mode' in group
+        has_mean = 'Mean' in group
+
+        if has_mode:
+            print_line("  Type: Discrete parameter", 1)
+
+            for stat_name in ['Mode', 'Entropy', 'P', 'M_N']:
+                if stat_name in group:
+                    ds = group[stat_name]
+                    print_line(f"  {stat_name}: shape={ds.shape}, dtype={ds.dtype}", 1)
+                    if load_data and ds.size > 0 and stat_name != 'P':  # P is 3D, skip range
+                        data = ds[...]
+                        print_line(f"    Range: [{np.min(data):.4f}, {np.max(data):.4f}]", 1)
+
+        elif has_mean:
+            print_line("  Type: Continuous parameter", 1)
+
+            for stat_name in ['Mean', 'Median', 'Std']:
+                if stat_name in group:
+                    ds = group[stat_name]
+                    print_line(f"  {stat_name}: shape={ds.shape}, dtype={ds.dtype}", 1)
+                    if load_data and ds.size > 0:
+                        data = ds[...]
+                        print_line(f"    Range: [{np.min(data):.4f}, {np.max(data):.4f}]", 1)
+
+        # Check for attributes
+        attrs = dict(group.attrs)
+        if attrs:
+            print_line("  Attributes:", 1)
+            for key, val in attrs.items():
+                if isinstance(val, bytes):
+                    val = val.decode('utf-8')
+                print_line(f"    {key}: {val}", 1)
+
+        print_line()
+
+
+def _analyze_forward_file(f, print_line, load_data=False):
+    """Analyze FORWARD.h5 file structure."""
+    print_line("FORWARD FILE CONTENTS:")
+    print_line("-" * 80)
+
+    # Method and type
+    attrs = dict(f.attrs)
+    if 'method' in attrs:
+        method = attrs['method']
+        if isinstance(method, bytes):
+            method = method.decode('utf-8')
+        print_line(f"Forward method: {method}", 0)
+
+    if 'type' in attrs:
+        fwd_type = attrs['type']
+        if isinstance(fwd_type, bytes):
+            fwd_type = fwd_type.decode('utf-8')
+        print_line(f"Forward type: {fwd_type}", 0)
+
+    print_line()
+
+    # List all datasets
+    print_line("Datasets:", 0)
+    for key in sorted(f.keys()):
+        obj = f[key]
+        if isinstance(obj, h5py.Dataset):
+            print_line(f"  /{key}: shape={obj.shape}, dtype={obj.dtype}", 1)
+        elif isinstance(obj, h5py.Group):
+            print_line(f"  /{key}/ [Group]", 1)
+
+    print_line()
+
+    # All attributes
+    if attrs:
+        print_line("All Attributes:", 0)
+        for key, val in sorted(attrs.items()):
+            if isinstance(val, bytes):
+                val = val.decode('utf-8')
+            print_line(f"  {key}: {val}", 1)
+
+
+def _analyze_unknown_file(f, print_line, load_data=False):
+    """Analyze unknown HDF5 file structure."""
+    print_line("UNKNOWN FILE TYPE - GENERIC STRUCTURE:")
+    print_line("-" * 80)
+
+    def print_structure(name, obj, indent=0):
+        """Recursively print HDF5 structure."""
+        if isinstance(obj, h5py.Dataset):
+            print_line(f"/{name} [Dataset]: shape={obj.shape}, dtype={obj.dtype}", indent)
+
+            # Show attributes
+            attrs = dict(obj.attrs)
+            if attrs:
+                for key, val in attrs.items():
+                    if isinstance(val, bytes):
+                        val = val.decode('utf-8')
+                    print_line(f"  @{key}: {val}", indent)
+
+        elif isinstance(obj, h5py.Group):
+            print_line(f"/{name}/ [Group]", indent)
+
+            # Show attributes
+            attrs = dict(obj.attrs)
+            if attrs:
+                for key, val in attrs.items():
+                    if isinstance(val, bytes):
+                        val = val.decode('utf-8')
+                    print_line(f"  @{key}: {val}", indent)
+
+            # Recursively show contents
+            for key in sorted(obj.keys()):
+                print_structure(name + '/' + key if name else key, obj[key], indent + 1)
+
+    # Print full structure
+    for key in sorted(f.keys()):
+        print_structure(key, f[key], 0)
+
+
 
 

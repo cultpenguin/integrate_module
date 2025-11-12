@@ -71,6 +71,7 @@ from integrate.integrate_io import merge_posterior
 from integrate.integrate_io import read_usf
 from integrate.integrate_io import read_usf_mul
 from integrate.integrate_io import test_read_usf
+from integrate.integrate_io import hdf5_info
 
 from integrate.integrate_plot import plot_geometry
 from integrate.integrate_plot import plot_profile
