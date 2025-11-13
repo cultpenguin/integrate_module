@@ -861,8 +861,8 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='index',
         See plot_profile_continuous() and plot_profile_discrete() for detailed options (default is None, shows all panels).
     **kwargs : dict
         Additional plotting arguments passed to discrete/continuous plotting functions.
-        For discrete models, supports 'uncertainty_transparency' (bool) to apply entropy-based
-        transparency to the mode panel.
+        Both model types support 'alpha' (float, 0.0-1.0) to apply uncertainty-based
+        transparency to the main profile panel (median/mean for continuous, mode for discrete).
 
     Returns
     -------
@@ -889,9 +889,13 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='index',
 
     >>> plot_profile(f_post_h5, im=2, panels=['mode', 'stats'])
 
-    Plot discrete model with uncertainty transparency on mode:
+    Plot discrete model with full uncertainty transparency on mode:
 
-    >>> plot_profile(f_post_h5, im=2, uncertainty_transparency=True)
+    >>> plot_profile(f_post_h5, im=2, alpha=1.0)
+
+    Plot continuous model with partial transparency:
+
+    >>> plot_profile(f_post_h5, im=1, alpha=0.5)
     """
 
     with h5py.File(f_post_h5,'r') as f_post:
@@ -929,16 +933,13 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='index',
     #print(Mstr)
     #print(is_discrete)
 
-    # Extract uncertainty_transparency from kwargs if present (for discrete models)
-    uncertainty_transparency = kwargs.pop('uncertainty_transparency', False)
-
     if is_discrete:
-        plot_profile_discrete(f_post_h5, i1, i2, ii, im, xaxis, gap_threshold, panels, uncertainty_transparency, **kwargs)
+        plot_profile_discrete(f_post_h5, i1, i2, ii, im, xaxis, gap_threshold, panels, **kwargs)
     elif not is_discrete:
         plot_profile_continuous(f_post_h5, i1, i2, ii, im, xaxis, gap_threshold, panels, **kwargs)
 
 
-def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='index', gap_threshold=None, panels=None, uncertainty_transparency=False, **kwargs):
+def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='index', gap_threshold=None, panels=None, **kwargs):
     """
     Create vertical profile plots for discrete categorical model parameters.
 
@@ -972,12 +973,11 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
         - ['stats']: Only temperature and log-likelihood
         - Any combination of the above (e.g., ['mode', 'stats'])
         Accepted panel names: 'mode', 'entropy', 'stats', 'temperature', 't'
-    uncertainty_transparency : bool, optional
-        If True, applies entropy-based transparency to the mode panel, making high-uncertainty
-        regions more transparent (default is False). This provides a combined view of mode
-        and uncertainty in a single panel.
     **kwargs : dict
         Additional keyword arguments:
+        - alpha : float, transparency scaling factor based on entropy (0.0 to 1.0).
+          alpha=0.0 means no transparency (default), alpha=1.0 means full entropy-based
+          transparency where high-uncertainty regions become transparent
         - hardcopy : bool, save plot as PNG file (default False)
         - txt : str, additional text for filename
         - showInfo : int, level of debug output (0=none, >0=verbose)
@@ -990,18 +990,17 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
     Notes
     -----
-    The plot structure uses 4 subplot positions (matching plot_profile_continuous()):
-    - ax[0]: Empty/dummy panel (hidden)
-    - ax[1]: Mode - most probable class at each depth/location (optionally with entropy transparency)
-    - ax[2]: Entropy - uncertainty measure (0=certain, 1=maximum uncertainty)
-    - ax[3]: Temperature and evidence curves
+    The plot structure uses 3 subplots (matching plot_profile_continuous()):
+    - ax[0]: Mode - most probable class at each depth/location (optionally with entropy transparency)
+    - ax[1]: Entropy - uncertainty measure (0=certain, 1=maximum uncertainty)
+    - ax[2]: Temperature and evidence curves
 
     Class names and colors are automatically retrieved from prior file attributes.
     Depth coordinates are computed relative to surface elevation.
 
-    When uncertainty_transparency=True, the mode panel shows both classification and
-    uncertainty in one view: solid colors indicate high certainty, transparent colors
-    indicate high uncertainty.
+    When alpha > 0, the mode panel shows both classification and uncertainty in one view:
+    solid colors indicate high certainty, transparent colors indicate high uncertainty.
+    The alpha value (0.0 to 1.0) controls the strength of this transparency effect.
 
     Examples
     --------
@@ -1009,9 +1008,13 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
     >>> plot_profile_discrete(f_post_h5, panels=['mode'])
 
-    Show mode with uncertainty transparency:
+    Show mode with full uncertainty transparency (alpha=1.0):
 
-    >>> plot_profile_discrete(f_post_h5, panels=['mode'], uncertainty_transparency=True)
+    >>> plot_profile_discrete(f_post_h5, panels=['mode'], alpha=1.0)
+
+    Show mode with partial transparency (alpha=0.5):
+
+    >>> plot_profile_discrete(f_post_h5, panels=['mode'], alpha=0.5)
 
     Show mode and stats (no entropy):
 
@@ -1023,13 +1026,14 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
     Show all panels with transparency on mode:
 
-    >>> plot_profile_discrete(f_post_h5, uncertainty_transparency=True)
+    >>> plot_profile_discrete(f_post_h5, alpha=1.0)
     """
     from matplotlib.colors import LogNorm
 
     kwargs.setdefault('hardcopy', False)
     txt = kwargs.get('txt','')
     showInfo = kwargs.get('showInfo', 0)
+    alpha = kwargs.get('alpha', 0.0)  # Transparency scaling factor (0.0 to 1.0)
 
     # Default to showing all panels
     if panels is None:
@@ -1277,96 +1281,95 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     # ii is a numpy array from i1 to i2
     # ii = np.arange(i1,i2)
 
-    # Create a figure with 4 subplots (always create all to maintain consistent sizing)
-    # Height ratios: [3, 3, 3, 1] for dummy, mode, entropy, stats
+    # Create a figure with 3 subplots (always create all to maintain consistent sizing)
     # This matches the structure of plot_profile_continuous()
-    fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
-
-    # Set ax[0] to be invisible (dummy subplot) - matches continuous profile structure
-    ax[0].axis('off')
+    fig, ax = plt.subplots(3,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 1]})
 
     # Hide panels that are not requested
     if not show_mode:
-        ax[1].axis('off')
+        ax[0].axis('off')
     if not show_entropy:
-        ax[2].axis('off')
+        ax[1].axis('off')
     if not show_stats:
-        ax[3].axis('off')
+        ax[2].axis('off')
 
-    # MODE panel (ax[1]) - only if requested
+    # MODE panel (ax[0]) - only if requested
     if show_mode:
         mode_data = Mode[:,ii]
         if gap_alpha is not None:
             # Use masked array to hide transparent regions
             mode_data = np.ma.masked_where(gap_alpha == 0.0, mode_data)
 
-        # Determine if uncertainty transparency should be applied
-        if uncertainty_transparency:
-            im1 = ax[1].pcolormesh(DDc, ZZc, mode_data,
-                    cmap=cmap,
-                    vmin=clim[0]-.5,
-                    vmax=clim[1]+.5,
-                    shading='auto',
-                    alpha=1-Entropy[:,ii])  # Apply entropy-based transparency
-            ax[1].set_title('Mode (with uncertainty transparency)')
+        # Apply pcolormesh
+        im1 = ax[0].pcolormesh(DDc, ZZc, mode_data,
+                cmap=cmap,
+                vmin=clim[0]-.5,
+                vmax=clim[1]+.5,
+                shading='auto')
+
+        # Apply entropy-based transparency if alpha > 0
+        if alpha > 0:
+            # Transparency scaled by alpha: alpha * Entropy
+            # When Entropy=0 (certain): transparency=0 (opaque)
+            # When Entropy=1 (uncertain): transparency=alpha (scaled)
+            im1.set_alpha(1 - alpha * Entropy[:,ii])
+            ax[0].set_title('Mode (with uncertainty transparency)')
         else:
-            im1 = ax[1].pcolormesh(DDc, ZZc, mode_data,
-                    cmap=cmap,
-                    vmin=clim[0]-.5,
-                    vmax=clim[1]+.5,
-                    shading='auto')
-            ax[1].set_title('Mode')
+            ax[0].set_title('Mode')
 
         # Set the ticks at the center of each color band (at class_id values)
-        cbar1 = fig.colorbar(im1, ax=ax[1], label='label')
+        cbar1 = fig.colorbar(im1, ax=ax[0], label='label')
         cbar1.set_ticks(class_id)
         cbar1.set_ticklabels(class_name)
         cbar1.ax.invert_yaxis()
+        ax[0].set_ylabel('Elevation (m)')
 
-    # ENTROPY panel (ax[2]) - only if requested
+    # ENTROPY panel (ax[1]) - only if requested
     if show_entropy:
+        import matplotlib
         entropy_data = Entropy[:,ii]
         if gap_alpha is not None:
             # Use masked array to hide transparent regions
             entropy_data = np.ma.masked_where(gap_alpha == 0.0, entropy_data)
 
-        im2 = ax[2].pcolormesh(DDc, ZZc, entropy_data,
-                cmap='hot_r',
+        im2 = ax[1].pcolormesh(DDc, ZZc, entropy_data,
+                cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]),
                 shading='auto')
         im2.set_clim(0,1)
-        ax[2].set_title('Entropy')
-        fig.colorbar(im2, ax=ax[2], label='Entropy')
+        ax[1].set_title('Entropy')
+        ax[1].set_ylabel('Elevation (m)')
+        fig.colorbar(im2, ax=ax[1], label='Entropy')
 
     ## Remove x-tick labels from non-bottom panels
     if show_mode:
-        ax[1].set_xticks([])
+        ax[0].set_xticks([])
     if show_entropy:
-        ax[2].set_xticks([])
+        ax[1].set_xticks([])
 
-    # Plot STATS panel (ax[3]) - only if requested
+    # Plot STATS panel (ax[2]) - only if requested
     if show_stats:
-        im4 = ax[3].semilogy(x_axis_values,T[ii], 'k.', label='T')
-        ax[3].set_xlim(x_axis_values.min(), x_axis_values.max())
-        ax[3].set_ylim(0.99, 200)
-        ax[3].set_ylabel('Temperature', color='k')
-        ax[3].tick_params(axis='y', labelcolor='k')
+        im4 = ax[2].semilogy(x_axis_values,T[ii], 'k.', label='T')
+        ax[2].set_xlim(x_axis_values.min(), x_axis_values.max())
+        ax[2].set_ylim(0.99, 200)
+        ax[2].set_ylabel('Temperature', color='k')
+        ax[2].tick_params(axis='y', labelcolor='k')
 
         if LOGL_mean is not None:
             # Create second y-axis for LOGL_mean
-            ax3_twin = ax[3].twinx()
-            ax3_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
+            ax2_twin = ax[2].twinx()
+            ax2_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
             # Add dotted red line at y=1
-            ax3_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
-            ax3_twin.set_ylim(0, 5)
-            ax3_twin.set_ylabel('LOGL_mean', color='r')
-            ax3_twin.tick_params(axis='y', labelcolor='r')
+            ax2_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
+            ax2_twin.set_ylim(0, 5)
+            ax2_twin.set_ylabel('LOGL_mean', color='r')
+            ax2_twin.tick_params(axis='y', labelcolor='r')
 
             # Combine legends from both axes
-            lines1, labels1 = ax[3].get_legend_handles_labels()
-            lines2, labels2 = ax3_twin.get_legend_handles_labels()
-            ax[3].legend(lines1 + lines2, labels1 + labels2, loc='upper right')
+            lines1, labels1 = ax[2].get_legend_handles_labels()
+            lines2, labels2 = ax2_twin.get_legend_handles_labels()
+            ax[2].legend(lines1 + lines2, labels1 + labels2, loc='upper right')
         else:
-            ax[3].legend(loc='upper right')
+            ax[2].legend(loc='upper right')
 
         plt.grid(True)
 
@@ -1375,7 +1378,7 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     # Create an invisible colorbar for the last subplot to maintain alignment
     if show_stats and show_entropy:
         try:
-            cbar4 = fig.colorbar(im2, ax=ax[3])
+            cbar4 = fig.colorbar(im2, ax=ax[2])
             cbar4.solids.set(alpha=0)
             cbar4.outline.set_visible(False)
             cbar4.ax.set_yticks([])  # Hide the colorbar ticks
@@ -1386,7 +1389,12 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
     # get filename without extension
     if kwargs['hardcopy']:
-        f_png = '%s__%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],ii[0],ii[-1],Mstr[1:],txt)
+        # Add panel information to filename if panels were specified
+        if panels is not None and panels != ['mode', 'entropy', 'stats']:
+            panel_str = '_panels_' + '-'.join(panels)
+        else:
+            panel_str = ''
+        f_png = '%s__%d_%d_profile_%s%s%s.png' % (os.path.splitext(f_post_h5)[0],ii[0],ii[-1],Mstr[1:],panel_str,txt)
         plt.savefig(f_png)
     plt.show()
 
@@ -1431,8 +1439,9 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         - hardcopy : bool, save plot as PNG file (default False)
         - cmap : str or colormap, color scheme for plotting (default 'jet')
         - key : {'Mean', 'Median'}, statistic to plot (default 'Median')
-        - alpha : float, transparency scaling factor relative to standard deviation.
-          alpha=0 means no transparency, alpha=0.8 means full transparency when std>0.8
+        - alpha : float, transparency scaling factor based on normalized standard deviation (0.0 to 1.0).
+          alpha=0.0 means no transparency (default), alpha=1.0 means full uncertainty-based
+          transparency where high-uncertainty regions become transparent
         - txt : str, additional text for filename
         - showInfo : int, level of debug output (0=none, >0=verbose)
         - clim : list, color scale limits [min, max]
@@ -1444,15 +1453,19 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
 
     Notes
     -----
-    The plot layout adapts based on data dimensionality:
+    The plot structure uses 3 subplots:
+    - ax[0]: Mean or median values (for multi-layer) or line plot with confidence bounds (for single parameter)
+    - ax[1]: Standard deviation (for multi-layer, hidden for single parameter)
+    - ax[2]: Temperature and evidence curves
 
     For multi-layer models (nm > 1):
-    - Panel 1: Mean or median values with logarithmic color scale
-    - Panel 2: Standard deviation with grayscale colormap
-    - Panel 3: Temperature and evidence curves
+    - Panel 0: Mean or median values with logarithmic color scale
+    - Panel 1: Standard deviation with grayscale colormap
+    - Panel 2: Temperature and evidence curves
 
     For single-parameter models (nm = 1):
-    - Panel 1: Line plot with mean ± 2*std confidence bounds
+    - Panel 0: Line plot with mean ± 2*std confidence bounds
+    - Panel 1: Hidden
     - Panel 2: Temperature and evidence curves
 
     Transparency can be applied based on uncertainty levels when alpha > 0.
@@ -1463,6 +1476,14 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
     Show only median resistivity profile:
 
     >>> plot_profile_continuous(f_post_h5, panels=['value'])
+
+    Show median with full uncertainty transparency (alpha=1.0):
+
+    >>> plot_profile_continuous(f_post_h5, panels=['value'], alpha=1.0)
+
+    Show median with partial transparency (alpha=0.5):
+
+    >>> plot_profile_continuous(f_post_h5, panels=['value'], alpha=0.5)
 
     Show median and stats (no std):
 
@@ -1561,16 +1582,24 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         except:
             LOGL_mean=None
 
-    # Compute alpha matrix 'A' such that 
-    # any values with Std<alpha are fully solid
-    # any values with Std>2*alpha are transparent
-    # linear interpolation between 0 and 1 elsewhere
-    A = np.zeros(Std.shape)+alpha
-    if alpha>0:
-        A = (Std-alpha)/(2*alpha)
-        A[A<0] = 0
-        A[A>1] = 1
-        A=1-A
+    # Compute alpha matrix 'A' for transparency based on uncertainty
+    # Normalize Std to [0, 1] range based on its own min/max values
+    # Then apply alpha scaling: alpha * normalized_Std
+    A = np.ones(Std.shape)  # Start with fully opaque (alpha=1)
+    if alpha > 0:
+        # Normalize Std to [0, 1] based on min/max of Std values
+        Std_min = np.nanmin(Std)
+        Std_max = np.nanmax(Std)
+        if Std_max > Std_min:
+            Std_normalized = (Std - Std_min) / (Std_max - Std_min)
+        else:
+            Std_normalized = np.zeros_like(Std)
+
+        # Apply alpha scaling: higher uncertainty = more transparent
+        # A = 1 - alpha * Std_normalized
+        # When Std=Std_min (low uncertainty): A=1 (opaque)
+        # When Std=Std_max (high uncertainty): A=1-alpha (transparent)
+        A = 1 - alpha * Std_normalized
     
     nm = Mean.shape[0]
     if nm<=1:
@@ -1756,22 +1785,19 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
                                 if showInfo > 1:  # More verbose debugging
                                     print(f"  Made column {col} transparent (cell range: {cell_x_start:.1f}-{cell_x_end:.1f})")
 
-    # Create a figure with 4 subplots (always create all to maintain consistent sizing)
-    fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
-
-    # Set ax[0] to be invisible (dummy subplot)
-    ax[0].axis('off')
+    # Create a figure with 3 subplots (always create all to maintain consistent sizing)
+    fig, ax = plt.subplots(3,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 1]})
 
     # Hide panels that are not requested
     if not show_value:
-        ax[1].axis('off')
+        ax[0].axis('off')
     if not show_std:
-        ax[2].axis('off')
+        ax[1].axis('off')
     if not show_stats:
-        ax[3].axis('off')
+        ax[2].axis('off')
 
     if show_value and (nm>1) and (key=='Mean'):
-        isp=1
+        isp=0
         # MEAN
         mean_data = Mean[:,ii]
         if gap_alpha is not None:
@@ -1787,10 +1813,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         if alpha>0:
             im1.set_alpha(A[:,ii])
         ax[isp].set_title('Mean %s' % name)
+        ax[isp].set_ylabel('Elevation (m)')
         fig.colorbar(im1, ax=ax[isp], label='%s' % name)
-    
+
     if show_value and (nm>1) and (key=='Median'):
-        isp=1
+        isp=0
         # MEDIAN
         median_data = Median[:,ii]
         if gap_alpha is not None:
@@ -1806,10 +1833,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         if alpha>0:
             im2.set_alpha(A[:,ii])
         ax[isp].set_title('Median %s' % name)
+        ax[isp].set_ylabel('Elevation (m)')
         fig.colorbar(im2, ax=ax[isp], label='%s' % name)
 
     if show_std and nm>1:
-        isp=2
+        isp=1
         # STD
         import matplotlib
         std_data = Std[:,ii]
@@ -1822,60 +1850,59 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
                     shading='auto')
         im3.set_clim(0,1)
         ax[isp].set_title('Std %s' % name)
+        ax[isp].set_ylabel('Elevation (m)')
         fig.colorbar(im3, ax=ax[isp], label='Standard deviation (Ohm.m)')
 
     # Handle single parameter case (nm <= 1)
     if show_value and nm<=1:
-        isp=2
+        isp=1
 
-        im3 = ax[2].plot(id[ii],Mean[:,ii].T, 'k', label='Mean')
-        ax[2].plot(id[ii],Mean[:,ii].T+2*Std[:,ii].T, 'k:', label='P97.5')
-        ax[2].plot(id[ii],Mean[:,ii].T-2*Std[:,ii].T, 'k:', label='P2.5')
+        im3 = ax[1].plot(id[ii],Mean[:,ii].T, 'k', label='Mean')
+        ax[1].plot(id[ii],Mean[:,ii].T+2*Std[:,ii].T, 'k:', label='P97.5')
+        ax[1].plot(id[ii],Mean[:,ii].T-2*Std[:,ii].T, 'k:', label='P2.5')
 
-        ax[2].plot(id[ii],Median[:,ii].T, 'r', label='Median')
+        ax[1].plot(id[ii],Median[:,ii].T, 'r', label='Median')
         # add legend
-        ax[2].legend(loc='upper right')
+        ax[1].legend(loc='upper right')
         # add grd on
-        ax[2].grid(True)
-        # hide ax[0]
+        ax[1].grid(True)
 
-        # set axis on ax[3] to be the same as on ax[4]
-        ax[2].set_xlim(ii.min(),ii.max())
-        ax[2].set_title(name)
+        # set axis limits
+        ax[1].set_xlim(ii.min(),ii.max())
+        ax[1].set_title(name)
+        ax[1].set_ylabel(name)
         ax[0].axis('off')
-        ax[1].axis('off')
 
     ## Remove x-tick labels from non-bottom panels
-    #ax[0].set_xticks([])
     if show_value:
-        ax[1].set_xticks([])
+        ax[0].set_xticks([])
     if show_std:
-        ax[2].set_xticks([])
+        ax[1].set_xticks([])
 
-    # Plot STATS panel (ax[3]) - only if requested
+    # Plot STATS panel (ax[2]) - only if requested
     if show_stats:
-        im4 = ax[3].semilogy(x_axis_values,T[ii], 'k.', label='T')
-        ax[3].set_xlim(x_axis_values.min(), x_axis_values.max())
-        ax[3].set_ylim(0.99, 200)
-        ax[3].set_ylabel('Temperature', color='k')
-        ax[3].tick_params(axis='y', labelcolor='k')
+        im4 = ax[2].semilogy(x_axis_values,T[ii], 'k.', label='T')
+        ax[2].set_xlim(x_axis_values.min(), x_axis_values.max())
+        ax[2].set_ylim(0.99, 200)
+        ax[2].set_ylabel('Temperature', color='k')
+        ax[2].tick_params(axis='y', labelcolor='k')
 
         if LOGL_mean is not None:
             # Create second y-axis for LOGL_mean
-            ax3_twin = ax[3].twinx()
-            ax3_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
+            ax2_twin = ax[2].twinx()
+            ax2_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
             # Add dotted red line at y=1
-            ax3_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
-            ax3_twin.set_ylim(0, 5)
-            ax3_twin.set_ylabel('LOGL_mean', color='r')
-            ax3_twin.tick_params(axis='y', labelcolor='r')
+            ax2_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
+            ax2_twin.set_ylim(0, 5)
+            ax2_twin.set_ylabel('LOGL_mean', color='r')
+            ax2_twin.tick_params(axis='y', labelcolor='r')
 
             # Combine legends from both axes
-            lines1, labels1 = ax[3].get_legend_handles_labels()
-            lines2, labels2 = ax3_twin.get_legend_handles_labels()
-            ax[3].legend(lines1 + lines2, labels1 + labels2, loc='upper right')
+            lines1, labels1 = ax[2].get_legend_handles_labels()
+            lines2, labels2 = ax2_twin.get_legend_handles_labels()
+            ax[2].legend(lines1 + lines2, labels1 + labels2, loc='upper right')
         else:
-            ax[3].legend(loc='upper right')
+            ax[2].legend(loc='upper right')
 
         plt.grid(True)
 
@@ -1884,7 +1911,7 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
     if show_stats and nm>1:
         # Create an invisible colorbar for the last subplot to maintain alignment
         try:
-            cbar4 = fig.colorbar(im3, ax=ax[3])
+            cbar4 = fig.colorbar(im3, ax=ax[2])
             cbar4.solids.set(alpha=0)
             cbar4.outline.set_visible(False)
             cbar4.ax.set_yticks([])  # Hide the colorbar ticks
@@ -1895,7 +1922,12 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
 
     # get filename without extension
     if kwargs['hardcopy']:
-        f_png = '%s__%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],ii[0],ii[-1],Mstr[1:],txt)
+        # Add panel information to filename if panels were specified
+        if panels is not None and panels != ['value', 'std', 'stats']:
+            panel_str = '_panels_' + '-'.join(panels)
+        else:
+            panel_str = ''
+        f_png = '%s__%d_%d_profile_%s%s%s.png' % (os.path.splitext(f_post_h5)[0],ii[0],ii[-1],Mstr[1:],panel_str,txt)
         plt.savefig(f_png)
     plt.show()
 
