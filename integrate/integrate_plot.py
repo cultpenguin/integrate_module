@@ -450,6 +450,11 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
     
     X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
     clim=(T_min,T_max)
+        
+    wx = 10
+    wy = (np.max(Y)-np.min(Y))/(np.max(X)-np.min(X)) * wx
+    print('Plot size: wx=%f, wy=%f' % (wx, wy))
+
 
     with h5py.File(f_post_h5,'r') as f_post:
         T=f_post['/T'][:].T
@@ -479,7 +484,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         i2=i1+1
     
     if (pl=='all') or (pl=='T'):
-        plt.figure(1, figsize=(20, 10))
+        plt.figure(1, figsize=(wx,wy))
         plt.scatter(X[i1:i2],Y[i1:i2],c=np.log10(T[i1:i2]),s=s,cmap='jet',**kwargs)            
         plt.grid()
         plt.xlabel('X')
@@ -506,7 +511,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         #if 'vmax' not in kwargs:
         #    kwargs['vmax'] = EV_max
         #print('EV_min=%f, EV_max=%f' % (EV_min, EV_max))
-        plt.figure(2, figsize=(20, 10))
+        plt.figure(2, figsize=(wx,wy))
         plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],s=s,cmap=cmap_ev, vmin=clim[0], vmax=clim[1], **kwargs)            
         plt.grid()
         plt.xlabel('X')
@@ -527,7 +532,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         non_nan = np.sum(~np.isnan(f_data['/%s' % 'D1']['d_obs']), axis=1)
         #print(non_nan)
 
-        plt.figure(3, figsize=(20, 10))
+        plt.figure(3, figsize=(wx, wy))
         plt.scatter(X[i1:i2],Y[i1:i2],c=non_nan[i1:i2],s=s,cmap='jet', **kwargs)            
         plt.grid()
         plt.xlabel('X')
@@ -572,7 +577,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             # Use standard normalization
             norm = Normalize(vmin=LOGL_min, vmax=LOGL_max)
             
-            plt.figure(4, figsize=(20, 10))
+            plt.figure(4, figsize=(wx, wy))
             plt.plot(X[i1:i2], Y[i1:i2], color='lightgray', zorder=-1, marker='.', linestyle='None', markersize=2*s)  # Background points in light gray
             scatter = plt.scatter(X[i1:i2], Y[i1:i2], c=LOGL_mean_plot[i1:i2], s=s, 
                                 cmap=custom_cmap, norm=norm, **kwargs)
@@ -2433,6 +2438,8 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
         - showInfo : int, level of debug output (0=none, >0=verbose)
         - is_log : bool, use linear instead of logarithmic y-axis (default False)
         - hardcopy : bool, save plot as PNG file (default False)
+        - title : str, custom title for the plot. If not provided, uses default format
+          'Data set {Dkey}, Observation # {i_plot+1}'
 
     Returns
     -------
@@ -2602,12 +2609,16 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
                 plt.ylim(ylim)
             plt.ylabel('dBDt')
 
-        if i_plot>-1:            
+        if i_plot>-1:
             ax.text(0.1, 0.1, 'T = %4.2f.' % (f_post['/T'][i_plot]), transform=ax.transAxes)
             ax.text(0.1, 0.2, 'log(EV) = %4.2f.' % (f_post['/EV'][i_plot]), transform=ax.transAxes)
             if LOGL_mean is not None:
                 ax.text(0.1, 0.3, 'LOGL_mean = %4.2f.' % (LOGL_mean[i_plot]), transform=ax.transAxes)
-            plt.title('Data set %s, Observation # %d' % (Dkey, i_plot+1))
+            # Use custom title if provided, otherwise use default
+            if 'title' in kwargs:
+                plt.title(kwargs['title'])
+            else:
+                plt.title('Data set %s, Observation # %d' % (Dkey, i_plot+1))
 
 
         plt.xlabel('Data #')

@@ -460,29 +460,6 @@ if doTbase:
 
 
 
-
-#%% 
-for i_post in range(len(f_post_h5_all_list)):
-    f_post_h5 = f_post_h5_all_list[i_post]
-
-    ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y', 
-                    cmap=cmap, 
-                    clim=clim,
-                    hardcopy=hardcopy,
-                    panels = ['Median','Mode'],
-                    alpha=0)
-
-for i_post in range(len(f_post_h5_all_list)):
-    f_post_h5 = f_post_h5_all_list[i_post]
-
-    ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y', 
-                    cmap=cmap, 
-                    clim=clim,
-                    hardcopy=hardcopy,
-                    panels = ['std','entropy'],
-                    alpha=0)
-
-
 #%% 
 # concatenate f_post_h5_list, f_post_h5_N_list, f_post_h5_T_list
 
@@ -515,8 +492,8 @@ if doPlotAll:
         ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
             
         if plLevel>0:
-            ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy)
-            ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy)
+            ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_1, hardcopy=hardcopy, title='a) P1')
+            ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy, title='b) P2')
     
         if plLevel>1:
             ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
