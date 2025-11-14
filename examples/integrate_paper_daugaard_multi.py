@@ -37,7 +37,7 @@ hardcopy=True
 cmap, clim = ig.get_colormap_and_limits('resistivity')
 useMergedPrior=True
 useGenericPrior=False
-inflateNoise = 4 # 1,2, 4
+inflateNoise = 4# 1,2, 4
 useLogData = False
 N_use = 2000000
 N_use_org= N_use
@@ -502,21 +502,41 @@ if doPlotAll:
             ig.plot_T_EV(f_post_h5, pl='ND', hardcopy=hardcopy)
 
             
-            ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='LogMean', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
+            ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='LogMean', uselog=1, hardcopy=hardcopy, clim=clim, cmap=cmap )
             plt.show()
-            ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
+            ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, hardcopy=hardcopy, clim=clim, cmap=cmap )
             plt.show()
-            ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, s=10, hardcopy=hardcopy)
+            ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, hardcopy=hardcopy)
             plt.show()
-            ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, s=10,hardcopy=hardcopy, clim=clim, cmap=cmap )
+            ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, hardcopy=hardcopy, clim=clim, cmap=cmap )
             plt.show()
-            ig.plot_feature_2d(f_post_h5,im=2,iz=5, key='Mode', uselog=0, s=10, hardcopy=hardcopy)
+            ig.plot_feature_2d(f_post_h5,im=2,iz=5, key='Mode', uselog=0, hardcopy=hardcopy)
             plt.show()
 
             try:
-                ig.plot_feature_2d(f_post_h5,im=3, key='Mode', uselog=1, s=10, cmap='jet', hardcopy=hardcopy)
+                ig.plot_feature_2d(f_post_h5,im=3, key='Mode', uselog=1, cmap='jet', hardcopy=hardcopy)
             except:
                 pass
+
+# %% Write filename in f_post_h5_all_list to file
+if doPlotAll:
+    f_txt = 'f_post_h5_all_list_%s_Nuse%d_inflateNoise%d.txt' % (fileparts[0], N_use,inflateNoise)
+
+    with open(f_txt, 'w') as f:
+        for item in f_post_h5_all_list:
+            f.write("%s\n" % item)
+
+# %% Read f_post_h5_all_list from file
+doReadList = False
+if doReadList:
+    f_txt = 'f_post_h5_all_list_%s_Nuse%d_inflateNoise%d.txt' % (fileparts[0], N_use,inflateNoise)
+    f_txt='f_post_h5_all_list_daugaard_merged_Nuse2000000_inflateNoise1.txt'
+
+    f_post_h5_all_list = []
+    with open(f_txt, 'r') as f:
+        for line in f:
+            f_post_h5_all_list.append(line.strip())
+
 
 
 #%% #################################################################################################

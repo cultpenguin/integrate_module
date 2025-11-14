@@ -259,7 +259,7 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
 
     return fig
 
-def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, title_text='', hardcopy=False, cmap=None, clim=None, **kwargs):
+def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, title=None, hardcopy=False, cmap=None, clim=None, **kwargs):
     """
     Create 2D spatial scatter plot of model parameter features.
 
@@ -285,7 +285,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
         Feature/layer index within the model parameter array (default is 0).
     uselog : int, optional
         Apply logarithmic normalization to color scale (1=True, 0=False, default is 1).
-    title_text : str, optional
+    title : str, optional
         Additional text to append to the plot title (default is '').
     hardcopy : bool, optional
         Save the plot as a PNG file (default is False).
@@ -315,6 +315,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
     showInfo = kwargs.get('showInfo', 0)
 
     #kwargs.setdefault('hardcopy', False)
+    kwargs.setdefault('s', 1)
     dstr = '/M%d' % im
     
     with h5py.File(f_post_h5,'r') as f_post:
@@ -330,6 +331,8 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
 
         
     X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
+    wx = 10
+    wy = (np.max(Y)-np.min(Y))/(np.max(X)-np.min(X)) * wx
     
     if showInfo>1:
         print("f_prior_h5 = %s" % f_prior_h5)
@@ -370,7 +373,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
             if key in f_post[dstr].keys():
                 D = f_post[dstr][key][:,iz][:]
                 # plot this KEY
-                plt.figure(1, figsize=(20, 10))
+                plt.figure(1, figsize=(wx, wy))
                 if uselog:
                     plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],
                                 cmap = cmap,
@@ -383,7 +386,10 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
                 plt.grid()
                 plt.xlabel('X')                
                 plt.colorbar()
-                plt.title("%s/%s[%d,:] %s %s" %(dstr,key,iz,title_text,name))
+                print(title)
+                if title is None:
+                    title = "%s/%s[%d,:] %s" %(dstr,key,iz,name)
+                plt.title(title)
                 plt.axis('equal')
                 plt.clim(clim)
                 
@@ -397,7 +403,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
     return
 
 
-def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardcopy=False, **kwargs):
+def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=False, **kwargs):
     """
     Plot temperature and evidence field values from posterior sampling results.
 
@@ -444,6 +450,8 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
     The number of data plot shows non-NaN data count per location.
     """
 
+    s=kwargs.setdefault('s', 1)
+
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
@@ -485,7 +493,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
     
     if (pl=='all') or (pl=='T'):
         plt.figure(1, figsize=(wx,wy))
-        plt.scatter(X[i1:i2],Y[i1:i2],c=np.log10(T[i1:i2]),s=s,cmap='jet',**kwargs)            
+        plt.scatter(X[i1:i2],Y[i1:i2],c=np.log10(T[i1:i2]),cmap='jet',**kwargs)            
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -512,7 +520,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         #    kwargs['vmax'] = EV_max
         #print('EV_min=%f, EV_max=%f' % (EV_min, EV_max))
         plt.figure(2, figsize=(wx,wy))
-        plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],s=s,cmap=cmap_ev, vmin=clim[0], vmax=clim[1], **kwargs)            
+        plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],cmap=cmap_ev, vmin=clim[0], vmax=clim[1], **kwargs)            
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -533,7 +541,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         #print(non_nan)
 
         plt.figure(3, figsize=(wx, wy))
-        plt.scatter(X[i1:i2],Y[i1:i2],c=non_nan[i1:i2],s=s,cmap='jet', **kwargs)            
+        plt.scatter(X[i1:i2],Y[i1:i2],c=non_nan[i1:i2],cmap='jet', **kwargs)            
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -579,7 +587,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             
             plt.figure(4, figsize=(wx, wy))
             plt.plot(X[i1:i2], Y[i1:i2], color='lightgray', zorder=-1, marker='.', linestyle='None', markersize=2*s)  # Background points in light gray
-            scatter = plt.scatter(X[i1:i2], Y[i1:i2], c=LOGL_mean_plot[i1:i2], s=s, 
+            scatter = plt.scatter(X[i1:i2], Y[i1:i2], c=LOGL_mean_plot[i1:i2],  
                                 cmap=custom_cmap, norm=norm, **kwargs)
             plt.grid()
             plt.xlabel('X')
@@ -598,7 +606,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
     return
 
 
-def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=1, pl='ELEVATION', hardcopy=False, ax=None, cmap='jet', **kwargs):
+def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardcopy=False, ax=None, cmap='jet', **kwargs):
     """
     Plot survey geometry data from INTEGRATE HDF5 files.
 
@@ -650,6 +658,9 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=1, pl='ELEVATION', h
     and creates equal-aspect plots with appropriate colorbars and grid lines.
     All data points are shown as light gray background with selected points highlighted.
     """
+
+    s=kwargs.setdefault('s', 1)
+
     import h5py
     # Test if f_data_h5 is in fact f_post_h5 type file
     with h5py.File(f_data_h5,'r') as f_data:
