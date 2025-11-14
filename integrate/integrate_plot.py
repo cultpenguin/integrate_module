@@ -606,7 +606,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=F
     return
 
 
-def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardcopy=False, ax=None, cmap='jet', **kwargs):
+def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardcopy=False, ax=None, **kwargs):
     """
     Plot survey geometry data from INTEGRATE HDF5 files.
 
@@ -627,8 +627,6 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardco
     ii : numpy.ndarray, optional
         Specific array of indices to plot. If provided, overrides i1 and i2
         (default is empty array).
-    s : int, optional
-        Size of scatter plot markers in points (default is 5).
     pl : {'all', 'LINE', 'ELEVATION', 'id', 'NDATA'}, optional
         Type of geometry plot to generate (default is 'all'):
         - 'all': plot all geometry types
@@ -641,11 +639,13 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardco
     ax : matplotlib.axes.Axes, optional
         Matplotlib axes object to plot on. If None, creates new figures
         (default is None).
+    **kwargs : dict
+        Additional keyword arguments passed to matplotlib scatter function.
+    s : int, optional
+        Size of scatter plot markers in points (default is 1).
     cmap : str or matplotlib.colors.Colormap, optional
         Colormap to use for color-coding the scatter plots (default is 'jet').
         Can be any valid matplotlib colormap name or colormap object.
-    **kwargs : dict
-        Additional keyword arguments passed to matplotlib scatter function.
 
     Returns
     -------
@@ -659,7 +659,8 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardco
     All data points are shown as light gray background with selected points highlighted.
     """
 
-    s=kwargs.setdefault('s', 1)
+    kwargs.setdefault('s', 1)
+    kwargs.setdefault('cmap', 'jet')
 
     import h5py
     # Test if f_data_h5 is in fact f_post_h5 type file
@@ -703,7 +704,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardco
             current_ax = ax
         
         current_ax.plot(X,Y,'.',color='lightgray', zorder=-1, markersize=1)
-        scatter = current_ax.scatter(X[ii],Y[ii],c=LINE[ii],s=s,cmap=cmap,**kwargs)            
+        scatter = current_ax.scatter(X[ii],Y[ii],c=LINE[ii],**kwargs)            
         current_ax.grid()
         current_ax.set_xlabel('X')
         current_ax.set_ylabel('Y')
@@ -727,7 +728,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardco
         plt.figure(figsize=(wx,wy))
         current_ax = plt.gca()
             
-        scatter = current_ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap=cmap,**kwargs)            
+        scatter = current_ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],**kwargs)            
         current_ax.grid()
         current_ax.set_xlabel('X')
         current_ax.set_ylabel('Y')
@@ -744,7 +745,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardco
     
 
     elif ax is not None and pl == 'ELEVATION':
-        scatter = ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap=cmap,**kwargs)            
+        scatter = ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],**kwargs)            
         ax.grid()
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
@@ -758,7 +759,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardco
         plt.figure(figsize=(wx,wy))
         current_ax = plt.gca()
             
-        scatter = current_ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap=cmap,**kwargs)  
+        scatter = current_ax.scatter(X[ii],Y[ii],c=ii,**kwargs)  
         current_ax.grid()
         current_ax.set_xlabel('X')
         current_ax.set_ylabel('Y')
@@ -774,7 +775,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardco
             plt.show()
 
     elif ax is not None and pl == 'id':
-        scatter = ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap=cmap,**kwargs)
+        scatter = ax.scatter(X[ii],Y[ii],c=ii,**kwargs)
         ax.grid()
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
@@ -796,9 +797,8 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardco
                 n_data_per_location = data_counts[0, :]
 
             plt.figure(figsize=(wx,wy))
-            current_ax = plt.gca()
-
-            scatter = current_ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],s=s,cmap=cmap,**kwargs)
+            current_ax = plt.gca()            
+            scatter = current_ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],**kwargs)
             current_ax.grid()
             current_ax.set_xlabel('X')
             current_ax.set_ylabel('Y')
@@ -828,7 +828,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardco
             else:
                 n_data_per_location = data_counts[0, :]
 
-            scatter = ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],s=s,cmap=cmap,**kwargs)
+            scatter = ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],**kwargs)
             ax.grid()
             ax.set_xlabel('X')
             ax.set_ylabel('Y')
