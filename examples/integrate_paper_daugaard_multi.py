@@ -37,14 +37,14 @@ hardcopy=True
 cmap, clim = ig.get_colormap_and_limits('resistivity')
 useMergedPrior=True
 useGenericPrior=False
-inflateNoise = 4# 1,2, 4
+inflateNoise = 1    # 1,2, 4
 useLogData = False
 N_use = 2000000
 N_use_org= N_use
 #N_use = 100000
 #N_use = 100000
 
-doEffectSize = False
+doEffectSize = True
 doTbase = True
 doPlotAll=True
 doTestInversion = False
