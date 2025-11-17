@@ -30,17 +30,19 @@ import matplotlib.pyplot as plt
 # ## 0. Get TTEM data
 # erda/DGMAP/DATA/Soeballe_NN/
 
-f_prior_h5 = 'prior_general.h5'
-f_prior_h5 = 'prior_soeballe.h5'
-f_prior_data_h5 = f_prior_h5
-
+# D_OBS
 f_data_h5 = 'data_diamond_soeballe_250724.h5'
 
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
+# PRIOR MODEL AND DATA
+f_prior_h5 = 'prior_general.h5'
+#f_prior_h5 = 'prior_soeballe.h5'
+f_prior_data_h5 = f_prior_h5
 
-
-
+# Make Tx Rx height prior data!!
+f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, id=2, doMakePriorCopy=True)
+f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=3, id=3, doMakePriorCopy=False)
 
 
 # %%
@@ -54,7 +56,6 @@ if doLoadData:
 
     # load observd data
     D_obs = ig.load_data(f_data_h5)
-
     d_obs = D_obs['d_obs']
     d_std = D_obs['d_std']
 
@@ -62,7 +63,8 @@ if doLoadData:
 doFixData = True
 if doFixData:
     f_data_h5='d_test.h5'
-    ig.write_data_gaussian(d_obs[0][:,1:], D_std = d_obs[0][:,1:]*d_obs[0][:,1:], f_data_h5=f_data_h5, 
+    ig.save_data_gaussian(d_obs[0][:,1:], D_std = 3*d_obs[0][:,1:]*d_std[0][:,1:], f_data_h5=f_data_h5, 
+                            id=1,
                             showInfo=0, 
                             UTMX=X, 
                             UTMY=Y,
@@ -70,13 +72,34 @@ if doFixData:
                             LINE=LINE,
                             name='Diamond Data',
                             delete_if_exist=True,                        
-    )
+            )
+    ig.save_data_gaussian(d_obs[1], D_std = d_std[1], f_data_h5=f_data_h5, 
+                            id=2,
+                            showInfo=0, 
+                            name='Rx',
+                            delete_if_exist=False,                        
+            )
+    ig.save_data_gaussian(d_obs[2], D_std = d_std[2], f_data_h5=f_data_h5, 
+                            id=3,
+                            showInfo=0, 
+                            name='Rx',
+                            delete_if_exist=False,                        
+            )
+    
+    
+    
+    
+    #D_obs = ig.load_data(f_data_h5)
+    #d_obs = D_obs['d_obs']
+    #d_std = D_obs['d_std']
+
 
 
 #%% 
 ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 # %% 
 ig.plot_data_prior(f_prior_h5,f_data_h5,nr=1000,hardcopy=hardcopy)
+
 # %%
 ig.plot_geometry(f_data_h5, pl='ELEVATION')
 # %%
@@ -86,21 +109,24 @@ ig.plot_data(f_data_h5, hardcopy=hardcopy)
 ig.plot_data_xy(f_data_h5, data_channel=15, cmap='jet');
 
 # %% 
-plt.figure(figsize=(10,8))
-plt.subplot(2,2,1)
-plt.scatter(X,Y,c=d_obs[1], s=1);
-plt.colorbar(label='d_obs[1]');
-plt.subplot(2,2,2)
-plt.scatter(X,Y,c=d_obs[2], s=1);
-plt.colorbar(label='d_obs[2]');
-plt.subplot(2,2,3)
-plt.scatter(X,Y,c=d_obs[1]- d_obs[2], s=1);
-plt.colorbar(label='d_obs[1]- d_obs[2]');
-plt.subplot(2,2,4)
-plt.plot(d_obs[1]- d_obs[2],'.');
-plt.xlabel('#');
-plt.ylabel('d_obs[1]- d_obs[2]'); 
+try:
+    plt.figure(figsize=(10,8))
+    plt.subplot(2,2,1)
+    plt.scatter(X,Y,c=d_obs[1], s=1);
+    plt.colorbar(label='d_obs[1]');
+    plt.subplot(2,2,2)
+    plt.scatter(X,Y,c=d_obs[2], s=1);
+    plt.colorbar(label='d_obs[2]');
+    plt.subplot(2,2,3)
+    plt.scatter(X,Y,c=d_obs[1]- d_obs[2], s=1);
+    plt.colorbar(label='d_obs[1]- d_obs[2]');
+    plt.subplot(2,2,4)
+    plt.plot(d_obs[1]- d_obs[2],'.');
+    plt.xlabel('#');
+    plt.ylabel('d_obs[1]- d_obs[2]'); 
 
+except:
+    pass
 
 
 
@@ -114,12 +140,12 @@ N=1000000
 # However, you can control several important options.
 # You can choose to use only a subset of the prior data. Decreasing the sample 
 # size makes the inversion faster but increasingly approximate.
-N_use = 50000   # Number of prior samples to use (use all available)
+N_use = 1000000   # Number of prior samples to use (use all available)
 T_base = 1  # Base annealing temperature for rejection sampling
 autoT = 1   # Automatically estimate optimal annealing temperature
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                    f_data_h5, 
-                                   id_use = [1],
+                                   #id_use = [3],
                                    f_post_h5 = 'POST.h5', 
                                    nr=1000,
                                    N_use = N_use, 
@@ -158,7 +184,11 @@ ig.plot_T_EV(f_post_h5, pl='T',hardcopy=hardcopy)
 # along a section of the survey line.
 
 # %%
-ig.plot_profile(f_post_h5, i1=1, i2=8000, im=1, hardcopy=hardcopy)
+ig.plot_profile(f_post_h5, i1=1, i2=2800, im=1, hardcopy=hardcopy)
+ig.plot_profile(f_post_h5, i1=1, i2=2800, im=2, hardcopy=hardcopy)
+ig.plot_profile(f_post_h5, i1=1, i2=2800, im=3, hardcopy=hardcopy)
+
+
 # %% [markdown]
 # ### Plot 2D spatial features
 #

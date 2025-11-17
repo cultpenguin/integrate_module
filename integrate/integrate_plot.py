@@ -2580,51 +2580,74 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
     
         #i_plot=[]
         fig, ax = plt.subplots(1,1,figsize=(7,7))
-        if is_log:
-            if showInfo>1:
-                print('plot_data_prior_post: Plotting log10(d_prior)')
-                print('This is not implemented yet')
-            ax.plot(d_prior.T,'-',linewidth=.2, label='d_prior', color=cols[0])
-            ax.plot(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
-            ax.plot(d_obs[i_plot,:],'.',markersize=6, label='d_obs', color=cols[2])
-            try:
-                ax.plot(d_obs[i_plot,:]-2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
-                ax.plot(d_obs[i_plot,:]+2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
-            except:
-                pass
-            plt.ylabel('log10(dBDt)')
-        else:
-            ax.semilogy(d_prior.T,'-',linewidth=.2, label='d_prior', color=cols[0])
-
-            if i_plot>-1:            
-                ax.semilogy(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
-            
-                ax.semilogy(d_obs[i_plot,:],'.',markersize=6, label='d_obs', color=cols[2])
+        if ndata>1:
+            if is_log:
+                if showInfo>1:
+                    print('plot_data_prior_post: Plotting log10(d_prior)')
+                    print('This is not implemented yet')
+                ax.plot(d_prior.T,'-',linewidth=.2, label='d_prior', color=cols[0])
+                ax.plot(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
+                ax.plot(d_obs[i_plot,:],'.',markersize=6, label='d_obs', color=cols[2])
                 try:
-                    ax.semilogy(d_obs[i_plot,:]-2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
-                    ax.semilogy(d_obs[i_plot,:]+2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
+                    ax.plot(d_obs[i_plot,:]-2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
+                    ax.plot(d_obs[i_plot,:]+2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
                 except:
                     pass
-                #ax.text(0.1, 0.1, 'Data set %s, Observation # %d' % (Dkey, i_plot+1), transform=ax.transAxes)
-            else:   
-                # select nr random unqiue index of d_obs
-                i_d = np.random.choice(d_obs.shape[0], nr, replace=False)
-                if is_log:
-                    ax.plot(d_obs[i_d,:].T,'-',linewidth=.1, label='d_obs', color=cols[2])
-                    ax.plot(d_obs[i_d,:].T,'*',linewidth=.1, label='d_obs', color=cols[2])
-                else:
-                    ax.semilogy(d_obs[i_d,:].T,'-',linewidth=1, label='d_obs', color=cols[2])
-                    ax.semilogy(d_obs[i_d,:].T,'*',linewidth=1, label='d_obs', color=cols[2])
+                plt.ylabel('log10(dBDt)')
+            else:
+                ax.semilogy(d_prior.T,'-',linewidth=.2, label='d_prior', color=cols[0])
 
-            if ylim is not None:            
-                plt.ylim(ylim)
-            plt.ylabel('dBDt')
+                if i_plot>-1:            
+                    ax.semilogy(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
+                
+                    ax.semilogy(d_obs[i_plot,:],'.',markersize=6, label='d_obs', color=cols[2])
+                    try:
+                        ax.semilogy(d_obs[i_plot,:]-2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
+                        ax.semilogy(d_obs[i_plot,:]+2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
+                    except:
+                        pass
+                    #ax.text(0.1, 0.1, 'Data set %s, Observation # %d' % (Dkey, i_plot+1), transform=ax.transAxes)
+                else:   
+                    # select nr random unqiue index of d_obs
+                    i_d = np.random.choice(d_obs.shape[0], nr, replace=False)
+                    if is_log:
+                        ax.plot(d_obs[i_d,:].T,'-',linewidth=.1, label='d_obs', color=cols[2])
+                        ax.plot(d_obs[i_d,:].T,'*',linewidth=.1, label='d_obs', color=cols[2])
+                    else:
+                        ax.semilogy(d_obs[i_d,:].T,'-',linewidth=1, label='d_obs', color=cols[2])
+                        ax.semilogy(d_obs[i_d,:].T,'*',linewidth=1, label='d_obs', color=cols[2])
+
+                if ylim is not None:            
+                    plt.ylim(ylim)
+                plt.ylabel('dBDt')
+
+                plt.xlabel('Data #')
+                plt.grid()
+
+
+        else:   
+            # nadat=1
+            plt.hist(d_prior.flatten(), bins=50, alpha=0.5, color=cols[0], label='d_prior', density=True)
+            plt.hist(d_post.flatten(), bins=50, alpha=0.5, color=cols[1], label='d_post', density=True)
+            # plot a vertical solid line at x=d_obs[i_plot], and two dashed lines at d_obs[i_plot]-2*d_std[i_plot] and d_obs[i_plot]+2*d_std[i_plot]
+            plt.plot([d_obs[i_plot],d_obs[i_plot]], [0, plt.ylim()[1]], 'r-', label='d_obs', linewidth=2)
+            
+            plt.xlabel('Value')
+            plt.ylabel('PDF')
+            plt.legend()
+
+            plt.grid()
+        
 
         if i_plot>-1:
+            
             ax.text(0.1, 0.1, 'T = %4.2f.' % (f_post['/T'][i_plot]), transform=ax.transAxes)
             ax.text(0.1, 0.2, 'log(EV) = %4.2f.' % (f_post['/EV'][i_plot]), transform=ax.transAxes)
-            if LOGL_mean is not None:
-                ax.text(0.1, 0.3, 'LOGL_mean = %4.2f.' % (LOGL_mean[i_plot]), transform=ax.transAxes)
+            try:
+                if LOGL_mean is not None:
+                        ax.text(0.1, 0.3, 'LOGL_mean = %4.2f.' % (LOGL_mean[i_plot,0]), transform=ax.transAxes)
+            except:
+                pass
             # Use custom title if provided, otherwise use default
             if 'title' in kwargs:
                 plt.title(kwargs['title'])
@@ -2632,8 +2655,6 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
                 plt.title('Data set %s, Observation # %d' % (Dkey, i_plot+1))
 
 
-        plt.xlabel('Data #')
-        plt.grid()
         #plt.legend()
 
  
