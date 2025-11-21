@@ -108,11 +108,7 @@ if __name__ == "__main__":
     import integrate as ig
     import numpy as np
     N=6000000
-<<<<<<< HEAD
     #N=100000
-=======
-    N=1000000
->>>>>>> f9a268f97f0d895f761a787930028c00deab9cce
 
     RHO_min=1
     RHO_max=3000

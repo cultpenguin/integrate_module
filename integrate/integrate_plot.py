@@ -259,7 +259,7 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
 
     return fig
 
-def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, title_text='', hardcopy=False, cmap=None, clim=None, **kwargs):
+def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, title=None, hardcopy=False, cmap=None, clim=None, **kwargs):
     """
     Create 2D spatial scatter plot of model parameter features.
 
@@ -285,7 +285,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
         Feature/layer index within the model parameter array (default is 0).
     uselog : int, optional
         Apply logarithmic normalization to color scale (1=True, 0=False, default is 1).
-    title_text : str, optional
+    title : str, optional
         Additional text to append to the plot title (default is '').
     hardcopy : bool, optional
         Save the plot as a PNG file (default is False).
@@ -315,6 +315,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
     showInfo = kwargs.get('showInfo', 0)
 
     #kwargs.setdefault('hardcopy', False)
+    kwargs.setdefault('s', 1)
     dstr = '/M%d' % im
     
     with h5py.File(f_post_h5,'r') as f_post:
@@ -330,6 +331,8 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
 
         
     X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
+    wx = 10
+    wy = (np.max(Y)-np.min(Y))/(np.max(X)-np.min(X)) * wx
     
     if showInfo>1:
         print("f_prior_h5 = %s" % f_prior_h5)
@@ -370,7 +373,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
             if key in f_post[dstr].keys():
                 D = f_post[dstr][key][:,iz][:]
                 # plot this KEY
-                plt.figure(1, figsize=(20, 10))
+                plt.figure(1, figsize=(wx, wy))
                 if uselog:
                     plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],
                                 cmap = cmap,
@@ -383,7 +386,10 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
                 plt.grid()
                 plt.xlabel('X')                
                 plt.colorbar()
-                plt.title("%s/%s[%d,:] %s %s" %(dstr,key,iz,title_text,name))
+                print(title)
+                if title is None:
+                    title = "%s/%s[%d,:] %s" %(dstr,key,iz,name)
+                plt.title(title)
                 plt.axis('equal')
                 plt.clim(clim)
                 
@@ -397,7 +403,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
     return
 
 
-def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardcopy=False, **kwargs):
+def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=False, **kwargs):
     """
     Plot temperature and evidence field values from posterior sampling results.
 
@@ -444,12 +450,19 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
     The number of data plot shows non-NaN data count per location.
     """
 
+    s=kwargs.setdefault('s', 1)
+
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
     
     X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
     clim=(T_min,T_max)
+        
+    wx = 10
+    wy = (np.max(Y)-np.min(Y))/(np.max(X)-np.min(X)) * wx
+    print('Plot size: wx=%f, wy=%f' % (wx, wy))
+
 
     with h5py.File(f_post_h5,'r') as f_post:
         T=f_post['/T'][:].T
@@ -479,8 +492,8 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         i2=i1+1
     
     if (pl=='all') or (pl=='T'):
-        plt.figure(1, figsize=(20, 10))
-        plt.scatter(X[i1:i2],Y[i1:i2],c=np.log10(T[i1:i2]),s=s,cmap='jet',**kwargs)            
+        plt.figure(1, figsize=(wx,wy))
+        plt.scatter(X[i1:i2],Y[i1:i2],c=np.log10(T[i1:i2]),cmap='jet',**kwargs)            
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -506,8 +519,8 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         #if 'vmax' not in kwargs:
         #    kwargs['vmax'] = EV_max
         #print('EV_min=%f, EV_max=%f' % (EV_min, EV_max))
-        plt.figure(2, figsize=(20, 10))
-        plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],s=s,cmap=cmap_ev, vmin=clim[0], vmax=clim[1], **kwargs)            
+        plt.figure(2, figsize=(wx,wy))
+        plt.scatter(X[i1:i2],Y[i1:i2],c=EV[i1:i2],cmap=cmap_ev, vmin=clim[0], vmax=clim[1], **kwargs)            
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -527,8 +540,8 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
         non_nan = np.sum(~np.isnan(f_data['/%s' % 'D1']['d_obs']), axis=1)
         #print(non_nan)
 
-        plt.figure(3, figsize=(20, 10))
-        plt.scatter(X[i1:i2],Y[i1:i2],c=non_nan[i1:i2],s=s,cmap='jet', **kwargs)            
+        plt.figure(3, figsize=(wx, wy))
+        plt.scatter(X[i1:i2],Y[i1:i2],c=non_nan[i1:i2],cmap='jet', **kwargs)            
         plt.grid()
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -572,9 +585,9 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
             # Use standard normalization
             norm = Normalize(vmin=LOGL_min, vmax=LOGL_max)
             
-            plt.figure(4, figsize=(20, 10))
+            plt.figure(4, figsize=(wx, wy))
             plt.plot(X[i1:i2], Y[i1:i2], color='lightgray', zorder=-1, marker='.', linestyle='None', markersize=2*s)  # Background points in light gray
-            scatter = plt.scatter(X[i1:i2], Y[i1:i2], c=LOGL_mean_plot[i1:i2], s=s, 
+            scatter = plt.scatter(X[i1:i2], Y[i1:i2], c=LOGL_mean_plot[i1:i2],  
                                 cmap=custom_cmap, norm=norm, **kwargs)
             plt.grid()
             plt.xlabel('X')
@@ -593,7 +606,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, s=5, T_min=1, T_max=100, pl='all', hardc
     return
 
 
-def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', hardcopy=False, ax=None, cmap='jet', **kwargs):
+def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardcopy=False, ax=None, **kwargs):
     """
     Plot survey geometry data from INTEGRATE HDF5 files.
 
@@ -614,8 +627,6 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
     ii : numpy.ndarray, optional
         Specific array of indices to plot. If provided, overrides i1 and i2
         (default is empty array).
-    s : int, optional
-        Size of scatter plot markers in points (default is 5).
     pl : {'all', 'LINE', 'ELEVATION', 'id', 'NDATA'}, optional
         Type of geometry plot to generate (default is 'all'):
         - 'all': plot all geometry types
@@ -628,11 +639,13 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
     ax : matplotlib.axes.Axes, optional
         Matplotlib axes object to plot on. If None, creates new figures
         (default is None).
+    **kwargs : dict
+        Additional keyword arguments passed to matplotlib scatter function.
+    s : int, optional
+        Size of scatter plot markers in points (default is 1).
     cmap : str or matplotlib.colors.Colormap, optional
         Colormap to use for color-coding the scatter plots (default is 'jet').
         Can be any valid matplotlib colormap name or colormap object.
-    **kwargs : dict
-        Additional keyword arguments passed to matplotlib scatter function.
 
     Returns
     -------
@@ -645,6 +658,10 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
     and creates equal-aspect plots with appropriate colorbars and grid lines.
     All data points are shown as light gray background with selected points highlighted.
     """
+
+    kwargs.setdefault('s', 1)
+    kwargs.setdefault('cmap', 'jet')
+
     import h5py
     # Test if f_data_h5 is in fact f_post_h5 type file
     with h5py.File(f_data_h5,'r') as f_data:
@@ -671,6 +688,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
             i2=nd
         ii = np.arange(i1,i2)
 
+    markersize = kwargs.pop('markersize', .1)
 
     tit = f_png = '%s_%d_%d.png' % (os.path.splitext(f_data_h5)[0],i1,i2)
 
@@ -680,13 +698,13 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
     
     if (pl=='all') or (pl=='LINE'):
         if ax is None:
-            plt.figure(1, figsize=(20, 10))
+            plt.figure(figsize=(wx,wy))
             current_ax = plt.gca()
         else:
             current_ax = ax
         
         current_ax.plot(X,Y,'.',color='lightgray', zorder=-1, markersize=1)
-        scatter = current_ax.scatter(X[ii],Y[ii],c=LINE[ii],s=s,cmap=cmap,**kwargs)            
+        scatter = current_ax.scatter(X[ii],Y[ii],c=LINE[ii],**kwargs)            
         current_ax.grid()
         current_ax.set_xlabel('X')
         current_ax.set_ylabel('Y')
@@ -707,10 +725,10 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
             plt.show()
 
     if ax is None and ((pl=='all') or (pl=='ELEVATION')):
-        plt.figure(1, figsize=(20, 10))
+        plt.figure(figsize=(wx,wy))
         current_ax = plt.gca()
             
-        scatter = current_ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap=cmap,**kwargs)            
+        scatter = current_ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],**kwargs)            
         current_ax.grid()
         current_ax.set_xlabel('X')
         current_ax.set_ylabel('Y')
@@ -727,7 +745,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
     
 
     elif ax is not None and pl == 'ELEVATION':
-        scatter = ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],s=s,cmap=cmap,**kwargs)            
+        scatter = ax.scatter(X[ii],Y[ii],c=ELEVATION[ii],**kwargs)            
         ax.grid()
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
@@ -738,10 +756,10 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
             plt.show()
 
     if ax is None and ((pl=='all') or (pl=='id')):
-        plt.figure(1, figsize=(20, 10))
+        plt.figure(figsize=(wx,wy))
         current_ax = plt.gca()
             
-        scatter = current_ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap=cmap,**kwargs)  
+        scatter = current_ax.scatter(X[ii],Y[ii],c=ii,**kwargs)  
         current_ax.grid()
         current_ax.set_xlabel('X')
         current_ax.set_ylabel('Y')
@@ -757,7 +775,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
             plt.show()
 
     elif ax is not None and pl == 'id':
-        scatter = ax.scatter(X[ii],Y[ii],c=ii,s=s,cmap=cmap,**kwargs)
+        scatter = ax.scatter(X[ii],Y[ii],c=ii,**kwargs)
         ax.grid()
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
@@ -778,10 +796,9 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
             else:
                 n_data_per_location = data_counts[0, :]
 
-            plt.figure(1, figsize=(20, 10))
-            current_ax = plt.gca()
-
-            scatter = current_ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],s=s,cmap=cmap,**kwargs)
+            plt.figure(figsize=(wx,wy))
+            current_ax = plt.gca()            
+            scatter = current_ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],**kwargs)
             current_ax.grid()
             current_ax.set_xlabel('X')
             current_ax.set_ylabel('Y')
@@ -811,7 +828,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
             else:
                 n_data_per_location = data_counts[0, :]
 
-            scatter = ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],s=s,cmap=cmap,**kwargs)
+            scatter = ax.scatter(X[ii],Y[ii],c=n_data_per_location[ii],**kwargs)
             ax.grid()
             ax.set_xlabel('X')
             ax.set_ylabel('Y')
@@ -827,7 +844,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), s=5, pl='ELEVATION', h
 
 
 
-def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='index', gap_threshold=None, **kwargs):
+def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='index', gap_threshold=None, panels=None, **kwargs):
     """
     Plot 1D profiles from posterior sampling results.
 
@@ -835,30 +852,66 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='index',
     of model parameters as a function of depth or model layer. Automatically
     detects model type (discrete or continuous) and calls appropriate plotting function.
 
-    :param f_post_h5: Path to the HDF5 file containing posterior sampling results
-    :type f_post_h5: str
-    :param i1: Starting index for the data points to plot (1-based indexing)
-    :type i1: int, optional
-    :param i2: Ending index for the data points to plot (1-based indexing)
-    :type i2: int, optional
-    :param ii: Specific array of indices to plot. If provided, overrides i1 and i2
-    :type ii: numpy.ndarray, optional
-    :param im: Model identifier to plot. If 0, automatically detects and plots all models
-    :type im: int, optional
-    :param xaxis: X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...)
-    :type xaxis: str, optional
-    :param gap_threshold: Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, the region becomes transparent. If None, no gap transparency is applied.
-    :type gap_threshold: float, optional
-    :param kwargs: Additional plotting arguments passed to discrete/continuous plotting functions
-    :type kwargs: dict
+    Parameters
+    ----------
+    f_post_h5 : str
+        Path to the HDF5 file containing posterior sampling results.
+    i1 : int, optional
+        Starting index for the data points to plot (1-based indexing, default is 1).
+    i2 : float, optional
+        Ending index for the data points to plot (1-based indexing, default is 1e+9).
+    ii : numpy.ndarray, optional
+        Specific array of indices to plot. If provided, overrides i1 and i2 (default is empty array).
+    im : int, optional
+        Model identifier to plot. If 0, automatically detects and plots all models (default is 0).
+    xaxis : str, optional
+        X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'index').
+    gap_threshold : float, optional
+        Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, the region becomes transparent. If None, no gap transparency is applied (default is None).
+    panels : list of str or None, optional
+        Controls which panels to display. Options depend on model type:
 
-    :returns: None (creates matplotlib plots)
-    :rtype: None
+        For continuous models: ['value', 'std', 'stats']
+        For discrete models: ['mode', 'entropy', 'stats']
 
-    .. note::
-        The function automatically computes posterior statistics if not present in the file.
-        For discrete models, calls plot_profile_discrete(). For continuous models,
-        calls plot_profile_continuous().
+        See plot_profile_continuous() and plot_profile_discrete() for detailed options (default is None, shows all panels).
+    **kwargs : dict
+        Additional plotting arguments passed to discrete/continuous plotting functions.
+        Both model types support 'alpha' (float, 0.0-1.0) to apply uncertainty-based
+        transparency to the main profile panel (median/mean for continuous, mode for discrete).
+
+    Returns
+    -------
+    None
+        Creates matplotlib plots.
+
+    Notes
+    -----
+    The function automatically computes posterior statistics if not present in the file.
+    For discrete models, calls plot_profile_discrete(). For continuous models,
+    calls plot_profile_continuous().
+
+    Examples
+    --------
+    Plot all models with all panels:
+
+    >>> plot_profile(f_post_h5, im=0)
+
+    Plot only median resistivity for model 1:
+
+    >>> plot_profile(f_post_h5, im=1, panels=['value'])
+
+    Plot mode and stats for discrete model 2:
+
+    >>> plot_profile(f_post_h5, im=2, panels=['mode', 'stats'])
+
+    Plot discrete model with full uncertainty transparency on mode:
+
+    >>> plot_profile(f_post_h5, im=2, alpha=1.0)
+
+    Plot continuous model with partial transparency:
+
+    >>> plot_profile(f_post_h5, im=1, alpha=0.5)
     """
 
     with h5py.File(f_post_h5,'r') as f_post:
@@ -882,33 +935,33 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='index',
                 im = int(key[1:])
                 try:
                     if key[0]=='M':
-                        plot_profile(f_post_h5, i1, i2, ii, im=im, xaxis=xaxis, gap_threshold=gap_threshold, **kwargs)
+                        plot_profile(f_post_h5, i1, i2, ii, im=im, xaxis=xaxis, gap_threshold=gap_threshold, panels=panels, **kwargs)
                 except Exception as e:
                     print('Error in plot_profile for key=%s: %s' % (key, str(e)))
                     import traceback
                     traceback.print_exc()
-        return 
-    
-    
+        return
+
+
     Mstr = '/M%d' % im
     with h5py.File(f_prior_h5,'r') as f_prior:
-        is_discrete = f_prior[Mstr].attrs['is_discrete']    
+        is_discrete = f_prior[Mstr].attrs['is_discrete']
     #print(Mstr)
     #print(is_discrete)
+
     if is_discrete:
-        plot_profile_discrete(f_post_h5, i1, i2, ii, im, xaxis, gap_threshold, **kwargs)
+        plot_profile_discrete(f_post_h5, i1, i2, ii, im, xaxis, gap_threshold, panels, **kwargs)
     elif not is_discrete:
-        plot_profile_continuous(f_post_h5, i1, i2, ii, im, xaxis, gap_threshold, **kwargs)
+        plot_profile_continuous(f_post_h5, i1, i2, ii, im, xaxis, gap_threshold, panels, **kwargs)
 
 
-def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='index', gap_threshold=None, **kwargs):
+def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='index', gap_threshold=None, panels=None, **kwargs):
     """
     Create vertical profile plots for discrete categorical model parameters.
 
-    Generates a 4-panel plot showing discrete model parameter distributions
-    with depth, including mode, entropy, and combined mode-entropy views,
-    plus temperature and evidence curves. Designed for geological unit
-    classification results.
+    Generates a 3-panel plot showing discrete model parameter distributions
+    with depth, including mode, entropy, and temperature/evidence curves.
+    Designed for geological unit classification results.
 
     Parameters
     ----------
@@ -924,11 +977,23 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     im : int, optional
         Model index to plot (e.g., 1 for M1, 2 for M2, default is 1).
     xaxis : str, optional
-        X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'id').
+        X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'index').
     gap_threshold : float, optional
         Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, regions after the gaps become completely transparent to indicate missing data. If None, no gap transparency is applied (default is None).
+    panels : list of str or None, optional
+        Controls which panels to display. Each panel maintains consistent size regardless of which are shown.
+        Options:
+        - None (default): Show all panels ['mode', 'entropy', 'stats']
+        - ['mode']: Only mode (most probable class)
+        - ['entropy']: Only entropy (uncertainty)
+        - ['stats']: Only temperature and log-likelihood
+        - Any combination of the above (e.g., ['mode', 'stats'])
+        Accepted panel names: 'mode', 'entropy', 'stats', 'temperature', 't'
     **kwargs : dict
         Additional keyword arguments:
+        - alpha : float, transparency scaling factor based on entropy (0.0 to 1.0).
+          alpha=0.0 means no transparency (default), alpha=1.0 means full entropy-based
+          transparency where high-uncertainty regions become transparent
         - hardcopy : bool, save plot as PNG file (default False)
         - txt : str, additional text for filename
         - showInfo : int, level of debug output (0=none, >0=verbose)
@@ -941,21 +1006,63 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
     Notes
     -----
-    The plot consists of four vertically stacked panels:
-    1. Mode: most probable class at each depth/location
-    2. Entropy: uncertainty measure (0=certain, 1=maximum uncertainty) 
-    3. Mode with transparency: mode colored by entropy (transparent=uncertain)
-    4. Temperature and evidence curves
-    
+    The plot structure uses 3 subplots (matching plot_profile_continuous()):
+    - ax[0]: Mode - most probable class at each depth/location (optionally with entropy transparency)
+    - ax[1]: Entropy - uncertainty measure (0=certain, 1=maximum uncertainty)
+    - ax[2]: Temperature and evidence curves
+
     Class names and colors are automatically retrieved from prior file attributes.
     Depth coordinates are computed relative to surface elevation.
+
+    When alpha > 0, the mode panel shows both classification and uncertainty in one view:
+    solid colors indicate high certainty, transparent colors indicate high uncertainty.
+    The alpha value (0.0 to 1.0) controls the strength of this transparency effect.
+
+    Examples
+    --------
+    Show only mode profile:
+
+    >>> plot_profile_discrete(f_post_h5, panels=['mode'])
+
+    Show mode with full uncertainty transparency (alpha=1.0):
+
+    >>> plot_profile_discrete(f_post_h5, panels=['mode'], alpha=1.0)
+
+    Show mode with partial transparency (alpha=0.5):
+
+    >>> plot_profile_discrete(f_post_h5, panels=['mode'], alpha=0.5)
+
+    Show mode and stats (no entropy):
+
+    >>> plot_profile_discrete(f_post_h5, panels=['mode', 'stats'])
+
+    Show only entropy:
+
+    >>> plot_profile_discrete(f_post_h5, panels=['entropy'])
+
+    Show all panels with transparency on mode:
+
+    >>> plot_profile_discrete(f_post_h5, alpha=1.0)
     """
     from matplotlib.colors import LogNorm
 
     kwargs.setdefault('hardcopy', False)
     txt = kwargs.get('txt','')
     showInfo = kwargs.get('showInfo', 0)
-    
+    alpha = kwargs.get('alpha', 0.0)  # Transparency scaling factor (0.0 to 1.0)
+
+    # Default to showing all panels
+    if panels is None:
+        panels = ['mode', 'entropy', 'stats']
+
+    # Normalize panel names to lowercase
+    panels = [p.lower() for p in panels]
+
+    # Determine which panels to show
+    show_mode = 'mode' in panels
+    show_entropy = 'entropy' in panels
+    show_stats = any(p in panels for p in ['stats', 't', 'temperature'])
+
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
         f_data_h5 = f_post['/'].attrs['f5_data']
@@ -1190,108 +1297,126 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     # ii is a numpy array from i1 to i2
     # ii = np.arange(i1,i2)
 
-    # Create a figure with 3 subplots sharing the same Xaxis!
-    fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
+    # Create a figure with 3 subplots (always create all to maintain consistent sizing)
+    # This matches the structure of plot_profile_continuous()
+    fig, ax = plt.subplots(3,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 1]})
 
-    # MODE
-    mode_data = Mode[:,ii]
-    if gap_alpha is not None:
-        # Use masked array to hide transparent regions
-        mode_data = np.ma.masked_where(gap_alpha == 0.0, mode_data)
+    # Hide panels that are not requested
+    if not show_mode:
+        ax[0].axis('off')
+    if not show_entropy:
+        ax[1].axis('off')
+    if not show_stats:
+        ax[2].axis('off')
 
-    im1 = ax[0].pcolormesh(DDc, ZZc, mode_data,
-            cmap=cmap,
-            vmin=clim[0]-.5,
-            vmax=clim[1]+.5,
-            shading='auto')
+    # MODE panel (ax[0]) - only if requested
+    if show_mode:
+        mode_data = Mode[:,ii]
+        if gap_alpha is not None:
+            # Use masked array to hide transparent regions
+            mode_data = np.ma.masked_where(gap_alpha == 0.0, mode_data)
 
-    ax[0].set_title('Mode')
-    # Set the ticks at the center of each color band (at class_id values)
-    cbar1 = fig.colorbar(im1, ax=ax[0], label='label')
-    cbar1.set_ticks(class_id)
-    cbar1.set_ticklabels(class_name)
-    cbar1.ax.invert_yaxis()
+        # Apply pcolormesh
+        im1 = ax[0].pcolormesh(DDc, ZZc, mode_data,
+                cmap=cmap,
+                vmin=clim[0]-.5,
+                vmax=clim[1]+.5,
+                shading='auto')
 
-    # ENTROPY
-    entropy_data = Entropy[:,ii]
-    if gap_alpha is not None:
-        # Use masked array to hide transparent regions
-        entropy_data = np.ma.masked_where(gap_alpha == 0.0, entropy_data)
+        # Apply entropy-based transparency if alpha > 0
+        if alpha > 0:
+            # Transparency scaled by alpha: alpha * Entropy
+            # When Entropy=0 (certain): transparency=0 (opaque)
+            # When Entropy=1 (uncertain): transparency=alpha (scaled)
+            im1.set_alpha(1 - alpha * Entropy[:,ii])
+            ax[0].set_title('Mode (with uncertainty transparency)')
+        else:
+            ax[0].set_title('Mode')
 
-    im2 = ax[1].pcolormesh(DDc, ZZc, entropy_data,
-            cmap='hot_r',
-            shading='auto')
-    im2.set_clim(0,1)
-    ax[1].set_title('Entropy')
-    fig.colorbar(im2, ax=ax[1], label='Entropy')
+        # Set the ticks at the center of each color band (at class_id values)
+        cbar1 = fig.colorbar(im1, ax=ax[0], label='label')
+        cbar1.set_ticks(class_id)
+        cbar1.set_ticklabels(class_name)
+        cbar1.ax.invert_yaxis()
+        ax[0].set_ylabel('Elevation (m)')
 
-    # MODE with transparency set using entropy (and gaps if available)
-    mode_entropy_data = Mode[:,ii]
-    if gap_alpha is not None:
-        # Use masked array to hide gap regions completely
-        mode_entropy_data = np.ma.masked_where(gap_alpha == 0.0, mode_entropy_data)
+    # ENTROPY panel (ax[1]) - only if requested
+    if show_entropy:
+        import matplotlib
+        entropy_data = Entropy[:,ii]
+        if gap_alpha is not None:
+            # Use masked array to hide transparent regions
+            entropy_data = np.ma.masked_where(gap_alpha == 0.0, entropy_data)
 
-    im3 = ax[2].pcolormesh(DDc, ZZc, mode_entropy_data,
-            cmap=cmap,
-            vmin=clim[0]-.5,
-            vmax=clim[1]+.5,
-            shading='auto',
-            alpha=1-Entropy[:,ii])  # Keep entropy transparency
-    ax[2].set_title('Mode with transparency')
-    #fig.colorbar(im3, ax=ax[2], label='label')
-    cbar3 = fig.colorbar(im3, ax=ax[2], label='label')
-    cbar3.set_ticks(class_id)
-    cbar3.set_ticklabels(class_name)
-    cbar3.ax.invert_yaxis()
+        im2 = ax[1].pcolormesh(DDc, ZZc, entropy_data,
+                cmap=matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "black", "red"]),
+                shading='auto')
+        im2.set_clim(0,1)
+        ax[1].set_title('Entropy')
+        ax[1].set_ylabel('Elevation (m)')
+        fig.colorbar(im2, ax=ax[1], label='Entropy')
 
-    ## T and V
-    ax[0].set_xticks([])
-    ax[1].set_xticks([])
-    ax[2].set_xticks([])
+    ## Remove x-tick labels from non-bottom panels
+    if show_mode:
+        ax[0].set_xticks([])
+    if show_entropy:
+        ax[1].set_xticks([])
 
-    im4 = ax[3].semilogy(x_axis_values,T[ii], 'k.', label='T')
-    ax[3].set_xlim(x_axis_values.min(), x_axis_values.max())
-    ax[3].set_ylim(0.99, 200)
-    ax[3].set_ylabel('Temperature', color='k')
-    ax[3].tick_params(axis='y', labelcolor='k')
-    
-    if LOGL_mean is not None:
-        # Create second y-axis for LOGL_mean
-        ax3_twin = ax[3].twinx()
-        ax3_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
-        # Add dotted red line at y=1
-        ax3_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
-        ax3_twin.set_ylim(0, 5)
-        ax3_twin.set_ylabel('LOGL_mean', color='r')
-        ax3_twin.tick_params(axis='y', labelcolor='r')
-        
-        # Combine legends from both axes
-        lines1, labels1 = ax[3].get_legend_handles_labels()
-        lines2, labels2 = ax3_twin.get_legend_handles_labels()
-        ax[3].legend(lines1 + lines2, labels1 + labels2, loc='upper right')
-    else:
-        ax[3].legend(loc='upper right')
-    
-    plt.grid(True)
+    # Plot STATS panel (ax[2]) - only if requested
+    if show_stats:
+        im4 = ax[2].semilogy(x_axis_values,T[ii], 'k.', label='T')
+        ax[2].set_xlim(x_axis_values.min(), x_axis_values.max())
+        ax[2].set_ylim(0.99, 200)
+        ax[2].set_ylabel('Temperature', color='k')
+        ax[2].tick_params(axis='y', labelcolor='k')
+
+        if LOGL_mean is not None:
+            # Create second y-axis for LOGL_mean
+            ax2_twin = ax[2].twinx()
+            ax2_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
+            # Add dotted red line at y=1
+            ax2_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
+            ax2_twin.set_ylim(0, 5)
+            ax2_twin.set_ylabel('LOGL_mean', color='r')
+            ax2_twin.tick_params(axis='y', labelcolor='r')
+
+            # Combine legends from both axes
+            lines1, labels1 = ax[2].get_legend_handles_labels()
+            lines2, labels2 = ax2_twin.get_legend_handles_labels()
+            ax[2].legend(lines1 + lines2, labels1 + labels2, loc='upper right')
+        else:
+            ax[2].legend(loc='upper right')
+
+        plt.grid(True)
+
     plt.tight_layout()
 
-    # Create an invisible colorbar for the last subplot
-    cbar4 = fig.colorbar(im3, ax=ax[3])
-    cbar4.solids.set(alpha=0)
-    cbar4.outline.set_visible(False)
-    cbar4.ax.set_yticks([])  # Hide the colorbar ticks
-    cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
+    # Create an invisible colorbar for the last subplot to maintain alignment
+    if show_stats and show_entropy:
+        try:
+            cbar4 = fig.colorbar(im2, ax=ax[2])
+            cbar4.solids.set(alpha=0)
+            cbar4.outline.set_visible(False)
+            cbar4.ax.set_yticks([])  # Hide the colorbar ticks
+            cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
+        except:
+            pass  # If im2 doesn't exist, skip colorbar
 
 
     # get filename without extension
     if kwargs['hardcopy']:
-        f_png = '%s__%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],ii[0],ii[-1],Mstr[1:],txt)
+        # Add panel information to filename if panels were specified
+        if panels is not None and panels != ['mode', 'entropy', 'stats']:
+            panel_str = '_panels_' + '-'.join(panels)
+        else:
+            panel_str = ''
+        f_png = '%s__%d_%d_profile_%s%s%s.png' % (os.path.splitext(f_post_h5)[0],ii[0],ii[-1],Mstr[1:],panel_str,txt)
         plt.savefig(f_png)
     plt.show()
 
     return
 
-def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='index', gap_threshold=None, **kwargs):
+def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis='index', gap_threshold=None, panels=None, **kwargs):
     """
     Create vertical profile plots for continuous model parameters.
 
@@ -1316,13 +1441,23 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'id').
     gap_threshold : float, optional
         Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, regions after the gaps become completely transparent to indicate missing data. If None, no gap transparency is applied (default is None).
+    panels : list of str or None, optional
+        Controls which panels to display. Each panel maintains consistent size regardless of which are shown.
+        Options:
+        - None (default): Show all panels ['value', 'std', 'stats']
+        - ['value']: Only median/mean resistivity
+        - ['std']: Only standard deviation
+        - ['stats']: Only temperature and log-likelihood
+        - Any combination of the above (e.g., ['value', 'stats'])
+        Accepted panel names: 'value', 'median', 'mean', 'std', 'uncertainty', 'stats', 'temperature', 't'
     **kwargs : dict
         Additional keyword arguments:
         - hardcopy : bool, save plot as PNG file (default False)
         - cmap : str or colormap, color scheme for plotting (default 'jet')
         - key : {'Mean', 'Median'}, statistic to plot (default 'Median')
-        - alpha : float, transparency scaling factor relative to standard deviation.
-          alpha=0 means no transparency, alpha=0.8 means full transparency when std>0.8
+        - alpha : float, transparency scaling factor based on normalized standard deviation (0.0 to 1.0).
+          alpha=0.0 means no transparency (default), alpha=1.0 means full uncertainty-based
+          transparency where high-uncertainty regions become transparent
         - txt : str, additional text for filename
         - showInfo : int, level of debug output (0=none, >0=verbose)
         - clim : list, color scale limits [min, max]
@@ -1334,32 +1469,70 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
 
     Notes
     -----
-    The plot layout adapts based on data dimensionality:
-    
+    The plot structure uses 3 subplots:
+    - ax[0]: Mean or median values (for multi-layer) or line plot with confidence bounds (for single parameter)
+    - ax[1]: Standard deviation (for multi-layer, hidden for single parameter)
+    - ax[2]: Temperature and evidence curves
+
     For multi-layer models (nm > 1):
-    - Panel 1: Mean or median values with logarithmic color scale
-    - Panel 2: Standard deviation with grayscale colormap  
-    - Panel 3: Temperature and evidence curves
-    
-    For single-parameter models (nm = 1):
-    - Panel 1: Line plot with mean ± 2*std confidence bounds
+    - Panel 0: Mean or median values with logarithmic color scale
+    - Panel 1: Standard deviation with grayscale colormap
     - Panel 2: Temperature and evidence curves
-    
+
+    For single-parameter models (nm = 1):
+    - Panel 0: Line plot with mean ± 2*std confidence bounds
+    - Panel 1: Hidden
+    - Panel 2: Temperature and evidence curves
+
     Transparency can be applied based on uncertainty levels when alpha > 0.
     Depth coordinates are computed relative to surface elevation.
+
+    Examples
+    --------
+    Show only median resistivity profile:
+
+    >>> plot_profile_continuous(f_post_h5, panels=['value'])
+
+    Show median with full uncertainty transparency (alpha=1.0):
+
+    >>> plot_profile_continuous(f_post_h5, panels=['value'], alpha=1.0)
+
+    Show median with partial transparency (alpha=0.5):
+
+    >>> plot_profile_continuous(f_post_h5, panels=['value'], alpha=0.5)
+
+    Show median and stats (no std):
+
+    >>> plot_profile_continuous(f_post_h5, panels=['value', 'stats'])
+
+    Show only standard deviation:
+
+    >>> plot_profile_continuous(f_post_h5, panels=['std'])
     """
     from matplotlib.colors import LogNorm
 
     cmap_def, clim_def = get_colormap_and_limits('resistivity')
-    
+
     kwargs.setdefault('hardcopy', False)
     kwargs.setdefault('cmap', None)
     kwargs.setdefault('clim', None)
-    
+
     alpha = kwargs.get('alpha',0.0)
     key = kwargs.get('key','Median')
     txt = kwargs.get('txt','')
     showInfo = kwargs.get('showInfo', 0)
+
+    # Default to showing all panels
+    if panels is None:
+        panels = ['value', 'std', 'stats']
+
+    # Normalize panel names to lowercase
+    panels = [p.lower() for p in panels]
+
+    # Determine which panels to show
+    show_value = any(p in panels for p in ['value', 'median', 'mean'])
+    show_std = any(p in panels for p in ['std', 'uncertainty'])
+    show_stats = any(p in panels for p in ['stats', 't', 'temperature'])
     
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -1425,16 +1598,24 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         except:
             LOGL_mean=None
 
-    # Compute alpha matrix 'A' such that 
-    # any values with Std<alpha are fully solid
-    # any values with Std>2*alpha are transparent
-    # linear interpolation between 0 and 1 elsewhere
-    A = np.zeros(Std.shape)+alpha
-    if alpha>0:
-        A = (Std-alpha)/(2*alpha)
-        A[A<0] = 0
-        A[A>1] = 1
-        A=1-A
+    # Compute alpha matrix 'A' for transparency based on uncertainty
+    # Normalize Std to [0, 1] range based on its own min/max values
+    # Then apply alpha scaling: alpha * normalized_Std
+    A = np.ones(Std.shape)  # Start with fully opaque (alpha=1)
+    if alpha > 0:
+        # Normalize Std to [0, 1] based on min/max of Std values
+        Std_min = np.nanmin(Std)
+        Std_max = np.nanmax(Std)
+        if Std_max > Std_min:
+            Std_normalized = (Std - Std_min) / (Std_max - Std_min)
+        else:
+            Std_normalized = np.zeros_like(Std)
+
+        # Apply alpha scaling: higher uncertainty = more transparent
+        # A = 1 - alpha * Std_normalized
+        # When Std=Std_min (low uncertainty): A=1 (opaque)
+        # When Std=Std_max (high uncertainty): A=1-alpha (transparent)
+        A = 1 - alpha * Std_normalized
     
     nm = Mean.shape[0]
     if nm<=1:
@@ -1620,14 +1801,19 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
                                 if showInfo > 1:  # More verbose debugging
                                     print(f"  Made column {col} transparent (cell range: {cell_x_start:.1f}-{cell_x_end:.1f})")
 
-    # Create a figure with 3 subplots sharing the same Xaxis!
-    fig, ax = plt.subplots(4,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 3, 1]})
-    
-    # Set ax[0] to be invisible
-    ax[0].axis('off')
+    # Create a figure with 3 subplots (always create all to maintain consistent sizing)
+    fig, ax = plt.subplots(3,1,figsize=(20,10), gridspec_kw={'height_ratios': [3, 3, 1]})
 
-    if (nm>1)&(key=='Mean'):
-        isp=1
+    # Hide panels that are not requested
+    if not show_value:
+        ax[0].axis('off')
+    if not show_std:
+        ax[1].axis('off')
+    if not show_stats:
+        ax[2].axis('off')
+
+    if show_value and (nm>1) and (key=='Mean'):
+        isp=0
         # MEAN
         mean_data = Mean[:,ii]
         if gap_alpha is not None:
@@ -1643,10 +1829,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         if alpha>0:
             im1.set_alpha(A[:,ii])
         ax[isp].set_title('Mean %s' % name)
+        ax[isp].set_ylabel('Elevation (m)')
         fig.colorbar(im1, ax=ax[isp], label='%s' % name)
-    
-    if (nm>1)&(key=='Median'):
-        isp=1
+
+    if show_value and (nm>1) and (key=='Median'):
+        isp=0
         # MEDIAN
         median_data = Median[:,ii]
         if gap_alpha is not None:
@@ -1662,10 +1849,11 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         if alpha>0:
             im2.set_alpha(A[:,ii])
         ax[isp].set_title('Median %s' % name)
-        fig.colorbar(im2, ax=ax[isp], label='%s' % name) 
+        ax[isp].set_ylabel('Elevation (m)')
+        fig.colorbar(im2, ax=ax[isp], label='%s' % name)
 
-    if nm>1:
-        isp=2
+    if show_std and nm>1:
+        isp=1
         # STD
         import matplotlib
         std_data = Std[:,ii]
@@ -1678,70 +1866,84 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
                     shading='auto')
         im3.set_clim(0,1)
         ax[isp].set_title('Std %s' % name)
+        ax[isp].set_ylabel('Elevation (m)')
         fig.colorbar(im3, ax=ax[isp], label='Standard deviation (Ohm.m)')
-    else:
-        isp=2
-        
-        im3 = ax[2].plot(id[ii],Mean[:,ii].T, 'k', label='Mean')
-        ax[2].plot(id[ii],Mean[:,ii].T+2*Std[:,ii].T, 'k:', label='P97.5')
-        ax[2].plot(id[ii],Mean[:,ii].T-2*Std[:,ii].T, 'k:', label='P2.5')
 
-        ax[2].plot(id[ii],Median[:,ii].T, 'r', label='Median')
+    # Handle single parameter case (nm <= 1)
+    if show_value and nm<=1:
+        isp=1
+
+        im3 = ax[1].plot(id[ii],Mean[:,ii].T, 'k', label='Mean')
+        ax[1].plot(id[ii],Mean[:,ii].T+2*Std[:,ii].T, 'k:', label='P97.5')
+        ax[1].plot(id[ii],Mean[:,ii].T-2*Std[:,ii].T, 'k:', label='P2.5')
+
+        ax[1].plot(id[ii],Median[:,ii].T, 'r', label='Median')
         # add legend
-        ax[2].legend(loc='upper right')
+        ax[1].legend(loc='upper right')
         # add grd on
-        ax[2].grid(True)
-        # hide ax[0]
+        ax[1].grid(True)
 
-        # set axis on ax[3] to be the same as on ax[4]
-        ax[2].set_xlim(ii.min(),ii.max())
-        ax[2].set_title(name)
+        # set axis limits
+        ax[1].set_xlim(ii.min(),ii.max())
+        ax[1].set_title(name)
+        ax[1].set_ylabel(name)
         ax[0].axis('off')
-        ax[1].axis('off')
-        
-    ## T and V
-    #ax[0].set_xticks([])
-    ax[1].set_xticks([])
-    ax[2].set_xticks([])
-    
-    im4 = ax[3].semilogy(x_axis_values,T[ii], 'k.', label='T')
-    ax[3].set_xlim(x_axis_values.min(), x_axis_values.max())
-    ax[3].set_ylim(0.99, 200)
-    ax[3].set_ylabel('Temperature', color='k')
-    ax[3].tick_params(axis='y', labelcolor='k')
-    
-    if LOGL_mean is not None:
-        # Create second y-axis for LOGL_mean
-        ax3_twin = ax[3].twinx()
-        ax3_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
-        # Add dotted red line at y=1
-        ax3_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
-        ax3_twin.set_ylim(0, 5)
-        ax3_twin.set_ylabel('LOGL_mean', color='r')
-        ax3_twin.tick_params(axis='y', labelcolor='r')
-        
-        # Combine legends from both axes
-        lines1, labels1 = ax[3].get_legend_handles_labels()
-        lines2, labels2 = ax3_twin.get_legend_handles_labels()
-        ax[3].legend(lines1 + lines2, labels1 + labels2, loc='upper right')
-    else:
-        ax[3].legend(loc='upper right')
-    
-    plt.grid(True)
+
+    ## Remove x-tick labels from non-bottom panels
+    if show_value:
+        ax[0].set_xticks([])
+    if show_std:
+        ax[1].set_xticks([])
+
+    # Plot STATS panel (ax[2]) - only if requested
+    if show_stats:
+        im4 = ax[2].semilogy(x_axis_values,T[ii], 'k.', label='T')
+        ax[2].set_xlim(x_axis_values.min(), x_axis_values.max())
+        ax[2].set_ylim(0.99, 200)
+        ax[2].set_ylabel('Temperature', color='k')
+        ax[2].tick_params(axis='y', labelcolor='k')
+
+        if LOGL_mean is not None:
+            # Create second y-axis for LOGL_mean
+            ax2_twin = ax[2].twinx()
+            ax2_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
+            # Add dotted red line at y=1
+            ax2_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
+            ax2_twin.set_ylim(0, 5)
+            ax2_twin.set_ylabel('LOGL_mean', color='r')
+            ax2_twin.tick_params(axis='y', labelcolor='r')
+
+            # Combine legends from both axes
+            lines1, labels1 = ax[2].get_legend_handles_labels()
+            lines2, labels2 = ax2_twin.get_legend_handles_labels()
+            ax[2].legend(lines1 + lines2, labels1 + labels2, loc='upper right')
+        else:
+            ax[2].legend(loc='upper right')
+
+        plt.grid(True)
+
     plt.tight_layout()
 
-    if nm>1:
-        # Create an invisible colorbar for the last subplot
-        cbar4 = fig.colorbar(im3, ax=ax[3])
-        cbar4.solids.set(alpha=0)
-        cbar4.outline.set_visible(False)
-        cbar4.ax.set_yticks([])  # Hide the colorbar ticks
-        cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
+    if show_stats and nm>1:
+        # Create an invisible colorbar for the last subplot to maintain alignment
+        try:
+            cbar4 = fig.colorbar(im3, ax=ax[2])
+            cbar4.solids.set(alpha=0)
+            cbar4.outline.set_visible(False)
+            cbar4.ax.set_yticks([])  # Hide the colorbar ticks
+            cbar4.ax.set_yticklabels([])  # Hide the colorbar ticks labels
+        except:
+            pass  # If im3 doesn't exist (std panel not shown), skip colorbar
 
 
     # get filename without extension
     if kwargs['hardcopy']:
-        f_png = '%s__%d_%d_profile_%s%s.png' % (os.path.splitext(f_post_h5)[0],ii[0],ii[-1],Mstr[1:],txt)
+        # Add panel information to filename if panels were specified
+        if panels is not None and panels != ['value', 'std', 'stats']:
+            panel_str = '_panels_' + '-'.join(panels)
+        else:
+            panel_str = ''
+        f_png = '%s__%d_%d_profile_%s%s%s.png' % (os.path.splitext(f_post_h5)[0],ii[0],ii[-1],Mstr[1:],panel_str,txt)
         plt.savefig(f_png)
     plt.show()
 
@@ -2247,6 +2449,8 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
         - showInfo : int, level of debug output (0=none, >0=verbose)
         - is_log : bool, use linear instead of logarithmic y-axis (default False)
         - hardcopy : bool, save plot as PNG file (default False)
+        - title : str, custom title for the plot. If not provided, uses default format
+          'Data set {Dkey}, Observation # {i_plot+1}'
 
     Returns
     -------
@@ -2376,56 +2580,81 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
     
         #i_plot=[]
         fig, ax = plt.subplots(1,1,figsize=(7,7))
-        if is_log:
-            if showInfo>1:
-                print('plot_data_prior_post: Plotting log10(d_prior)')
-                print('This is not implemented yet')
-            ax.plot(d_prior.T,'-',linewidth=.2, label='d_prior', color=cols[0])
-            ax.plot(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
-            ax.plot(d_obs[i_plot,:],'.',markersize=6, label='d_obs', color=cols[2])
-            try:
-                ax.plot(d_obs[i_plot,:]-2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
-                ax.plot(d_obs[i_plot,:]+2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
-            except:
-                pass
-            plt.ylabel('log10(dBDt)')
-        else:
-            ax.semilogy(d_prior.T,'-',linewidth=.2, label='d_prior', color=cols[0])
-
-            if i_plot>-1:            
-                ax.semilogy(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
-            
-                ax.semilogy(d_obs[i_plot,:],'.',markersize=6, label='d_obs', color=cols[2])
+        if ndata>1:
+            if is_log:
+                if showInfo>1:
+                    print('plot_data_prior_post: Plotting log10(d_prior)')
+                    print('This is not implemented yet')
+                ax.plot(d_prior.T,'-',linewidth=.2, label='d_prior', color=cols[0])
+                ax.plot(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
+                ax.plot(d_obs[i_plot,:],'.',markersize=6, label='d_obs', color=cols[2])
                 try:
-                    ax.semilogy(d_obs[i_plot,:]-2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
-                    ax.semilogy(d_obs[i_plot,:]+2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
+                    ax.plot(d_obs[i_plot,:]-2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
+                    ax.plot(d_obs[i_plot,:]+2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
                 except:
                     pass
-                #ax.text(0.1, 0.1, 'Data set %s, Observation # %d' % (Dkey, i_plot+1), transform=ax.transAxes)
-            else:   
-                # select nr random unqiue index of d_obs
-                i_d = np.random.choice(d_obs.shape[0], nr, replace=False)
-                if is_log:
-                    ax.plot(d_obs[i_d,:].T,'-',linewidth=.1, label='d_obs', color=cols[2])
-                    ax.plot(d_obs[i_d,:].T,'*',linewidth=.1, label='d_obs', color=cols[2])
-                else:
-                    ax.semilogy(d_obs[i_d,:].T,'-',linewidth=1, label='d_obs', color=cols[2])
-                    ax.semilogy(d_obs[i_d,:].T,'*',linewidth=1, label='d_obs', color=cols[2])
+                plt.ylabel('log10(dBDt)')
+            else:
+                ax.semilogy(d_prior.T,'-',linewidth=.2, label='d_prior', color=cols[0])
 
-            if ylim is not None:            
-                plt.ylim(ylim)
-            plt.ylabel('dBDt')
+                if i_plot>-1:            
+                    ax.semilogy(d_post.T,'-',linewidth=.2, label='d_prior', color=cols[1])
+                
+                    ax.semilogy(d_obs[i_plot,:],'.',markersize=6, label='d_obs', color=cols[2])
+                    try:
+                        ax.semilogy(d_obs[i_plot,:]-2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
+                        ax.semilogy(d_obs[i_plot,:]+2*d_std[i_plot,:],'-',linewidth=1, label='d_obs', color=cols[2])
+                    except:
+                        pass
+                    #ax.text(0.1, 0.1, 'Data set %s, Observation # %d' % (Dkey, i_plot+1), transform=ax.transAxes)
+                else:   
+                    # select nr random unqiue index of d_obs
+                    i_d = np.random.choice(d_obs.shape[0], nr, replace=False)
+                    if is_log:
+                        ax.plot(d_obs[i_d,:].T,'-',linewidth=.1, label='d_obs', color=cols[2])
+                        ax.plot(d_obs[i_d,:].T,'*',linewidth=.1, label='d_obs', color=cols[2])
+                    else:
+                        ax.semilogy(d_obs[i_d,:].T,'-',linewidth=1, label='d_obs', color=cols[2])
+                        ax.semilogy(d_obs[i_d,:].T,'*',linewidth=1, label='d_obs', color=cols[2])
 
-        if i_plot>-1:            
+                if ylim is not None:            
+                    plt.ylim(ylim)
+                plt.ylabel('dBDt')
+
+                plt.xlabel('Data #')
+                plt.grid()
+
+
+        else:   
+            # nadat=1
+            plt.hist(d_prior.flatten(), bins=50, alpha=0.5, color=cols[0], label='d_prior', density=True)
+            plt.hist(d_post.flatten(), bins=50, alpha=0.5, color=cols[1], label='d_post', density=True)
+            # plot a vertical solid line at x=d_obs[i_plot], and two dashed lines at d_obs[i_plot]-2*d_std[i_plot] and d_obs[i_plot]+2*d_std[i_plot]
+            plt.plot([d_obs[i_plot],d_obs[i_plot]], [0, plt.ylim()[1]], 'r-', label='d_obs', linewidth=2)
+            
+            plt.xlabel('Value')
+            plt.ylabel('PDF')
+            plt.legend()
+
+            plt.grid()
+        
+
+        if i_plot>-1:
+            
             ax.text(0.1, 0.1, 'T = %4.2f.' % (f_post['/T'][i_plot]), transform=ax.transAxes)
             ax.text(0.1, 0.2, 'log(EV) = %4.2f.' % (f_post['/EV'][i_plot]), transform=ax.transAxes)
-            if LOGL_mean is not None:
-                ax.text(0.1, 0.3, 'LOGL_mean = %4.2f.' % (LOGL_mean[i_plot]), transform=ax.transAxes)
-            plt.title('Data set %s, Observation # %d' % (Dkey, i_plot+1))
+            try:
+                if LOGL_mean is not None:
+                        ax.text(0.1, 0.3, 'LOGL_mean = %4.2f.' % (LOGL_mean[i_plot,0]), transform=ax.transAxes)
+            except:
+                pass
+            # Use custom title if provided, otherwise use default
+            if 'title' in kwargs:
+                plt.title(kwargs['title'])
+            else:
+                plt.title('Data set %s, Observation # %d' % (Dkey, i_plot+1))
 
 
-        plt.xlabel('Data #')
-        plt.grid()
         #plt.legend()
 
  
@@ -2574,7 +2803,7 @@ def find_points_along_line_segments(X, Y, Xl, Yl, ID=None, tolerance=None, metho
             closest_segments[selected_indices])
 
 
-def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
+def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, use_log=None, showInfo=0, **kwargs):
     """
     Visualize prior model parameter distributions and sample realizations.
 
@@ -2592,6 +2821,17 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
     nr : int, optional
         Maximum number of realizations to display in realization plots.
         Actual number used is minimum of nr and available realizations (default is 100).
+    use_log : bool or None, optional
+        Whether to use log10 scale for both histogram and realizations plot. If None
+        (default), automatically determines scale based on data range:
+        - Discrete parameters: always linear
+        - Continuous parameters: log if data spans > 2 orders of magnitude, else linear
+        Set to True to force log10 scale, or False to force linear scale.
+        For continuous parameters, this controls both the histogram bins (log10 values)
+        and the color normalization in the realizations plot (LogNorm vs linear).
+    showInfo : int, optional
+        Verbosity level for diagnostic output. If > 0, prints data range and
+        auto-selected scale choice (default is 0).
     **kwargs : dict
         Additional keyword arguments:
         - hardcopy : bool, save plots as PNG files (default True)
@@ -2603,29 +2843,54 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
 
     Notes
     -----
-    For continuous parameters, creates a 2x2 subplot layout:
-    - Top left: Linear histogram of parameter values
-    - Top right: Log10 histogram with scientific notation tick labels
-    - Bottom: Realizations plot showing parameter variation
-    
+    For continuous parameters, creates a 1x2 subplot layout with custom width ratios:
+    - Left (narrow): Histogram (log10 or linear) with horizontal orientation
+    - Right (wide, 2x wider): Realizations plot with corresponding normalization
+      (LogNorm for log scale, linear for linear scale)
+
     For discrete parameters, creates similar layout but with:
-    - Class-based histograms with appropriate colormaps
-    - Categorical realizations with class names and colors
-    
+    - Left (narrow): Class distribution histogram with class names (always linear)
+    - Right (wide): Categorical realizations with class names and colors (always linear)
+
+    The `use_log` parameter controls scaling for BOTH subplots:
+    - Histogram: log10(values) vs linear values on y-axis
+    - Realizations: LogNorm vs linear colormap normalization
+
+    **Automatic Scale Selection (when use_log=None):**
+    For continuous parameters, the function automatically chooses between log and
+    linear scale based on the data range. Log scale is used if the data spans more
+    than 2 orders of magnitude (e.g., 0.1 to 100 or larger), otherwise linear scale
+    is used. This ensures appropriate visualization for both wide-range parameters
+    (like resistivity) and narrow-range parameters (like thickness in meters).
+
     Color limits and colormaps are automatically retrieved from file attributes.
     Multi-dimensional parameters show spatial patterns, while single parameters
     show temporal variation.
+
+    The layout uses matplotlib GridSpec with width_ratios=[1, 2] to make the
+    realizations subplot wider than the histogram subplot.
+
+    Examples
+    --------
+    >>> # Plot with default (log10 for continuous, linear for discrete)
+    >>> plot_prior_stats('prior.h5', Mkey='M1')
+    >>>
+    >>> # Force linear scale for continuous parameter
+    >>> plot_prior_stats('prior.h5', Mkey='M1', use_log=False)
+    >>>
+    >>> # Force log scale
+    >>> plot_prior_stats('prior.h5', Mkey='M1', use_log=True)
     """
     from matplotlib.colors import LogNorm
     
     f_prior = h5py.File(f_prior_h5,'r')
 
-    # If Mkey is not set, plot for all M* keys in prior and return 
+    # If Mkey is not set, plot for all M* keys in prior and return
     if len(Mkey)==0:
         for key in f_prior.keys():
             if (key[0]=='M'):
-                plot_prior_stats(f_prior_h5, Mkey=key, nr=nr, **kwargs)
-        
+                plot_prior_stats(f_prior_h5, Mkey=key, nr=nr, use_log=use_log, showInfo=showInfo, **kwargs)
+
         f_prior.close()
         return  
 
@@ -2640,6 +2905,9 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
     # check if name is in the attributes of key Mkey
     if 'name' in f_prior['/%s'%Mkey].attrs.keys():
         name = '%s:%s' %  (Mkey[1::],f_prior['/%s'%Mkey].attrs['name'][:])
+        name = '%s' %  (f_prior['/%s'%Mkey].attrs['name'][:])
+
+
         #print(name)
     else:
         name = Mkey
@@ -2661,70 +2929,107 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
     N, Nm = M.shape
     clim,cmap = h5_get_clim_cmap(f_prior_h5, Mstr=Mkey)
 
-    is_discrete = f_prior['/%s'%Mkey].attrs['is_discrete']    
-    
+    is_discrete = f_prior['/%s'%Mkey].attrs['is_discrete']
+
+    # Determine whether to use log scale
+    if use_log is None:
+        # Automatic selection based on data characteristics
+        if is_discrete:
+            # Always use linear for discrete parameters
+            use_log_scale = False
+        else:
+            # For continuous parameters, check if data spans many orders of magnitude
+            M_positive = M[M > 0]  # Only consider positive values
+            if len(M_positive) > 0:
+                data_min = np.min(M_positive)
+                data_max = np.max(M_positive)
+                # Use log if data spans more than 2 orders of magnitude
+                orders_of_magnitude = np.log10(data_max / data_min)
+                use_log_scale = orders_of_magnitude > 2.0
+                if showInfo > 0:
+                    print(f'plot_prior_stats: Data range: {data_min:.2e} to {data_max:.2e} ({orders_of_magnitude:.1f} orders of magnitude)')
+                    print(f'plot_prior_stats: Auto-selected {"log" if use_log_scale else "linear"} scale')
+            else:
+                # No positive values, use linear
+                use_log_scale = False
+    else:
+        # User explicitly set use_log
+        use_log_scale = use_log
+
     if not is_discrete:
         # CONTINUOUS
-        
-        # PLOT Mkey histrogram  and log10 histogram
-        fig, ax = plt.subplots(2,2,figsize=(10,10))
-        m0 = ax[0,0].hist(M.flatten(),101)
-        ax[0,0].set_xlabel(name)
-        ax[0,0].set_ylabel('Distribution')
 
-        # Handle log(0) by filtering out zeros and negative values
-        M_log = M.flatten()
-        M_log = M_log[M_log > 0]  # Remove zeros and negative values
-        if len(M_log) > 0:
-            m1 = ax[0,1].hist(np.log10(M_log), 101)
+        # Create figure with GridSpec for custom layout (left narrow, right wide)
+        fig = plt.figure(figsize=(14, 6))
+        import matplotlib.gridspec as gridspec
+        gs = gridspec.GridSpec(1, 2, width_ratios=[1, 2], figure=fig)
+
+        # Left subplot: Histogram (log or linear)
+        ax_left = fig.add_subplot(gs[0])
+
+        if use_log_scale:
+            # Log10 histogram
+            M_hist = M.flatten()
+            M_hist = M_hist[M_hist > 0]  # Remove zeros and negative values
+            if len(M_hist) > 0:
+                m1 = ax_left.hist(np.log10(M_hist), 101, orientation='horizontal')
+            else:
+                # If no positive values, create empty histogram
+                m1 = ax_left.hist([], 101, orientation='horizontal')
+
+            ax_left.set_ylabel('log10(%s)' % name)
+
+            # Set ytick labels as 10^x where x is the ytick value
+            ax_left.set_yticks(ax_left.get_yticks())  # Ensure ticks are set
+            ticks = ax_left.get_yticks()
+            ax_left.set_yticks(ticks)
+            ax_left.set_yticklabels(['$10^{%3.1f}$'%i for i in ticks])
         else:
-            # If no positive values, create empty histogram
-            m1 = ax[0,1].hist([], 101)
-        ax[0,1].set_xlabel('log10(%s)' % name)
+            # Linear histogram
+            M_hist = M.flatten()
+            m1 = ax_left.hist(M_hist, 101, orientation='horizontal')
+            ax_left.set_ylabel(name)
 
-        # set xtcik labels as 10^x where x i the xtick valye
-        ax[0,1].set_xticks(ax[0,1].get_xticks())  # Ensure ticks are set
-        ticks = ax[0,1].get_xticks()
-        ax[0,1].set_xticks(ticks)
-        ax[0,1].set_xticklabels(['$10^{%3.1f}$'%i for i in ticks])
-        ax[0,1].set_ylabel('Distribution')
+        ax_left.set_xlabel('Counts')
+        ax_left.grid()
 
-        ax[0, 0].grid()
-        ax[0, 1].grid()
-        ax[1, 0].axis('off')    
-        ax[1, 1].axis('off')
-        
-        # Plot actual realizatrions
-        ax[1, 0] = plt.subplot2grid((2, 2), (1, 0), colspan=2)
+        # Right subplot: Realizations (wider)
+        ax_right = fig.add_subplot(gs[1])
+
         X,Y = np.meshgrid(np.arange(1,nr+1),z)
-        ax[1,0].invert_yaxis()
+        ax_right.invert_yaxis()
         if Nm>1:
-            m2 = ax[1,0].pcolor(X,Y,M[0:nr,:].T, 
-                            cmap=cmap, 
-                            shading='auto',
-                            norm=LogNorm())
+            # Apply log or linear normalization based on use_log_scale
+            if use_log_scale:
+                m2 = ax_right.pcolor(X,Y,M[0:nr,:].T,
+                                cmap=cmap,
+                                shading='auto',
+                                norm=LogNorm())
+            else:
+                m2 = ax_right.pcolor(X,Y,M[0:nr,:].T,
+                                cmap=cmap,
+                                shading='auto')
             # set clim to clim
             m2.set_clim(clim[0],clim[1])
-            #m2.set_clim(clim[0]-.5,clim[1]+.5)      
-            fig.colorbar(m2, ax=ax[1,0], label=Mkey[1::])
+            fig.colorbar(m2, ax=ax_right, label=Mkey[1::])
         else:
-            m2 = ax[1,0].plot(np.arange(1,nr+1),M[0:nr,:].flatten()) 
-            ax[1,0].set_xlim(1,nr)
+            m2 = ax_right.plot(np.arange(1,nr+1),M[0:nr,:].flatten())
+            ax_right.set_xlim(1,nr)
 
-        ax[1,0].set_xlabel('Realization #')
-        ax[1,0].set_ylabel(name)
-        
-        tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name) 
+        ax_right.set_xlabel('Realization #')
+        ax_right.set_ylabel(name)
+
+        tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name)
         plt.suptitle(tit)
 
     else:
         # DISCRETE
-        
+
         # get attribute class_name if it exist
-        
+
         if 'class_id' in f_prior[Mkey].attrs.keys():
             class_id = f_prior[Mkey].attrs['class_id'][:].flatten()
-        else:   
+        else:
             print('No class_id found')
         if 'class_name' in f_prior[Mkey].attrs.keys():
             class_name = f_prior[Mkey].attrs['class_name'][:].flatten()
@@ -2732,74 +3037,46 @@ def plot_prior_stats(f_prior_h5, Mkey=[], nr=100, **kwargs):
             class_name = []
         n_class = len(class_name)
 
-        
-        # PLOT Mkey histrogram  and log10 histogram
-        fig, ax = plt.subplots(2,2,figsize=(10,10))
+        # Create figure with GridSpec for custom layout (left narrow, right wide)
+        fig = plt.figure(figsize=(14, 6))
+        import matplotlib.gridspec as gridspec
+        gs = gridspec.GridSpec(1, 2, width_ratios=[1, 3], figure=fig)
 
-        m0 = ax[0,0].hist(M.flatten(),101)
-        ax[0,0].set_xlabel(name)
-        ax[0,0].set_ylabel('Distribution')
-        
-        m1 = ax[0,1].hist(np.log10(M.flatten()),101)
-        ax[0,1].set_xlabel(name)
+        # Left subplot: Histogram (for discrete, we can show class distribution)
+        ax_left = fig.add_subplot(gs[0])
 
-        # set xtcik labels as 10^x where x i the xtick valye
-        ax[0,1].set_xticks(ax[0,1].get_xticks())  # Ensure ticks are set
-        ax[0,1].set_xticklabels(['$10^{%3.1f}$'%i for i in ax[0,1].get_xticks()])
-        ax[0,1].set_ylabel('Distribution')
+        # Create histogram with class boundaries
+        m1 = ax_left.hist(M.flatten(), bins=np.arange(0.5, n_class+1.5, 1), orientation='horizontal')
+        ax_left.set_ylabel(name)
+        ax_left.set_xlabel('Counts')
+        ax_left.set_yticks(np.arange(n_class)+1)
+        ax_left.set_yticklabels(class_name)
+        ax_left.grid()
 
-        ax[0, 0].grid()
-        ax[0, 1].grid()
-        ax[1, 0].axis('off')    
-        ax[1, 1].axis('off')
-        
-       # Plot actual realizations
-        ax[1, 0] = plt.subplot2grid((2, 2), (1, 0), colspan=2)
+        # Right subplot: Realizations (wider)
+        ax_right = fig.add_subplot(gs[1])
+
         X,Y = np.meshgrid(np.arange(1,nr+1),z)
-        ax[1,0].invert_yaxis()
+        ax_right.invert_yaxis()
         if Nm>1:
-            m2 = ax[1,0].pcolor(X,Y,M[0:nr,:].T, 
-                            cmap=cmap, 
+            m2 = ax_right.pcolor(X,Y,M[0:nr,:].T,
+                            cmap=cmap,
                             shading='auto')
             # set clim to clim
-            m2.set_clim(clim[0],clim[1])
-
-
-            #m2.set_clim(clim[0],clim[1])
-            #m2.set_clim(clim[0]-.5,clim[1]+.5)      
-            #fig.colorbar(m2, ax=ax[1,0], label=Mkey[1::])
-            m2.set_clim(clim[0]-.5,clim[1]+.5)      
-            #fig.colorbar(m2, ax=ax[1,0], label=Mkey)
-            cbar1 = fig.colorbar(m2, ax=ax[1,0], label='label')
+            m2.set_clim(clim[0]-.5,clim[1]+.5)
+            cbar1 = fig.colorbar(m2, ax=ax_right, label='%s : %s' %(Mkey[1::],name))
             cbar1.set_ticks(np.arange(n_class)+1)
             cbar1.set_ticklabels(class_name)
             cbar1.ax.invert_yaxis()
-            
-
-            '''
-            im1 = ax[0].pcolormesh(ID[:,i1:i2], ZZ[:,i1:i2], Mode[:,i1:i2], 
-                cmap=cmap,            
-                shading='auto')
-            im1.set_clim(clim[0]-.5,clim[1]+.5)        
-
-            ax[0].set_title('Mode')
-            # /fix set the ticks to be 1 to n_class, and use class_name as tick labels
-            cbar1 = fig.colorbar(im1, ax=ax[0], label='label')
-            cbar1.set_ticks(np.arange(n_class)+1)
-            cbar1.set_ticklabels(class_name)
-            cbar1.ax.invert_yaxis()
-            '''
-
-
         else:
-            m2 = ax[1,0].plot(np.arange(1,101),M[0:nr,:].flatten()) 
-            ax[1,0].set_xlim(1,nr)
+            m2 = ax_right.plot(np.arange(1,nr+1),M[0:nr,:].flatten())
+            ax_right.set_xlim(1,nr)
 
-        ax[1,0].set_xlabel('Realization #')
-        ax[1,0].set_ylabel(name)
-        
-        tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name) 
-        plt.suptitle(tit)
+        ax_right.set_xlabel('Realization #')
+        ax_right.set_ylabel('Depth (m)')
+
+        tit = '%s - %s ' % (os.path.splitext(f_prior_h5)[0],name)
+        #plt.suptitle(tit)
 
     f_prior.close()
 

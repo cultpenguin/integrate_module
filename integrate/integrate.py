@@ -1527,7 +1527,7 @@ def prior_data_identity(f_prior_h5, id=0, im=1, N=0, doMakePriorCopy=False, **kw
 # %% PRIOR MODEL GENERATORS
 def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
                         NLAY_min=3, NLAY_max=6, NLAY_deg=6,
-                        RHO_dist='log-uniform', RHO_min=0.1, RHO_max=100, RHO_MEAN=100, RHO_std=80,
+                        RHO_dist='log-uniform', RHO_min=0.1, RHO_max=5000, RHO_mean=100, RHO_std=80,
                         N=100000, save_sparse=True, **kwargs):
     """
     Generate a prior model with layered structure.
@@ -1555,7 +1555,11 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
         Minimum resistivity value. Default is 0.1.
     RHO_max : float, optional
         Maximum resistivity value. Default is 100.
+<<<<<<< HEAD
     RHO_MEAN : float, optional
+=======
+    RHO_mean : float, optional
+>>>>>>> develop
         Mean resistivity value. Only applicable if RHO_dist is 'normal' or
         'lognormal'. Default is 100.
     RHO_std : float, optional
@@ -1636,15 +1640,19 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
 
         ### simulate the resistivity in each layer
         if RHO_dist=='log-normal':
-            rho_all=np.random.lognormal(mean=np.log(RHO_MEAN), sigma=np.log(RHO_std), size=NLAY[i])
-        elif RHO_dist=='normal':
-            rho_all=np.random.normal(loc=RHO_MEAN, scale=RHO_std, size=NLAY[i])
+            rho_all=np.random.lognormal(mean=np.log(RHO_mean), sigma=np.log(RHO_std), size=NLAY[i])
+        elif RHO_dist=='normal':            
+            rho_all=np.random.normal(loc=RHO_mean, scale=RHO_std, size=NLAY[i])
         elif RHO_dist=='log-uniform':
             rho_all=np.exp(np.random.uniform(np.log(RHO_min), np.log(RHO_max), NLAY[i]))
         elif RHO_dist=='uniform':
             rho_all=np.random.uniform(RHO_min, RHO_max, NLAY[i])
 
 
+        # Set all resistivity values less than RHO_min to RHO_min
+        rho_all[rho_all < RHO_min] = RHO_min
+        # Set all resistivity values greater than RHO_max to RHO_max
+        rho_all[rho_all > RHO_max] = RHO_max        
 
         rho = np.zeros(nz)+rho_all[0]
         for j in range(len(i_boundaries)):
@@ -2205,26 +2213,67 @@ def posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], usePrior=False, **
 
 # %% Synthetic data
 
+def _interpolate_resistivity(rho_values, nx):
+    """
+    Interpolate resistivity values along a profile.
+
+    Parameters
+    ----------
+    rho_values : array_like
+        Resistivity values at control points. Can be:
+        - Single value [v]: constant resistivity
+        - Two values [v1, v2]: linear from left to right
+        - Multiple values [v1, v2, ..., vN]: interpolated through all points
+    nx : int
+        Number of x positions to interpolate to.
+
+    Returns
+    -------
+    ndarray
+        Interpolated resistivity values of length nx.
+    """
+    rho_values = np.atleast_1d(rho_values)
+    n_control = len(rho_values)
+
+    if n_control == 1:
+        # Constant value
+        return np.full(nx, rho_values[0])
+    else:
+        # Interpolate through control points
+        control_indices = np.linspace(0, nx-1, n_control)
+        x_indices = np.arange(nx)
+        return np.interp(x_indices, control_indices, rho_values)
+
+
 def synthetic_case(case='Wedge', **kwargs):
     """
     Generate synthetic geological models for different cases.
-    
-    This function creates synthetic 2D geological models for testing and validation 
+
+    This function creates synthetic 2D geological models for testing and validation
     purposes. Supports 'Wedge' and '3Layer' model types with customizable parameters.
-    
+
     Parameters
     ----------
     case : str, optional
-        The type of synthetic case to generate. Options are 'Wedge' and '3Layer'. 
+        The type of synthetic case to generate. Options are 'Wedge' and '3Layer'.
         Default is 'Wedge'.
     **kwargs : dict
         Additional parameters for synthetic case generation.
-        
+
         Common Parameters
         -----------------
         showInfo : int, optional
             If greater than 0, print information about the generated case. Default is 0.
-        
+        rho_1 : list or array_like, optional
+            Resistivity values for layer 1 along the profile. If a single value [v],
+            resistivity is constant at v. If multiple values [v1, v2, ...], resistivity
+            varies from v1 (left) to v2 (middle) to vN (right) using interpolation.
+            Only used when rho_1, rho_2, and rho_3 are all provided.
+        rho_2 : list or array_like, optional
+            Resistivity values for layer 2 along the profile. Same format as rho_1.
+        rho_3 : list or array_like, optional
+            Resistivity values for layer 3 along the profile. Same format as rho_1.
+
         Parameters for 'Wedge' case
         ---------------------------
         x_max : int, optional
@@ -2239,9 +2288,10 @@ def synthetic_case(case='Wedge', **kwargs):
             Depth at which the wedge starts. Default is z_max/10.
         rho : list, optional
             Density values for different layers. Default is [100, 200, 120].
+            Overridden by rho_1, rho_2, rho_3 if all three are provided.
         wedge_angle : float, optional
             Angle of the wedge in degrees. Default is 1.
-        
+
         Parameters for '3Layer' case
         ----------------------------
         x_max : int, optional
@@ -2260,27 +2310,55 @@ def synthetic_case(case='Wedge', **kwargs):
             Thickness of the second layer. Default is z_max/2.
         rho1_1 : float, optional
             Density at the start of the first layer. Default is 120.
+            Overridden by rho_1 if provided.
         rho1_2 : float, optional
             Density at the end of the first layer. Default is 10.
+            Overridden by rho_1 if provided.
         rho2_1 : float, optional
             Density at the start of the second layer. Default is rho1_2.
+            Overridden by rho_2 if provided.
         rho2_2 : float, optional
             Density at the end of the second layer. Default is rho1_1.
+            Overridden by rho_2 if provided.
         rho3 : float, optional
             Density of the third layer. Default is 120.
+            Overridden by rho_3 if provided.
 
     Returns
     -------
-    tuple
-        A tuple containing (M, x, z) where M is the generated synthetic model, 
-        x is x-coordinates, z is z-coordinates.
+    M : ndarray
+        The generated synthetic resistivity model of shape (nx, nz).
+    x : ndarray
+        X-coordinates of the model.
+    z : ndarray
+        Z-coordinates (depth) of the model.
+    M_ref_lith : ndarray
+        Lithology/layer number for each pixel, same shape as M. Values are 1, 2, 3
+        corresponding to the layer number.
+
+    Examples
+    --------
+    >>> # Constant resistivity in each layer
+    >>> M, x, z, M_lith = ig.synthetic_case(case='3layer', rho_1=[10], rho_2=[80], rho_3=[10])
+    >>>
+    >>> # Linear variation from left to right
+    >>> M, x, z, M_lith = ig.synthetic_case(case='3layer', rho_1=[10, 80], rho_2=[80, 10], rho_3=[10, 10])
+    >>>
+    >>> # Three-point variation (left, middle, right)
+    >>> M, x, z, M_lith = ig.synthetic_case(case='3layer', rho_1=[10, 80, 10], rho_2=[50, 100, 50], rho_3=[10, 10, 10])
     """
     
     showInfo = kwargs.get('showInfo', 0)
 
+    # Check if rho_1, rho_2, rho_3 are all provided
+    rho_1 = kwargs.get('rho_1', None)
+    rho_2 = kwargs.get('rho_2', None)
+    rho_3 = kwargs.get('rho_3', None)
+    use_rho_arrays = (rho_1 is not None) and (rho_2 is not None) and (rho_3 is not None)
+
     if case.lower() == 'wedge':
-        # Create synthetic wedhge model
-        
+        # Create synthetic wedge model
+
         # variables
         x_max = kwargs.get('x_max', 1000)
         dx = kwargs.get('dx', 1000./x_max)
@@ -2291,7 +2369,7 @@ def synthetic_case(case='Wedge', **kwargs):
         wedge_angle = kwargs.get('wedge_angle', 1)
 
         if showInfo>0:
-            print('Creating synthetic %s case with wedge angle=%f' % (case,ẃedge_angle))
+            print('Creating synthetic %s case with wedge angle=%f' % (case,wedge_angle))
 
         z = np.arange(0,z_max,dz)
         x = np.arange(0,x_max,dx)
@@ -2299,19 +2377,45 @@ def synthetic_case(case='Wedge', **kwargs):
         nx = x.shape[0]
         nz = z.shape[0]
 
-        M = np.zeros((nx,nz))+rho[0]
-        # set M=rho[3] of all iz> (z==z1)
-        iz = np.where(z>=z1)[0]
-        M[:,iz] = rho[2]
-        for ix in range(nx):
-            wedge_angle_rad = np.deg2rad(wedge_angle)
-            z2 = z1 + x[ix]*np.tan(wedge_angle_rad)            
-            #find iz where  (z>=z1) and (z<=z2)
-            iz = np.where((z>=z1) & (z<=z2))[0]
-            #print(z[iz[0]])
-            M[ix,iz] = rho[1]
+        # Initialize M and M_ref_lith
+        M = np.zeros((nx,nz))
+        M_ref_lith = np.ones((nx,nz), dtype=int)  # Layer 1 by default
 
-        return M, x, z
+        if use_rho_arrays:
+            # Convert to numpy arrays
+            rho_1 = np.atleast_1d(rho_1)
+            rho_2 = np.atleast_1d(rho_2)
+            rho_3 = np.atleast_1d(rho_3)
+
+            # Interpolate resistivity values along the profile
+            rho1_interp = _interpolate_resistivity(rho_1, nx)
+            rho2_interp = _interpolate_resistivity(rho_2, nx)
+            rho3_interp = _interpolate_resistivity(rho_3, nx)
+        else:
+            # Use constant values from rho array
+            rho1_interp = np.full(nx, rho[0])
+            rho2_interp = np.full(nx, rho[1])
+            rho3_interp = np.full(nx, rho[2])
+
+        # Build the model
+        for ix in range(nx):
+            # Layer 1 (top layer)
+            M[ix,:] = rho1_interp[ix]
+            M_ref_lith[ix,:] = 1
+
+            # Layer 3 (bottom layer, below z1)
+            iz3 = np.where(z>=z1)[0]
+            M[ix,iz3] = rho3_interp[ix]
+            M_ref_lith[ix,iz3] = 3
+
+            # Layer 2 (wedge)
+            wedge_angle_rad = np.deg2rad(wedge_angle)
+            z2 = z1 + x[ix]*np.tan(wedge_angle_rad)
+            iz2 = np.where((z>=z1) & (z<=z2))[0]
+            M[ix,iz2] = rho2_interp[ix]
+            M_ref_lith[ix,iz2] = 2
+
+        return M, x, z, M_ref_lith
 
     elif case.lower() == '3layer':
         # Create synthetic 3 layer model
@@ -2324,16 +2428,15 @@ def synthetic_case(case='Wedge', **kwargs):
         dz = kwargs.get('dz', 1)
         z1 = kwargs.get('z1', z_max/3)
         z_thick = kwargs.get('z_thick', z_max/2)
-        
 
         rho1_1 = kwargs.get('rho1_1', 120)
         rho1_2 = kwargs.get('rho1_2', 10)
-        rho2_1 = kwargs.get('rho1_2', rho1_2)
+        rho2_1 = kwargs.get('rho2_1', rho1_2)
         rho2_2 = kwargs.get('rho2_2', rho1_1)
         rho3 = kwargs.get('rho3', 120)
 
         if showInfo>0:
-            print('Creating synthetic %s case with wedge angle=%f' % (case,ẃedge_angle))
+            print('Creating synthetic %s case' % case)
 
         z = np.arange(0,z_max,dz)
         x = np.arange(0,x_max,dx)
@@ -2341,18 +2444,58 @@ def synthetic_case(case='Wedge', **kwargs):
         nx = x.shape[0]
         nz = z.shape[0]
 
-        M = np.zeros((nx,nz))+rho3
-        iz1 = np.where(z<=z1)[0]
-        for ix in range(nx):
-            rho1 = rho1_1 + (rho1_2 - rho1_1) * x[ix]/x_max
-            rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
-            M[ix,iz1] = rho1
-            z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))            
-            rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
-            iz2 = np.where((z>=z1) & (z<=z2))[0]
-            M[ix,iz2] = rho2
+        # Initialize M and M_ref_lith
+        M = np.zeros((nx,nz))
+        M_ref_lith = np.zeros((nx,nz), dtype=int)
 
-        return M, x, z
+        if use_rho_arrays:
+            # Convert to numpy arrays
+            rho_1 = np.atleast_1d(rho_1)
+            rho_2 = np.atleast_1d(rho_2)
+            rho_3 = np.atleast_1d(rho_3)
+
+            # Interpolate resistivity values along the profile
+            rho1_interp = _interpolate_resistivity(rho_1, nx)
+            rho2_interp = _interpolate_resistivity(rho_2, nx)
+            rho3_interp = _interpolate_resistivity(rho_3, nx)
+
+            # Build model with variable resistivity
+            for ix in range(nx):
+                # Layer 3 (bottom layer) - default
+                M[ix,:] = rho3_interp[ix]
+                M_ref_lith[ix,:] = 3
+
+                # Layer 1 (top layer)
+                iz1 = np.where(z<=z1)[0]
+                M[ix,iz1] = rho1_interp[ix]
+                M_ref_lith[ix,iz1] = 1
+
+                # Layer 2 (middle layer with varying thickness)
+                z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))
+                iz2 = np.where((z>=z1) & (z<=z2))[0]
+                M[ix,iz2] = rho2_interp[ix]
+                M_ref_lith[ix,iz2] = 2
+        else:
+            # Use original linear variation from rho1_1 to rho1_2
+            for ix in range(nx):
+                # Layer 3 (bottom layer) - default
+                M[ix,:] = rho3
+                M_ref_lith[ix,:] = 3
+
+                # Layer 1 (top layer)
+                iz1 = np.where(z<=z1)[0]
+                rho1 = rho1_1 + (rho1_2 - rho1_1) * x[ix]/x_max
+                M[ix,iz1] = rho1
+                M_ref_lith[ix,iz1] = 1
+
+                # Layer 2 (middle layer with varying thickness)
+                z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))
+                rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
+                iz2 = np.where((z>=z1) & (z<=z2))[0]
+                M[ix,iz2] = rho2
+                M_ref_lith[ix,iz2] = 2
+
+        return M, x, z, M_ref_lith
 
 
 
@@ -3052,6 +3195,8 @@ def timing_plot(f_timing=''):
     N_arr = data['N_arr']
     Nproc_arr = data['Nproc_arr']
 
+    xlim_N = xlim_N = [np.min([800,np.min(N_arr)]),np.max([1.2e+6,np.max(N_arr)])]
+    xlim_Nproc = np.min([.95,np.min(Nproc_arr)]),np.max([34,np.max(Nproc_arr)])
     try:
         T_total = data['T_total']
     except:
@@ -3062,6 +3207,11 @@ def timing_plot(f_timing=''):
     except:
         nobs=11693
 
+
+    # ############################################
+    # TOTAL TIME
+    # ############################################
+
     # Plot
     # LSQ, Assumed time, in seconds, for least squares inversion of a single sounding
     t_lsq = 2.0
@@ -3070,7 +3220,6 @@ def timing_plot(f_timing=''):
 
     total_lsq = np.array([nobs*t_lsq, nobs*t_lsq/Nproc_arr[-1]])
     total_mcmc = np.array([nobs*t_mcmc, nobs*t_mcmc/Nproc_arr[-1]])
-
 
     # loglog(T_total.T)
     plt.figure(figsize=(6,6))    
@@ -3083,9 +3232,10 @@ def timing_plot(f_timing=''):
     plt.plot([Nproc_arr[0], Nproc_arr[-1]], total_mcmc, 'r--', label='MCMC')
     plt.legend(loc='upper right')
     plt.xticks(ticks=Nproc_arr, labels=[str(int(x)) for x in Nproc_arr])
-    plt.ylim(1,1e+8)
     plt.tight_layout()
-    plt.savefig('%s_total_sec' % file_out)
+    plt.ylim(1,1e+8)
+    plt.xlim(xlim_Nproc)
+    plt.savefig('%s_total_sec_CPU' % file_out)
     safe_show()
     plt.close()
 
@@ -3100,11 +3250,16 @@ def timing_plot(f_timing=''):
     plt.legend(loc='upper left')
     #plt.xticks(ticks=N_arr, labels=[str(int(x)) for x in Nproc_arr])
     plt.ylim(1,1e+8)
-    plt.savefig('%s_total_sec' % file_out)
+    #plt.xlim(np.min([1000,np.min(N_arr)]),np.max([1e+6,np.max(N_arr)]))
+    plt.xlim(xlim_N)
+    plt.savefig('%s_total_sec_N' % file_out)
     safe_show()
     plt.close()
 
-
+    # ############################################
+    # FORWARD MODELING
+    # ############################################
+    
     #### Plot timing results for forward modeling - GAAEM
     # Average timer per sounding 
     T_forward_sounding = T_forward/N_arr[:,np.newaxis]
@@ -3130,9 +3285,10 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     #plt.title('Forward calculation')
     plt.grid()
-    plt.legend(N_arr, loc='upper left')
-    plt.ylim(1e-1, 1e+4)
-    plt.xlim(Nproc_arr[0], Nproc_arr[-1])
+    plt.legend(N_arr, loc='upper right')
+    plt.ylim(1e-1, 1e+5)
+    #plt.xlim(Nproc_arr[0], Nproc_arr[-1])
+    plt.xlim(xlim_Nproc)
     plt.tight_layout()
     plt.savefig('%s_forward_sec_CPU' % file_out)
     safe_show()
@@ -3156,8 +3312,9 @@ def timing_plot(f_timing=''):
     #plt.title('Forward calculation')
     plt.grid()
     plt.legend(Nproc_arr, loc='upper left')
-    #plt.ylim(1e-1, 1e+4)
+    plt.ylim(1e+0, 1e+5)
     #plt.xlim(Nproc_arr[0], Nproc_arr[-1])
+    plt.xlim(xlim_N)
     plt.tight_layout()
     plt.savefig('%s_forward_sec_N' % file_out)
     safe_show()
@@ -3172,7 +3329,9 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     #plt.title('Forward calculation')
     plt.grid()
-    plt.legend(N_arr)
+    plt.legend(N_arr, loc='lower right')
+    plt.xlim(xlim_Nproc)    
+    plt.ylim(10,1000)
     plt.tight_layout()
     plt.savefig('%s_forward_sounding_per_sec' % file_out)
     safe_show()
@@ -3186,9 +3345,11 @@ def timing_plot(f_timing=''):
     #plt.title('Forward calculation')
     plt.grid()
     # Make yaxis start at 0
-    plt.ylim(0, 80)    
+    plt.ylim(0, 140)    
     plt.xlim(Nproc_arr[0], Nproc_arr[-1])
+    plt.xlim(xlim_Nproc)
     plt.legend(N_arr)
+    plt.tight_layout()
     plt.savefig('%s_forward_sounding_per_sec_per_cpu' % file_out)
     safe_show()
     plt.close()
@@ -3205,13 +3366,17 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(N_arr)
+    plt.xlim(xlim_Nproc)    
+    plt.ylim(0.5, 30)    
+    plt.tight_layout()
     plt.savefig('%s_forward_speedup' % file_out)
     safe_show()
     plt.close()
 
-
-
-    ### STATS FOR REJECTION SAMPLING
+    # ############################################
+    # REJECTION SAMPLING
+    # ############################################
+    
     # Average timer per sounding
     T_rejection_sounding = T_rejection/N_arr[:,np.newaxis]
     T_rejection_sounding_per_sec = N_arr[:,np.newaxis]/T_rejection
@@ -3248,6 +3413,7 @@ def timing_plot(f_timing=''):
     plt.legend(N_arr)
     plt.tight_layout()
     plt.ylim(1e-1, 2e+3)
+    plt.xlim(xlim_Nproc)
     plt.savefig('%s_rejection_sec_CPU' % file_out)
     safe_show()
     plt.close()
@@ -3270,8 +3436,9 @@ def timing_plot(f_timing=''):
     plt.xlabel('Lookup table size')
     plt.grid()
     plt.legend(Nproc_arr)
-    plt.tight_layout()
     plt.ylim(1e-1, 2e+3)
+    plt.xlim(xlim_N)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sec_N' % file_out)
     safe_show()
     plt.close()
@@ -3288,6 +3455,7 @@ def timing_plot(f_timing=''):
     plt.ylabel('Rejection sampling - speedup compared to 1 processor')
     plt.xlabel('Number of processors')
     plt.grid()
+    plt.xlim(xlim_Nproc)
     plt.legend(N_arr)
     plt.savefig('%s_rejection_speedup' % file_out)
     safe_show()
@@ -3303,8 +3471,9 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(loc='lower left')
-    plt.tight_layout()
     plt.ylim(1e-3, 1e+5)
+    plt.xlim(xlim_Nproc)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sounding_per_sec' % file_out)
     safe_show()
     plt.close()
@@ -3319,8 +3488,9 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(loc='upper right')
-    plt.tight_layout()
     plt.ylim(1e-5, 1e+3)
+    plt.xlim(xlim_Nproc)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sec_per_sound' % file_out)
     safe_show()
     plt.close()
@@ -3333,6 +3503,8 @@ def timing_plot(f_timing=''):
     plt.xlabel('Lookup table size')
     plt.grid()
     plt.legend(Nproc_arr)
+    plt.xlim(xlim_N)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sounding_per_sec_N' % file_out)
     safe_show()
     plt.close()
@@ -3345,6 +3517,8 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(N_arr)
+    plt.xlim(xlim_Nproc)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sounding_per_sec_CPU' % file_out)
     safe_show()
     plt.close()
@@ -3359,6 +3533,8 @@ def timing_plot(f_timing=''):
     plt.xlabel('Lookup table size')
     plt.grid()
     plt.legend(Nproc_arr)
+    plt.xlim(xlim_N)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sounding_per_sec_per_cpu_N' % file_out)
     safe_show()
     plt.close()
@@ -3372,13 +3548,17 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(N_arr)
+    plt.xlim(xlim_Nproc)
+    plt.tight_layout()
     plt.savefig('%s_rejection_sounding_per_sec_per_cpu_CPU' % file_out)
     safe_show()
     plt.close()
 
 
-
-    #### STATS FOR POSTERIOR STATISTICS
+    # ############################################
+    # POSTERIOR STATISTICS
+    # ############################################
+    
     # Average timer per sounding
     T_poststat_sounding = T_poststat/N_arr[:,np.newaxis]
     T_poststat_sounding_per_sec = N_arr[:,np.newaxis]/T_poststat
@@ -3391,6 +3571,7 @@ def timing_plot(f_timing=''):
     plt.xlabel('Number of processors')
     plt.grid()
     plt.legend(N_arr)
+    plt.xlim(xlim_Nproc)
     plt.tight_layout()
     plt.savefig('%s_poststat_sounding_per_sec' % file_out)
     safe_show()
