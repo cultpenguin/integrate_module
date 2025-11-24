@@ -2175,6 +2175,9 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
         filelist = []
         print('Case %s not found' % case)
 
+    if showInfo>2:
+        print("filelist to download:")
+        print(filelist)
 
     urlErda = 'https://anon.erda.au.dk/share_redirect/dxOLKDtoul'
     urlErdaCase = '%s/%s' % (urlErda,case)

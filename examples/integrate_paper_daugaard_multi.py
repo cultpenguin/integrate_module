@@ -48,11 +48,23 @@ doEffectSize = True
 doTbase = True
 doPlotAll=True
 doTestInversion = False
+doSamplePrior = True # Load prior model and data? (True) or load precomputed prior data realizations (False)
+
+# Load the data from DAUGAARD
+ig.get_case_data(case='DAUGAARD')
+
+# Load the Excel files for the two different geological scenarios (for use with geoprior1d)
+f_standard_xls = 'daugaard_standard.xlsx'
+f_valley_xls = 'daugaard_valley.xlsx'
+ig.get_case_data(case='DAUGAARD', filelist=[f_standard_xls])
+ig.get_case_data(case='DAUGAARD', filelist=[f_valley_xls])
 
 
+if doSamplePrior is False:
+    # Load prior data, allready incuding prior model and data realizations
+    files = ig.get_case_data(case='DAUGAARD', loadType='prior_data') # Load data and prior+data realizations
 
-files = ig.get_case_data(case='DAUGAARD', loadType='prior_data') # Load data and prior+data realizations
-f_data_h5 = files[0]
+f_data_h5 = 'DAUGAARD_AVG.h5'
 file_gex= ig.get_gex_file_from_data(f_data_h5)
 
 # check that file_gex exists
@@ -64,7 +76,40 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 ig.plot_geometry(f_data_h5, pl='NDATA', hardcopy= hardcopy, cmap='viridis')
 plt.show()
 
+# %% 
+if doSamplePrior:
+    N=N_use
+    dmax=90
+    dz=1
+    from geoprior1d import geoprior1d
 
+    f_prior_standard_h5='prior_daugaard_standard_N%d.h5' % N
+    f_prior_valley_h5='prior_daugaard_valley_N%d.h5' % N
+    # Generate priors
+    filename, flags = geoprior1d(
+        input_data=f_standard_xls,
+        Nreals=N, dmax=dmax, dz=dz,        
+        output_file = f_prior_standard_h5  # Optional: specify custom output filename
+    )
+
+    # Generate priors
+    filename, flags = geoprior1d(
+        input_data=f_valley_xls,
+        Nreals=N, dmax=dmax, dz=dz,
+        output_file=f_prior_valley_h5      # Optional: specify custom output filename
+    )
+
+    # Compute prior data
+    f_prior_standard_h5 = ig.prior_data_gaaem(f_prior_standard_h5, file_gex, doMakePriorCopy=False)
+    f_prior_valley_h5 = ig.prior_data_gaaem(f_prior_valley_h5, file_gex, doMakePriorCopy=False)
+else:
+    # Load precomputed prior data realizations
+    f_prior_standard_h5='daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
+    f_prior_valley_h5='daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
+    
+
+
+    
 # %% log-data?
 
 if useLogData:
@@ -162,13 +207,6 @@ i_plot_1 = indices[5]
 i_plot_2 = 1000
 
 
-
-
-
-# slect indexes to plot
-#i_plot_1 = 100
-#i_plot_2 = 1000
-
 plt.figure(figsize=(10, 6))
 plt.scatter(X, Y, c=NON_NAN, s=1,label='Survey Points')
 #plt.plot(X[id_line],Y[id_line], 'k-', markersize=8, label='Profile', zorder=2, linewidth=5)
@@ -195,8 +233,8 @@ i2=np.max(id_line)+1
 # ## Compute prior data from prior model if they do not already exist
 
 f_prior_data_h5_list = []
-f_prior_data_h5_list.append('daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
-f_prior_data_h5_list.append('daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
+f_prior_data_h5_list.append(f_prior_valley_h5)
+f_prior_data_h5_list.append(f_prior_standard_h5)
 
 if useLogData == True:
     f_prior_log_data_h5  = 'd_valley_log.h5'
