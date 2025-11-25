@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# %% [markdAdd shuffle option to merge_prior() and fix attribute preservation
+# %%
 # # Daugaard Case Study with three lithology-resistivity prior models.
 #
 # This notebook contains an example of inverison of the DAUGAARD tTEM data using three different lithology-resistivity prior models
@@ -14,8 +14,8 @@ try:
     get_ipython().run_line_magic('autoreload', '2')
 except:
     # If get_ipython() raises an error, we are not in a Jupyter environment
-    # # # # # # # #%load_ext autoreload
-    # # # # # # # #%autoreload 2
+    # # # # # # # # #%load_ext autoreload
+    # # # # # # # # #%autoreload 2
     pass
 
 import integrate as ig
@@ -36,10 +36,10 @@ hardcopy=True
 # %%
 cmap, clim = ig.get_colormap_and_limits('resistivity')
 useMergedPrior=True
-useGenericPrior=False
-inflateNoise = 1    # 1,2, 4
+useGenericPrior=True
+inflateNoise = 2    # 1,2, 4
 useLogData = False
-N_use = 2000000
+N_use = 1000000
 N_use_org= N_use
 #N_use = 100000
 #N_use = 100000
@@ -76,7 +76,7 @@ print('Using hdf5 data file %s with gex file %s' % (f_data_h5,file_gex))
 ig.plot_geometry(f_data_h5, pl='NDATA', hardcopy= hardcopy, cmap='viridis')
 plt.show()
 
-# %% 
+# %%
 if doSamplePrior:
     N=N_use
     dmax=90
@@ -109,8 +109,8 @@ else:
     
 
 
-    
-# %% log-data?
+
+# %%
 
 if useLogData:
     f_data_h5_org = f_data_h5
@@ -128,7 +128,7 @@ if useLogData:
 
 
 
-# %% Load Dauagard data and increase std by a factor of 3
+# %%
 if inflateNoise != 1:
     gf=inflateNoise
     print("="*60)
@@ -145,7 +145,7 @@ if inflateNoise != 1:
 ig.plot_data(f_data_h5, useLog = 0, hardcopy= hardcopy)
 plt.show()
 
-# %% Get geometry and data info
+# %%
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
 with h5py.File(f_data_h5,'r') as f_data:
@@ -229,9 +229,10 @@ i1=np.min(id_line)
 i2=np.max(id_line)+1
 
 
-#%%  [markdown]
+# %% [markdown]
 # ## Compute prior data from prior model if they do not already exist
 
+# %%
 f_prior_data_h5_list = []
 f_prior_data_h5_list.append(f_prior_valley_h5)
 f_prior_data_h5_list.append(f_prior_standard_h5)
@@ -250,31 +251,32 @@ if useLogData == True:
     Dlog = np.log10(D[0])
     ig.save_prior_data(f_prior_log_data_h5, Dlog, id=1, showInfo=2, force_delete=True)
     f_prior_data_h5_list[1] = f_prior_log_data_h5
-        
-#%%
+
+# %%
+
+# %%
 if useMergedPrior:
     f_prior_data_merged_h5 = ig.merge_prior(f_prior_data_h5_list, 
-                                            f_prior_merged_h5='daugaard_merged.h5', 
+                                            f_prior_merged_h5='daugaard_merged_N%d.h5' % (2*N_use), 
                                             showInfo=2,
                                             shuffle=True)
     ig.hdf5_info(f_prior_data_merged_h5)
     f_prior_data_h5_list.append(f_prior_data_merged_h5)
 
-# %% 
+# %%
 if useGenericPrior:
-    N=N_use
-    f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR.h5')
+    f_prior_h5 = ig.prior_model_layered(N=N_use,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR.h5')
     f_prior_data_generic_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, NdoMakePriorCopy=True)
     f_prior_data_h5_list.append(f_prior_data_generic_h5)
 
-#%% Plor prior data and observed data
+# %%
 for i_prior in range(len(f_prior_data_h5_list)):
 
     f_prior_data_h5= f_prior_data_h5_list[i_prior]
     ig.integrate_update_prior_attributes(f_prior_data_h5)
     ig.plot_data_prior(f_prior_data_h5, f_data_h5, i_plot=100, hardcopy=hardcopy)
 
-#%% 
+# %%
 for i_prior in range(len(f_prior_data_h5_list)):
     ig.plot_prior_stats(f_prior_data_h5_list[i_prior])
 
@@ -305,11 +307,11 @@ for i_prior in range(len(f_prior_data_h5_list)):
 
     f_post_h5_list.append(f_post_h5)    
 
-# %% 
+# %%
 for i_post in range(len(f_post_h5_list)):
     ig.integrate_posterior_stats(f_post_h5_list[i_post], showInfo=1)
-   
-# %% Get SHAPE FILES
+
+# %%
 useShapeFiles = True
 try:
     files = ig.get_case_data(case='DAUGAARD', loadType='shapefiles')
@@ -327,7 +329,7 @@ except:
     print("Could not load shapefiles for buried valleys.")
 
 
- #%%
+ # %%
  #if useMergedPrior:
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
@@ -391,7 +393,7 @@ plt.grid(True, which='major', alpha=0.7)
 plt.savefig('DAUGAARD_Pvalley_compare_N%d_No%d_aT%d_l%d.png' % (N_use,inflateNoise,autoT,useLogData), dpi=300)
 
 
-#%%
+# %%
 plLevel = 1    
 for i_post in range(len(f_post_h5_list)):
     f_post_h5 = f_post_h5_list[i_post]
@@ -423,7 +425,7 @@ for i_post in range(len(f_post_h5_list)):
 # %% [markdown]
 # ## Effect of size of prior data set
 
-# %% EFFECT OF SIZE
+# %%
 f_post_h5_N_list = []
 
 if doEffectSize:
@@ -462,7 +464,7 @@ if doEffectSize:
 # %% [markdown]
 # ## Effect of size of prior data set
 
-# %% T_base
+# %%
 f_post_h5_T_list = [] 
 if doTbase:
     T_base_arr = [1,2,10,20,100]
@@ -498,7 +500,7 @@ if doTbase:
 
 
 
-#%% 
+# %%
 # concatenate f_post_h5_list, f_post_h5_N_list, f_post_h5_T_list
 
 if doPlotAll:
@@ -556,7 +558,7 @@ if doPlotAll:
             except:
                 pass
 
-# %% Write filename in f_post_h5_all_list to file
+# %%
 if doPlotAll:
     f_txt = 'f_post_h5_all_list_%s_Nuse%d_inflateNoise%d.txt' % (fileparts[0], N_use,inflateNoise)
 
@@ -564,7 +566,7 @@ if doPlotAll:
         for item in f_post_h5_all_list:
             f.write("%s\n" % item)
 
-# %% Read f_post_h5_all_list from file
+# %%
 doReadList = False
 if doReadList:
     f_txt = 'f_post_h5_all_list_%s_Nuse%d_inflateNoise%d.txt' % (fileparts[0], N_use,inflateNoise)
@@ -577,11 +579,11 @@ if doReadList:
 
 
 
-#%% #################################################################################################
+# %%
 # TEST INVERSION
 # #################################################################################################
 
-#%% TEST INVERSION
+# %%
 
 #f_prior_data_h5_list = ['daugaard_valley_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5',
 # 'daugaard_standard_new_N1000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5',
@@ -676,7 +678,7 @@ if doTestInversion:
 
 # %%%
 #a ** a
-# %% 
+# %%
 
 
 if doTestInversion:
@@ -698,7 +700,7 @@ if doTestInversion:
     print("P from EV (manual): ", P_from_EV_man.flatten())
     print("P from EV (rejection): ", P_from_EV_rej.flatten())
 
-# %% NOW CHECK THE INVERSION OF THE WHOLE AREA USING integrate_rejection_range()
+# %%
 # DO we get the same if we call integrate_rejection_range() and integrate_rejection()
 
 if doTestInversion:
@@ -724,7 +726,7 @@ if doTestInversion:
         EV_cplt.plot(P_compare_ev[:,0],P_valley_check[ip_range,0].flatten(),'g.', markersize=.1);plt.xlabel('P(Valley) from EV (_range)');plt.ylabel('P(Valley) from M3');plt.axis('equal' )
     ompare.append(EV.flatten())
 
-#%%
+# %%
 if doTestInversion:
     Np = len(ip_range)
     P_compare_mix = np.zeros((Np,2))
