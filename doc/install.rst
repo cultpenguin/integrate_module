@@ -57,18 +57,20 @@ Create a Conda environment (called integrate) and install the required modules:
 
 ::
 
-    conda create --name integrate python=3.10 numpy pandas matplotlib scipy tqdm requests h5py psutil
+    conda create --name integrate 
     conda activate integrate
     pip install integrate_module
     
 Using Conda + pip (from source)
 ================================
 
-Create a Conda environment (called integrate) and install the required modules:
+Create a Conda environment (called integrate) and install integrate_module from source using pip:
 
 ::
 
-    conda create --name integrate python=3.10 numpy pandas matplotlib scipy tqdm requests h5py psutil
+    # Download source code, and unzip (if you use a zipped archive)
+    cd path/to/integrate_module
+    conda create --name integrate 
     conda activate integrate
     pip install -e .
 
