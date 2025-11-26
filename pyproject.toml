@@ -36,6 +36,13 @@ dev = [
     "black",
 ]
 
+
+[project.urls]
+Homepage = "https://github.com/cultpenguin/integrate_module"
+Documentation = "https://cultpenguin.github.io/integrate_module/"
+Repository = "https://github.com/cultpenguin/integrate_module"
+Issues = "https://github.com/cultpenguin/integrate_module/issues"
+
 [project.scripts]
 integrate_timing = "integrate.integrate_timing_cli:main"
 integrate_rejection = "integrate.integrate_rejection_cli:main"
