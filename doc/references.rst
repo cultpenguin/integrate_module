@@ -11,6 +11,7 @@ References
 
 .. [FALK2025] Falk, Frederik Alexander, Anders Vest Christiansen, and Thomas Mejer Hansen. "Comparison of three one-dimensional time-domain electromagnetic forward algorithms." Applied Computing and Geosciences (2025): 100243. [https://doi.org/10.1016/j.acags.2025.100243]
 
+.. [GEOPRIOR1D] Nørgaard, Jesper, Rasmus Bødker Madsen, Anne-Sophie Høyer, Ingelise Møller, and Thomas Mejer Hansen. "GeoPrior1D: An application for generating 1D geological and geophysical realizations of the subsurface." In Review [https://github.com/GEUSjesper/geoprior1d]
 
 
 .. [GA-AEM] https://github.com/GeoscienceAustralia/ga-aem
