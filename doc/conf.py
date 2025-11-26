@@ -33,9 +33,30 @@ project = 'INTEGRATE'
 copyright = '2023,2024,2025 INTEGRATE WORKING GROUP'
 author = 'INTEGRATE WORKING GROUP'
 
-# The short X.Y version
-version = '0.26'    
-# The full version, including alpha/beta/rc tags
+# Dynamically get version from pyproject.toml
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    try:
+        import tomli as tomllib  # Fallback for older Python
+    except ImportError:
+        tomllib = None
+
+if tomllib:
+    pyproject_path = os.path.join(os.path.dirname(__file__), '..', 'pyproject.toml')
+    with open(pyproject_path, 'rb') as f:
+        pyproject_data = tomllib.load(f)
+    version = pyproject_data['project']['version']
+    release = version
+else:
+    # Fallback to importlib.metadata if tomllib not available
+    try:
+        from importlib.metadata import version as get_version
+        version = get_version('integrate_module')
+        release = version
+    except Exception:
+        version = '0.31'  # Fallback version
+        release = version
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 

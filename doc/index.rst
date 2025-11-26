@@ -6,7 +6,7 @@
 
 INTEGRATE: Fast Probabilistic inversion of EM data using informed prior models
 ------------------------------------------------------------------------------
-Last updated: |today|.
+Last updated: |today| (version |version|).
 
 INTEGRATE provides a python module and methods for fast probabilistic inversion of local information (e.g. electromagnetic data (EM), well log data, ...) using informed prior models. 
 
@@ -14,7 +14,7 @@ The aim is to provide methods for the following tasks, that together represent a
 
 Prior modeling
    Tools will be developed to quantify (through forward simulation) as much information as possible about the subsurface, such as the expected distribution of lithological layers and a model that links resistivity to lithology.
-   See, for example, [MADSEN2023]_.
+   See, for example, [MADSEN2023]_ and [GEOPRIOR1D]_.
   
 Forward modeling
    For each type of data considered a forward model must be available. 
@@ -50,17 +50,11 @@ The project is developed as part of the INTEGRATE project, where the goal is to 
 
 For more information, please visit the INTEGRATE website (https://integrate.nu/).
 
-
 Source Code
 ===========
 
-   The current development version is available through GitHub at
-   https://github.com/cultpenguin/integrate_mockup/.
-
-.. 
    The latest stable code can be downloaded from
    http://cultpenguin.github.io/integrate/.
-
 
 
 License (MIT)

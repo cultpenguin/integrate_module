@@ -5,3 +5,4 @@ pandoc
 myst_parser
 sphinx_rtd_theme
 furo
+tomli; python_version < "3.11"
