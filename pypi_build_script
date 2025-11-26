@@ -5,7 +5,7 @@
 
 set -e  # Exit on error
 
-MODULE_NAME="integrate"
+MODULE_NAME="integrate-module"
 VERSION=$(grep "version" pyproject.toml | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
 
 echo "=== Building $MODULE_NAME v$VERSION ==="
