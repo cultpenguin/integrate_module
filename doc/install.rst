@@ -57,8 +57,9 @@ Create a Conda environment (called integrate) and install the required modules:
 
 ::
 
-    conda create --name integrate 
-    conda activate integrate
+    conda create --name integrate python=3.11
+    conda activate integrate 
+    conda install -c conda-forge pip
     pip install integrate_module
     
 Using Conda + pip (from source)
@@ -70,11 +71,12 @@ Create a Conda environment (called integrate) and install integrate_module from 
 
     # Download source code, and unzip (if you use a zipped archive)
     cd path/to/integrate_module
-    conda create --name integrate 
+    conda create --name integrate python=3.11
     conda activate integrate
+    conda install -c conda-forge pip
     pip install -e .
 
-
+    
 GA-AEM
 ======
 
