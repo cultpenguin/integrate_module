@@ -16,7 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy",
-    "matplotlib", 
+    "matplotlib",
     "h5py",
     "scipy",
     "psutil",
@@ -24,18 +24,16 @@ dependencies = [
     "requests",
     "geoprior1d>=0.9",
     "ga-aem-forward-win; platform_system == 'Windows'",
+    "jupyter>=1.0.0",
+    "jupytext",
+    "pandas",
+    "pyvista",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
     "black",
-]
-all=[
-    "jupyter>=1.0.0",
-    "jupytext",
-    "pandas",
-    "pyvista",
 ]
 
 [project.scripts]

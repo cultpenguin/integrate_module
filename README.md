@@ -37,15 +37,15 @@ On Linux/macOS, you will need to install GA-AEM manually.
 
     # Install python3 venv
     sudo apt install python3-venv
-    
+
     # Create virtual environment
     python3 -m venv ~/integrate
     source ~/integrate/bin/activate
     pip install --upgrade pip
-    
+
     # Install integrate module
     cd path/to/integrate_module
-    pip install -r requirements.txt -e .
+    pip install -e .
 
 ### Using Conda + pip (from PyPI)
 
