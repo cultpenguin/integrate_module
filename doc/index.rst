@@ -53,8 +53,8 @@ For more information, please visit the INTEGRATE website (https://integrate.nu/)
 Source Code
 ===========
 
-   The latest stable code can be downloaded from
-   http://cultpenguin.github.io/integrate/.
+   The latest stable code is available on GitHub at
+   https://github.com/cultpenguin/integrate_module
 
 
 License (MIT)
