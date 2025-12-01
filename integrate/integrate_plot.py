@@ -467,7 +467,7 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=F
         
     wx = 10
     wy = (np.max(Y)-np.min(Y))/(np.max(X)-np.min(X)) * wx
-    print('Plot size: wx=%f, wy=%f' % (wx, wy))
+    #print('Plot size: wx=%f, wy=%f' % (wx, wy))
 
 
     with h5py.File(f_post_h5,'r') as f_post:
@@ -678,7 +678,7 @@ def plot_geometry(f_data_h5, i1=0, i2=0, ii=np.array(()), pl='ELEVATION', hardco
     
     wx = 10
     wy = (np.max(Y)-np.min(Y))/(np.max(X)-np.min(X)) * wx
-    print('Plot size: wx=%f, wy=%f' % (wx, wy))
+    #print('Plot size: wx=%f, wy=%f' % (wx, wy))
     nd = X.shape[0]
 
     if len(ii)==0:

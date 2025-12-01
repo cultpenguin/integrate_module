@@ -37,6 +37,8 @@ X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
 # PRIOR MODEL AND DATA
 f_prior_h5 = 'prior_general.h5'
+f_prior_h5 = 'prior_chi2_dmax120_v1.h5'
+
 #f_prior_h5 = 'prior_soeballe.h5'
 f_prior_data_h5 = f_prior_h5
 
@@ -140,12 +142,14 @@ N=1000000
 # However, you can control several important options.
 # You can choose to use only a subset of the prior data. Decreasing the sample 
 # size makes the inversion faster but increasingly approximate.
-N_use = 1000000   # Number of prior samples to use (use all available)
+N_use = 10000   # Number of prior samples to use (use all available)
 T_base = 1  # Base annealing temperature for rejection sampling
 autoT = 1   # Automatically estimate optimal annealing temperature
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                    f_data_h5, 
-                                   #id_use = [3],
+                                   #id_use = [1], # ONLY dB/dT
+                                   #id_use = [2], # ONLY Tx
+                                   #id_use = [1,2,3] # ALL
                                    f_post_h5 = 'POST.h5', 
                                    nr=1000,
                                    N_use = N_use, 
