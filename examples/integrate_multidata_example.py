@@ -514,7 +514,7 @@ for iw in np.arange(len(WELLS)):
         D_obs=d_obs,           # Shape: (nd, nclass, nm)
         i_use=i_use,           # Shape: (nd, 1) - binary mask
         id=2+iw,                  # Data ID (will create /D2/ in DATA.h5)
-        id_use=2,              # Which PRIOR data to use (D2 from prior file)
+        id_prior=2,            # Which PRIOR data to use (D2 from prior file)
         f_data_h5=f_data_h5,   # Output file
         showInfo=1             # Verbosity
     )
@@ -594,7 +594,7 @@ for iw in np.arange(4):
     id_out, f_out = ig.save_data_multinomial(
         D_obs=d_obs,           # Shape: (nd, nclass, nm)
         i_use=i_use,           # Shape: (nd, 1) - binary mask
-        id_use=id_use,              # Which PRIOR data to use (D2 from prior file)
+        id_prior=id_use,       # Which PRIOR data to use (D2 from prior file)
         f_data_h5=f_data_h5,   # Output file
         showInfo=1             # Verbosity
     )

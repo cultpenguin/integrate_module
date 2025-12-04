@@ -1467,6 +1467,12 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         - txt : str, additional text for filename
         - showInfo : int, level of debug output (0=none, >0=verbose)
         - clim : list, color scale limits [min, max]
+        - std_min : float, minimum standard deviation value for uncertainty-based transparency normalization.
+          Values below std_min render as fully opaque (alpha=1). Works with alpha parameter.
+          Default is np.nanmin(Std)
+        - std_max : float, maximum standard deviation value for uncertainty-based transparency normalization.
+          Values above std_max render with maximum transparency (alpha=1-alpha_value). Works with alpha parameter.
+          Default is 0.6*np.nanmax(Std)
 
     Returns
     -------
