@@ -209,8 +209,8 @@ def integrate_rejection(f_prior_h5='prior.h5',
     DATA = ig.load_data(f_data_h5, id_arr=id_use, showInfo=showInfo)
     
     # Load the prior data from the h5 files
-    id_data_use = DATA['id_use']
-    D, idx = ig.load_prior_data(f_prior_h5, id_use = id_data_use, N_use = N_use, Randomize=True, showInfo=showInfo)
+    id_data_prior = DATA['id_prior']
+    D, idx = ig.load_prior_data(f_prior_h5, id_use=id_data_prior, N_use=N_use, Randomize=True, showInfo=showInfo)
     
     
     if showInfo>1:
@@ -258,7 +258,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         print('use_N_best=%d' % use_N_best)
         print('Number of data types: %d' % Ndt)
         print('Using these data types: %s' % str(id_use))
-        print('Loaded these prior data model types:', str(id_data_use))
+        print('Loaded these prior data model types:', str(id_data_prior))
         
     # set i_use_all to be a 2d Matrix of size (nump,nr) of random integers in range(N)
     i_use_all = np.random.randint(0, N, (Ndp, nr))

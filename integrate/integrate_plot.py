@@ -1609,18 +1609,27 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
     A = np.ones(Std.shape)  # Start with fully opaque (alpha=1)
     if alpha > 0:
         # Normalize Std to [0, 1] based on min/max of Std values
-        Std_min = np.nanmin(Std)
-        Std_max = np.nanmax(Std)
-        if Std_max > Std_min:
-            Std_normalized = (Std - Std_min) / (Std_max - Std_min)
+        std_min = kwargs.get('std_min',np.nanmin(Std))
+        std_max = kwargs.get('std_max',0.6*np.nanmax(Std))
+        #std_min = np.nanmin(Std)
+        #std_max = 0.6*np.nanmax(Std)
+        #std_max = 1
+        #std_max = .5
+        if std_max > std_min:
+            Std_normalized = (Std - std_min) / (std_max - std_min)
         else:
             Std_normalized = np.zeros_like(Std)
 
+        Std_normalized[Std_normalized<0]=0
+        Std_normalized[Std_normalized>1]=1
+
         # Apply alpha scaling: higher uncertainty = more transparent
         # A = 1 - alpha * Std_normalized
-        # When Std=Std_min (low uncertainty): A=1 (opaque)
-        # When Std=Std_max (high uncertainty): A=1-alpha (transparent)
+        # When Std=std_min (low uncertainty): A=1 (opaque)
+        # When Std=std_max (high uncertainty): A=1-alpha (transparent)
         A = 1 - alpha * Std_normalized
+        print(np.nanmin(A))
+        print(np.nanmax(A))
     
     nm = Mean.shape[0]
     if nm<=1:

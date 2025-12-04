@@ -48,17 +48,17 @@ else:
 
 # PRIOR MODEL AND DATA
 f_prior_h5 = 'prior_general.h5'
-#f_prior_h5 = 'prior_soeballe.h5'
-#f_prior_h5 = 'prior_chi2_dmax120_v1.h5'
+f_prior_h5 = 'prior_soeballe.h5'
+f_prior_h5 = 'prior_chi2_dmax120_v1.h5'
 
 #f_prior_h5 = 'prior_soeballe.h5'
 f_prior_data_h5 = f_prior_h5
 
 # Make Tx Rx height prior data!!
-#f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, id=2, doMakePriorCopy=True)
-#f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=3, id=3, doMakePriorCopy=False)
-f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, doMakePriorCopy=True)  # Tx
-f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=3, doMakePriorCopy=False)  # Rx
+f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, id=2, doMakePriorCopy=True)
+f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=3, id=3, doMakePriorCopy=False)
+#f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, doMakePriorCopy=True)  # Tx
+#f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=3, doMakePriorCopy=False)  # Rx
 
 
 # %%
@@ -87,18 +87,21 @@ if doFixData:
                             ELEVATION=ELEVATION,
                             LINE=LINE,
                             name='Diamond Data',
-                            delete_if_exist=True,                        
+                            id_prior = 1,                        
+                            delete_if_exist=True,                            
             )
     ig.save_data_gaussian(d_obs[1], D_std = d_std[1], f_data_h5=f_data_h5, 
                             id=2,
                             showInfo=0, 
                             name='Rx',
+                            id_prior = 2,
                             delete_if_exist=False,                        
             )
     ig.save_data_gaussian(d_obs[2], D_std = d_std[2], f_data_h5=f_data_h5, 
                             id=3,
                             showInfo=0, 
                             name='Rx',
+                            id_prior = 3,
                             delete_if_exist=False,                        
             )
     
@@ -170,8 +173,11 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                    N_use = N_use, 
                                    autoT = autoT,
                                    T_base = T_base,                            
-                                   showInfo=0, 
+                                   showInfo=1, 
                                    parallel=parallel)
+
+# %%
+ig.plot_profile(f_post_h5, ii=iline, hardcopy=hardcopy, xaxis='y', im=1, alpha=1, std_min = 0.4, std_max=.7)
 
 
 # %% [markdown]
@@ -189,7 +195,7 @@ ig.plot_data_prior_post(f_post_h5, i_plot=1830,hardcopy=hardcopy)
 # along a section of the survey line.
 
 # %%
-ig.plot_profile(f_post_h5, ii=iline, hardcopy=hardcopy)
+ig.plot_profile(f_post_h5, ii=iline, hardcopy=hardcopy, xaxis='y')
 #ig.plot_profile(f_post_h5, ii=iline, im=1, hardcopy=hardcopy)
 #ig.plot_profile(f_post_h5, ii=iline, im=2, hardcopy=hardcopy)
 #ig.plot_profile(f_post_h5, ii=iline, im=3, hardcopy=hardcopy)

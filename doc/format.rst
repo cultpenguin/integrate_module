@@ -26,8 +26,9 @@ DATA.h5 contains observed data, and its associated geometry.
 The observed data can be of many types, such as TEM data and well-log data
 
 
-The ID of the observed data, must, for now, be the same as the ID of the prior data. 
-Thus, the observed data in f_data:``D1/`` must refer to the prior data in f_prior:``D1``. 
+By default, observed data in ``/D1`` is compared with prior data in ``/D1``, ``/D2`` with ``/D2``, etc.
+To compare observed data with a different prior dataset, set the ``/D1/id_prior`` field.
+For example, setting ``/D1/id_prior=2`` will compare observed ``/D1`` with prior ``/D2``. 
 
   
   ``Np``: Number of data locations (typically one set data per unique X-Y location)
@@ -76,11 +77,11 @@ The attribute ``D1/noise_model`` is mandatory for all data types, and describes 
      - *
      - *
      - A string describing the noise model used for the data. 
-   * - /D1/id_use
+   * - /D1/id_prior
      - [integer]
-     - 
-     - 
-     - The prior data id. If not set it will be the same id as the data id 
+     -
+     -
+     - The prior dataset ID to compare against. Observed data in /D1 will be compared with prior data in /D{id_prior} during inversion. If not set, defaults to the same ID as the observed data (D1→D1, D2→D2, etc.) 
    * - /D1/i_use
      - [NP,1] int [0/1]
      - 

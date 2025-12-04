@@ -544,23 +544,23 @@ def load_data(f_data_h5, id_arr=[], ii=None, **kwargs):
             Dataset identifiers that were successfully loaded. If set as empty, all data types will be loaded
         - 'i_use' : list of numpy.ndarray
             Data point usage indicators (1=use, 0=ignore)
-        - 'id_use' : list of int or numpy.ndarray
-            index of data type in prior data, used for cross-referencing
-            if 'id_use' is not present in the file, it defaults to the dataset id_arr
+        - 'id_prior' : list of int or numpy.ndarray
+            Index of prior data type to compare against, used for cross-referencing.
+            If 'id_prior' is not present in the file, it defaults to the dataset id_arr
 
     Notes
     -----
     The function gracefully handles missing data components:
-    - Missing 'id_use' defaults to sequential dataset IDs (1, 2, 3, ...)
+    - Missing 'id_prior' defaults to sequential dataset IDs (1, 2, 3, ...)
     - Missing 'i_use' defaults to ones array (use all data points)
     - Missing 'd_std' and 'Cd' remain as None (diagonal noise assumed)
-    
+
     Data structure follows INTEGRATE standard format:
     - '/D{id}/d_obs': observed measurements
-    - '/D{id}/d_std': measurement uncertainties  
+    - '/D{id}/d_std': measurement uncertainties
     - '/D{id}/Cd': full covariance matrix (optional)
     - '/D{id}/i_use': data usage flags (optional)
-    - '/D{id}/id_use': cross-reference IDs (optional)
+    - '/D{id}/id_prior': prior dataset cross-reference IDs (optional)
     
     Each dataset can have a different noise model specified in the 'noise_model'
     attribute, enabling mixed data types in the same file.
@@ -600,14 +600,14 @@ def load_data(f_data_h5, id_arr=[], ii=None, **kwargs):
             d_std = [f_data[f'/D{id}/d_std'][:] if 'd_std' in f_data[f'/D{id}'] else None for id in id_arr]
             i_use = [f_data[f'/D{id}/i_use'][:] if 'i_use' in f_data[f'/D{id}'] else None for id in id_arr]
         
-        # Full covariance matrices and id_use are typically not indexed by data points
+        # Full covariance matrices and id_prior are typically not indexed by data points
         Cd = [f_data[f'/D{id}/Cd'][:] if 'Cd' in f_data[f'/D{id}'] else None for id in id_arr]
-        id_use = [f_data[f'/D{id}/id_use'][()] if 'id_use' in f_data[f'/D{id}'] and f_data[f'/D{id}/id_use'].shape == () else f_data[f'/D{id}/id_use'][:] if 'id_use' in f_data[f'/D{id}'] else None for id in id_arr]
-        
+        id_prior = [f_data[f'/D{id}/id_prior'][()] if 'id_prior' in f_data[f'/D{id}'] and f_data[f'/D{id}/id_prior'].shape == () else f_data[f'/D{id}/id_prior'][:] if 'id_prior' in f_data[f'/D{id}'] else None for id in id_arr]
+
     for i in range(len(id_arr)):
-        if id_use[i] is None:
-            #id_use[i] = i+1
-            id_use[i] = id_arr[i]
+        if id_prior[i] is None:
+            #id_prior[i] = i+1
+            id_prior[i] = id_arr[i]
         if i_use[i] is None:
             i_use[i] = np.ones((len(d_obs[i]),1))
 
@@ -617,14 +617,14 @@ def load_data(f_data_h5, id_arr=[], ii=None, **kwargs):
     DATA['d_obs'] = d_obs
     DATA['d_std'] = d_std
     DATA['Cd'] = Cd
-    DATA['id_arr'] = id_arr        
-    DATA['i_use'] = i_use        
-    DATA['id_use'] = id_use        
+    DATA['id_arr'] = id_arr
+    DATA['i_use'] = i_use
+    DATA['id_prior'] = id_prior
     # return noise_model, d_obs, d_std, Cd, id_arr
 
     if showInfo>0:
         for i in range(len(id_arr)):
-            print('  - D%d: id_use=%d, %11s, Using %d/%d data' % (id_arr[i], id_use[i], noise_model[i],  DATA['d_obs'][i].shape[0],  DATA['d_obs'][i].shape[1]))
+            print('  - D%d: id_prior=%d, %11s, Using %d/%d data' % (id_arr[i], id_prior[i], noise_model[i],  DATA['d_obs'][i].shape[0],  DATA['d_obs'][i].shape[1]))
 
     return DATA
 
@@ -2193,7 +2193,7 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
 
 
 
-def save_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, i_use=None, is_log = 0, f_data_h5='data.h5', UTMX=None, UTMY=None, LINE=None, ELEVATION=None, delete_if_exist=False, name=None, **kwargs):
+def save_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, id_prior=None, i_use=None, is_log = 0, f_data_h5='data.h5', UTMX=None, UTMY=None, LINE=None, ELEVATION=None, delete_if_exist=False, name=None, **kwargs):
     """
     Save observational data with Gaussian noise model to HDF5 file.
 
@@ -2217,6 +2217,10 @@ def save_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, i_use=None, is_
         If provided, takes precedence over D_std (default is []).
     id : int, optional
         Dataset identifier for HDF5 group naming ('/D{id}', default is 1).
+    id_prior : int, optional
+        Prior dataset identifier to compare against during inversion. If specified,
+        observed data in /D{id} will be compared with prior data in /D{id_prior}.
+        If None, defaults to same ID (D1 compares with D1, D2 with D2, etc.) (default is None).
     i_use : numpy.ndarray, optional
         Binary mask indicating which data points to use in inversion, shape (N_stations,) or (N_stations,1).
         Values of 1 indicate data should be used, 0 indicates data should be excluded.
@@ -2379,6 +2383,10 @@ def save_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, i_use=None, is_
         f.create_dataset('/%s/d_obs' % D_str, data=D_obs)
         f.create_dataset('/%s/i_use' % D_str, data=i_use)
 
+        # Write id_prior if specified
+        if id_prior is not None:
+            f.create_dataset('/%s/id_prior' % D_str, data=id_prior)
+
         # Write either Cd or d_std
         if len(Cd) == 0:
             f.create_dataset('/%s/d_std' % D_str, data=D_std)
@@ -2395,7 +2403,7 @@ def save_data_gaussian(D_obs, D_std = [], d_std=[], Cd=[], id=1, i_use=None, is_
     
     return f_data_h5
 
-def save_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='data.h5', **kwargs):
+def save_data_multinomial(D_obs, i_use=None, id=[],  id_prior=None, f_data_h5='data.h5', **kwargs):
     """
     Save observed data to an HDF5 file in a specified group with a multinomial noise model.
 
@@ -2403,8 +2411,8 @@ def save_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='dat
     :type D_obs: numpy.ndarray
     :param id: The ID of the group to write the data to. If not provided, the function will find the next available ID.
     :type id: list, optional
-    :param id_use: The ID of PRIOR data the refer to this data. If not set, id_use=id
-    :type id_use: list, optional
+    :param id_prior: The ID of PRIOR data to compare against this data. If not set, id_prior=id
+    :type id_prior: int, optional
     :param f_data_h5: The path to the HDF5 file where the data will be written. Default is 'data.h5'.
     :type f_data_h5: str, optional
     :param kwargs: Additional keyword arguments.
@@ -2447,8 +2455,8 @@ def save_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='dat
     if np.ndim(D_obs)==1:
         i_use = np.atleast_2d(i_use).T
     
-    if id_use is None:
-        id_use = id
+    if id_prior is None:
+        id_prior = id
         
     # check if group 'D{id}/' exists and remove it if it does
     with h5py.File(f_data_h5, 'a') as f:
@@ -2465,8 +2473,8 @@ def save_data_multinomial(D_obs, i_use=None, id=[],  id_use=None, f_data_h5='dat
 
         f.create_dataset('/%s/d_obs' % D_str, data=D_obs)
         f.create_dataset('/%s/i_use' % D_str, data=i_use)
-        
-        f.create_dataset('/%s/id_use' % D_str, data=id_use)
+
+        f.create_dataset('/%s/id_prior' % D_str, data=id_prior)
             
 
         # write attribute noise_model as 'multinomial'
