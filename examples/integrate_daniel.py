@@ -8,7 +8,8 @@
 try:
     # Check if the code is running in an IPython kernel (which includes Jupyter notebooks)
     get_ipython()
-    # If the above line doesn't raise an error, it means we are in a Jupyter environment
+    # If the above line doesn't raise an error, it means we
+    #  are in a Jupyter environment
     # Execute the magic commands using IPython's run_line_magic function
     get_ipython().run_line_magic('load_ext', 'autoreload')
     get_ipython().run_line_magic('autoreload', '2')
@@ -21,6 +22,7 @@ except:
 # %%
 import integrate as ig
 from integrate.integrate_io import get_geometry
+import numpy as np
 # Check if parallel computations can be performed
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True 
@@ -35,16 +37,28 @@ f_data_h5 = 'data_diamond_soeballe_250724.h5'
 
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 
+# iline should be the index of all points along a specific line. If nothing is specified, just use all data
+useLINE = 100801
+if useLINE>0:
+    idx_line = LINE == useLINE
+    iline = np.where(idx_line)[0]
+else:
+    iline = np.arange(X.shape[0])
+
+
 # PRIOR MODEL AND DATA
 f_prior_h5 = 'prior_general.h5'
-f_prior_h5 = 'prior_chi2_dmax120_v1.h5'
+#f_prior_h5 = 'prior_soeballe.h5'
+#f_prior_h5 = 'prior_chi2_dmax120_v1.h5'
 
 #f_prior_h5 = 'prior_soeballe.h5'
 f_prior_data_h5 = f_prior_h5
 
 # Make Tx Rx height prior data!!
-f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, id=2, doMakePriorCopy=True)
-f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=3, id=3, doMakePriorCopy=False)
+#f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, id=2, doMakePriorCopy=True)
+#f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=3, id=3, doMakePriorCopy=False)
+f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, doMakePriorCopy=True)  # Tx
+f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=3, doMakePriorCopy=False)  # Rx
 
 
 # %%
@@ -142,20 +156,21 @@ N=1000000
 # However, you can control several important options.
 # You can choose to use only a subset of the prior data. Decreasing the sample 
 # size makes the inversion faster but increasingly approximate.
-N_use = 10000   # Number of prior samples to use (use all available)
+N_use = 1000000   # Number of prior samples to use (use all available)
 T_base = 1  # Base annealing temperature for rejection sampling
 autoT = 1   # Automatically estimate optimal annealing temperature
 f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                    f_data_h5, 
+                                   ip_range=iline,
                                    #id_use = [1], # ONLY dB/dT
                                    #id_use = [2], # ONLY Tx
                                    #id_use = [1,2,3] # ALL
-                                   f_post_h5 = 'POST.h5', 
+                                   #f_post_h5 = 'POST.h5', 
                                    nr=1000,
                                    N_use = N_use, 
                                    autoT = autoT,
                                    T_base = T_base,                            
-                                   showInfo=1, 
+                                   showInfo=0, 
                                    parallel=parallel)
 
 
@@ -163,8 +178,25 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
 # ## 3. Plot statistics from the posterior $\sigma(\mathbf{m})$
 
 # %%
-ig.plot_data_prior_post(f_post_h5, i_plot=2000,hardcopy=hardcopy)
-ig.plot_data_prior_post(f_post_h5, i_plot=100,hardcopy=hardcopy)
+ig.plot_data_prior_post(f_post_h5, i_plot=1619,hardcopy=hardcopy)
+ig.plot_data_prior_post(f_post_h5, i_plot=1830,hardcopy=hardcopy)
+
+
+# %% [markdown]
+# ### Resistivity profiles
+#
+# Plot a profile showing posterior statistics of model parameter M1 (resistivity)
+# along a section of the survey line.
+
+# %%
+ig.plot_profile(f_post_h5, ii=iline, hardcopy=hardcopy)
+#ig.plot_profile(f_post_h5, ii=iline, im=1, hardcopy=hardcopy)
+#ig.plot_profile(f_post_h5, ii=iline, im=2, hardcopy=hardcopy)
+#ig.plot_profile(f_post_h5, ii=iline, im=3, hardcopy=hardcopy)
+#ig.plot_profile(f_post_h5, i1=1, i2=2800, im=1, hardcopy=hardcopy)
+#ig.plot_profile(f_post_h5, i1=1, i2=2800, im=2, hardcopy=hardcopy)
+#ig.plot_profile(f_post_h5, i1=1, i2=2800, im=3, hardcopy=hardcopy)
+
 
 # %% [markdown]
 # ### Evidence and annealing temperature
@@ -181,16 +213,6 @@ ig.plot_T_EV(f_post_h5, pl='T',hardcopy=hardcopy)
 # Values above one suggest underfitting
 #ig.plot_T_EV(f_post_h5, pl='LOGL_mean',hardcopy=hardcopy)
 
-# %% [markdown]
-# ### Resistivity profiles
-#
-# Plot a profile showing posterior statistics of model parameter M1 (resistivity)
-# along a section of the survey line.
-
-# %%
-ig.plot_profile(f_post_h5, i1=1, i2=2800, im=1, hardcopy=hardcopy)
-ig.plot_profile(f_post_h5, i1=1, i2=2800, im=2, hardcopy=hardcopy)
-ig.plot_profile(f_post_h5, i1=1, i2=2800, im=3, hardcopy=hardcopy)
 
 
 # %% [markdown]
@@ -202,31 +224,31 @@ ig.plot_profile(f_post_h5, i1=1, i2=2800, im=3, hardcopy=hardcopy)
 # %%
 
 # Plot 2D features: Resistivity at different depths
-try:
-    ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
-    plt.show()
-except:
-    pass
+# try:
+#     ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
+#     plt.show()
+# except:
+#     pass
 
-try:
-    ig.plot_feature_2d(f_post_h5,im=1,iz=30, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
-    plt.show()
-except:
-    pass
+# try:
+#     ig.plot_feature_2d(f_post_h5,im=1,iz=30, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
+#     plt.show()
+# except:
+#     pass
 
-try:
-    ig.plot_feature_2d(f_post_h5,im=1,iz=50, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
-    plt.show()
-except:
-    pass
+# try:
+#     ig.plot_feature_2d(f_post_h5,im=1,iz=50, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
+#     plt.show()
+# except:
+#     pass
 
 # %%
-try:
-    # Plot a 2D feature: The estimated number of layers
-    ig.plot_feature_2d(f_post_h5,im=3,iz=0,key='Median', uselog=0, clim=[1,6], cmap='jet', s=12,hardcopy=hardcopy)
-    plt.show()
-except:
-    pass
+# try:
+#     # Plot a 2D feature: The estimated number of layers
+#     ig.plot_feature_2d(f_post_h5,im=3,iz=0,key='Median', uselog=0, clim=[1,6], cmap='jet', s=12,hardcopy=hardcopy)
+#     plt.show()
+# except:
+#     pass
 
 # %% [markdown]
 # ## Export results to CSV format
