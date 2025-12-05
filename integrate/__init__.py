@@ -90,9 +90,17 @@ from integrate.integrate_plot import h5_get_clim_cmap
 from integrate.integrate_plot import get_colormap_and_limits
 from integrate.integrate_plot import find_points_along_line_segments
 
+# Import from borehole module
+from integrate.integrate_borehole import compute_P_obs_discrete
+from integrate.integrate_borehole import compute_P_obs_discrete as Pobs_discrete_compute
+from integrate.integrate_borehole import rescale_P_obs_temperature
+from integrate.integrate_borehole import rescale_P_obs_temperature as Pobs_rescale_temperature
+from integrate.integrate_borehole import Pobs_to_datagrid
+
 # Import gex module functions
 from integrate.gex import read_gex as read_gex2
 from integrate.gex import describe_gex as describe_gex2
+
 
 # REMOVE CLI IMPORTS - These cause circular dependencies
 # from . import integrate_cli
