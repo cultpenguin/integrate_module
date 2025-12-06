@@ -38,9 +38,9 @@ for file in os.listdir('.'):
 
 
 # %%
-N_use = 50000
+N_use = 500000
 P_single=0.99
-inflateTEMNoise = 10
+inflateTEMNoise = 4
 # Extrapolation options for distance weighting
 r_data=10 
 r_dis=100
@@ -360,7 +360,7 @@ id_use = [1] # tTEM
 #id_use = [9,11] # Both wells, dependent compressed
 
 id_use = [9,11] # both wells, dependent # One should alsways chweck the wells alone, to check for concistency with the prior.
-id_use = [1] # TEM + both wells, dependent
+#id_use = [1] # TEM + both wells, dependent
 id_use = [1, 9,11] # Both wells independent + tTEM
 
 # get string from id_use
@@ -378,9 +378,8 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                 autoT=True,
                                 T_base=1,
                                 updatePostStat=True)
-ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy, alpha = 1,std_min = 0.3, std_max = 0.6,)
-#ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy, alpha = 1,std_min = 0.3, std_max = 0.6, panels=['Median'])
-ig.plot_profile(f_post_h5, im=2, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy, alpha=1, entropy_min =0.3, entropy_max=0.6)
+#ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy, alpha = 1,std_min = 0.3, std_max = 0.6,)
+ig.plot_profile(f_post_h5, im=2, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy, alpha=1, entropy_min =0.4, entropy_max=1.0)
 
 
 # %% Plot profile
