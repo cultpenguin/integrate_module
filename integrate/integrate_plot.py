@@ -1000,6 +1000,10 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
         - alpha : float, transparency scaling factor based on entropy (0.0 to 1.0).
           alpha=0.0 means no transparency (default), alpha=1.0 means full entropy-based
           transparency where high-uncertainty regions become transparent
+        - entropy_min : float, minimum entropy value for transparency scaling. Values below
+          this are fully opaque (alpha=1). Default is np.nanmin(Entropy) from the data.
+        - entropy_max : float, maximum entropy value for transparency scaling. Values above
+          this reach maximum transparency (alpha=1-alpha parameter). Default is 0.6*np.nanmax(Entropy).
         - hardcopy : bool, save plot as PNG file (default False)
         - txt : str, additional text for filename
         - showInfo : int, level of debug output (0=none, >0=verbose)
@@ -1049,6 +1053,10 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     Show all panels with transparency on mode:
 
     >>> plot_profile_discrete(f_post_h5, alpha=1.0)
+
+    Show mode with custom entropy range for transparency:
+
+    >>> plot_profile_discrete(f_post_h5, alpha=0.8, entropy_min=0.1, entropy_max=0.7)
     """
     from matplotlib.colors import LogNorm
 
@@ -1056,6 +1064,8 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     txt = kwargs.get('txt','')
     showInfo = kwargs.get('showInfo', 0)
     alpha = kwargs.get('alpha', 0.0)  # Transparency scaling factor (0.0 to 1.0)
+    entropy_min = kwargs.get('entropy_min', None)  # Will set default after loading Entropy
+    entropy_max = kwargs.get('entropy_max', None)  # Will set default after loading Entropy
 
     # Default to showing all panels
     if panels is None:
@@ -1123,6 +1133,27 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
             LOGL_mean=f_post['/LOGL_mean'][:]
         except:
             LOGL_mean=None
+
+    # Set defaults for entropy_min and entropy_max if not provided
+    if entropy_min is None:
+        entropy_min = np.nanmin(Entropy)
+    if entropy_max is None:
+        entropy_max = 0.6 * np.nanmax(Entropy)  # Match std_max default pattern
+
+    # Create alpha matrix with normalization (similar to plot_profile_continuous)
+    A = np.ones(Entropy.shape)  # Start with fully opaque (alpha=1)
+    if alpha > 0:
+        if entropy_max > entropy_min:
+            Entropy_normalized = (Entropy - entropy_min) / (entropy_max - entropy_min)
+        else:
+            Entropy_normalized = np.zeros_like(Entropy)
+
+        # Clamp normalized values to [0, 1]
+        Entropy_normalized[Entropy_normalized < 0] = 0
+        Entropy_normalized[Entropy_normalized > 1] = 1
+
+        # Apply alpha scaling: higher uncertainty = more transparent
+        A = 1 - alpha * Entropy_normalized
 
     nm = Mode.shape[0]
     if nm<=1:
@@ -1331,10 +1362,10 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
 
         # Apply entropy-based transparency if alpha > 0
         if alpha > 0:
-            # Transparency scaled by alpha: alpha * Entropy
-            # When Entropy=0 (certain): transparency=0 (opaque)
-            # When Entropy=1 (uncertain): transparency=alpha (scaled)
-            im1.set_alpha(1 - alpha * Entropy[:,ii])
+            # Apply normalized alpha matrix for transparency
+            # Lower entropy (certain): more opaque
+            # Higher entropy (uncertain): more transparent
+            im1.set_alpha(A[:,ii])
             ax[0].set_title('Mode (with uncertainty transparency)')
         else:
             ax[0].set_title('Mode')

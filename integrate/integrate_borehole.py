@@ -1,39 +1,52 @@
 
-def compute_P_obs_discrete(depth_top, depth_bottom, lithology_obs, z, class_id, P_single=0.8, P_prior=None):
+def compute_P_obs_discrete(depth_top=None, depth_bottom=None, lithology_obs=None, z=None, class_id=None, lithology_prob=0.8, P_prior=None, W=None):
     """
     Compute discrete observation probability matrix from depth intervals and lithology observations.
-    
-    This function creates a probability matrix where each depth point is assigned 
+
+    This function creates a probability matrix where each depth point is assigned
     probabilities based on observed lithology classes within specified depth intervals.
-    
+
     Parameters
     ----------
-    depth_top : array-like
-        Array of top depths for each observation interval.
-    depth_bottom : array-like
-        Array of bottom depths for each observation interval.
-    lithology_obs : array-like
-        Array of observed lithology class IDs for each interval.
-    z : array-like
-        Array of depth/position values where probabilities are computed.
-    class_id : array-like
-        Array of unique class identifiers (e.g., [0, 1, 2] for 3 lithology types).
-    P_single : float, optional
-        Probability assigned to the observed class. Default is 0.8.
+    depth_top : array-like, optional
+        Array of top depths for each observation interval. Required if W is not provided.
+    depth_bottom : array-like, optional
+        Array of bottom depths for each observation interval. Required if W is not provided.
+    lithology_obs : array-like, optional
+        Array of observed lithology class IDs for each interval. Required if W is not provided.
+    z : array-like, optional
+        Array of depth/position values where probabilities are computed. Required if W is not provided.
+    class_id : array-like, optional
+        Array of unique class identifiers (e.g., [0, 1, 2] for 3 lithology types). Required if W is not provided.
+    lithology_prob : float or array-like, optional
+        Probability assigned to the observed class. Can be:
+        - float: Same probability for all intervals (default is 0.8)
+        - array: Array of probabilities, one per interval (must match length of lithology_obs)
     P_prior : ndarray, optional
         Prior probability matrix of shape (nclass, nm). If None, uses uniform distribution
         for depths not covered by observations. Default is None.
-    
+    W : dict, optional
+        Well/borehole dictionary containing observation data. If provided, overrides
+        the individual parameters. Expected keys:
+        - 'depth_top': Array of top depths
+        - 'depth_bottom': Array of bottom depths
+        - 'lithology_obs': Array of observed lithology class IDs
+        - 'lithology_prob': Probability or array of probabilities (optional, defaults to 0.8)
+        - 'X': X coordinate of well location (optional, not used in this function)
+        - 'Y': Y coordinate of well location (optional, not used in this function)
+        Default is None.
+
     Returns
     -------
     P_obs : ndarray
         Probability matrix of shape (nclass, nm) where nclass is the number of classes
         and nm is the number of depth points. For each depth point covered by observations,
-        the observed class gets probability P_single and other classes share (1-P_single).
+        the observed class gets probability lithology_prob and other classes share (1-lithology_prob).
         Depths not covered by any observation contain NaN or prior probabilities if provided.
-    
+
     Examples
     --------
+    >>> # Traditional usage with individual parameters
     >>> depth_top = [0, 10, 20]
     >>> depth_bottom = [10, 20, 30]
     >>> lithology_obs = [1, 2, 1]  # clay, sand, clay
@@ -41,35 +54,236 @@ def compute_P_obs_discrete(depth_top, depth_bottom, lithology_obs, z, class_id, 
     >>> class_id = [0, 1, 2]  # gravel, clay, sand
     >>> P_obs = compute_P_obs_discrete(depth_top, depth_bottom, lithology_obs, z, class_id)
     >>> print(P_obs.shape)  # (3, 30)
+
+    >>> # With different probabilities per interval
+    >>> lithology_prob = [0.9, 0.7, 0.85]  # Higher confidence in first interval
+    >>> P_obs = compute_P_obs_discrete(depth_top, depth_bottom, lithology_obs, z, class_id, lithology_prob=lithology_prob)
+
+    >>> # Using well dictionary (cleaner interface)
+    >>> W = {'depth_top': [0, 10, 20], 'depth_bottom': [10, 20, 30],
+    ...      'lithology_obs': [1, 2, 1], 'lithology_prob': [0.9, 0.7, 0.85],
+    ...      'X': 543000.0, 'Y': 6175800.0}
+    >>> P_obs = compute_P_obs_discrete(z=z, class_id=class_id, W=W)
     """
     import numpy as np
-    
+
+    # Override parameters with W dictionary if provided
+    if W is not None:
+        if 'depth_top' in W:
+            depth_top = W['depth_top']
+        if 'depth_bottom' in W:
+            depth_bottom = W['depth_bottom']
+        if 'lithology_obs' in W:
+            lithology_obs = W['lithology_obs']
+        if 'lithology_prob' in W:
+            lithology_prob = W['lithology_prob']
+        # Note: X and Y coordinates stored for reference but not used in this function
+        # X_well = W.get('X', None)
+        # Y_well = W.get('Y', None)
+
+    # Validate required parameters
+    if depth_top is None or depth_bottom is None or lithology_obs is None:
+        raise ValueError("depth_top, depth_bottom, and lithology_obs must be provided either as arguments or in W dictionary")
+    if z is None or class_id is None:
+        raise ValueError("z and class_id are required parameters")
+
     nm = len(z)
     nclass = len(class_id)
-    
-    # Compute probability for non-hit classes
-    P_nohit = (1 - P_single) / (nclass - 1)
-    
+
+    # Convert lithology_prob to array if it's a scalar
+    lithology_prob_array = np.atleast_1d(lithology_prob)
+    if len(lithology_prob_array) == 1:
+        # Scalar case: broadcast to all intervals
+        lithology_prob_array = np.full(len(lithology_obs), lithology_prob_array[0])
+    elif len(lithology_prob_array) != len(lithology_obs):
+        raise ValueError(f"lithology_prob array length ({len(lithology_prob_array)}) must match lithology_obs length ({len(lithology_obs)})")
+
     # Initialize with NaN or prior
     if P_prior is not None:
         P_obs = P_prior.copy()
     else:
         P_obs = np.zeros((nclass, nm)) * np.nan
-    
+
     # Loop through each depth point
     for im in range(nm):
         # Loop through each observation interval
         for i in range(len(depth_top)):
             # Check if current depth is within this interval
             if z[im] >= depth_top[i] and z[im] < depth_bottom[i]:
+                # Get the probability for this specific interval
+                lithology_prob_i = lithology_prob_array[i]
+                # Compute probability for non-hit classes
+                P_nohit = (1 - lithology_prob_i) / (nclass - 1)
+
                 # Assign probabilities for all classes
                 for ic in range(nclass):
                     if class_id[ic] == lithology_obs[i]:
-                        P_obs[ic, im] = P_single
-                    else: 
+                        P_obs[ic, im] = lithology_prob_i
+                    else:
                         P_obs[ic, im] = P_nohit
-    
+
     return P_obs
+
+def compute_P_obs_sparse(M_lithology, depth_top=None, depth_bottom=None, lithology_obs=None, z=None, class_id=None, lithology_prob=0.8, W=None):
+    """
+    Compute sparse observation probability matrix by extracting mode lithology from prior models within depth intervals.
+
+    This function processes lithology models from a prior ensemble to create sparse observations.
+    For each depth interval, it finds the most frequent (mode) lithology class within that interval
+    from each prior model, then creates a probability matrix based on how well these modes match
+    the observed lithology.
+
+    Parameters
+    ----------
+    M_lithology : ndarray
+        Array of lithology models from prior ensemble, shape (nreal, nz) where nreal is the
+        number of realizations and nz is the number of depth points.
+    depth_top : array-like, optional
+        Array of top depths for each observation interval. Required if W is not provided.
+    depth_bottom : array-like, optional
+        Array of bottom depths for each observation interval. Required if W is not provided.
+    lithology_obs : array-like, optional
+        Array of observed lithology class IDs for each interval. Required if W is not provided.
+    z : array-like, optional
+        Array of depth/position values corresponding to M_lithology depth discretization.
+        Required if W is not provided.
+    class_id : array-like, optional
+        Array of unique class identifiers (e.g., [0, 1, 2] for 3 lithology types).
+        Required if W is not provided.
+    lithology_prob : float or array-like, optional
+        Probability assigned to the observed class. Can be:
+        - float: Same probability for all intervals (default is 0.8)
+        - array: Array of probabilities, one per interval (must match length of lithology_obs)
+    W : dict, optional
+        Well/borehole dictionary containing observation data. If provided, overrides
+        the individual parameters. Expected keys:
+        - 'depth_top': Array of top depths
+        - 'depth_bottom': Array of bottom depths
+        - 'lithology_obs': Array of observed lithology class IDs
+        - 'lithology_prob': Probability or array of probabilities (optional, defaults to 0.8)
+        - 'X': X coordinate of well location (optional, not used in this function)
+        - 'Y': Y coordinate of well location (optional, not used in this function)
+        Default is None.
+
+    Returns
+    -------
+    P_obs : ndarray
+        Probability matrix of shape (nclass, n_obs) where nclass is the number of classes
+        and n_obs is the number of observation intervals. Each column represents the
+        probability distribution for one depth interval.
+    lithology_mode : ndarray
+        Array of mode lithology values extracted from prior models, shape (nreal, n_obs).
+        For each realization and observation interval, contains the most frequent lithology
+        class ID within that depth range.
+
+    Examples
+    --------
+    >>> # Load prior lithology models
+    >>> M_lithology = f_prior['M2'][:]  # Shape: (100000, 50)
+    >>> z = np.linspace(0, 100, 50)
+    >>> class_id = [0, 1, 2]  # sand, clay, gravel
+    >>>
+    >>> # Define observations
+    >>> depth_top = [0, 20, 40]
+    >>> depth_bottom = [20, 40, 60]
+    >>> lithology_obs = [1, 0, 1]  # clay, sand, clay
+    >>>
+    >>> # Compute sparse observations
+    >>> P_obs, lithology_mode = compute_P_obs_sparse(M_lithology, depth_top, depth_bottom,
+    ...                                               lithology_obs, z, class_id)
+    >>> print(P_obs.shape)  # (3, 3) - 3 classes, 3 observations
+    >>> print(lithology_mode.shape)  # (100000, 3) - mode for each realization and interval
+
+    >>> # Using well dictionary
+    >>> W = {'depth_top': [0, 20, 40], 'depth_bottom': [20, 40, 60],
+    ...      'lithology_obs': [1, 0, 1], 'lithology_prob': [0.9, 0.8, 0.85],
+    ...      'X': 543000.0, 'Y': 6175800.0}
+    >>> P_obs, lithology_mode = compute_P_obs_sparse(M_lithology, z=z, class_id=class_id, W=W)
+
+    Notes
+    -----
+    The function extracts lithology mode for each depth interval by:
+    1. Finding depth indices corresponding to interval boundaries
+    2. Extracting lithology values within the interval
+    3. Computing the most frequent (mode) lithology class
+    4. Assigning probabilities based on match with observed lithology
+
+    This approach creates "sparse" observations because instead of using the full depth profile,
+    only the mode lithology from each interval is used to construct the probability matrix.
+    """
+    import numpy as np
+    from tqdm import tqdm
+
+    # Override parameters with W dictionary if provided
+    if W is not None:
+        if 'depth_top' in W:
+            depth_top = W['depth_top']
+        if 'depth_bottom' in W:
+            depth_bottom = W['depth_bottom']
+        if 'lithology_obs' in W:
+            lithology_obs = W['lithology_obs']
+        if 'lithology_prob' in W:
+            lithology_prob = W['lithology_prob']
+        # Note: X and Y coordinates stored for reference but not used in this function
+        # X_well = W.get('X', None)
+        # Y_well = W.get('Y', None)
+
+    # Validate required parameters
+    if depth_top is None or depth_bottom is None or lithology_obs is None:
+        raise ValueError("depth_top, depth_bottom, and lithology_obs must be provided either as arguments or in W dictionary")
+    if z is None or class_id is None:
+        raise ValueError("z and class_id are required parameters")
+
+    # Get dimensions
+    nreal = len(M_lithology)
+    nclass = len(class_id)
+    nl = len(lithology_obs)
+    n_obs = nl
+
+    # Convert lithology_prob to array if it's a scalar
+    lithology_prob_array = np.atleast_1d(lithology_prob)
+    if len(lithology_prob_array) == 1:
+        # Scalar case: broadcast to all intervals
+        lithology_prob_array = np.full(n_obs, lithology_prob_array[0])
+    elif len(lithology_prob_array) != n_obs:
+        raise ValueError(f"lithology_prob array length ({len(lithology_prob_array)}) must match lithology_obs length ({n_obs})")
+
+    # Initialize lithology mode array
+    lithology_mode = np.zeros((nreal, nl), dtype=int)
+
+    # Extract mode lithology for each realization and depth interval
+    for im in tqdm(np.arange(len(M_lithology)), desc='compute_P_obs_sparse'):
+        M_test = M_lithology[im]
+        for i in range(len(depth_top)):
+            z_top = depth_top[i]
+            z_bottom = depth_bottom[i]
+            id_top = np.argmin(np.abs(z - z_top))
+            id_bottom = np.argmin(np.abs(z - z_bottom))
+
+            if id_top == id_bottom:
+                lithology_layer = M_test[id_top]
+                lithology_mode_layer = lithology_layer
+            else:
+                lithology_layer = M_test[id_top:id_bottom]
+                # Find the most frequent lithology in this layer
+                values, counts = np.unique(lithology_layer, return_counts=True)
+                lithology_mode_layer = values[np.argmax(counts)]
+
+            lithology_mode[im, i] = lithology_mode_layer
+
+    # Convert observed lithologies to P_obs probabilities
+    P_obs = np.zeros((nclass, n_obs)) * np.nan
+    for i in range(n_obs):
+        # Get the probability for this specific interval
+        lithology_prob_i = lithology_prob_array[i]
+
+        for j in range(nclass):
+            if class_id[j] == lithology_obs[i]:
+                P_obs[j, i] = lithology_prob_i
+            else:
+                P_obs[j, i] = (1 - lithology_prob_i) / (nclass - 1)
+
+    return P_obs, lithology_mode
 
 def rescale_P_obs_temperature(P_obs, T=1.0):
     """

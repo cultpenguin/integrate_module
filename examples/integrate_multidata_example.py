@@ -27,6 +27,7 @@ parallel = ig.use_parallel(showInfo=1)
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
 hardcopy=True
 
 # remove all files with name 'da*IDEN*h5'
@@ -37,10 +38,15 @@ for file in os.listdir('.'):
 
 
 # %%
+N_use = 50000
 P_single=0.99
-inflateTEMNoise = 4
-N_use = 250000
+inflateTEMNoise = 10
+# Extrapolation options for distance weighting
+r_data=10 
+r_dis=100
 
+
+# Get Daugaard data files
 case = 'DAUGAARD'
 files = ig.get_case_data(case=case)
 f_data_h5 = files[0]
@@ -51,8 +57,6 @@ print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
 nd= len(X)
-nclass = 8 # optionally get from data
-nm = 90 # optionally get from data
 
 
 with h5py.File(f_data_h5,'r') as f_data:
@@ -67,14 +71,13 @@ Y1=W1_Y;
 X2= W2_X+1800; 
 Y2=W2_Y-100;
 
-# Find points within buffer distance
+# Find indeces of data points along points (Xl,Yl), within buffer distance
 Xl = np.array([X1, X2])
 Yl = np.array([Y1, Y2])
 buffer = 10.0
-indices, distances, segment_ids = ig.find_points_along_line_segments(
+id_line, distances, segment_ids = ig.find_points_along_line_segments(
     X, Y, Xl, Yl, tolerance=buffer
 )
-id_line = indices
 
 plt.figure(figsize=(10, 6))
 plt.scatter(X, Y, c=NON_NAN, s=1,label='Survey Points')
@@ -135,7 +138,6 @@ nclass = len(class_id)
 # %% Load Dauagard data and increase std by a factor of 3
 # inflateTEMNoise be be tested for values, 1,2,5,10
 
-#if inflateTEMNoise != 1:
 if inflateTEMNoise > 0:
     gf=inflateTEMNoise
     print("="*60)
@@ -154,8 +156,10 @@ if inflateTEMNoise > 0:
 # Define wells information in different ways. 
 # Frist deifne what direct information from well log
 WELLS=[]
-WELLS_compressed=[]
+WELL_NAMES=[]
 
+
+# WELL 1: DAU02
 '''
 TOP 	BOTTOM	CLASS	UTMX	UTMY	8-class prior
 0	0,3	Muld	542983,01	6175822,76	2
@@ -173,18 +177,36 @@ W = {}
 W['depth_top'] =    [0  , 0.3, 0.5, 1, 1.5, 2, 10, 10.5, 13.2, 16.6]
 W['depth_bottom'] = [0.3, 0.5, 1, 1.5, 2, 10, 10.5, 13.2, 16.6, 20]
 W['lithology_obs'] = [2, 2, 2, 2, 2, 2, 5, 2, 5, 3]
+W['lithology_prob'] = [P_single, P_single, P_single, P_single, P_single, P_single, P_single, P_single, P_single, P_single]
 W['X'] = 542983.01
 W['Y'] = 6175822.76
-W['name'] = 'DAU02'
+W['name'] = 'DAU02 - Full'
 WELLS.append(W)  
+WELL_NAMES.append('%s Full' % W['name'])
 
-import copy
 W_compressed = copy.deepcopy(W)
 W_compressed['depth_top'] =    [0   , 13.2, 16.6]
 W_compressed['depth_bottom'] = [13.2, 16.6, 20]
 W_compressed['lithology_obs'] = [2, 5, 3]
+W_compressed['lithology_prob'] = [P_single, P_single, P_single]
+W_compressed['name'] = 'DAU02 - Compressed'
 WELLS.append(W_compressed)
+WELL_NAMES.append('%s Compressed' % W['name'])
 
+# SINGLE LAYER: lithoilogy 5 from 20-24 m
+W = {}
+W['depth_top'] =     [20]
+W['depth_bottom'] = [24]
+W['lithology_obs'] = [5] 
+W['lithology_prob'] = [P_single]
+W['X'] = 542983.01
+W['Y'] = 6175822.76
+W['name'] = 'DAU02'
+WELLS.append(W.copy())
+WELL_NAMES.append('%s Single Layer' % W['name'])
+
+
+# WELL 2: 116.1602
 '''
 TOP 	BOTTOM	CLASS	UTMX	UTMY	8-class prior 
 0	8	Moræneler	543584,098	6175788,478	3
@@ -199,30 +221,34 @@ W = {}
 W['depth_top'] =     [0,  8, 15, 17, 20, 23.5, 45]
 W['depth_bottom'] =  [8, 15, 17, 20, 23.5, 45, 46]
 W['lithology_obs'] = [3,  5,  3,  5,  5,  6,  7]
+W['lithology_prob'] = [P_single, P_single, P_single, P_single, P_single, P_single, P_single]
 W['X'] = 543584.098
 W['Y'] = 6175788.478
-W['name'] = '116.1602'                      
+W['name'] = '116.1602 - Full'                      
 WELLS.append(W)
+WELL_NAMES.append('%s Full' % W['name'])
 
 W_compressed = copy.deepcopy(W)
 W_compressed['depth_top'] =     [0,  8, 15,   17, 23.5, 45]
 W_compressed['depth_bottom'] =  [8, 15, 17, 23.5,   45, 46]
 W_compressed['lithology_obs'] = [3,  5,  3,    5,    6, 7]
-WELLS.append(W_compressed)
+W_compressed['lithology_prob'] = [P_single, P_single, P_single, P_single, P_single, P_single]
+W['name'] = '116.1602 - Compressed'                      
+WELLS.append(W_compressed)  
+WELL_NAMES.append('%s Compressed' % W['name'])
 
-# SINGLE LAYER 
+
+# SINGLE LAYER: lithoilogy 5 from 20-24 m
 W = {}
 W['depth_top'] =     [20]
 W['depth_bottom'] = [24]
 W['lithology_obs'] = [5] 
-W['X'] = 542983.01
-W['Y'] = 6175822.76
-W['name'] = 'DAU02'
-WELLS.append(W.copy())
-
+W['lithology_prob'] = [P_single]
 W['X'] = 543584.098
 W['Y'] = 6175788.478
+W['name'] = '116.1602 - Single Layer'
 WELLS.append(W.copy())
+WELL_NAMES.append('%s Single Layer' % W['name'])
 
 # %% Write different types of data
 # load prior im = 2
@@ -238,21 +264,24 @@ for iw in np.arange(len(WELLS)):
     print("considering well %d: %s" % (iw+1, WELLS[iw]['name']))
 
     W = WELLS[iw]
-    depth_top = W['depth_top']
-    depth_bottom = W['depth_bottom']
-    lithology_obs = W['lithology_obs']
-    X_well = W['X']
-    Y_well = W['Y']
-    P_obs = ig.compute_P_obs_discrete(depth_top, depth_bottom, lithology_obs, z, class_id, P_single=P_single, P_prior=None)
+    #depth_top = W['depth_top']
+    #depth_bottom = W['depth_bottom']
+    #lithology_obs = W['lithology_obs']
+    #lithology_prob = W['lithology_prob']
+    #X_well = W['X']
+    #Y_well = W['Y']
+    #P_obs = ig.compute_P_obs_discrete( z=z, class_id=class_id, depth_top=W['depth_top'], depth_bottom=W['depth_bottom'], lithology_obs=W['lithology_obs'],lithology_prob=W['lithology_prob'], P_prior=None)
+    P_obs = ig.compute_P_obs_discrete(z=z, class_id=class_id, W=W)
+    
     plt.figure()
     plt.imshow(P_obs)
 
     # apply P_obs to the whole data grid with distance based weighting
-    if (iw==0)|(iw==2):
+    if (iw==0)|(iw==3):
         doPlot=True
     else:
         doPlot=False
-    d_obs, i_use = ig.Pobs_to_datagrid(P_obs, X_well, Y_well, f_data_h5, r_data=10, r_dis=100, doPlot=doPlot)
+    d_obs, i_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=doPlot)
 
     #% Write to DATA file
     id_out, f_out = ig.save_data_multinomial(
@@ -279,50 +308,13 @@ M_lithology = M[1]
 nm = M_lithology.shape[1]
 nreal = M_lithology.shape[0]
 
-for iw in np.arange(4):
+for iw in [0,1,3,4]:
     #iw = 0
-
-    lithology_obs = WELLS[iw]['lithology_obs']
-    depth_top = WELLS[iw]['depth_top']
-    depth_bottom = WELLS[iw]['depth_bottom']
-    X_well = WELLS[iw]['X']
-    Y_well = WELLS[iw]['Y']
-    nl=len(lithology_obs)
-    lithology_mode = np.zeros((nreal, nl), dtype=int)
-
-    from tqdm import tqdm
-    for im in tqdm(np.arange(len(M_lithology)), desc='prior_discrete_data'):
-        M_test = M_lithology[im]
-        for i in range(len(depth_top)):
-            z_top = depth_top[i]
-            z_bottom = depth_bottom[i]
-            id_top = np.argmin(np.abs(z - z_top))
-            id_bottom = np.argmin(np.abs(z - z_bottom))
-            #print("Layer %d: depth %.2f-%.2f, ids %d-%d, lithology obs %d" % (i+1, z_top, z_bottom, id_top, id_bottom, lithology_obs[i]))
-            if id_top==id_bottom:
-                lithology_layer = M_test[id_top]
-                lithology_mode_layer = lithology_layer
-            else:
-                lithology_layer = M_test[id_top:id_bottom]
-                # Find the most frequent lithology in this layer
-                values, counts = np.unique(lithology_layer, return_counts=True)
-                lithology_mode_layer = values[np.argmax(counts)]
-            #print("  Most frequent lithology in layer: %d" % lithology_mode)
-            lithology_mode[im, i] = lithology_mode_layer
-
-    # Convert observed lithologies to d_obs probabilities 
-    n_obs = len(lithology_obs)
-    P_obs = np.zeros((nclass, n_obs))*np.nan
-    for i in range(len(depth_top)):
-        for j in range(nclass):
-            if class_id[j] == lithology_obs[i]:
-                P_obs[j, i] = P_single
-            else:
-                P_obs[j, i] = (1-P_single)/(nclass-1)
-
-
+    W = WELLS[iw]
+    P_obs, lithology_mode = ig.compute_P_obs_sparse(M_lithology, z=z, class_id=class_id, W=W)
+ 
     # apply P_obs to the whole data grid with distance based weighting
-    d_obs, i_use = ig.Pobs_to_datagrid(P_obs, X_well, Y_well, f_data_h5, r_data=10, r_dis=100, doPlot=False)
+    d_obs, i_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=False)
 
     plt.figure()
     plt.imshow(P_obs)
@@ -350,11 +342,11 @@ for iw in np.arange(4):
 nr=1000
 id_use = [1] # tTEM 
 #id_use = [2] # Well1 - independent
-#id_use = [3] # Well1 - compressed
-#id_use = [4] # Well2 - independent
-#id_use = [5] # Well2 - compressed
-#id_use = [6] # Well1 - simple test -> cat 5
-#id_use = [7] # Well2 - simple test-> cat 5
+#id_use = [3] # Well1 - ind compressed
+#id_use = [4] # Well1 - simple test -> cat 5
+#id_use = [5] # Well2 - independent
+#id_use = [6] # Well2 - ind compressed
+#id_use = [7] # Well1 - simple test -> cat 5
 #id_use = [8] # well 1, dependent
 #id_use = [9] # well 1, dependent compressed
 #id_use = [10] # well 2, dependent
@@ -362,15 +354,14 @@ id_use = [1] # tTEM
 
 #id_use = [1] # tTEM 
 
-#id_use = [2,4] # Both wells independent
-#id_use = [3,5] # Both wells compressed
+#id_use = [2,5] # Both wells independent
+#id_use = [3,6] # Both wells compressed
 #id_use = [8,10] # Both wells, dependent
 #id_use = [9,11] # Both wells, dependent compressed
 
-id_use = [1,2,4] # TEM + both wells independent
-#id_use = [1,3,5] # TEM + both wells compressed
-id_use = [1,8,10] # TEM + both wells, dependent
-id_use = [8,10] # TEM + both wells, dependent
+id_use = [9,11] # both wells, dependent # One should alsways chweck the wells alone, to check for concistency with the prior.
+id_use = [1] # TEM + both wells, dependent
+id_use = [1, 9,11] # Both wells independent + tTEM
 
 # get string from id_use
 fileparts = os.path.splitext(f_prior_data_h5)
@@ -387,12 +378,12 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                 autoT=True,
                                 T_base=1,
                                 updatePostStat=True)
+ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy, alpha = 1,std_min = 0.3, std_max = 0.6,)
+#ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy, alpha = 1,std_min = 0.3, std_max = 0.6, panels=['Median'])
+ig.plot_profile(f_post_h5, im=2, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy, alpha=1, entropy_min =0.3, entropy_max=0.6)
 
 
 # %% Plot profile
-ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy, alpha = 1,std_min = 0.3, std_max = 0.6)
-
-# %%%
-ig.plot_profile(f_post_h5, im=2, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy, alpha=1)
+#ig.plot_profile(f_post_h5, im=1, ii=id_line)
 
 # %%
