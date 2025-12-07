@@ -38,7 +38,7 @@ for file in os.listdir('.'):
 
 
 # %%
-N_use = 500000
+N_use = 1000000
 P_single=0.99
 inflateTEMNoise = 4
 # Extrapolation options for distance weighting
