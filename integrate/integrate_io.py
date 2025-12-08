@@ -2166,6 +2166,7 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
         filelist.append('HADERUP_MEAN_ALL.h5')
         filelist.append('TX07_Haderup_mean.gex')
         filelist.append('README_HADERUP')
+        filelist.append('prior_haderup_dec25.xlsx')
         #if loadAll:
         #    filelist.append('HADERUP_RAW.h5')
                   
