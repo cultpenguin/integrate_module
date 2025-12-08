@@ -39,8 +39,8 @@ for file in os.listdir('.'):
 
 
 # %%
-N=50000
-N_use = 50000
+N=1000000
+N_use = N
 dmax=90
 dz=1
 
@@ -53,10 +53,11 @@ r_dis=100
 
 # Get Daugaard data files
 case = 'HADERUP'
-files = ig.get_case_data(case=case)
+files = ig.get_case_data(case=case, loadAll=True)
 f_data_h5 = files[0]
 f_prior_xls = files[3]
 file_gex= ig.get_gex_file_from_data(f_data_h5)
+
 
 print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
