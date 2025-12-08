@@ -33,7 +33,7 @@ hardcopy=True
 
 # remove all files with name 'da*IDEN*h5'
 for file in os.listdir('.'):
-    if file.startswith('daugaard') and 'IDEN' in file and file.endswith('.h5'):
+    if file.startswith('haderup') and 'IDEN' in file and file.endswith('.h5'):
         print("Removing existing file: %s" % file)
         os.remove(file)
 
@@ -277,7 +277,7 @@ id_use = [1] # tTEM
 id_use = [2] # Well 1
 id_use = [3] # Well 2
 id_use = [2,3] # Well 1,2
-id_use = [1,2,3] # tTEM, Well 1,2
+#id_use = [1,2,3] # tTEM, Well 1,2
 
 
 # get string from id_use
