@@ -51,6 +51,7 @@ if __name__ == "__main__":
     # Extrapolation options for distance weighting
     r_data=10 
     r_dis=100
+    r_dis=300
 
 
     # Get Daugaard data files
@@ -69,7 +70,7 @@ if __name__ == "__main__":
     WELLS = []
 
     W = {}
-    W['depth_top'] =     [0,  8, 12, 16, 28]
+    W['depth_top'] =     [0,  8, 12, 16, 34]
     W['depth_bottom'] =  [8, 12, 16, 28, 36]
     W['lithology_obs'] = [1,  2,  1,  5,  4]
     W['lithology_prob'] = [.9, .9, .9, .9, .9]
@@ -276,10 +277,10 @@ if __name__ == "__main__":
     # This prt of the can be rerun using different selection of data types without rerunning the abobe parts
     nr=1000
     id_use = [1] # tTEM 
-    id_use = [2] # Well 1
-    id_use = [3] # Well 2
+    #id_use = [2] # Well 1
+    #id_use = [3] # Well 2
     id_use = [2,3] # Well 1,2
-    id_use = [1,2,3] # tTEM, Well 1,2
+    #id_use = [1,2,3] # tTEM, Well 1,2
 
 
     # get string from id_use
