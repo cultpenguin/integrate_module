@@ -36,7 +36,7 @@ hardcopy=True
 # %%
 cmap, clim = ig.get_colormap_and_limits('resistivity')
 useMergedPrior=True
-useGenericPrior=False
+useGenericPrior=True
 inflateNoise = 1   # 1,2, 4
 useLogData = False
 N_use = 1000000
