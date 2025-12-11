@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-if __name__ == "__main__":
+if __name__ == "__main__": # Needed on Windows for multiprocessing
     # %% [markdown]
     # # Haderup tTEM and boreholes
     #
@@ -21,10 +21,16 @@ if __name__ == "__main__":
 
 
     # %%
+    import time
     import os
     import integrate as ig
     # check if parallel computations can be performed
     parallel = ig.use_parallel(showInfo=1)
+    if __name__ == "__main__":
+        parallel  = True
+
+    # Configure matplotlib backend for WSLg/GUI display
+    ig.setup_matplotlib_backend()
 
     import h5py
     import numpy as np
@@ -39,6 +45,7 @@ if __name__ == "__main__":
             print("Removing existing file: %s" % file)
             os.remove(file)
 
+    t0 = time.time()
 
     # %%
     N=1000000
@@ -47,7 +54,7 @@ if __name__ == "__main__":
     dz=1
 
     P_single=0.99
-    inflateTEMNoise = 4
+    inflateTEMNoise = 2
     # Extrapolation options for distance weighting
     r_data=10 
     r_dis=100
@@ -195,83 +202,64 @@ if __name__ == "__main__":
 
     #%%  First we add a data set that is simple the lithology at the well position
     # Make prior data 'D2' that is simple and identity of the prior lithology type
-    f_prior_h5 = ig.prior_data_identity(f_prior_h5, im=2, id=2, doMakePriorCopy=True)
+    #f_prior_h5 = ig.prior_data_identity(f_prior_h5, im=2, id=2, doMakePriorCopy=True)
 
-    #%%
-    useIndependentWells = False
-    if useIndependentWells:
-        for iw in np.arange(len(WELLS)):
-            print("considering well %d: %s" % (iw+1, WELLS[iw]['name']))
-
-            W = WELLS[iw]
-            P_obs = ig.compute_P_obs_discrete(z=z, class_id=class_id, W=W)
-            
-            plt.figure()
-            plt.imshow(P_obs)
-
-            # apply P_obs to the whole data grid with distance based weighting
-            if (iw==0)|(iw==3):
-                doPlot=True
-            else:
-                doPlot=False
-            d_obs, i_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=doPlot)
-
-            #% Write to DATA file
-            id_out, f_out = ig.save_data_multinomial(
-                D_obs=d_obs,           # Shape: (nd, nclass, nm)
-                i_use=i_use,           # Shape: (nd, 1) - binary mask
-                id=2+iw,                  # Data ID (will create /D2/ in DATA.h5)
-                id_prior=2,            # Which PRIOR data to use (D2 from prior file)
-                f_data_h5=f_data_h5,   # Output file
-                showInfo=1             # Verbosity
-            )
-
-            plt.show()
-
-    #%% Now use a sparse representation of the well log data. 
-    # Instead of reprsentiug all nz model paraeters, we cnvert the log obserbavtion to 
-    # represent the actual number of layer obverservation.
-    # This we need to implement a function that goes through a realizations
-    # of the prior and returns the lithology at each depth intervals, and we need to decide how we do that.
+    # %% [Markdown]
+    # The fwell information can be interepreted and handles in defferent ways. 
+    # First lets conbsider the case where each entry in W defines the "probability that the most probable lithilogy in the defined inteval is a specific class"
     #
 
-    useSparseWells = True
-    if useSparseWells:
-        # load the prior lithology data
-        M, idx = ig.load_prior_model(f_prior_h5)
-        M_lithology = M[1]
-        nm = M_lithology.shape[1]
-        nreal = M_lithology.shape[0]
-        z= np.arange(0,dmax,dz)
 
-        for iw in np.arange(len(WELLS)):
-            #iw = 0
-            W = WELLS[iw]
-            P_obs, lithology_mode = ig.compute_P_obs_sparse(M_lithology, z=z, class_id=class_id, W=W)
+    #%% Copmute prior data for sparse representation of well log data
+
+    # load the prior lithology data
+    M, idx = ig.load_prior_model(f_prior_h5)
+    M_lithology = M[1]
+    nm = M_lithology.shape[1]
+    nreal = M_lithology.shape[0]
+    z= np.arange(0,dmax,dz)
+
+    id_use_well=[]
+    for iw in np.arange(len(WELLS)):
+        #iw = 0
+        W = WELLS[iw]
+        P_obs, lithology_mode = ig.compute_P_obs_sparse(M_lithology, 
+                                                        z=z, 
+                                                        class_id=class_id, 
+                                                        W=W,
+                                                        parallel=True,
+                                                        showInfo=2)
+
+        # Now we are ready to save and litholigy_mode to prior file P_obs to a data file, 
+        # forst save the lithology_mode to a prior file as prior data, and get back the prior id of the prior data
+        id_use = ig.save_prior_data(f_prior_h5, lithology_mode)
+        id_use_well.append(id_use)
         
-            # apply P_obs to the whole data grid with distance based weighting
-            d_obs, i_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=False)
+    #%% Set observed data and save to data file
+    # This part can be rerun with different observed probabilities, without needing to recompute the prior data above.
+    for iw in np.arange(len(WELLS)):
+    
+        # apply P_obs to the whole data grid with distance based weighting
+        d_obs, i_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=False)
 
-            plt.figure()
-            plt.imshow(P_obs)
-            plt.xlabel('Number for "observed" lithology')
-            plt.ylabel('Class ID')
-            plt.title('P_obs for lithology observations')
 
-            # Now we are ready to save and litholigy_mode to prior file P_obs to a data file, 
-            # forst save the lithology_mode to a prior file as prior data, and get back the prior id of the prior data
-            id_use = ig.save_prior_data(f_prior_h5, lithology_mode)
+        # Next save the P_obs to a data file, with the correct prior id
+        # Save P_obs to data file
+        id_use_well.append(id_use)
+        id_out, f_out = ig.save_data_multinomial(
+            D_obs=d_obs,           # Shape: (nd, nclass, nm)
+            i_use=i_use,           # Shape: (nd, 1) - binary mask
+            id_prior=id_use,       # Which PRIOR data to use (D2 from prior file)
+            f_data_h5=f_data_h5,   # Output file
+            showInfo=1             # Verbosity
+        )
+        print("Wrote data id %d to file: %s" % (id_out, f_out))
 
-            # Next save the P_obs to a data file, with the correct prior id
-            # Save P_obs to data file
-            id_out, f_out = ig.save_data_multinomial(
-                D_obs=d_obs,           # Shape: (nd, nclass, nm)
-                i_use=i_use,           # Shape: (nd, 1) - binary mask
-                id_prior=id_use,       # Which PRIOR data to use (D2 from prior file)
-                f_data_h5=f_data_h5,   # Output file
-                showInfo=1             # Verbosity
-            )
-            print("Wrote data id %d to file: %s" % (id_out, f_out))
+        plt.figure()
+        plt.imshow(P_obs)
+        plt.xlabel('Number for "observed" lithology')
+        plt.ylabel('Class ID')
+        plt.title('P_obs for lithology observations')
 
     # %% Rejection inversion
     # This prt of the can be rerun using different selection of data types without rerunning the abobe parts
@@ -279,8 +267,8 @@ if __name__ == "__main__":
     id_use = [1] # tTEM 
     #id_use = [2] # Well 1
     #id_use = [3] # Well 2
-    id_use = [2,3] # Well 1,2
-    #id_use = [1,2,3] # tTEM, Well 1,2
+    #id_use = [2,3] # Well 1,2
+    id_use = [1,2,3] # tTEM, Well 1,2
 
 
     # get string from id_use
@@ -308,5 +296,10 @@ if __name__ == "__main__":
     for iw in np.arange(len(WELLS)):
         ig.plot_data_prior_post(f_post_h5, i_plot=i_well[iw], title=WELLS[iw]['name'], hardcopy=hardcopy)
         
+
+    # %% 
+    t_end = time.time()
+    print("Total computation time: %.2f seconds\nTotal computation time: %.2f minutes\nTotal computation time: %.2f hours" % (t_end - t0, (t_end - t0)/60.0, (t_end - t0)/3600.0))
+
 
 # %%

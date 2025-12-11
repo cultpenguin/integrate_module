@@ -37,6 +37,77 @@ Author: Thomas Mejer Hansen
 Email: tmeha@geo.au.dk
 """
 
+
+def setup_matplotlib_backend():
+    """
+    Configure matplotlib to use an interactive backend if available.
+
+    This function automatically detects the environment and configures matplotlib
+    to use an appropriate backend for displaying plots:
+
+    - In Jupyter notebooks: Does nothing (notebooks handle backend automatically)
+    - In regular Python scripts: Tries to use TkAgg, Qt5Agg, or GTK3Agg
+    - Falls back to Agg if no GUI backend available
+
+    Safe to call in both scripts and notebooks. Specifically designed for WSL
+    with WSLg support where GUI applications work but matplotlib may default
+    to non-interactive backends.
+
+    Examples
+    --------
+    >>> import integrate as ig
+    >>> ig.setup_matplotlib_backend()  # Call before importing matplotlib.pyplot
+    >>> import matplotlib.pyplot as plt
+
+    Notes
+    -----
+    Call this function before importing matplotlib.pyplot to ensure the backend
+    is configured correctly. If called in a Jupyter notebook, it will detect this
+    and do nothing, allowing the notebook to use its built-in backends.
+
+    If no interactive backend is available (e.g., tkinter not installed), the
+    function will print a warning and fall back to the Agg backend (file-only).
+    To install tkinter on Ubuntu/Debian: sudo apt-get install python3-tk
+    """
+    import matplotlib
+    import sys
+
+    # Check if we're in a notebook
+    try:
+        get_ipython()
+        # In notebook - don't override, notebooks handle backend
+        return
+    except NameError:
+        # Not in notebook, proceed with backend setup
+        pass
+
+    # Don't override if backend already explicitly set (not 'agg')
+    current_backend = matplotlib.get_backend().lower()
+    if current_backend != 'agg':
+        return
+
+    # Try interactive backends in order of preference for WSLg/Linux
+    backends_to_try = ['TkAgg', 'Qt5Agg', 'GTK3Agg']
+
+    for backend in backends_to_try:
+        try:
+            matplotlib.use(backend)
+            # Test if it actually works
+            import matplotlib.pyplot as plt
+            fig = plt.figure()
+            plt.close(fig)
+            if sys.stdout.isatty():  # Only print if in terminal
+                print(f"Using matplotlib backend: {backend}")
+            return
+        except (ImportError, RuntimeError):
+            continue
+
+    # If we get here, fall back to Agg
+    if sys.stdout.isatty():
+        print("Warning: No interactive matplotlib backend available, using Agg (file-only)")
+        print("To fix: sudo apt-get install python3-tk")
+    matplotlib.use('Agg')
+
 import os
 import numpy as np
 import h5py
