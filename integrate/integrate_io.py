@@ -2105,7 +2105,6 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
 
     elif case=='GRUSGRAV':
 
-        filelist = []
         filelist.append('GRUSGRAV_AVG.h5')
         filelist.append('TX07_20230425_2x4_RC20_33.gex')
         filelist.append('README_GRUSGRAV')                    
@@ -2121,15 +2120,13 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
             filelist.append('DJURSLAND_P60_N1000000_NB-13_NR03_PRIOR.h5')    
             
     elif case=='FANGEL':
-
-        filelist = []
+        
         filelist.append('FANGEL_AVG.h5')
         filelist.append('TX07_20230828_2x4_RC20-33.gex')
         filelist.append('README_FANGEL')
 
     elif case=='HALD':
 
-        filelist = []
         filelist.append('HALD_AVG.h5')
         filelist.append('TX07_20230731_2x4_RC20-33.gex')
         filelist.append('README_HALD')

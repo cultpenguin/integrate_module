@@ -2118,15 +2118,6 @@ def plot_data_xy(f_data_h5, Dkey='D1', data_key='d_obs', data_channel=0, uselog=
         f_png = f"{os.path.splitext(f_data_h5)[0]}_{Dkey}_{data_key}_ch{data_channel}.png"
         plt.savefig(f_png)
     
-    # Check if we're in a Jupyter notebook environment
-    #try:
-    #    # If we're in a notebook, don't call plt.show() to avoid double display
-    #    get_ipython()
-    #    # We're in an IPython/Jupyter environment, figure will auto-display
-    #except NameError:
-    #    # We're not in a notebook, need to explicitly show
-    #    plt.show()
-    
     return fig
 
 def plot_data(f_data_h5, i_plot=[], Dkey=[], plType='imshow', uselog=True, **kwargs):
