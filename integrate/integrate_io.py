@@ -1554,8 +1554,8 @@ def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, c
         # Copy each group/dataset from the input file to the output file
         i_use = []
         for name in input_file:
-            if showInfo > 0:
-                print('Copying %s' % name)
+            if showInfo > 2:
+                print('Copying %s. ' % name, end='')
             if isinstance(input_file[name], h5py.Dataset):                    
                 # If N is specified, only copy the first N elements
 
@@ -1576,8 +1576,8 @@ def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, c
                 # Read full dataset into memory
                 if loadToMemory:
                     # Load all data to memory, before slicing
-                    if showInfo > 0:
-                        print('Loading %s to memory' % name)
+                    if showInfo > 1:
+                        print('%s ' % name, end='')
                     data_in = input_file[name][:]    
                     data = data_in[i_use]
                 else:
@@ -1641,6 +1641,10 @@ def copy_hdf5_file(input_filename, output_filename, N=None, loadToMemory=True, c
         # Add small delay to ensure file handles are fully released
         if delay_after_close > 0:
             time.sleep(delay_after_close)
+
+
+        if showInfo > 1:
+            print('')            
 
     return output_filename
 
@@ -1751,7 +1755,7 @@ def copy_prior(input_filename, output_filename, idx=None, N_use=None, loadtomem=
                     # Get the subset of data
                     if loadtomem:
                         if showInfo > 1:
-                            print(f"Loading '{name}' to memory before slicing.")
+                            print(f"Loading '{name}' to memory before slicing.", end='')
                         data = dataset[:][idx]
                     else:
                         data = dataset[idx]
