@@ -48,7 +48,7 @@ doEffectSize = True
 doTbase = True
 doPlotAll=True
 doTestInversion = False
-doSamplePrior = True # Load prior model and data? (True) or load precomputed prior data realizations (False)
+doSamplePrior = False # Load prior model and data? (True) or load precomputed prior data realizations (False)
 
 # Load the data from DAUGAARD
 ig.get_case_data(case='DAUGAARD')
@@ -276,6 +276,7 @@ for i_prior in range(len(f_prior_data_h5_list)):
     ig.integrate_update_prior_attributes(f_prior_data_h5)
     ig.plot_data_prior(f_prior_data_h5, f_data_h5, i_plot=100, hardcopy=hardcopy)
 
+
 # %%
 for i_prior in range(len(f_prior_data_h5_list)):
     ig.plot_prior_stats(f_prior_data_h5_list[i_prior])
@@ -296,7 +297,7 @@ for i_prior in range(len(f_prior_data_h5_list)):
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, 
                                     f_data_h5, 
                                     f_post_h5, 
-                                    N_use = N_use, 
+                                    N_use = 2*N_use, 
                                     showInfo=1, 
                                     nr=nr,
                                     parallel=True, 
@@ -429,7 +430,7 @@ for i_post in range(len(f_post_h5_list)):
 f_post_h5_N_list = []
 
 if doEffectSize:
-    N_use_arr = [1000,10000,100000,1000000]
+    N_use_arr = [1000,10000,100000,1000000,2000000]
     #N_use_arr = [1000,10000,10000]
 
     for N_use in N_use_arr:
@@ -485,7 +486,7 @@ if doTbase:
                                             f_data_h5, 
                                             f_post_h5, 
                                             T_base = T_base,
-                                            N_use = N_use,
+                                            N_use = 2*N_use,
                                             autoT=False,
                                             showInfo=1, 
                                             parallel=True, 
@@ -499,13 +500,15 @@ if doTbase:
 
 
 
+# %% 
+f_post_h5_all_list = f_post_h5_list + f_post_h5_N_list + f_post_h5_T_list
+    
 
 # %%
 # concatenate f_post_h5_list, f_post_h5_N_list, f_post_h5_T_list
 
 if doPlotAll:
     plLevel=2
-    f_post_h5_all_list = f_post_h5_list + f_post_h5_N_list + f_post_h5_T_list
     
     #f_post_h5_all_list = f_post_h5_T_list
 
@@ -542,15 +545,15 @@ if doPlotAll:
             ig.plot_T_EV(f_post_h5, pl='ND', hardcopy=hardcopy)
 
             
-            ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='LogMean', uselog=1, hardcopy=hardcopy, clim=clim, cmap=cmap )
+            ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='LogMean', uselog=1, hardcopy=hardcopy, clim=clim, cmap=cmap, title = 'log(Mean)' )
             plt.show()
-            ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, hardcopy=hardcopy, clim=clim, cmap=cmap )
+            ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Median', uselog=1, hardcopy=hardcopy, clim=clim, cmap=cmap, title= 'Median' )
             plt.show()
-            ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, hardcopy=hardcopy)
+            ig.plot_feature_2d(f_post_h5,im=2,iz=15, key='Mode', uselog=0, hardcopy=hardcopy, title='Mode' )
             plt.show()
-            ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, hardcopy=hardcopy, clim=clim, cmap=cmap )
+            ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, hardcopy=hardcopy, clim=clim, cmap=cmap, title= 'Median' )
             plt.show()
-            ig.plot_feature_2d(f_post_h5,im=2,iz=5, key='Mode', uselog=0, hardcopy=hardcopy)
+            ig.plot_feature_2d(f_post_h5,im=2,iz=5, key='Mode', uselog=0, hardcopy=hardcopy, title='Mode' )
             plt.show()
 
             try:
@@ -569,8 +572,11 @@ if doPlotAll:
 # %%
 doReadList = False
 if doReadList:
-    f_txt = 'f_post_h5_all_list_%s_Nuse%d_inflateNoise%d.txt' % (fileparts[0], N_use,inflateNoise)
+    #f_txt = 'f_post_h5_all_list_%s_Nuse%d_inflateNoise%d.txt' % (fileparts[0], N_use,inflateNoise)
     f_txt='f_post_h5_all_list_daugaard_merged_Nuse2000000_inflateNoise1.txt'
+    f_txt='f_post_h5_all_list_PRIOR_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nuse1000000_inflateNoise1.txt'
+    #f_txt='f_post_h5_all_list_PRIOR_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nuse1000000_inflateNoise2.txt'
+    #f_txt='f_post_h5_all_list_PRIOR_TX07_20231016_2x4_RC20-33_Nh280_Nf12_Nuse1000000_inflateNoise4.txt'
 
     f_post_h5_all_list = []
     with open(f_txt, 'r') as f:

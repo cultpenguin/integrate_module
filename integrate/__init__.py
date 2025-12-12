@@ -39,8 +39,11 @@ from integrate.integrate import sample_posterior_multiple_hypotheses
 from integrate.integrate import timing_compute
 from integrate.integrate import timing_plot
 from integrate.integrate import compute_P_obs_from_log
-from integrate.integrate import rescale_P_obs_temperature   
+from integrate.integrate import rescale_P_obs_temperature
 from integrate.integrate import Pobs_to_datagrid
+
+# Import matplotlib backend setup
+from integrate.integrate_plot import setup_matplotlib_backend
 
 from integrate.integrate_io import copy_prior
 from integrate.integrate_io import load_prior

@@ -1555,11 +1555,7 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
         Minimum resistivity value. Default is 0.1.
     RHO_max : float, optional
         Maximum resistivity value. Default is 100.
-<<<<<<< HEAD
-    RHO_MEAN : float, optional
-=======
     RHO_mean : float, optional
->>>>>>> develop
         Mean resistivity value. Only applicable if RHO_dist is 'normal' or
         'lognormal'. Default is 100.
     RHO_std : float, optional
