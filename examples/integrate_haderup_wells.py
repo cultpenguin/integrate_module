@@ -47,13 +47,15 @@ for file in os.listdir('.'):
 t0 = time.time()
 
 # %%
+P_single = 0.9
 N=1000000
 N_use = N
 dmax=90
 dz=1
 
-P_single=0.99
-inflateTEMNoise = 1
+# Inflated noise std by this factor
+inflateTEMNoise = .5
+
 # Extrapolation options for distance weighting
 r_data=10 # XY-distance based weight for extrapolating borehole information to the data grid
 r_dis=100 # DATA-distance based weight for extrapolating borehole information to the data grid 
@@ -68,9 +70,37 @@ f_data_h5 = files[0]
 f_prior_xls = files[3]
 file_gex= ig.get_gex_file_from_data(f_data_h5)
 
-
 print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
+
+
+# %% [markdown]
+# ## Optionally inflate the noise in the tTEM data 
+# Make a copy of the tTEM data, and oprionally increase noise level
+
+# %%
+# inflateTEMNoise be be tested for values, 1,2,5,10
+# gain factor
+gf=inflateTEMNoise
+    
+# Make a copy of the tTEM data
+# set new data file name, as f_data_h5, but append (before .h5) the gf value
+f_data_old_h5 = f_data_h5
+f_data_h5 = f_data_h5.replace('.h5', '_gf%g.h5' % gf)
+ig.copy_hdf5_file(f_data_old_h5, f_data_h5)
+
+if inflateTEMNoise != 1:
+    # Optinally inflate the noise
+    print("="*60)
+    print("Increasing noise level (std) by a factor of %d" % gf)
+    print("="*60)
+    D = ig.load_data(f_data_h5)
+    D_obs = D['d_obs'][0]
+    D_std = D['d_std'][0]*gf
+    ig.copy_hdf5_file(f_data_old_h5, f_data_h5)
+    ig.save_data_gaussian(D_obs, D_std=D_std, f_data_h5=f_data_h5, file_gex=file_gex)
+
+
 
 
 # %% [markdown]
@@ -83,7 +113,7 @@ W = {}
 W['depth_top'] =     [0,  8, 12, 16, 34]
 W['depth_bottom'] =  [8, 12, 16, 28, 36]
 W['lithology_obs'] = [1,  2,  1,  5,  4]
-W['lithology_prob'] = [.9, .9, .9, .9, .9]
+W['lithology_prob'] = np.array([1.0, 1.0, 1.0, 1.0, 1.0])*P_single
 W['X'] = 498832.5
 W['Y'] = 6250843.1
 W['name'] = '65. 795'                     
@@ -93,7 +123,7 @@ W = {}
 W['depth_top'] =     [0,  9.8, 15.6, 17.8, 36.2, 39]
 W['depth_bottom'] =  [9.8, 15.6, 17.8, 36.2, 39, 45.2]
 W['lithology_obs'] = [1,  2,  1,  4,  5,  4]
-W['lithology_prob'] = [.9, .9, .9, .9, .9, .9]
+W['lithology_prob'] = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])*P_single
 W['X'] = 498804.95
 W['Y'] = 6249940.89
 W['name'] = '65. 732'                     
@@ -133,26 +163,39 @@ else:
 # ## Select a profile going through the wells
 
 # %%
+# The the X and Y locations for all data points
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
-nd= len(X)
 
-with h5py.File(f_data_h5,'r') as f_data:
-    # find number of nan values on d_obs
-    NON_NAN = np.sum(~np.isnan(f_data['/%s' % 'D1']['d_obs']), axis=1)
 
-# select the profile line
+# Find the indexes of data points closest to the well locations
+i_well = []
+i_well_dist = []
+for iw in np.arange(len(WELLS)):
+    W = WELLS[iw]
+    dists_to_well = np.sqrt((X - W['X'])**2 + (Y - W['Y'])**2)
+    iw_closest = np.argmin(dists_to_well)
+    i_well.append(iw_closest)
+    i_well_dist.append(dists_to_well[iw_closest])
+    print("Well %s is closest to data point index %d at distance %.2f m" % (W['name'], i_well[-1], i_well_dist[-1]))
+
+# Find the index of data locations along a profile
+
+# Select points along a profile line
 X1 = WELLS[0]['X']+10; Y1=WELLS[0]['Y']+300;
 X2= WELLS[1]['X']+0;   Y2=WELLS[1]['Y']+0;
 X3= WELLS[1]['X']-140;   Y3=WELLS[1]['Y']-600;
 
-
-# Find indeces of data points along points (Xl,Yl), within buffer distance
+# Find indexes, id_line, of data points along points (Xl,Yl), within buffer distance
 Xl = np.array([X1, X2, X3])
 Yl = np.array([Y1, Y2, Y3])
 buffer = 15.0
 id_line, distances, segment_ids = ig.find_points_along_line_segments(
     X, Y, Xl, Yl, tolerance=buffer
 )
+
+with h5py.File(f_data_h5,'r') as f_data:
+    # find number of nan values on d_obs
+    NON_NAN = np.sum(~np.isnan(f_data['/%s' % 'D1']['d_obs']), axis=1)
 
 plt.figure(figsize=(10, 6))
 plt.scatter(X, Y, c=NON_NAN, s=1,label='Survey Points')
@@ -173,14 +216,7 @@ if hardcopy:
 plt.show()
 
 # %%
-# find indexes of data ppints closest to the well locations
-i_well = []
-for iw in np.arange(len(WELLS)):
-    W = WELLS[iw]
-    dists_to_well = np.sqrt((X - W['X'])**2 + (Y - W['Y'])**2)
-    iw_closest = np.argmin(dists_to_well)
-    i_well.append(iw_closest)
-    print("Well %s is closest to data point index %d at distance %.2f m" % (W['name'], iw_closest, dists_to_well[iw_closest]))
+#### Read, z, class_id and class_name from prior lihology --> Should be embedded in some other function.
 
 
 # %%
@@ -192,28 +228,6 @@ with h5py.File(f_prior_h5, 'r') as f:
     class_name = f['M2'].attrs['class_name']
 nm = len(z)
 nclass = len(class_id)
-
-# %% [markdown]
-# ## Optionally inflate the noise in the tTEM data 
-
-# %%
-# inflateTEMNoise be be tested for values, 1,2,5,10
-
-if inflateTEMNoise > 0:
-    gf=inflateTEMNoise
-    print("="*60)
-    print("Increasing noise level (std) by a factor of %d" % gf)
-    print("="*60)
-    D = ig.load_data(f_data_h5)
-    D_obs = D['d_obs'][0]
-    D_std = D['d_std'][0]*gf
-    f_data_old_h5 = f_data_h5
-    # set new data file name, as f_data_h5, but append (before .h5) the gf value
-    f_data_h5 = f_data_h5.replace('.h5', '_gf%g.h5' % gf)
-    ig.copy_hdf5_file(f_data_old_h5, f_data_h5)
-    ig.save_data_gaussian(D_obs, D_std=D_std, f_data_h5=f_data_h5, file_gex=file_gex)
-
-
 
 # %%
 # load prior im = 2
@@ -249,7 +263,6 @@ if inflateTEMNoise > 0:
 #
 
 # %%
-
 # load the prior lithology data
 M, idx = ig.load_prior_model(f_prior_h5)
 M_lithology = M[1]
@@ -265,8 +278,7 @@ for iw in np.arange(len(WELLS)):
                                                     z=z, 
                                                     class_id=class_id, 
                                                     W=W,
-                                                    parallel=True,
-                                                    showInfo=2)
+                                                    parallel=parallel)
 
     # Now we are ready to save and litholigy_mode to prior file P_obs to a data file, 
     # forst save the lithology_mode to a prior file as prior data, and get back the prior id of the prior data
@@ -325,7 +337,7 @@ for iw in np.arange(len(WELLS)):
 # This prt of the can be rerun using different selection of data types without rerunning the abobe parts
 nr=1000
 id_use = [1] # tTEM 
-id_use = [2] # Well 1
+#id_use = [2] # Well 1
 #id_use = [3] # Well 2
 id_use = [2,3] # Well 1,2
 id_use = [1,2,3] # tTEM, Well 1,2
@@ -347,13 +359,13 @@ f_post_h5 = ig.integrate_rejection(f_prior_h5,
                                 autoT=True,
                                 T_base=1,
                                 updatePostStat=True)
-ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='y', hardcopy=hardcopy, alpha = 1,std_min = 0.3, std_max = 0.6)
+
 
 # %%
 
 # %%
 ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='y', hardcopy=hardcopy, alpha = 1,std_min = 0.3, std_max = 0.6)
-ig.plot_profile(f_post_h5, im=2, ii=id_line, gap_threshold=50, xaxis='y', hardcopy=hardcopy, alpha=1, entropy_min =0.4, entropy_max=1.0)
+ig.plot_profile(f_post_h5, im=2, ii=id_line, gap_threshold=50, xaxis='y', hardcopy=hardcopy, alpha=1, entropy_min =0.3, entropy_max=0.6)
 
 # %%
 for iw in np.arange(len(WELLS)):
@@ -364,5 +376,11 @@ for iw in np.arange(len(WELLS)):
 t_end = time.time()
 print("Total computation time: %.2f seconds\nTotal computation time: %.2f minutes\nTotal computation time: %.2f hours" % (t_end - t0, (t_end - t0)/60.0, (t_end - t0)/3600.0))
 
+
+# %%
+ig.plot_feature_2d(f_post_h5,im=1,iz=25, key='LogMean', uselog=1, cmap='jet', hardcopy=hardcopy, clim=[10, 200])
+plt.show()
+ig.plot_feature_2d(f_post_h5,im=2,iz=25, key='Mode', uselog=1, cmap='jet', hardcopy=hardcopy, clim=[.5, 6.5])
+plt.show()
 
 # %%

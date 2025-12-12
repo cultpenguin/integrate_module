@@ -87,10 +87,11 @@ The manual
 
 .. toctree::
    :maxdepth: 3
-	      
+
    install
    gettingstarted
    format
+   format_wells
    workflow
    notebooks
    contributions

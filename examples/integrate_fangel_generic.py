@@ -235,9 +235,9 @@ if __name__ == "__main__":
     # along a section of the survey line.
 
     # %%
-    ig.plot_profile(f_post_h5, im=1, ii=id_linex, gap_threshold=50, xaxis='y', hardcopy=hardcopy, alpha = 0,std_min = 0.3, std_max = 0.6)
-    ig.plot_profile(f_post_h5, im=1, ii=id_liney, gap_threshold=50, xaxis='x', hardcopy=hardcopy, alpha = 0,std_min = 0.3, std_max = 0.6)
-    ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='x', hardcopy=hardcopy, alpha = 0,std_min = 0.3, std_max = 0.6)
+    ig.plot_profile(f_post_h5, im=1, ii=id_linex, gap_threshold=20, xaxis='y', hardcopy=hardcopy, alpha = 0,std_min = 0.3, std_max = 0.6)
+    ig.plot_profile(f_post_h5, im=1, ii=id_liney, gap_threshold=20, xaxis='x', hardcopy=hardcopy, alpha = 0,std_min = 0.3, std_max = 0.6)
+    ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=20, xaxis='x', hardcopy=hardcopy, alpha = 0,std_min = 0.3, std_max = 0.6)
     ig.plot_profile(f_post_h5, im=1, hardcopy=hardcopy)
 
     # %% [markdown]
