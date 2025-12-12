@@ -54,10 +54,10 @@ dmax=90
 dz=1
 
 # Inflated noise std by this factor
-inflateTEMNoise = .5
+inflateTEMNoise = 2
 
 # Extrapolation options for distance weighting
-r_data=10 # XY-distance based weight for extrapolating borehole information to the data grid
+r_data=3 # XY-distance based weight for extrapolating borehole information to the data grid
 r_dis=100 # DATA-distance based weight for extrapolating borehole information to the data grid 
 r_dis=300
 
@@ -65,9 +65,13 @@ r_dis=300
 # %%
 # Get Daugaard data files
 case = 'HADERUP'
-files = ig.get_case_data(case=case, loadAll=True)
-f_data_h5 = files[0]
-f_prior_xls = files[3]
+files = ig.get_case_data(case=case, 
+                         loadAll=True, 
+                         filelist=['HADERUP_MEAN_ALL_cleaned.h5','TX07_Haderup_mean.gex'])
+
+f_data_h5 = 'HADERUP_MEAN_ALL_cleaned.h5'
+#f_data_h5 = 'HADERUP_MEAN_ALL.h5'
+f_prior_xls = 'prior_haderup_dec25.xlsx'
 file_gex= ig.get_gex_file_from_data(f_data_h5)
 
 print("Using data file: %s" % f_data_h5)
@@ -105,6 +109,39 @@ if inflateTEMNoise != 1:
 
 # %% [markdown]
 # ## Define the information from the WELLs
+# 
+# Information from well logs is provided through the W dictionar. Each well W contains:
+# * X: X coordinate of the well (float)
+# * Y: Y coordinate of the well (float)
+# * name: Name of the well (string)  
+# * depth_top: Top depth of each lithology interval (list)
+# * depth_bottom: Bottom depth of each lithology interval (list)
+#
+# It can also contain information about discrete model parameters (such as lithology)
+
+# * class_prob: Probability of the observed class in each interval (list or array)
+# * class_obs: Observed class in each interval (list or array)
+#
+# It can also contain information about continiuous parameters (such as resistivity)
+# * d_obs: observed continuous parameter in each interval (list or array)
+# * d_std: standard deviation of the observed continuous parameter in each interval (list or array)
+# * Cd: covariance matrix between the observed continuous parameters (2D array) (optional)
+#
+# In addtion to this information, one need to define how the well infomration interpretation is quantified.
+#
+# For example, 
+# If each lithololy observation reflect the "probability that a specfific class id (lithology) 
+# is the most probable class in the defined interval" one one 
+# * method = 'mode_probablity'
+#   
+# If each lithology observation reflect "the probability in each layer (as defined in the prior) of specific class id (lithology)" then
+# * method = 'layer_probability'
+#
+# If each lithology observation reflect "the class probability that all layers within the top and bootom has a specific class" then
+# * method = 'layer_probability_independent'
+#
+#
+#
 
 # %%
 WELLS = []
@@ -112,21 +149,23 @@ WELLS = []
 W = {}
 W['depth_top'] =     [0,  8, 12, 16, 34]
 W['depth_bottom'] =  [8, 12, 16, 28, 36]
-W['lithology_obs'] = [1,  2,  1,  5,  4]
-W['lithology_prob'] = np.array([1.0, 1.0, 1.0, 1.0, 1.0])*P_single
+W['class_obs'] = [1,  2,  1,  5,  4]
+W['class_prob'] = np.array([1.0, 1.0, 1.0, 1.0, 1.0])*P_single
 W['X'] = 498832.5
 W['Y'] = 6250843.1
-W['name'] = '65. 795'                     
+W['name'] = '65. 795'
+W['method'] = 'mode_probability'
 WELLS.append(W)
 
 W = {}
 W['depth_top'] =     [0,  9.8, 15.6, 17.8, 36.2, 39]
 W['depth_bottom'] =  [9.8, 15.6, 17.8, 36.2, 39, 45.2]
-W['lithology_obs'] = [1,  2,  1,  4,  5,  4]
-W['lithology_prob'] = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])*P_single
+W['class_obs'] = [1,  2,  1,  4,  5,  4]
+W['class_prob'] = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])*P_single
 W['X'] = 498804.95
 W['Y'] = 6249940.89
-W['name'] = '65. 732'                     
+W['name'] = '65. 732'
+W['method'] = 'mode_probability'
 
 WELLS.append(W)
 
@@ -152,11 +191,12 @@ if not os.path.isfile(f_prior_h5):
     # prior data 
     f_prior_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=False)
 else:
-    f_prior_h5_old = f_prior_h5
-    f_prior_h5 = f_prior_h5.replace('.h5', '_copy.h5')
-    ig.copy_hdf5_file(f_prior_h5_old, f_prior_h5, showInfo=2)
-
     print("Using existing f_prior_h5=%s" % (f_prior_h5))
+
+f_prior_h5_old = f_prior_h5
+f_prior_h5 = f_prior_h5.replace('.h5', '_copy.h5')
+ig.copy_hdf5_file(f_prior_h5_old, f_prior_h5, showInfo=2)
+
 
 
 # %% [markdown]
@@ -215,32 +255,10 @@ if hardcopy:
     plt.savefig('HADERUP_survey_points_nonnan.png', dpi=300)
 plt.show()
 
-# %%
-#### Read, z, class_id and class_name from prior lihology --> Should be embedded in some other function.
-
-
-# %%
-with h5py.File(f_prior_h5, 'r') as f:
-    # Read depth/position values (stored as 'x' attribute)
-    z = f['M2'].attrs['x']
-    # Read class identifiers
-    class_id = f['M2'].attrs['class_id']
-    class_name = f['M2'].attrs['class_name']
-nm = len(z)
-nclass = len(class_id)
-
-# %%
-# load prior im = 2
-
 
 # %%
 # Make prior data 'D2' that is simple and identity of the prior lithology type
 #f_prior_h5 = ig.prior_data_identity(f_prior_h5, im=2, id=2, doMakePriorCopy=True)
-
-# %%
-# The fwell information can be interepreted and handles in defferent ways. 
-# First lets conbsider the case where each entry in W defines the "probability that the most probable lithilogy in the defined inteval is a specific class"
-#
 
 
 # %% [markdown]
@@ -263,6 +281,16 @@ nclass = len(class_id)
 #
 
 # %%
+'''
+with h5py.File(f_prior_h5, 'r') as f:
+    # Read depth/position values (stored as 'x' attribute)
+    z = f['M2'].attrs['x']
+    # Read class identifiers
+    class_id = f['M2'].attrs['class_id']
+    class_name = f['M2'].attrs['class_name']
+nm = len(z)
+nclass = len(class_id)
+
 # load the prior lithology data
 M, idx = ig.load_prior_model(f_prior_h5)
 M_lithology = M[1]
@@ -274,18 +302,87 @@ id_use_well=[]
 P_obs_well=[]
 for iw in np.arange(len(WELLS)):
     W = WELLS[iw]
-    P_obs, lithology_mode = ig.compute_P_obs_sparse(M_lithology, 
-                                                    z=z, 
-                                                    class_id=class_id, 
-                                                    W=W,
-                                                    parallel=parallel)
+    P_obs, class_mode = ig.welllog_compute_P_obs_class_mode(M_lithology,
+                                                             z=z,
+                                                             class_id=class_id,
+                                                             W=W,
+                                                             parallel=parallel)
 
-    # Now we are ready to save and litholigy_mode to prior file P_obs to a data file, 
-    # forst save the lithology_mode to a prior file as prior data, and get back the prior id of the prior data
-    id_use = ig.save_prior_data(f_prior_h5, lithology_mode)
+    # Now we are ready to save class_mode to prior file and P_obs to a data file,
+    # first save the class_mode to a prior file as prior data, and get back the prior id of the prior data
+    id_use = ig.save_prior_data(f_prior_h5, class_mode)
 
     id_use_well.append(id_use)
     P_obs_well.append(P_obs)
+'''
+
+# %%
+'''
+    1 Compute prior data lithology mode for well W, and save to f_prior_h5
+    2 Update f_prior_h5 with prior data, return prior data id as id_prior
+'''
+def prior_data_welllog_class_mode(f_prior_h5, im_prior = None, W=None, parallel=False):
+    '''
+        1 Compute prior data lithology mode for well W, and save to f_prior_h5
+        2 Update f_prior_h5 with prior data, return prior data id as id_prior
+    '''
+
+    with h5py.File(f_prior_h5, 'r') as f:
+        # Read depth/position values (stored as 'x' attribute)
+        print(f_prior_h5)
+        z = f['M%d' % im_prior].attrs['x']
+        # Read class identifiers
+        class_id = f['M%d' % im_prior].attrs['class_id']
+        class_name = f['M%d' % im_prior].attrs['class_name']
+        M_lithology = f['M%d' % im_prior][:]
+
+    P_obs, class_mode = ig.welllog_compute_P_obs_class_mode(M_lithology,
+                                                             z=z,
+                                                             class_id=class_id,
+                                                             W=W,
+                                                             parallel=parallel)
+    id_prior = ig.save_prior_data(f_prior_h5, class_mode)
+    return P_obs, id_prior
+
+def prior_data_welllog(f_prior_h5, im_prior = None, W=None, parallel=False, **kwargs):
+    
+    showInfo = kwargs.get('showInfo', 1)
+
+    # if W is none return
+    if W is None:
+        return None, None
+    
+    
+    #if W['method'] does not exist , set it to 'mode_probability' 
+    if 'method' not in W:
+        W['method'] = 'mode_probability'
+
+    if showInfo>0:
+        print("Computing prior data for well: %s using method: %s" % (W['name'], W.get('method', 'mode_probability')))
+
+    if W['method'] == 'mode_probability':
+        P_obs, id_prior = prior_data_welllog_class_mode(f_prior_h5=f_prior_h5, im_prior=im_prior, W=W, parallel=parallel)
+    elif W['method'] == 'layer_probability':
+        # To be implemented
+        raise NotImplementedError("Method 'layer_probability' not implemented yet")
+    elif W['method'] == 'layer_probability_independent':
+        # To be implemented
+        raise NotImplementedError("Method 'layer_probability_independent' not implemented yet")
+    else:
+        raise ValueError("Unknown method: %s" % W['method'])
+
+    return P_obs, id_prior
+
+
+im_prior = 2  # lithology
+id_prior_well=[]
+P_obs_well=[]
+for iw in np.arange(len(WELLS)):
+    W = WELLS[iw]
+    P_obs, id_prior = prior_data_welllog(f_prior_h5=f_prior_h5, im_prior=im_prior, W=W, parallel=parallel, showInfo=0)
+    id_prior_well.append(id_prior)
+    P_obs_well.append(P_obs)
+
 
 # %% [markdown]
 # ### Now compute the observed data, both at the well location, and extrapolate thios observetion to the entire data grid
@@ -296,11 +393,11 @@ for iw in np.arange(len(WELLS)):
 
     W = WELLS[iw]
 
-    id_use = id_use_well[iw]
+    id_prior = id_prior_well[iw]
     P_obs = P_obs_well[iw]
     
     # apply P_obs to the whole data grid with distance based weighting
-    d_obs, i_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=False)
+    d_obs, i_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=True)
 
 
     # Next save the P_obs to a data file, with the correct prior id
@@ -308,7 +405,7 @@ for iw in np.arange(len(WELLS)):
     id_out, f_out = ig.save_data_multinomial(
         D_obs=d_obs,           # Shape: (nd, nclass, nm)
         i_use=i_use,           # Shape: (nd, 1) - binary mask
-        id_prior=id_use,       # Which PRIOR data to use (D2 from prior file)
+        id_prior=id_prior,       # Which PRIOR data to use (D2 from prior file)
         f_data_h5=f_data_h5,   # Output file
         showInfo=1             # Verbosity
     )
@@ -360,10 +457,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_h5,
                                 T_base=1,
                                 updatePostStat=True)
 
-
-# %%
-
-# %%
+#%%
 ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='y', hardcopy=hardcopy, alpha = 1,std_min = 0.3, std_max = 0.6)
 ig.plot_profile(f_post_h5, im=2, ii=id_line, gap_threshold=50, xaxis='y', hardcopy=hardcopy, alpha=1, entropy_min =0.3, entropy_max=0.6)
 
@@ -384,3 +478,58 @@ ig.plot_feature_2d(f_post_h5,im=2,iz=25, key='Mode', uselog=1, cmap='jet', hardc
 plt.show()
 
 # %%
+""" 
+# get string from id_use
+N_use = 50000
+fileparts = os.path.splitext(f_data_h5)
+id_use_str = '_full_'.join(map(str, id_use))
+f_post_h5 = 'post_%s_NoiseGain%d_id%s.h5' % (fileparts[0], inflateTEMNoise, id_use_str)
+f_post_h5 = ig.integrate_rejection(f_prior_h5, 
+                                f_data_h5, 
+                                f_post_h5, 
+                                showInfo=0, 
+                                N_use = N_use,
+                                nr=nr,
+                                id_use = [2,3],
+                                parallel=parallel, 
+                                autoT=True,
+                                T_base=1,
+                                updatePostStat=True)
+ig.plot_feature_2d(f_post_h5,im=1,iz=25, key='LogMean', uselog=1, cmap='jet', hardcopy=hardcopy, clim=[10, 200])
+plt.show()
+ig.plot_feature_2d(f_post_h5,im=2,iz=25, key='Mode', uselog=1, cmap='jet', hardcopy=hardcopy, clim=[.5, 6.5])
+plt.show()
+
+ """
+
+# %% Manual Test
+'''
+if __name__ == "__main__": # needed in Windows for parallel processing
+    f_data_h5 = 'HADERUP_MEAN_ALL_cleaned_gf2.h5'
+    f_prior_h5 = 'haderup_N1000000_dmax90_dz1_copy.h5'
+    N_use = 10000
+    id_use = [1] # tTEM 
+    id_use = [2] # WELL 2
+    id_use = [2,3] # WELLS 1 and 2
+    # id_use = [1,2,3] # tTEM + WELLS 1 and 2 [Default if id_use not set]
+
+    f_post_h5 = ig.integrate_rejection(f_prior_h5, 
+                                    f_data_h5, 
+                                    N_use = N_use,
+                                    id_use = id_use,
+                                    nr=nr,
+                                    parallel=True, 
+                                    autoT=True,
+                                    T_base=1,
+                                    updatePostStat=True)    
+
+
+    ig.plot_feature_2d(f_post_h5,im=2,iz=25, key='Mode', uselog=1, cmap='jet', hardcopy=hardcopy, clim=[.5, 6.5])
+    plt.show()
+    ig.plot_feature_2d(f_post_h5,im=1,iz=25, key='Median', uselog=1, cmap='jet', hardcopy=hardcopy, clim=[1, 300])
+    plt.show()
+
+
+
+
+'''

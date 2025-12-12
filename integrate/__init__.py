@@ -96,7 +96,7 @@ from integrate.integrate_plot import find_points_along_line_segments
 # Import from borehole module
 from integrate.integrate_borehole import compute_P_obs_discrete
 from integrate.integrate_borehole import compute_P_obs_discrete as Pobs_discrete_compute
-from integrate.integrate_borehole import compute_P_obs_sparse
+from integrate.integrate_borehole import welllog_compute_P_obs_class_mode
 from integrate.integrate_borehole import rescale_P_obs_temperature
 from integrate.integrate_borehole import rescale_P_obs_temperature as Pobs_rescale_temperature
 from integrate.integrate_borehole import Pobs_to_datagrid

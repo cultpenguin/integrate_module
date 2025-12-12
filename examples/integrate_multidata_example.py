@@ -176,19 +176,19 @@ TOP 	BOTTOM	CLASS	UTMX	UTMY	8-class prior
 W = {}
 W['depth_top'] =    [0  , 0.3, 0.5, 1, 1.5, 2, 10, 10.5, 13.2, 16.6]
 W['depth_bottom'] = [0.3, 0.5, 1, 1.5, 2, 10, 10.5, 13.2, 16.6, 20]
-W['lithology_obs'] = [2, 2, 2, 2, 2, 2, 5, 2, 5, 3]
-W['lithology_prob'] = [P_single, P_single, P_single, P_single, P_single, P_single, P_single, P_single, P_single, P_single]
+W['class_obs'] = [2, 2, 2, 2, 2, 2, 5, 2, 5, 3]
+W['class_prob'] = [P_single, P_single, P_single, P_single, P_single, P_single, P_single, P_single, P_single, P_single]
 W['X'] = 542983.01
 W['Y'] = 6175822.76
 W['name'] = 'DAU02 - Full'
-WELLS.append(W)  
+WELLS.append(W)
 WELL_NAMES.append('%s Full' % W['name'])
 
 W_compressed = copy.deepcopy(W)
 W_compressed['depth_top'] =    [0   , 13.2, 16.6]
 W_compressed['depth_bottom'] = [13.2, 16.6, 20]
-W_compressed['lithology_obs'] = [2, 5, 3]
-W_compressed['lithology_prob'] = [P_single, P_single, P_single]
+W_compressed['class_obs'] = [2, 5, 3]
+W_compressed['class_prob'] = [P_single, P_single, P_single]
 W_compressed['name'] = 'DAU02 - Compressed'
 WELLS.append(W_compressed)
 WELL_NAMES.append('%s Compressed' % W['name'])
@@ -197,8 +197,8 @@ WELL_NAMES.append('%s Compressed' % W['name'])
 W = {}
 W['depth_top'] =     [20]
 W['depth_bottom'] = [24]
-W['lithology_obs'] = [5] 
-W['lithology_prob'] = [P_single]
+W['class_obs'] = [5]
+W['class_prob'] = [P_single]
 W['X'] = 542983.01
 W['Y'] = 6175822.76
 W['name'] = 'DAU02'
@@ -220,21 +220,21 @@ TOP 	BOTTOM	CLASS	UTMX	UTMY	8-class prior
 W = {}
 W['depth_top'] =     [0,  8, 15, 17, 20, 23.5, 45]
 W['depth_bottom'] =  [8, 15, 17, 20, 23.5, 45, 46]
-W['lithology_obs'] = [3,  5,  3,  5,  5,  6,  7]
-W['lithology_prob'] = [P_single, P_single, P_single, P_single, P_single, P_single, P_single]
+W['class_obs'] = [3,  5,  3,  5,  5,  6,  7]
+W['class_prob'] = [P_single, P_single, P_single, P_single, P_single, P_single, P_single]
 W['X'] = 543584.098
 W['Y'] = 6175788.478
-W['name'] = '116.1602 - Full'                      
+W['name'] = '116.1602 - Full'
 WELLS.append(W)
 WELL_NAMES.append('%s Full' % W['name'])
 
 W_compressed = copy.deepcopy(W)
 W_compressed['depth_top'] =     [0,  8, 15,   17, 23.5, 45]
 W_compressed['depth_bottom'] =  [8, 15, 17, 23.5,   45, 46]
-W_compressed['lithology_obs'] = [3,  5,  3,    5,    6, 7]
-W_compressed['lithology_prob'] = [P_single, P_single, P_single, P_single, P_single, P_single]
-W['name'] = '116.1602 - Compressed'                      
-WELLS.append(W_compressed)  
+W_compressed['class_obs'] = [3,  5,  3,    5,    6, 7]
+W_compressed['class_prob'] = [P_single, P_single, P_single, P_single, P_single, P_single]
+W['name'] = '116.1602 - Compressed'
+WELLS.append(W_compressed)
 WELL_NAMES.append('%s Compressed' % W['name'])
 
 
@@ -242,8 +242,8 @@ WELL_NAMES.append('%s Compressed' % W['name'])
 W = {}
 W['depth_top'] =     [20]
 W['depth_bottom'] = [24]
-W['lithology_obs'] = [5] 
-W['lithology_prob'] = [P_single]
+W['class_obs'] = [5]
+W['class_prob'] = [P_single]
 W['X'] = 543584.098
 W['Y'] = 6175788.478
 W['name'] = '116.1602 - Single Layer'

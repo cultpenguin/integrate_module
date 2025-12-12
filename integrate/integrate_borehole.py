@@ -30,8 +30,8 @@ def compute_P_obs_discrete(depth_top=None, depth_bottom=None, lithology_obs=None
         the individual parameters. Expected keys:
         - 'depth_top': Array of top depths
         - 'depth_bottom': Array of bottom depths
-        - 'lithology_obs': Array of observed lithology class IDs
-        - 'lithology_prob': Probability or array of probabilities (optional, defaults to 0.8)
+        - 'class_obs': Array of observed class IDs (e.g., lithology, soil type)
+        - 'class_prob': Probability or array of probabilities (optional, defaults to 0.8)
         - 'X': X coordinate of well location (optional, not used in this function)
         - 'Y': Y coordinate of well location (optional, not used in this function)
         Default is None.
@@ -61,7 +61,7 @@ def compute_P_obs_discrete(depth_top=None, depth_bottom=None, lithology_obs=None
 
     >>> # Using well dictionary (cleaner interface)
     >>> W = {'depth_top': [0, 10, 20], 'depth_bottom': [10, 20, 30],
-    ...      'lithology_obs': [1, 2, 1], 'lithology_prob': [0.9, 0.7, 0.85],
+    ...      'class_obs': [1, 2, 1], 'class_prob': [0.9, 0.7, 0.85],
     ...      'X': 543000.0, 'Y': 6175800.0}
     >>> P_obs = compute_P_obs_discrete(z=z, class_id=class_id, W=W)
     """
@@ -73,10 +73,10 @@ def compute_P_obs_discrete(depth_top=None, depth_bottom=None, lithology_obs=None
             depth_top = W['depth_top']
         if 'depth_bottom' in W:
             depth_bottom = W['depth_bottom']
-        if 'lithology_obs' in W:
-            lithology_obs = W['lithology_obs']
-        if 'lithology_prob' in W:
-            lithology_prob = W['lithology_prob']
+        if 'class_obs' in W:
+            lithology_obs = W['class_obs']
+        if 'class_prob' in W:
+            lithology_prob = W['class_prob']
         # Note: X and Y coordinates stored for reference but not used in this function
         # X_well = W.get('X', None)
         # Y_well = W.get('Y', None)
@@ -300,20 +300,24 @@ def _compute_mode_parallel(M_lithology, z, depth_top, depth_bottom, nl, Ncpu, sh
         # Cleanup shared memory
         ig.cleanup_shared_memory(shm_objects)
 
-def compute_P_obs_sparse(M_lithology, depth_top=None, depth_bottom=None, lithology_obs=None, z=None, class_id=None, lithology_prob=0.8, W=None, parallel=False, Ncpu=-1, showInfo=1):
+def welllog_compute_P_obs_class_mode(M_lithology=None, depth_top=None, depth_bottom=None, lithology_obs=None, z=None, class_id=None, lithology_prob=0.8, W=None, parallel=False, Ncpu=-1, showInfo=1):
     """
-    Compute sparse observation probability matrix by extracting mode lithology from prior models within depth intervals.
+    Compute observation probability matrix from well log class observations by extracting mode class from prior models.
 
-    This function processes lithology models from a prior ensemble to create sparse observations.
-    For each depth interval, it finds the most frequent (mode) lithology class within that interval
-    from each prior model, then creates a probability matrix based on how well these modes match
-    the observed lithology.
+    This function processes discrete class models (e.g., lithology) from a prior ensemble to create
+    well log observations. For each depth interval, it finds the most frequent (mode) class within
+    that interval from each prior model, then creates a probability matrix based on how well these
+    modes match the observed classes.
+
+    **Simplified Usage**: When called with only `W=W`, the function returns just the probability
+    matrix `P_obs` without computing class mode, and class_mode is returned as None.
 
     Parameters
     ----------
-    M_lithology : ndarray
+    M_lithology : ndarray, optional
         Array of lithology models from prior ensemble, shape (nreal, nz) where nreal is the
-        number of realizations and nz is the number of depth points.
+        number of realizations and nz is the number of depth points. If None, only P_obs
+        is computed and lithology_mode is returned as None. Default is None.
     depth_top : array-like, optional
         Array of top depths for each observation interval. Required if W is not provided.
     depth_bottom : array-like, optional
@@ -322,7 +326,7 @@ def compute_P_obs_sparse(M_lithology, depth_top=None, depth_bottom=None, litholo
         Array of observed lithology class IDs for each interval. Required if W is not provided.
     z : array-like, optional
         Array of depth/position values corresponding to M_lithology depth discretization.
-        Required if W is not provided.
+        Required if M_lithology is provided and W does not contain depth information.
     class_id : array-like, optional
         Array of unique class identifiers (e.g., [0, 1, 2] for 3 lithology types).
         Required if W is not provided.
@@ -335,8 +339,8 @@ def compute_P_obs_sparse(M_lithology, depth_top=None, depth_bottom=None, litholo
         the individual parameters. Expected keys:
         - 'depth_top': Array of top depths
         - 'depth_bottom': Array of bottom depths
-        - 'lithology_obs': Array of observed lithology class IDs
-        - 'lithology_prob': Probability or array of probabilities (optional, defaults to 0.8)
+        - 'class_obs': Array of observed class IDs (e.g., lithology, soil type)
+        - 'class_prob': Probability or array of probabilities (optional, defaults to 0.8)
         - 'X': X coordinate of well location (optional, not used in this function)
         - 'Y': Y coordinate of well location (optional, not used in this function)
         Default is None.
@@ -344,15 +348,16 @@ def compute_P_obs_sparse(M_lithology, depth_top=None, depth_bottom=None, litholo
         Enable parallel processing for large ensembles. Default is False.
         When True and parallel processing is available, distributes realization
         processing across multiple CPU cores for significant speedup.
-        Recommended for N > 10,000 realizations.
+        Recommended for N > 10,000 realizations. Only used when M_lithology is provided.
     Ncpu : int, optional
         Number of CPU cores to use for parallel processing. Default is -1 (auto-detect).
-        Only used when parallel=True. Set to specific value to control parallelism.
+        Only used when parallel=True and M_lithology is provided.
     showInfo : int, optional
         Control information output level. Default is 1.
         - 0: No information printed
         - 1: Single line info (number of realizations, intervals)
         - >1: Progress bar with tqdm, runtime statistics, and time per model
+        Only applies when M_lithology is provided.
 
     Returns
     -------
@@ -360,14 +365,15 @@ def compute_P_obs_sparse(M_lithology, depth_top=None, depth_bottom=None, litholo
         Probability matrix of shape (nclass, n_obs) where nclass is the number of classes
         and n_obs is the number of observation intervals. Each column represents the
         probability distribution for one depth interval.
-    lithology_mode : ndarray
-        Array of mode lithology values extracted from prior models, shape (nreal, n_obs).
-        For each realization and observation interval, contains the most frequent lithology
-        class ID within that depth range.
+    class_mode : ndarray or None
+        If M_lithology is provided: Array of mode class values extracted from prior models,
+        shape (nreal, n_obs). For each realization and observation interval, contains the most
+        frequent class ID within that depth range.
+        If M_lithology is None: Returns None.
 
     Examples
     --------
-    >>> # Load prior lithology models
+    >>> # Full usage: Load prior lithology models and compute mode
     >>> M_lithology = f_prior['M2'][:]  # Shape: (100000, 50)
     >>> z = np.linspace(0, 100, 50)
     >>> class_id = [0, 1, 2]  # sand, clay, gravel
@@ -377,38 +383,45 @@ def compute_P_obs_sparse(M_lithology, depth_top=None, depth_bottom=None, litholo
     >>> depth_bottom = [20, 40, 60]
     >>> lithology_obs = [1, 0, 1]  # clay, sand, clay
     >>>
-    >>> # Compute sparse observations
-    >>> P_obs, lithology_mode = compute_P_obs_sparse(M_lithology, depth_top, depth_bottom,
-    ...                                               lithology_obs, z, class_id)
+    >>> # Compute well log observations with class mode
+    >>> P_obs, class_mode = welllog_compute_P_obs_class_mode(M_lithology, depth_top, depth_bottom,
+    ...                                                       lithology_obs, z, class_id)
     >>> print(P_obs.shape)  # (3, 3) - 3 classes, 3 observations
-    >>> print(lithology_mode.shape)  # (100000, 3) - mode for each realization and interval
+    >>> print(class_mode.shape)  # (100000, 3) - mode for each realization and interval
 
-    >>> # Using well dictionary
+    >>> # Simplified usage: Only compute P_obs using well dictionary
     >>> W = {'depth_top': [0, 20, 40], 'depth_bottom': [20, 40, 60],
-    ...      'lithology_obs': [1, 0, 1], 'lithology_prob': [0.9, 0.8, 0.85],
+    ...      'class_obs': [1, 0, 1], 'class_prob': [0.9, 0.8, 0.85],
     ...      'X': 543000.0, 'Y': 6175800.0}
-    >>> P_obs, lithology_mode = compute_P_obs_sparse(M_lithology, z=z, class_id=class_id, W=W)
+    >>> P_obs, class_mode = welllog_compute_P_obs_class_mode(W=W, class_id=class_id)
+    >>> print(P_obs.shape)  # (3, 3) - 3 classes, 3 observations
+    >>> print(class_mode)  # None (no prior models provided)
     >>>
     >>> # Using parallel processing for large ensembles
-    >>> P_obs, lithology_mode = compute_P_obs_sparse(M_lithology, depth_top, depth_bottom,
-    ...                                               lithology_obs, z, class_id,
-    ...                                               parallel=True, Ncpu=8)
+    >>> P_obs, class_mode = welllog_compute_P_obs_class_mode(M_lithology, depth_top, depth_bottom,
+    ...                                                       lithology_obs, z, class_id,
+    ...                                                       parallel=True, Ncpu=8)
     >>>
     >>> # Control output verbosity
-    >>> P_obs, lithology_mode = compute_P_obs_sparse(..., showInfo=0)  # Silent
-    >>> P_obs, lithology_mode = compute_P_obs_sparse(..., showInfo=1)  # Single line info
-    >>> P_obs, lithology_mode = compute_P_obs_sparse(..., showInfo=2)  # Progress bar + timing
+    >>> P_obs, class_mode = welllog_compute_P_obs_class_mode(M_lithology, ..., showInfo=0)  # Silent
+    >>> P_obs, class_mode = welllog_compute_P_obs_class_mode(M_lithology, ..., showInfo=1)  # Single line info
+    >>> P_obs, class_mode = welllog_compute_P_obs_class_mode(M_lithology, ..., showInfo=2)  # Progress bar + timing
 
     Notes
     -----
-    The function extracts lithology mode for each depth interval by:
+    The function extracts class mode for each depth interval by:
     1. Finding depth indices corresponding to interval boundaries
-    2. Extracting lithology values within the interval
-    3. Computing the most frequent (mode) lithology class
-    4. Assigning probabilities based on match with observed lithology
+    2. Extracting class values within the interval
+    3. Computing the most frequent (mode) class
+    4. Assigning probabilities based on match with observed class
 
-    This approach creates "sparse" observations because instead of using the full depth profile,
-    only the mode lithology from each interval is used to construct the probability matrix.
+    This approach is suitable for well log observations where each interval represents
+    the dominant class within that depth range, rather than the full depth profile.
+
+    **Simplified Mode** (M_lithology=None):
+    When M_lithology is not provided, the function only computes the P_obs probability matrix
+    from the observed class data. This is useful when you only need the probability
+    representation of observations without extracting mode class from prior models.
 
     Parallel processing uses shared memory for M_lithology array to minimize memory overhead.
     Expected speedup: 4-8x on 8-core machines for large ensembles (N > 100,000 realizations).
@@ -428,10 +441,10 @@ def compute_P_obs_sparse(M_lithology, depth_top=None, depth_bottom=None, litholo
             depth_top = W['depth_top']
         if 'depth_bottom' in W:
             depth_bottom = W['depth_bottom']
-        if 'lithology_obs' in W:
-            lithology_obs = W['lithology_obs']
-        if 'lithology_prob' in W:
-            lithology_prob = W['lithology_prob']
+        if 'class_obs' in W:
+            lithology_obs = W['class_obs']
+        if 'class_prob' in W:
+            lithology_prob = W['class_prob']
         # Note: X and Y coordinates stored for reference but not used in this function
         # X_well = W.get('X', None)
         # Y_well = W.get('Y', None)
@@ -439,11 +452,14 @@ def compute_P_obs_sparse(M_lithology, depth_top=None, depth_bottom=None, litholo
     # Validate required parameters
     if depth_top is None or depth_bottom is None or lithology_obs is None:
         raise ValueError("depth_top, depth_bottom, and lithology_obs must be provided either as arguments or in W dictionary")
-    if z is None or class_id is None:
-        raise ValueError("z and class_id are required parameters")
+    if class_id is None:
+        raise ValueError("class_id is required parameter")
+
+    # Validate z is provided when M_lithology is provided
+    if M_lithology is not None and z is None:
+        raise ValueError("z is required when M_lithology is provided")
 
     # Get dimensions
-    nreal = len(M_lithology)
     nclass = len(class_id)
     nl = len(lithology_obs)
     n_obs = nl
@@ -456,14 +472,18 @@ def compute_P_obs_sparse(M_lithology, depth_top=None, depth_bottom=None, litholo
     elif len(lithology_prob_array) != n_obs:
         raise ValueError(f"lithology_prob array length ({len(lithology_prob_array)}) must match lithology_obs length ({n_obs})")
 
-    # Compute mode lithology using sequential or parallel method
-    import integrate as ig
-    if parallel and ig.use_parallel():
-        # Parallel execution path
-        lithology_mode = _compute_mode_parallel(M_lithology, z, depth_top, depth_bottom, nl, Ncpu, showInfo)
-    else:
-        # Sequential execution path (original implementation)
-        lithology_mode = _compute_mode_sequential(M_lithology, z, depth_top, depth_bottom, nl, showInfo)
+    # Compute mode lithology only if M_lithology is provided
+    lithology_mode = None
+    if M_lithology is not None:
+        nreal = len(M_lithology)
+        # Compute mode lithology using sequential or parallel method
+        import integrate as ig
+        if parallel and ig.use_parallel():
+            # Parallel execution path
+            lithology_mode = _compute_mode_parallel(M_lithology, z, depth_top, depth_bottom, nl, Ncpu, showInfo)
+        else:
+            # Sequential execution path (original implementation)
+            lithology_mode = _compute_mode_sequential(M_lithology, z, depth_top, depth_bottom, nl, showInfo)
 
     # Convert observed lithologies to P_obs probabilities
     P_obs = np.zeros((nclass, n_obs)) * np.nan

@@ -2549,8 +2549,9 @@ def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400,
     # find the number of data points for each gate that has non-nan values
     n_not_nan = np.sum(~np.isnan(d_obs), axis=0)
     n_not_nan_freq = n_not_nan/d_obs.shape[0]
-    # use the data for which n_not_nan_freq>0.8
-    i_use = np.where(n_not_nan_freq>0.8)[0]
+    # use the data for which n_not_nan_freq>0.7
+    # 0.7 should be an option to select!
+    i_use = np.where(n_not_nan_freq>0.7)[0]
     # only use i_use values that are not nan
     i_use = i_use[~np.isnan(d_obs[i_ref,i_use])]
     # select gates to use, manually
@@ -2562,8 +2563,8 @@ def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400,
         d_test =d_obs[:,i_use]
     dd = np.abs(d_test - d_ref)
     sum_dd = np.sum(dd, axis=1)
-
     w_data = np.exp(-1*sum_dd**2/r_data**2)
+    
 
     # COmpute the distance from d_ref to all other points
     dis = np.sqrt((X-X[i_ref])**2 + (Y-Y[i_ref])**2)
@@ -3865,7 +3866,9 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
     # Convert distance weight to temperature
     # w_dis is 1 at observation point, decreases with distance
     # T = 1/w_dis means T increases with distance (weaker influence)
-    T_all = 1 / w_dis
+    T_all = 1 / w_combined
+    #T_all = 1 / w_dis
+    #T_all = 1 / w_data
 
     # Cap maximum temperature at 100 (beyond this, observation has negligible effect)
     T_all[T_all > 100] = 100
