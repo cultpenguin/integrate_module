@@ -55,8 +55,8 @@ f_prior_h5 = 'prior_chi2_dmax120_v1.h5'
 f_prior_data_h5 = f_prior_h5
 
 # Make Tx Rx height prior data!!
-f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, id=2, doMakePriorCopy=True)
-f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=3, id=3, doMakePriorCopy=False)
+f_prior_data_h5, _ = ig.prior_data_identity(f_prior_data_h5, im=2, id=2, doMakePriorCopy=True)
+f_prior_data_h5, _ = ig.prior_data_identity(f_prior_data_h5, im=3, id=3, doMakePriorCopy=False)
 #f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, doMakePriorCopy=True)  # Tx
 #f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=3, doMakePriorCopy=False)  # Rx
 

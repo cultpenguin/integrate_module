@@ -96,7 +96,7 @@ if MakeNewPrior:
 #%%
 if MakeNewPrior:
     # use M3 as data
-    file12_out = ig.prior_data_identity(file12, im=3, id=0)
+    file12_out, _ = ig.prior_data_identity(file12, im=3, id=0)
     ig.hdf5_scan(file12_out)
 
 #%%

@@ -30,7 +30,6 @@ from integrate.integrate import prior_model_workbench_direct
 from integrate.integrate import posterior_cumulative_thickness
 #from integrate.integrate import integrate_rejection_multi  
 from integrate.integrate import use_parallel
-from integrate.integrate import get_weight_from_position
 from integrate.integrate import entropy
 from integrate.integrate import class_id_to_idx
 from integrate.integrate import is_notebook
@@ -38,9 +37,9 @@ from integrate.integrate import get_hypothesis_probability
 from integrate.integrate import sample_posterior_multiple_hypotheses
 from integrate.integrate import timing_compute
 from integrate.integrate import timing_plot
-from integrate.integrate import compute_P_obs_from_log
-from integrate.integrate import rescale_P_obs_temperature
-from integrate.integrate import Pobs_to_datagrid
+#from integrate.integrate import compute_P_obs_from_log
+#from integrate.integrate import rescale_P_obs_temperature
+#from integrate.integrate import Pobs_to_datagrid
 
 # Import matplotlib backend setup
 from integrate.integrate_plot import setup_matplotlib_backend
@@ -100,6 +99,7 @@ from integrate.integrate_borehole import welllog_compute_P_obs_class_mode
 from integrate.integrate_borehole import rescale_P_obs_temperature
 from integrate.integrate_borehole import rescale_P_obs_temperature as Pobs_rescale_temperature
 from integrate.integrate_borehole import Pobs_to_datagrid
+from integrate.integrate_borehole import get_weight_from_position
 
 # Import gex module functions
 from integrate.gex import read_gex as read_gex2

@@ -612,6 +612,9 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
     i_use : ndarray
         Binary mask of shape (nd, 1) indicating which grid points should be used
         (1) or ignored (0) in the inversion. Points with temperature < 100 are used.
+    T_all : ndarray
+        Temperature values of shape (nd, 1) applied to each grid point based on distance
+        from the observation point.
 
     Notes
     -----
@@ -633,7 +636,7 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
     >>> # Borehole observation at specific location
     >>> P_obs = compute_P_obs_discrete(depth_top, depth_bottom, lithology, z, class_id)
     >>> X_well, Y_well = 543000.0, 6175800.0
-    >>> d_obs, i_use = Pobs_to_datagrid(P_obs, X_well, Y_well, 'survey_data.h5',
+    >>> d_obs, i_use, T_all = Pobs_to_datagrid(P_obs, X_well, Y_well, 'survey_data.h5',
     ...                                  r_data=10, r_dis=100)
     >>> # Write to data file
     >>> ig.save_data_multinomial(d_obs, i_use=i_use, id=2, f_data_h5='survey_data.h5')
@@ -664,7 +667,9 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
     # Convert distance weight to temperature
     # w_dis is 1 at observation point, decreases with distance
     # T = 1/w_dis means T increases with distance (weaker influence)
-    T_all = 1 / w_dis
+    #T_all = 1 / w_dis
+    #T_all = 1 / w_data
+    T_all = 1 / w_combined
 
     # Cap maximum temperature at 100 (beyond this, observation has negligible effect)
     T_all[T_all > 100] = 100
@@ -681,4 +686,122 @@ def Pobs_to_datagrid(P_obs, X, Y, f_data_h5, r_data=10, r_dis=100, doPlot=False)
             d_obs[ip, :, :] = P_obs_local
         # else: i_use[ip] = 0 and d_obs[ip] stays NaN
 
-    return d_obs, i_use
+    return d_obs, i_use, T_all
+
+
+
+def get_weight_from_position(f_data_h5,x_well=0,y_well=0, i_ref=-1, r_dis = 400, r_data=2, useLog=True, doPlot=False, plFile=None, showInfo=0):
+    """Calculate weights based on distance and data similarity to a reference point.
+
+    This function computes three sets of weights:
+    1. Combined weights based on both spatial distance and data similarity
+    2. Distance-based weights
+    3. Data similarity weights
+
+    Parameters
+    ----------
+    f_data_h5 : str
+        Path to HDF5 file containing geometry and observed data
+    x_well : float, optional
+        X coordinate of reference point (well), by default 0
+    y_well : float, optional 
+        Y coordinate of reference point (well), by default 0
+    i_ref : int, optional
+        Index of reference point, by default -1 (auto-calculated as closest to x_well,y_well)
+    r_dis : float, optional
+        Distance range parameter for spatial weighting, by default 400
+    r_data : float, optional
+        Data similarity range parameter for data weighting, by default 2
+
+    Returns
+    -------
+    tuple
+        (w_combined, w_dis, w_data) where:
+        - w_combined: Combined weights from distance and data similarity
+        - w_dis: Distance-based weights
+        - w_data: Data similarity-based weights
+
+    Notes
+    -----
+    The weights are calculated using Gaussian functions:
+    - Distance weights use exp(-dis²/r_dis²)
+    - Data weights use exp(-sum_dd²/r_data²)
+    where dis is spatial distance and sum_dd is cumulative data difference
+    """
+    import integrate as ig
+    import numpy as np
+    import matplotlib.pyplot as plt
+    X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+    DATA = ig.load_data(f_data_h5, showInfo=showInfo)
+    id=0
+    d_obs = DATA['d_obs'][id]
+    d_std = DATA['d_std'][id]
+    # index if position in X and Y with smallets distance to well
+    if i_ref == -1:
+        i_ref = np.argmin((X-x_well)**2 + (Y-y_well)**2)
+
+    # select gates to use 
+    # find the number of data points for each gate that has non-nan values
+    n_not_nan = np.sum(~np.isnan(d_obs), axis=0)
+    n_not_nan_freq = n_not_nan/d_obs.shape[0]
+    # use the data for which n_not_nan_freq>0.7
+    # 0.7 should be an option to select!
+    i_use = np.where(n_not_nan_freq>0.8)[0]
+    # only use i_use values that are not nan
+    i_use = i_use[~np.isnan(d_obs[i_ref,i_use])]
+    # select gates to use, manually
+    if useLog:
+        d_ref = np.log10(d_obs[i_ref,i_use])
+        d_test = np.log10(d_obs[:,i_use])
+    else:
+        d_ref = d_obs[i_ref,i_use]
+        d_test =d_obs[:,i_use]
+    dd = np.abs(d_test - d_ref)
+    sum_dd = np.sum(dd, axis=1)
+    w_data = np.exp(-1*sum_dd**2/r_data**2)
+    
+
+    # COmpute the distance from d_ref to all other points
+    dis = np.sqrt((X-X[i_ref])**2 + (Y-Y[i_ref])**2)
+    w_dis = np.exp(-1*dis**2/r_dis**2)
+
+    w_combined = w_data * w_dis
+
+    cmap = 'hot_r'
+    #cmap = 'jet'
+
+    if doPlot:
+        plt.figure(figsize=(15,5))
+        for i in range(3):
+            plt.subplot(1,3,i+1)
+            plt.plot(X,Y,'.', markersize=1.02, color='lightgray') 
+            #plt.scatter(X[i_use], Y[i_use], c=w[i_use], cmap='jet', s=1, zorder=3, vmin=0, vmax=1, marker='.')
+                 
+            if i==0:
+                i_use = np.where(w_combined>0.001)[0]
+                plt.scatter(X[i_use],Y[i_use],c=w_combined[i_use], s=1, cmap=cmap, vmin=0, vmax=1, marker='.', zorder=3)  
+                plt.title('Combined weights')          
+            elif i==1:
+                i_use = np.where(w_dis>0.001)[0]                
+                plt.scatter(X[i_use],Y[i_use],c=w_dis[i_use], s=1, cmap=cmap, vmin=0, vmax=1, marker='.', zorder=3)
+                plt.title('XY distance weights')
+            elif i==2:
+                i_use = np.where(w_data>0.001)[0]                                
+                plt.scatter(X[i_use],Y[i_use],c=w_data[i_use], s=0.2, cmap=cmap, vmin=0, vmax=1, marker='.', zorder=3)
+                plt.title('Data distance weights')
+            plt.axis('equal')
+            plt.colorbar()
+            plt.grid()
+            plt.plot(x_well,y_well,'wo', zorder=6, markersize=2)
+            plt.plot(x_well,y_well,'ko', zorder=5, markersize=4)
+            plt.plot(x_well,y_well,'wo', zorder=4, markersize=6)
+    
+
+        plt.suptitle('Weights')
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        if plFile is None:
+            plFile = 'weights_%d_%d_%d_rdis%d_rdata%d.png' % (x_well,y_well,i_ref,r_dis,r_data)
+        plt.savefig(plFile, dpi=300)
+
+    return w_combined, w_dis, w_data, i_ref

@@ -162,7 +162,7 @@ if __name__ == "__main__":
                         txrx_dz = txrx_dz,
                         parallel=parallel)
 
-    f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=im_height)
+    f_prior_data_h5, _ = ig.prior_data_identity(f_prior_data_h5, im=im_height)
 
     if doPlot:
         ig.plot_data_prior(f_prior_data_h5, f_data_h5, id=1, id_data=1)

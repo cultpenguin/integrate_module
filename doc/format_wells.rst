@@ -182,7 +182,7 @@ Below is a complete workflow for integrating well log data with electromagnetic 
     id_prior = ig.save_prior_data(f_prior_h5, lithology_mode)
 
     # 5. Extrapolate to survey grid with distance weighting
-    d_obs, i_use = ig.Pobs_to_datagrid(
+    d_obs, i_use, T_use = ig.Pobs_to_datagrid(
         P_obs,
         W1['X'],
         W1['Y'],
@@ -290,7 +290,7 @@ Convert point-based well observations to gridded data using distance-based weigh
 
 .. code-block:: python
 
-    d_obs, i_use = ig.Pobs_to_datagrid(
+    d_obs, i_use, T_use = ig.Pobs_to_datagrid(
         P_obs,
         W['X'],
         W['Y'],
@@ -450,7 +450,7 @@ Process multiple wells sequentially:
         id_prior = ig.save_prior_data(f_prior_h5, lithology_mode)
 
         # Extrapolate to grid
-        d_obs, i_use = ig.Pobs_to_datagrid(
+        d_obs, i_use, T_use = ig.Pobs_to_datagrid(
             P_obs, W['X'], W['Y'], f_data_h5,
             r_data=10, r_dis=100
         )
@@ -563,7 +563,7 @@ Key code sections:
 
     # Lines 295-315: Save and extrapolate
     id_prior_1 = ig.save_prior_data(f_prior_h5, lithology_mode_1)
-    d_obs_1, i_use_1 = ig.Pobs_to_datagrid(
+    d_obs_1, i_use_1, T_use_1 = ig.Pobs_to_datagrid(
         P_obs_1, W1['X'], W1['Y'], f_data_h5, r_dis=100
     )
 

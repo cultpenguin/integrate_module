@@ -256,7 +256,7 @@ WELL_NAMES.append('%s Single Layer' % W['name'])
 
 #%%  First we add a data set that is simple the lithology at the well position
 # Make prior data 'D2' that is simple and identity of the prior lithology type
-f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, id=2, doMakePriorCopy=True)
+f_prior_data_h5, _ = ig.prior_data_identity(f_prior_data_h5, im=2, id=2, doMakePriorCopy=True)
 
 #%%
 
@@ -281,8 +281,9 @@ for iw in np.arange(len(WELLS)):
         doPlot=True
     else:
         doPlot=False
-    d_obs, i_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=doPlot)
+    d_obs, i_use, T_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=doPlot)
 
+    
     #% Write to DATA file
     id_out, f_out = ig.save_data_multinomial(
         D_obs=d_obs,           # Shape: (nd, nclass, nm)
@@ -312,9 +313,9 @@ for iw in [0,1,3,4]:
     #iw = 0
     W = WELLS[iw]
     P_obs, lithology_mode = ig.compute_P_obs_sparse(M_lithology, z=z, class_id=class_id, W=W)
- 
+
     # apply P_obs to the whole data grid with distance based weighting
-    d_obs, i_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=False)
+    d_obs, i_use, T_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=False)
 
     plt.figure()
     plt.imshow(P_obs)

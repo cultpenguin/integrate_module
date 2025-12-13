@@ -57,7 +57,7 @@ dz=1
 inflateTEMNoise = 2
 
 # Extrapolation options for distance weighting
-r_data=3 # XY-distance based weight for extrapolating borehole information to the data grid
+r_data=2 # XY-distance based weight for extrapolating borehole information to the data grid
 r_dis=100 # DATA-distance based weight for extrapolating borehole information to the data grid 
 r_dis=300
 
@@ -133,6 +133,10 @@ if inflateTEMNoise != 1:
 # If each lithololy observation reflect the "probability that a specfific class id (lithology) 
 # is the most probable class in the defined interval" one one 
 # * method = 'mode_probablity'
+#
+# If all layhwers withing layer boundaries has to have the same lithology, then
+# # * method = 'class_exact'
+#
 #   
 # If each lithology observation reflect "the probability in each layer (as defined in the prior) of specific class id (lithology)" then
 # * method = 'layer_probability'
@@ -165,7 +169,8 @@ W['class_prob'] = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])*P_single
 W['X'] = 498804.95
 W['Y'] = 6249940.89
 W['name'] = '65. 732'
-W['method'] = 'mode_probability'
+W['method'] = 'mode_probability'  # FASTER MORE ROBUST
+W['method'] = 'layer_probability'  # SLOWER AND TYOICALLY NOT REPRESENTATIVE OF ACTUAL INFORMATION
 
 WELLS.append(W)
 
@@ -280,56 +285,21 @@ plt.show()
 #
 #
 
-# %%
-'''
-with h5py.File(f_prior_h5, 'r') as f:
-    # Read depth/position values (stored as 'x' attribute)
-    z = f['M2'].attrs['x']
-    # Read class identifiers
-    class_id = f['M2'].attrs['class_id']
-    class_name = f['M2'].attrs['class_name']
-nm = len(z)
-nclass = len(class_id)
-
-# load the prior lithology data
-M, idx = ig.load_prior_model(f_prior_h5)
-M_lithology = M[1]
-nm = M_lithology.shape[1]
-nreal = M_lithology.shape[0]
-z= np.arange(0,dmax,dz)
-
-id_use_well=[]
-P_obs_well=[]
-for iw in np.arange(len(WELLS)):
-    W = WELLS[iw]
-    P_obs, class_mode = ig.welllog_compute_P_obs_class_mode(M_lithology,
-                                                             z=z,
-                                                             class_id=class_id,
-                                                             W=W,
-                                                             parallel=parallel)
-
-    # Now we are ready to save class_mode to prior file and P_obs to a data file,
-    # first save the class_mode to a prior file as prior data, and get back the prior id of the prior data
-    id_use = ig.save_prior_data(f_prior_h5, class_mode)
-
-    id_use_well.append(id_use)
-    P_obs_well.append(P_obs)
-'''
 
 # %%
 '''
     1 Compute prior data lithology mode for well W, and save to f_prior_h5
     2 Update f_prior_h5 with prior data, return prior data id as id_prior
 '''
-def prior_data_welllog_class_mode(f_prior_h5, im_prior = None, W=None, parallel=False):
+def prior_data_welllog_class_mode(f_prior_h5, im_prior = None, W=None, parallel=False, **kwargs):
     '''
         1 Compute prior data lithology mode for well W, and save to f_prior_h5
         2 Update f_prior_h5 with prior data, return prior data id as id_prior
     '''
+    showInfo = kwargs.get('showInfo', 1)
 
     with h5py.File(f_prior_h5, 'r') as f:
         # Read depth/position values (stored as 'x' attribute)
-        print(f_prior_h5)
         z = f['M%d' % im_prior].attrs['x']
         # Read class identifiers
         class_id = f['M%d' % im_prior].attrs['class_id']
@@ -340,9 +310,36 @@ def prior_data_welllog_class_mode(f_prior_h5, im_prior = None, W=None, parallel=
                                                              z=z,
                                                              class_id=class_id,
                                                              W=W,
-                                                             parallel=parallel)
-    id_prior = ig.save_prior_data(f_prior_h5, class_mode)
+                                                             parallel=parallel, showInfo=showInfo)
+    
+    id_prior = ig.save_prior_data(f_prior_h5, class_mode, showInfo=showInfo)
+    
     return P_obs, id_prior
+
+
+
+def prior_data_welllog_class_layer(f_prior_h5, im_prior = None, W=None, parallel=False, **kwargs):
+    
+    showInfo = kwargs.get('showInfo', 1)
+
+    # IF W is none returnnwith a message
+    if W is None:
+        print("No well information provided, returning None")
+        return None, None
+
+    with h5py.File(f_prior_h5, 'r') as f:
+        # Read depth/position values (stored as 'x' attribute)
+        z = f['M%d' % im_prior].attrs['x']
+        # Read class identifiers
+        class_id = f['M%d' % im_prior].attrs['class_id']
+        
+    P_obs = ig.compute_P_obs_discrete(z=z, class_id=class_id, W=W)
+
+    f_prior_h5, id_prior = ig.prior_data_identity(f_prior_h5, im=im_prior, doMakePriorCopy=False, showInfo=showInfo)
+    
+    return P_obs, id_prior
+
+
 
 def prior_data_welllog(f_prior_h5, im_prior = None, W=None, parallel=False, **kwargs):
     
@@ -361,10 +358,9 @@ def prior_data_welllog(f_prior_h5, im_prior = None, W=None, parallel=False, **kw
         print("Computing prior data for well: %s using method: %s" % (W['name'], W.get('method', 'mode_probability')))
 
     if W['method'] == 'mode_probability':
-        P_obs, id_prior = prior_data_welllog_class_mode(f_prior_h5=f_prior_h5, im_prior=im_prior, W=W, parallel=parallel)
-    elif W['method'] == 'layer_probability':
-        # To be implemented
-        raise NotImplementedError("Method 'layer_probability' not implemented yet")
+        P_obs, id_prior = prior_data_welllog_class_mode(f_prior_h5=f_prior_h5, im_prior=im_prior, W=W, parallel=parallel, showInfo=showInfo)
+    elif W['method'] == 'layer_probability':        
+        P_obs, id_prior = prior_data_welllog_class_layer(f_prior_h5, im_prior=im_prior, W=W, parallel=parallel, showInfo=showInfo)        
     elif W['method'] == 'layer_probability_independent':
         # To be implemented
         raise NotImplementedError("Method 'layer_probability_independent' not implemented yet")
@@ -374,6 +370,8 @@ def prior_data_welllog(f_prior_h5, im_prior = None, W=None, parallel=False, **kw
     return P_obs, id_prior
 
 
+# %% 
+
 im_prior = 2  # lithology
 id_prior_well=[]
 P_obs_well=[]
@@ -382,6 +380,7 @@ for iw in np.arange(len(WELLS)):
     P_obs, id_prior = prior_data_welllog(f_prior_h5=f_prior_h5, im_prior=im_prior, W=W, parallel=parallel, showInfo=0)
     id_prior_well.append(id_prior)
     P_obs_well.append(P_obs)
+
 
 
 # %% [markdown]
@@ -397,8 +396,7 @@ for iw in np.arange(len(WELLS)):
     P_obs = P_obs_well[iw]
     
     # apply P_obs to the whole data grid with distance based weighting
-    d_obs, i_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=True)
-
+    d_obs, i_use, T_use = ig.Pobs_to_datagrid(P_obs, W['X'], W['Y'], f_data_h5, r_data=r_data, r_dis=r_dis, doPlot=True)
 
     # Next save the P_obs to a data file, with the correct prior id
     # Save P_obs to data file
@@ -416,6 +414,7 @@ for iw in np.arange(len(WELLS)):
     plt.xlabel('Number for "observed" lithology')
     plt.ylabel('Class ID')
     plt.title('P_obs for lithology observations')
+
 
 # %% [markdown]
 # ## Inversion
@@ -437,7 +436,7 @@ id_use = [1] # tTEM
 #id_use = [2] # Well 1
 #id_use = [3] # Well 2
 id_use = [2,3] # Well 1,2
-#id_use = [1,2,3] # tTEM, Well 1,2
+id_use = [1,2,3] # tTEM, Well 1,2
 
 
 # get string from id_use
@@ -447,7 +446,7 @@ f_post_h5 = 'post_%s_NoiseGain%d_id%s.h5' % (fileparts[0], inflateTEMNoise, id_u
 f_post_h5 = ig.integrate_rejection(f_prior_h5, 
                                 f_data_h5, 
                                 f_post_h5, 
-                                showInfo=0, 
+                                showInfo=1, 
                                 N_use = N_use,
                                 id_use = id_use,
                                 ip_range = id_line,
@@ -456,6 +455,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_h5,
                                 autoT=True,
                                 T_base=1,
                                 updatePostStat=True)
+
 
 #%%
 ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='y', hardcopy=hardcopy, alpha = 1,std_min = 0.3, std_max = 0.6)

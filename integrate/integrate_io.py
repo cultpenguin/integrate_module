@@ -463,7 +463,8 @@ def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False, **kwargs):
         id = Ndt+1
     
     key = '/D%d' % id
-    print("Saving new prior data '%s' to file: %s " % (key,f_prior_h5))
+    if showInfo>2:
+        print("Saving new prior data '%s' to file: %s " % (key,f_prior_h5))
 
     # Delete the 'key' if it exists
     with h5py.File(f_prior_h5, 'a') as f_prior:
@@ -483,7 +484,8 @@ def save_prior_data(f_prior_h5, D_new, id=None, force_delete=False, **kwargs):
             f_prior.create_dataset(key, data=D_new_32, compression='gzip', compression_opts=9)
         else:
             f_prior.create_dataset(key, data=D_new, compression='gzip', compression_opts=9)
-        print("New prior data '%s' saved to file: %s " % (key,f_prior_h5))
+        if showInfo>1:
+            print("New prior data '%s' saved to file: %s " % (key,f_prior_h5))
         # if kwarg has keyy 'method' then write it to the file as att
         if 'method' in kwargs:
              f_prior[key].attrs['method'] = kwargs['method']

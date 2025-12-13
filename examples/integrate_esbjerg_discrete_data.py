@@ -85,8 +85,8 @@ else:
         f_prior_data_h5='prior_Esbjerg_claysand_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
     else:
         f_prior_data_h5='prior_Esbjerg_piggy_N2000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5'
-    
-f_prior_data_h5 = ig.prior_data_identity(f_prior_data_h5, im=2, doMakePriorCopy=True)
+
+f_prior_data_h5, _ = ig.prior_data_identity(f_prior_data_h5, im=2, doMakePriorCopy=True)
 ig.plot_data_prior(f_prior_data_h5,f_data_h5,nr=1000,alpha=1, ylim=[1e-13,1e-5], hardcopy=hardcopy)
 print("loaded data")
 
