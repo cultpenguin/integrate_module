@@ -260,12 +260,6 @@ if hardcopy:
     plt.savefig('HADERUP_survey_points_nonnan.png', dpi=300)
 plt.show()
 
-
-# %%
-# Make prior data 'D2' that is simple and identity of the prior lithology type
-#f_prior_h5 = ig.prior_data_identity(f_prior_h5, im=2, id=2, doMakePriorCopy=True)
-
-
 # %% [markdown]
 # ## Compute prior data
 #
