@@ -1497,8 +1497,14 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
             ax2_twin.plot(x_axis_values, CHI2_plot, 'r.', label='CHI2')
             # Add reference line at CHI2=1 (perfect fit)
             ax2_twin.axhline(y=1.0, color='r', linestyle='--', alpha=0.3, linewidth=1)
-            # Set fixed y-axis limits for consistent comparison across plots
-            ax2_twin.set_ylim([0, 3])
+
+            # Set logarithmic scale for CHI2 axis with fixed range
+            ax2_twin.set_yscale('log')
+            ax2_twin.set_ylim([0.1, 10])
+
+            # Alternative: Linear scale with fixed range (uncomment to use)
+            # ax2_twin.set_ylim([0, 3])
+
             ax2_twin.set_ylabel('CHI2 (Reduced χ²)', color='r')
             ax2_twin.tick_params(axis='y', labelcolor='r')
 
@@ -2052,8 +2058,14 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
             ax2_twin.plot(x_axis_values, CHI2_plot, 'r.', label='CHI2')
             # Add reference line at CHI2=1 (perfect fit)
             ax2_twin.axhline(y=1.0, color='r', linestyle='--', alpha=0.3, linewidth=1)
-            # Set fixed y-axis limits for consistent comparison across plots
-            ax2_twin.set_ylim([0, 3])
+
+            # Set logarithmic scale for CHI2 axis with fixed range
+            ax2_twin.set_yscale('log')
+            ax2_twin.set_ylim([0.1, 10])
+
+            # Alternative: Linear scale with fixed range (uncomment to use)
+            # ax2_twin.set_ylim([0, 3])
+
             ax2_twin.set_ylabel('CHI2 (Reduced χ²)', color='r')
             ax2_twin.tick_params(axis='y', labelcolor='r')
 
