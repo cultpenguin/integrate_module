@@ -1,8 +1,106 @@
 #!/usr/bin/env python
 # %% [markdown]
-# # Haderup tTEM and boreholes
-# This is an example demonstrating the use of borehole information using INTEGRATE.
-# Specifically, the example demonstarte the use of information about lithology obtain from boreholes.
+# # Haderup tTEM and Borehole Integration Example
+#
+# ## Overview
+# This example demonstrates how to integrate borehole (well log) information with
+# tTEM (time-domain electromagnetic) geophysical data using the INTEGRATE module.
+# The workflow shows how to incorporate lithology observations from boreholes as
+# constraints in probabilistic geophysical inversion.
+#
+# ## Borehole Data Integration Methods
+#
+# The INTEGRATE module supports multiple approaches for handling well log information,
+# depending on how the lithology observations should be interpreted:
+#
+# ### 1. Mode Probability Method (`method='mode_probability'`)
+# **Recommended for most applications - FASTER and MORE ROBUST**
+#
+# - Interprets each lithology observation as: "the probability that a specific class
+#   (lithology) is the MOST PROBABLE class within the defined depth interval"
+# - Uses the mode (most common class) within the interval
+# - Computationally efficient and numerically stable
+# - Best when lithology boundaries are well-defined but may not align exactly with
+#   prior model layers
+# - Example: 90% confidence that "clay" is the dominant lithology between 10-15m depth
+#
+# ### 2. Class Exact Method (`method='class_exact'`)
+# **Use for strict lithology enforcement**
+#
+# - Requires ALL layers within the specified depth boundaries to have exactly the
+#   same lithology class
+# - Strictest interpretation - no lithology mixing allowed within intervals
+# - Use when borehole interpretation is highly certain and layer boundaries are precise
+# - Can be computationally restrictive if prior layers don't align well with well intervals
+#
+# ### 3. Layer Probability Method (`method='layer_probability'`)
+# **Use for detailed probabilistic layer-by-layer constraints**
+#
+# - Interprets each observation as "the probability in EACH LAYER (as defined in the
+#   prior model) of a specific class"
+# - Applies probability to every individual layer within the depth interval
+# - More computationally intensive (SLOWER)
+# - May not be representative of actual borehole information interpretation
+# - Best when you have detailed layer-specific lithology probabilities
+#
+# ### 4. Layer Probability Independent Method (`method='layer_probability_independent'`)
+# **Use for independent layer probability assessments**
+#
+# - Interprets each observation as "the class probability that ALL layers within the
+#   top and bottom boundaries have a specific lithology class"
+# - Treats layers as independent realizations
+# - Useful when lithology observations represent aggregate information about the interval
+# - Computationally intensive but more flexible than 'layer_probability'
+#
+# ## Borehole Data Structure (WELLS Dictionary)
+#
+# Each well `W` in the `WELLS` list must contain the following information:
+#
+# ### Required Spatial Information:
+# - `X`: X coordinate of the well (float, in same CRS as data)
+# - `Y`: Y coordinate of the well (float, in same CRS as data)
+# - `name`: Well identifier (string, e.g., "65.795")
+# - `method`: Integration method (see above, e.g., 'mode_probability')
+#
+# ### Required Lithology Interval Information:
+# - `depth_top`: Top depth of each lithology interval (list, in meters)
+# - `depth_bottom`: Bottom depth of each lithology interval (list, in meters)
+#
+# ### For Discrete Data (Lithology Classes):
+# - `class_obs`: Observed lithology class ID in each interval (list or array of integers)
+# - `class_prob`: Probability/confidence of the observed class (list or array, 0-1 range)
+#
+# ### For Continuous Data (e.g., Resistivity, Porosity):
+# - `d_obs`: Observed continuous parameter value in each interval (list or array)
+# - `d_std`: Standard deviation (uncertainty) of the observation (list or array)
+# - `Cd`: Covariance matrix between observations (2D array, optional for correlated errors)
+#
+# ## Distance-Based Weighting
+#
+# Borehole information is extrapolated to nearby data points using distance-based weights:
+# - `r_data`: XY-distance weight for spatial extrapolation (meters)
+# - `r_dis`: Data-distance weight for interpolation along survey lines (meters)
+#
+# Points closer to boreholes receive stronger constraints. This allows borehole
+# information to influence inversion results in a geologically reasonable manner.
+#
+# ## Workflow Summary
+#
+# 1. Load tTEM geophysical data and borehole lithology observations
+# 2. Define borehole constraints using WELLS dictionary structure
+# 3. Choose appropriate integration method for each well
+# 4. Generate prior model realizations incorporating borehole constraints
+# 5. Run rejection sampling to obtain posterior model distribution
+# 6. Analyze results: compare unconstrained vs. borehole-constrained inversions
+#
+# ## Key Parameters in This Example
+#
+# - `P_single`: Confidence level for single lithology observations (e.g., 0.9 = 90%)
+# - `inflateTEMNoise`: Factor to artificially increase tTEM noise (for testing robustness)
+# - `r_data`, `r_dis`: Distance parameters for spatial weighting of borehole information
+# - `N`: Number of prior model realizations (typically 100,000 - 1,000,000)
+# - `dmax`: Maximum depth for models (meters)
+# - `dz`: Vertical discretization for models (meters)
 #
 
 # %%
@@ -54,7 +152,7 @@ dmax=90
 dz=1
 
 # Inflated noise std by this factor
-inflateTEMNoise = 2
+inflateTEMNoise = 4
 
 # Extrapolation options for distance weighting
 r_data=2 # XY-distance based weight for extrapolating borehole information to the data grid
@@ -170,7 +268,7 @@ W['X'] = 498804.95
 W['Y'] = 6249940.89
 W['name'] = '65. 732'
 W['method'] = 'mode_probability'  # FASTER MORE ROBUST
-W['method'] = 'layer_probability'  # SLOWER AND TYOICALLY NOT REPRESENTATIVE OF ACTUAL INFORMATION
+#W['method'] = 'layer_probability'  # SLOWER AND TYOICALLY NOT REPRESENTATIVE OF ACTUAL INFORMATION
 
 WELLS.append(W)
 
@@ -427,9 +525,9 @@ for iw in np.arange(len(WELLS)):
 # This prt of the can be rerun using different selection of data types without rerunning the abobe parts
 nr=1000
 id_use = [1] # tTEM 
-#id_use = [2] # Well 1
+id_use = [2] # Well 1
 #id_use = [3] # Well 2
-id_use = [2,3] # Well 1,2
+#id_use = [2,3] # Well 1,2
 id_use = [1,2,3] # tTEM, Well 1,2
 
 
@@ -452,13 +550,16 @@ f_post_h5 = ig.integrate_rejection(f_prior_h5,
 
 
 #%%
-ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=50, xaxis='y', hardcopy=hardcopy, alpha = 1,std_min = 0.3, std_max = 0.6)
-ig.plot_profile(f_post_h5, im=2, ii=id_line, gap_threshold=50, xaxis='y', hardcopy=hardcopy, alpha=1, entropy_min =0.3, entropy_max=0.6)
+ig.plot_profile(f_post_h5, im=1, ii=id_line, gap_threshold=100, xaxis='y', hardcopy=hardcopy, alpha = 1,std_min = 0.3, std_max = 0.6)
+ig.plot_profile(f_post_h5, im=2, ii=id_line, gap_threshold=100, xaxis='y', hardcopy=hardcopy, alpha=1, entropy_min =0.3, entropy_max=0.6)
 
 # %%
 for iw in np.arange(len(WELLS)):
     ig.plot_data_prior_post(f_post_h5, i_plot=i_well[iw], title=WELLS[iw]['name'], hardcopy=hardcopy)
 
+
+# %% 
+ig.plot_T_EV(f_post_h5, hardcopy=hardcopy, pl='CHI2')
 
 # %%
 t_end = time.time()

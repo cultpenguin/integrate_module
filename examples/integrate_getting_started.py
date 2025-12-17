@@ -102,7 +102,7 @@ ig.plot_data_xy(f_data_h5, data_channel=15, cmap='jet');
 # %%
 # Select how many prior model realizations (N) should be generated
 N=2000000
-N=10000
+#N=100000
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR.h5')
 print('%s is used to hold prior realizations' % (f_prior_h5))
 
@@ -194,7 +194,7 @@ ig.plot_T_EV(f_post_h5, pl='EV',hardcopy=hardcopy)
 # Plot the normalized mean-loglikelihood
 # Values less than one suggest overfitting
 # Values above one suggest underfitting
-ig.plot_T_EV(f_post_h5, pl='LOGL_mean',hardcopy=hardcopy)
+ig.plot_T_EV(f_post_h5, pl='CHI2',hardcopy=hardcopy)
 
 # %% [markdown]
 # ### Resistivity profiles
@@ -214,19 +214,19 @@ ig.plot_profile(f_post_h5, i1=1, i2=2000, im=1, hardcopy=hardcopy)
 
 # Plot 2D features: Resistivity at different depths
 try:
-    ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
+    ig.plot_feature_2d(f_post_h5,im=1,iz=5, key='Median', uselog=1, cmap='jet', s=2, hardcopy=hardcopy)
     plt.show()
 except:
     pass
 
 try:
-    ig.plot_feature_2d(f_post_h5,im=1,iz=30, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
+    ig.plot_feature_2d(f_post_h5,im=1,iz=30, key='Median', uselog=1, cmap='jet', s=2, hardcopy=hardcopy)
     plt.show()
 except:
     pass
 
 try:
-    ig.plot_feature_2d(f_post_h5,im=1,iz=50, key='Median', uselog=1, cmap='jet', s=10,hardcopy=hardcopy)
+    ig.plot_feature_2d(f_post_h5,im=1,iz=50, key='Median', uselog=1, cmap='jet', s=2,hardcopy=hardcopy)
     plt.show()
 except:
     pass
@@ -234,7 +234,7 @@ except:
 # %%
 try:
     # Plot a 2D feature: The estimated number of layers
-    ig.plot_feature_2d(f_post_h5,im=3,iz=0,key='Median', uselog=0, clim=[1,6], cmap='jet', s=12,hardcopy=hardcopy)
+    ig.plot_feature_2d(f_post_h5,im=3,iz=0,key='Median', uselog=0, clim=[1,6], cmap='jet', s=2,hardcopy=hardcopy)
     plt.show()
 except:
     pass

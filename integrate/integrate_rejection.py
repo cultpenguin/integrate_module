@@ -268,7 +268,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
     # 'posterior' evience - mean posterior likelihood TODO
     EV_post_all  = np.zeros(Ndp)*np.nan
     EV_post_all_mean = np.zeros(Ndp)*np.nan
-    LOGL_mean_all = np.zeros((Ndp, Ndt))*np.nan
+    CHI2_all = np.zeros((Ndp, Ndt))*np.nan
 
     date_start = str(datetime.now())
     t_start = datetime.now()
@@ -290,7 +290,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         if showInfo>1:
             print('Ncpu = %d\nNchunks=%d' % (Ncpu, Nchunks))
 
-        i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, LOGL_mean_all, N_UNIQUE_all = integrate_posterior_main(
+        i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, CHI2_all, N_UNIQUE_all = integrate_posterior_main(
             ip_chunks=ip_chunks,
             D=D, 
             DATA = DATA,
@@ -310,7 +310,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
             # Extract progress_callback for non-parallel execution
             progress_callback = kwargs.get('progress_callback', None)
             
-            i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range = integrate_rejection_range(D=D, 
+            i_use, T, EV, EV_post, EV_post_mean, CHI2, N_UNIQUE, ip_range = integrate_rejection_range(D=D, 
                                         DATA = DATA,
                                         idx = idx,                                   
                                         N_use=N_use, 
@@ -333,7 +333,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
                 EV_all[ip] = EV[i]
                 EV_post_all[ip] = EV_post[i]
                 EV_post_all_mean[ip] = EV_post_mean[i]
-                LOGL_mean_all[ip, :] = LOGL_mean[i, :]
+                CHI2_all[ip, :] = CHI2[i, :]
                 N_UNIQUE_all[ip] = N_UNIQUE[i]
 
     # WHere T_all is Inf set it to Nan
@@ -355,7 +355,7 @@ def integrate_rejection(f_prior_h5='prior.h5',
         f_post.create_dataset('EV', data=EV_all)
         f_post.create_dataset('EV_post', data=EV_post_all)
         f_post.create_dataset('EV_post_mean', data=EV_post_all_mean)
-        f_post.create_dataset('LOGL_mean', data=LOGL_mean_all)
+        f_post.create_dataset('CHI2', data=CHI2_all)
         f_post.create_dataset('N_UNIQUE', data=N_UNIQUE_all)
         #f_post.create_dataset('ip_range', data=ip_range)
         f_post.attrs['date_start'] = date_start
@@ -499,7 +499,7 @@ def integrate_rejection_range(D,
     EV_all = np.zeros(nump)*np.nan
     EV_post_all = np.zeros(nump)*np.nan
     EV_post_all_mean = np.zeros(nump)*np.nan
-    LOGL_mean_all = np.zeros((nump, Ndt))*np.nan
+    CHI2_all = np.zeros((nump, Ndt))*np.nan
     N_UNIQUE_all = np.zeros(nump)*np.nan
     
     
@@ -703,18 +703,24 @@ def integrate_rejection_range(D,
         #print(p.shape)
         #print(i_use.shape)
 
-        # Store i_use bore fore reoriding( for coimputing LOGL_mean)
+        # Store i_use before reordering (for computing CHI2)
         #i_use_before_reordering = i_use.copy()
-        # Compute LOGL_mean per data type: mean of log-likelihood divided by (-2 * n_data_used)
-        # We compute this before reordering i_use, so we use i_use_before_reordering
-        LOGL_mean_current = np.zeros(Ndt) * np.nan
+        # Compute CHI2 (reduced chi-squared) per data type
+        # CHI2 = mean(-2 * log-likelihood) / n_data
+        CHI2_current = np.zeros(Ndt) * np.nan
         for i in range(Ndt):
             if n_data_per_type[i] > 0:
                 # Get log-likelihood for accepted samples for this data type
                 L_accepted = L_single[i, i_use]  # Log-likelihood for accepted samples, data type i
-                mean_logl_accepted = np.nanmean(L_accepted)
-                LOGL_mean_current[i] = mean_logl_accepted / (-2.0 * n_data_per_type[i])
-                pass
+
+                # Convert log-likelihood to chi-squared: chi2 = -2 * logL
+                chi2_samples = -2.0 * L_accepted
+
+                # Compute mean chi-squared
+                chi2_mean = np.nanmean(chi2_samples)
+
+                # Normalize by number of data points to get reduced chi-squared
+                CHI2_current[i] = chi2_mean / n_data_per_type[i]
 
         if useRandomData:
             # get the correct index of the subset used
@@ -753,7 +759,7 @@ def integrate_rejection_range(D,
         EV_all[j] = EV
         EV_post_all[j] = EV_post
         EV_post_all_mean[j] = EV_post_mean
-        LOGL_mean_all[j, :] = LOGL_mean_current
+        CHI2_all[j, :] = CHI2_current
         # find the number of unique indexes
         N_UNIQUE_all[j] = len(np.unique(i_use))
 
@@ -765,7 +771,7 @@ def integrate_rejection_range(D,
                     print(' Time id%d, sampling: %f' % (i,t[i]))
             print('Time total: %f' % np.sum(t))
         
-    return i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, LOGL_mean_all, N_UNIQUE_all, ip_range
+    return i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, CHI2_all, N_UNIQUE_all, ip_range
 
 
 
@@ -864,10 +870,10 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
     EV_all = np.zeros(Ndp)*np.nan
     EV_post_all = np.zeros(Ndp)*np.nan
     EV_post_all_mean = np.zeros(Ndp)*np.nan
-    LOGL_mean_all = np.zeros((Ndp, Ndt))*np.nan
+    CHI2_all = np.zeros((Ndp, Ndt))*np.nan
     N_UNIQUE_all = np.zeros(Ndp)*np.nan
-    
-    for i, (i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range) in enumerate(results):
+
+    for i, (i_use, T, EV, EV_post, EV_post_mean, CHI2, N_UNIQUE, ip_range) in enumerate(results):
         for i in range(len(ip_range)):
                 ip = ip_range[i]
                 #print('ip=%d, i=%d' % (ip,i))
@@ -876,10 +882,10 @@ def integrate_posterior_main(ip_chunks, D, DATA, idx, N_use, id_use, autoT, T_ba
                 EV_all[ip] = EV[i]
                 EV_post_all[ip] = EV_post[i]
                 EV_post_all_mean[ip] = EV_post_mean[i]
-                LOGL_mean_all[ip, :] = LOGL_mean[i, :]
+                CHI2_all[ip, :] = CHI2[i, :]
                 N_UNIQUE_all[ip] = N_UNIQUE[i]
 
-    return i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, LOGL_mean_all, N_UNIQUE_all
+    return i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, CHI2_all, N_UNIQUE_all
 
 
 
@@ -964,7 +970,7 @@ def integrate_posterior_chunk(args):
 
         #print(f'Chunk {i_chunk+1}/{len(ip_chunks)}, ndp={len(ip_range)}')
 
-        i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range = integrate_rejection_range(
+        i_use, T, EV, EV_post, EV_post_mean, CHI2, N_UNIQUE, ip_range = integrate_rejection_range(
             D,
             DATA,
             idx,
@@ -973,11 +979,11 @@ def integrate_posterior_chunk(args):
             ip_range=ip_range,
             autoT=autoT,
             T_base=T_base,
-            nr=nr,     
-            use_N_best=use_N_best, 
+            nr=nr,
+            use_N_best=use_N_best,
         )
 
-        return i_use, T, EV, EV_post, EV_post_mean, LOGL_mean, N_UNIQUE, ip_range
+        return i_use, T, EV, EV_post, EV_post_mean, CHI2, N_UNIQUE, ip_range
     
     finally:
         # Clean up worker's shared memory references

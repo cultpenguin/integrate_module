@@ -192,7 +192,7 @@ if __name__ == "__main__":
         ig.plot_profile(f_post_h5, i1=1, i2=4000, im=4, hardcopy=hardcopy)
     #%%
     if doPlot:
-        ig.plot_T_EV(f_post_h5, pl='LOGL_mean',hardcopy=hardcopy)
+        ig.plot_T_EV(f_post_h5, pl='CHI2',hardcopy=hardcopy)
 
     # %%
     if doPlot:

@@ -407,11 +407,11 @@ At the very minimum POST.h5 needs to contain the index (in PRIOR.h5) of realizat
      - *
      - *
      - Filename of HDF5 PRIOR file.
-   * - /LOGL_mean
+   * - /CHI2
      - [N,Nd]
-     - 
-     - 
-     - Mean log-likelihood divided by -Nd/2. Values >1 indicate underfitting, values <1 indicate overfitting. For joint inversion of multiple datasets, size is [N,number_of_datasets].
+     - float
+     -
+     - Reduced chi-squared (χ²/ν) goodness-of-fit metric for each data type. Values near 1.0 indicate good fit, >1 indicates underfit, <1 indicates overfit. For joint inversion of multiple datasets, size is [N,number_of_datasets].
 
 
 

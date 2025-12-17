@@ -95,7 +95,8 @@ plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 #
 
 # %%
-N=1000000 # sample size 
+#N=1000000 # sample size 
+N=100000 # sample size 
 NLAY_min=3
 NLAY_max=3
 

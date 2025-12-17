@@ -267,7 +267,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
 ig.plot_profile(f_post_h5, i1=1, i2=4000, im=1, hardcopy=hardcopy)
 ig.plot_profile(f_post_h5, i1=1, i2=4000, im=4, hardcopy=hardcopy)
 #%%
-ig.plot_T_EV(f_post_h5, pl='LOGL_mean',hardcopy=hardcopy)
+ig.plot_T_EV(f_post_h5, pl='CHI2',hardcopy=hardcopy)
 
 # %% 
 try:

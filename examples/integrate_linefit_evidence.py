@@ -82,7 +82,7 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_mix_h5,
 with h5py.File(f_post_h5,'r') as f:
     EV_mix = f['/EV'][:]
     T_mix = f['/T'][:]
-    LOGL_mean_mix = f['/LOGL_mean'][:]
+    CHI2_mix = f['/CHI2'][:]
     N_UNIQUE_mix = f['/N_UNIQUE'][:]
     i_use_mix = f['/i_use'][:]
     
@@ -124,7 +124,7 @@ OUT = ig.integrate_rejection_range([D1],
                               showInfo=4,
                               parallel=False)
 
-i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, LOGL_mean_all, N_UNIQUE_all, ip_range = OUT
+i_use_all, T_all, EV_all, EV_post_all, EV_post_all_mean, CHI2_all, N_UNIQUE_all, ip_range = OUT
 
 d_obs1 = DATA['d_obs'][0]
 d_std1 = DATA['d_std'][0]

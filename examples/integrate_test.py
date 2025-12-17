@@ -194,8 +194,8 @@ ig.plot_data_prior_post(f_post_h5, i_plot=0,hardcopy=hardcopy)
 ig.plot_T_EV(f_post_h5, pl='T',hardcopy=hardcopy)
 # Plot the evidence (log-likelihood) estimated during inversion
 ig.plot_T_EV(f_post_h5, pl='EV',hardcopy=hardcopy)
-# Plot the normalize logL
-ig.plot_T_EV(f_post_h5, pl='LOGL_mean',hardcopy=hardcopy, )
+# Plot the reduced chi-squared
+ig.plot_T_EV(f_post_h5, pl='CHI2',hardcopy=hardcopy, )
 
 # plot ND
 ig.plot_T_EV(f_post_h5, pl='ND',hardcopy=hardcopy)

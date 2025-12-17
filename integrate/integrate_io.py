@@ -3912,12 +3912,14 @@ def _analyze_post_file(f, print_line, load_data=False):
             if EV.size > 0:
                 print_line(f"    Range: [{np.min(EV):.4e}, {np.max(EV):.4e}]", 1)
 
-    if 'LOGL_mean' in f:
-        print_line(f"  Mean log-likelihood (/LOGL_mean): shape={f['LOGL_mean'].shape}", 1)
+    if 'CHI2' in f:
+        print_line(f"  Reduced Chi-Squared (/CHI2): shape={f['CHI2'].shape}", 1)
         if load_data:
-            logl = f['LOGL_mean'][...]
-            if logl.size > 0:
-                print_line(f"    Range: [{np.min(logl):.4f}, {np.max(logl):.4f}]", 1)
+            chi2 = f['CHI2'][...]
+            if chi2.size > 0:
+                print_line(f"    CHI2 range: [{np.nanmin(chi2):.3f}, {np.nanmax(chi2):.3f}]", 1)
+                print_line(f"    CHI2 mean: {np.nanmean(chi2):.3f}", 1)
+                print_line(f"    (CHI2≈1 indicates good fit)", 1)
 
     # Attributes
     attrs = dict(f.attrs)

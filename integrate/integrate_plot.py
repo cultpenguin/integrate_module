@@ -503,13 +503,13 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=F
         Minimum temperature value for color scale normalization (default is 1).
     T_max : int, optional
         Maximum temperature value for color scale normalization (default is 100).
-    pl : {'all', 'T', 'EV', 'ND', 'LOGL_mean'}, optional
+    pl : {'all', 'T', 'EV', 'ND', 'CHI2'}, optional
         Type of plot to generate (default is 'all'):
         - 'all': plot all available types
         - 'T': temperature field only
-        - 'EV': evidence field only  
+        - 'EV': evidence field only
         - 'ND': number of data points only
-        - 'LOGL_mean': mean log-likelihood divided by (-2*n_data_used) only
+        - 'CHI2': reduced chi-squared (goodness of fit) only
     hardcopy : bool, optional
         Save plots as PNG files with descriptive names (default is False).
     **kwargs : dict
@@ -555,9 +555,9 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=F
             EV_mu=[]
             
         try:
-            LOGL_mean=f_post['/LOGL_mean'][:]
+            CHI2=f_post['/CHI2'][:]
         except:
-            LOGL_mean=None
+            CHI2=None
 
     nd = X.shape[0]
     if i1<1: 
@@ -631,54 +631,60 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=F
             plt.savefig(f_png)
             plt.show()
             
-    if (pl=='all') or (pl=='LOGL_mean'):
-        if LOGL_mean is not None:
-            # Plot mean log-likelihood normalized by (-2*n_data_used)
-            # Use first data type (index 0) or sum across data types if multiple
-            if len(LOGL_mean.shape) == 2:
+    if (pl=='all') or (pl=='CHI2'):
+        if CHI2 is not None:
+            # Plot reduced chi-squared (goodness of fit metric)
+            # Sum across data types if multiple
+            if len(CHI2.shape) == 2:
                 # If multiple data types, sum across them for visualization
-                LOGL_mean_plot = np.nansum(LOGL_mean, axis=1)
+                CHI2_plot = np.nansum(CHI2, axis=1)
             else:
-                LOGL_mean_plot = LOGL_mean
-                
-            # Get reasonable color limits (1st to 99th percentile)
-            #LOGL_min = np.nanpercentile(LOGL_mean_plot, 1)
-            #LOGL_max = np.nanpercentile(LOGL_mean_plot, 99)
-            LOGL_min = 0
-            LOGL_max = 5
-            
-            # Create custom colormap: red -> white -> blue with white at value 1
-            # Red-white takes 1/5 (0 to 1), white-blue takes 4/5 (1 to 5)
+                CHI2_plot = CHI2
+
+            # Set color limits for CHI2 (typically 0-3 for good fits)
+            CHI2_min = 0
+            CHI2_max = np.nanpercentile(CHI2_plot, 95)
+            CHI2_max = max(CHI2_max, 2.0)  # At least show range 0-2
+
+            # Create custom colormap: green -> white -> red with white at CHI2=1
             from matplotlib.colors import LinearSegmentedColormap, Normalize
-            
-            # Define color segments with proper proportions
-            # Value 1 should be at position 0.2 (1/5) in the colormap
-            colors = ['red', 'white', 'blue']
-            n_seg = len(colors) - 1
-            # Create segments: 0->1 takes 20% (0.0 to 0.2), 1->5 takes 80% (0.2 to 1.0)
-            segment_positions = [0.0, 0.2, 1.0]
-            custom_cmap = LinearSegmentedColormap.from_list('custom', list(zip(segment_positions, colors)), N=256)
-            
+
+            # Define color segments with CHI2=1 (perfect fit) as white
+            # 0 -> 1: green to white, 1 -> max: white to red
+            if CHI2_max > 1.0:
+                # Position of CHI2=1 in the colormap range [0, CHI2_max]
+                white_position = 1.0 / CHI2_max
+                colors = ['green', 'white', 'red']
+                segment_positions = [0.0, white_position, 1.0]
+            else:
+                # If max < 1, use green to white only
+                colors = ['green', 'white']
+                segment_positions = [0.0, 1.0]
+
+            custom_cmap = LinearSegmentedColormap.from_list('chi2_cmap', list(zip(segment_positions, colors)), N=256)
+
             # Use standard normalization
-            norm = Normalize(vmin=LOGL_min, vmax=LOGL_max)
-            
+            norm = Normalize(vmin=CHI2_min, vmax=CHI2_max)
+
             plt.figure(4, figsize=(wx, wy))
             plt.plot(X[i1:i2], Y[i1:i2], color='lightgray', zorder=-1, marker='.', linestyle='None', markersize=2*s)  # Background points in light gray
-            scatter = plt.scatter(X[i1:i2], Y[i1:i2], c=LOGL_mean_plot[i1:i2],  
+            scatter = plt.scatter(X[i1:i2], Y[i1:i2], c=CHI2_plot[i1:i2],
                                 cmap=custom_cmap, norm=norm, **kwargs)
             plt.grid()
             plt.xlabel('X')
             plt.ylabel('Y')
-            plt.colorbar(scatter, label='LOGL_mean')
-            plt.title('Mean Log-Likelihood / (-2*n_data_used)')
+            plt.colorbar(scatter, label='CHI2 (Reduced χ²)')
+            plt.title('Reduced Chi-Squared (Goodness of Fit)')
             plt.axis('equal')
             if hardcopy:
                 # get filename without extension
-                f_png = '%s_%d_%d_LOGL_mean.png' % (os.path.splitext(f_post_h5)[0], i1, i2)
+                f_png = '%s_%d_%d_CHI2.png' % (os.path.splitext(f_post_h5)[0], i1, i2)
+                #plt.savefig(f_png, dpi=dpi, bbox_inches='tight')
                 plt.savefig(f_png)
+                print('Saved: %s' % f_png)
                 plt.show()
         else:
-            print('LOGL_mean data not found in %s' % f_post_h5)
+            print('CHI2 data not found in %s' % f_post_h5)
 
     return
 
@@ -1201,9 +1207,9 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
         P=f_post[Mstr+'/P'][:]
         T=f_post['/T'][:].T
         try:
-            LOGL_mean=f_post['/LOGL_mean'][:]
+            CHI2=f_post['/CHI2'][:]
         except:
-            LOGL_mean=None
+            CHI2=None
 
     # Set defaults for entropy_min and entropy_max if not provided
     if entropy_min is None:
@@ -1478,14 +1484,22 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
         ax[2].set_ylabel('Temperature', color='k')
         ax[2].tick_params(axis='y', labelcolor='k')
 
-        if LOGL_mean is not None:
-            # Create second y-axis for LOGL_mean
+        if CHI2 is not None:
+            # Create second y-axis for CHI2
             ax2_twin = ax[2].twinx()
-            ax2_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
-            # Add dotted red line at y=1
-            ax2_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
-            ax2_twin.set_ylim(0, 5)
-            ax2_twin.set_ylabel('LOGL_mean', color='r')
+
+            # Compute total CHI2 if multiple data types
+            if len(CHI2.shape) == 2:
+                CHI2_plot = np.nansum(CHI2[ii], axis=1)
+            else:
+                CHI2_plot = CHI2[ii]
+
+            ax2_twin.plot(x_axis_values, CHI2_plot, 'r.', label='CHI2')
+            # Add reference line at CHI2=1 (perfect fit)
+            ax2_twin.axhline(y=1.0, color='r', linestyle='--', alpha=0.3, linewidth=1)
+            # Set fixed y-axis limits for consistent comparison across plots
+            ax2_twin.set_ylim([0, 3])
+            ax2_twin.set_ylabel('CHI2 (Reduced χ²)', color='r')
             ax2_twin.tick_params(axis='y', labelcolor='r')
 
             # Combine legends from both axes
@@ -1707,9 +1721,9 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         Std=f_post[Mstr+'/Std'][:].T
         T=f_post['/T'][:].T
         try:
-            LOGL_mean=f_post['/LOGL_mean'][:]
+            CHI2=f_post['/CHI2'][:]
         except:
-            LOGL_mean=None
+            CHI2=None
 
     # Compute alpha matrix 'A' for transparency based on uncertainty
     # Normalize Std to [0, 1] range based on its own min/max values
@@ -2025,14 +2039,22 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
         ax[2].set_ylabel('Temperature', color='k')
         ax[2].tick_params(axis='y', labelcolor='k')
 
-        if LOGL_mean is not None:
-            # Create second y-axis for LOGL_mean
+        if CHI2 is not None:
+            # Create second y-axis for CHI2
             ax2_twin = ax[2].twinx()
-            ax2_twin.plot(x_axis_values, LOGL_mean[ii], 'r.', label='LOGL_mean')
-            # Add dotted red line at y=1
-            ax2_twin.axhline(y=1, color='r', linestyle=':', linewidth=1, alpha=0.7)
-            ax2_twin.set_ylim(0, 5)
-            ax2_twin.set_ylabel('LOGL_mean', color='r')
+
+            # Compute total CHI2 if multiple data types
+            if len(CHI2.shape) == 2:
+                CHI2_plot = np.nansum(CHI2[ii], axis=1)
+            else:
+                CHI2_plot = CHI2[ii]
+
+            ax2_twin.plot(x_axis_values, CHI2_plot, 'r.', label='CHI2')
+            # Add reference line at CHI2=1 (perfect fit)
+            ax2_twin.axhline(y=1.0, color='r', linestyle='--', alpha=0.3, linewidth=1)
+            # Set fixed y-axis limits for consistent comparison across plots
+            ax2_twin.set_ylim([0, 3])
+            ax2_twin.set_ylabel('CHI2 (Reduced χ²)', color='r')
             ax2_twin.tick_params(axis='y', labelcolor='r')
 
             # Combine legends from both axes
@@ -2602,11 +2624,11 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
     f_prior_h5 = f_post['/'].attrs['f5_prior']
     f_data_h5 = f_post['/'].attrs['f5_data']
     
-    # Load LOGL_mean if it exists
+    # Load CHI2 if it exists
     try:
-        LOGL_mean = f_post['/LOGL_mean'][:]
+        CHI2 = f_post['/CHI2'][:]
     except:
-        LOGL_mean = None
+        CHI2 = None
 
 
     # if id is a list of integers, then loop over them and call 
@@ -2757,8 +2779,14 @@ def plot_data_prior_post(f_post_h5, i_plot=-1, nr=200, id=0, ylim=None, Dkey=[],
             ax.text(0.1, 0.1, 'T = %4.2f.' % (f_post['/T'][i_plot]), transform=ax.transAxes)
             ax.text(0.1, 0.2, 'log(EV) = %4.2f.' % (f_post['/EV'][i_plot]), transform=ax.transAxes)
             try:
-                if LOGL_mean is not None:
-                        ax.text(0.1, 0.3, 'LOGL_mean = %4.2f.' % (LOGL_mean[i_plot,0]), transform=ax.transAxes)
+                if CHI2 is not None:
+                    # Sum CHI2 across all data types if multiple types exist
+                    if len(CHI2.shape) == 2:
+                        CHI2_total = np.nansum(CHI2[i_plot, :])
+                        n_types = np.sum(~np.isnan(CHI2[i_plot, :]))
+                        ax.text(0.1, 0.3, f'CHI2 = {CHI2_total:.2f} ({n_types} data types)', transform=ax.transAxes)
+                    else:
+                        ax.text(0.1, 0.3, f'CHI2 = {CHI2[i_plot]:.2f}', transform=ax.transAxes)
             except:
                 pass
             # Use custom title if provided, otherwise use default

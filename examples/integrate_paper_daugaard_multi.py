@@ -409,7 +409,7 @@ for i_post in range(len(f_post_h5_list)):
 
         ig.plot_data_prior_post(f_post_h5, i_plot=100, hardcopy=hardcopy)
 
-        ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
+        ig.plot_T_EV(f_post_h5, pl='CHI2', hardcopy=hardcopy)
 
 
         ig.plot_feature_2d(f_post_h5,im=1,iz=15, key='Mean', uselog=1, s=10,hardcopy=hardcopy)
@@ -539,7 +539,7 @@ if doPlotAll:
             ig.plot_data_prior_post(f_post_h5, i_plot=i_plot_2, hardcopy=hardcopy, title='b) P2')
     
         if plLevel>1:
-            ig.plot_T_EV(f_post_h5, pl='LOGL_mean', hardcopy=hardcopy)
+            ig.plot_T_EV(f_post_h5, pl='CHI2', hardcopy=hardcopy)
             ig.plot_T_EV(f_post_h5, pl='T', hardcopy=hardcopy)
             ig.plot_T_EV(f_post_h5, pl='EV', hardcopy=hardcopy)
             ig.plot_T_EV(f_post_h5, pl='ND', hardcopy=hardcopy)

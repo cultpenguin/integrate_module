@@ -217,7 +217,7 @@ ig.plot_T_EV(f_post_h5, pl='T',hardcopy=hardcopy)
 # Plot the normalized mean-loglikelihood
 # Values less than one suggest overfitting
 # Values above one suggest underfitting
-#ig.plot_T_EV(f_post_h5, pl='LOGL_mean',hardcopy=hardcopy)
+#ig.plot_T_EV(f_post_h5, pl='CHI2',hardcopy=hardcopy)
 
 
 

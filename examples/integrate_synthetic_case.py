@@ -61,6 +61,7 @@ D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
 # Initialize random number generator to sample from noise model!
 rng = np.random.default_rng()
 d_std = 0.05
+d_std = 0.10
 d_std_base = 1e-12
 D_std = d_std * D_ref + d_std_base
 D_noise = rng.normal(0, D_std, D_ref.shape)
@@ -91,7 +92,7 @@ ig.plot_data(f_data_h5)
 # ## Create prior model and data
 
 # %%
-N=50000 # sample size 
+N=250000 # sample size 
 RHO_dist='log-uniform'
 #RHO_dist='uniform'
 RHO_min=0.8*min(rho)
