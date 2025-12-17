@@ -124,8 +124,8 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5,
 
 # %%
 clim = [0.8*min(rho), 1.2*max(rho)]
-ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim)
-ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  im=2)
+#ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  clim = clim)
+ig.plot_profile(f_post_h5, i1=0, i2=1000, hardcopy=hardcopy,  im=1)
 
 # %%
 ig.plot_data_prior_post(f_post_h5, i_plot=0, hardcopy=hardcopy)
