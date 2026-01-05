@@ -342,7 +342,9 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
 
     Generates a 2D scatter plot showing the spatial distribution of a specific
     model parameter feature from posterior sampling results. Supports both
-    logarithmic and linear scaling with customizable colormaps and limits.
+    continuous and discrete data with appropriate colormaps and scaling.
+    For discrete model parameters (e.g., geological units), displays class
+    names on the colorbar when plotting Mode or other discrete statistics.
 
     Parameters
     ----------
@@ -351,6 +353,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
     key : str, optional
         Dataset key within the model group to plot. If empty string, uses
         the first available key in the model group (default is '').
+        For discrete parameters, common keys include 'Mode', 'P', 'Entropy'.
     i1 : int, optional
         Starting data point index for plotting (1-based indexing, default is 1).
     i2 : float, optional
@@ -362,16 +365,19 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
         Feature/layer index within the model parameter array (default is 0).
     uselog : int, optional
         Apply logarithmic normalization to color scale (1=True, 0=False, default is 1).
+        Automatically disabled for discrete statistics (Mode, P, Entropy).
     title : str, optional
         Additional text to append to the plot title (default is '').
     hardcopy : bool, optional
         Save the plot as a PNG file (default is False).
     cmap : list or str, optional
         Colormap specification. If empty list, uses colormap from prior file
-        attributes (default is []).
+        attributes (default is []). For discrete parameters, automatically
+        uses the discrete colormap from the prior file.
     clim : list, optional
         Color scale limits as [min, max]. If empty list, uses limits from
-        prior file attributes (default is []).
+        prior file attributes (default is []). For discrete parameters,
+        automatically set to span all class IDs.
     **kwargs : dict
         Additional keyword arguments passed to matplotlib scatter function.
         Common options include showInfo for debug output level.
@@ -383,13 +389,25 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
 
     Notes
     -----
+    The function automatically detects whether the model parameter is discrete
+    (e.g., geological unit classifications) or continuous (e.g., resistivity).
+    For discrete parameters with statistics like Mode:
+    - Uses the discrete colormap from the prior file
+    - Creates a colorbar with class names instead of numeric values
+    - Applies linear scaling (logarithmic scaling is disabled)
+    - Inverts the colorbar axis to match standard conventions
+
+    Class names and colors are retrieved from the prior file attributes:
+    'class_id', 'class_name', and 'cmap'.
+
     The function automatically retrieves geometry data and colormap/limit
     information from linked prior and data files. Plot files are saved with
     descriptive names including indices and feature information when hardcopy=True.
     """
     from matplotlib.colors import LogNorm
 
-    showInfo = kwargs.get('showInfo', 0)
+    # Extract parameters that should not be passed to scatter()
+    showInfo = kwargs.pop('showInfo', 0)
 
     #kwargs.setdefault('hardcopy', False)
     kwargs.setdefault('s', 1)
@@ -400,17 +418,34 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
         f_data_h5 = f_post['/'].attrs['f5_data']
     
 
+    # Read prior file metadata including discrete classification info
     with h5py.File(f_prior_h5,'r') as f_prior:
         if 'name' in f_prior[dstr].attrs:
             name = f_prior[dstr].attrs['name']
-        else:    
+        else:
             name = dstr
 
-        
+        # Check if this is a discrete model parameter
+        is_discrete = f_prior[dstr].attrs['is_discrete']
+
+        # Read discrete classification metadata if available
+        class_id = None
+        class_name = None
+        discrete_cmap = None
+        if is_discrete:
+            if 'class_id' in f_prior[dstr].attrs.keys():
+                class_id = f_prior[dstr].attrs['class_id'][:].flatten()
+            if 'class_name' in f_prior[dstr].attrs.keys():
+                class_name = f_prior[dstr].attrs['class_name'][:].flatten()
+            if 'cmap' in f_prior[dstr].attrs.keys():
+                discrete_cmap_array = f_prior[dstr].attrs['cmap'][:]
+                from matplotlib.colors import ListedColormap
+                discrete_cmap = ListedColormap(discrete_cmap_array.T)
+
     X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
     wx = 10
     wy = (np.max(Y)-np.min(Y))/(np.max(X)-np.min(X)) * wx
-    
+
     if showInfo>1:
         print("f_prior_h5 = %s" % f_prior_h5)
 
@@ -419,7 +454,7 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
     if cmap is None:
         # Check prior file for colormap
         cmap = cmap_ref
-        
+
     if clim_ref is None:
         clim = clim_ref
 
@@ -444,37 +479,71 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
     if showInfo>0:
         print("Plotting Feature %d from %s/%s" % (iz, dstr,key))
 
+    # Determine if this statistic represents discrete data
+    # Discrete statistics include: Mode, P (probability), Entropy
+    discrete_stats = ['Mode', 'P', 'Entropy']
+    is_discrete_stat = is_discrete and (key in discrete_stats)
+
+    # Use discrete colormap and limits if this is discrete data with appropriate statistic
+    if is_discrete_stat and discrete_cmap is not None:
+        cmap = discrete_cmap
+        if clim is None and class_id is not None:
+            # Set color limits to include all class IDs with half-unit padding
+            clim = [class_id.min() - 0.5, class_id.max() + 0.5]
+
     with h5py.File(f_post_h5,'r') as f_post:
 
         if dstr in f_post:
             if key in f_post[dstr].keys():
                 D = f_post[dstr][key][:,iz][:]
                 # plot this KEY
-                plt.figure(1, figsize=(wx, wy))
-                if uselog:
-                    plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],
+                fig = plt.figure(1, figsize=(wx, wy))
+
+                # For discrete Mode statistics, always use linear scale (not log)
+                if is_discrete_stat:
+                    # Apply color limits directly to scatter plot for discrete data
+                    sc = plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],
+                                cmap = cmap,
+                                vmin=clim[0] if clim is not None else None,
+                                vmax=clim[1] if clim is not None else None,
+                                **kwargs)
+                elif uselog:
+                    sc = plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],
                                 cmap = cmap,
                                 norm=LogNorm(),
-                                **kwargs)      
-                else:        
-                    plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],
+                                **kwargs)
+                else:
+                    sc = plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],
                                 cmap = cmap,
-                                **kwargs)      
+                                **kwargs)
                 plt.grid()
-                plt.xlabel('X')                
-                plt.colorbar()
+                plt.xlabel('X')
+
+                # Create colorbar with class labels for discrete data
+                if is_discrete_stat and class_id is not None and class_name is not None:
+                    cbar = plt.colorbar(sc)
+                    cbar.set_ticks(class_id)
+                    cbar.set_ticklabels(class_name)
+                    cbar.ax.invert_yaxis()
+                else:
+                    plt.colorbar(sc)
+
                 print(title)
                 if title is None:
                     title = "%s/%s[%d,:] %s" %(dstr,key,iz,name)
                 plt.title(title)
                 plt.axis('equal')
-                plt.clim(clim)
-                
+
+                # Only apply clim after colorbar for continuous data
+                # For discrete data, clim was already applied to scatter plot
+                if not is_discrete_stat:
+                    plt.clim(clim)
+
                 if hardcopy:
                     f_png = '%s_%d_%d_%d_%s%02d_feature.png' % (os.path.splitext(f_post_h5)[0],i1,i2,im,key,iz)
                     plt.savefig(f_png)
                 #plt.show()
-                
+
             else:
                 print("Key %s not found in %s" % (key, dstr))
     return
