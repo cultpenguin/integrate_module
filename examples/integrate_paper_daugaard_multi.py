@@ -34,7 +34,7 @@ hardcopy=True
 # ## Download the data DAUGAARD data including non-trivial prior data realizations
 
 # %%
-cmap, clim = ig.get_colormap_and_limits('resistivity')
+cmap, clim = ig.get_colormap_and_limits*('resistivity')
 useMergedPrior=True
 useGenericPrior=True
 inflateNoise = 2   # 1,2, 4
@@ -798,3 +798,80 @@ if doTestInversion:
     plt.ylabel('EV [] from integrate_rejection()');plt.axis('equal' )
     plt.title('EV1 (Valley) - %s' % f_prior_data_h5_list[0][0:19])
     plt.grid(True, which='both', alpha=0.3)
+
+
+#%%  TEST
+f_post_h5 = 'post_daugaard_merged_N2000000_Nuse1000000_T1_inflateNoise2.h5'
+ig.plot_feature_2d(f_post_h5, im=1, iz=10)
+plt.show()
+ig.plot_feature_2d(f_post_h5, im=2, iz=10)
+plt.show()
+
+# %% 
+ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y')
+
+
+# %% 
+f_post_h5='post_daugaard_merged_N2000000_Nuse1000000_T1_inflateNoise2.h5'
+ele=-20
+X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+nd = len(X)
+
+class_id, class_name = ig.get_discrete_classes(f_post_h5, im=2)
+nclass = len(class_id)
+
+#E = ig.extract_feature_at_elevation(f_post_h5, elevation=ele)
+POST_MODE = ig.extract_feature_at_elevation(f_post_h5, im=2, elevation=ele, key='Mode')
+POST_ENTROPY = ig.extract_feature_at_elevation(f_post_h5, im=2, elevation=ele, key='Entropy')
+
+POST_P_CLASS = np.zeros( (nd, nclass) )
+
+
+#%% 
+cmap, clim = ig.get_colormap_and_limits('evidence', custom_clim=[0, 1])
+
+i=0
+for ele in np.arange(80,-51,-1):
+    i=i+1 
+    for ic in range(nclass):
+        POST_P_CLASS[:, ic] = ig.extract_feature_at_elevation(f_post_h5, im=2, elevation=ele, key='P', ic=ic)
+
+    plt.figure()
+    for ic in range(nclass):
+        plt.subplot(3,3,ic+1)
+        plt.plot(X, Y, 'k.', markersize=.01)
+        plt.scatter(X, Y, c=POST_P_CLASS[:, ic], s=.2, cmap='magma_r', vmin=0, vmax=1)
+        #plt.colorbar(label='P(Class %d: %s) at %d m elevation' % (class_id[ic], class_name[ic], ele));plt.axis('equal')
+        #plt.colorbar()
+        # Remove axis labels for clarity
+        plt.xticks([])
+        plt.yticks([])
+        plt.title('P(Class %d: %s)' % (class_id[ic], class_name[ic]), fontsize=5)
+        
+    plt.suptitle('Class probabilities at %3.1f m elevation' % ele)
+    plt.axis('equal')
+    plt.savefig('PROB_CLASS_%04d.png' % i, dpi=300)
+
+# %% 
+# ffmpeg -framerate 4 -pattern_type glob -i "PROB_CLASS_*.png" -c:v libx264 -crf 18 -preset slow -pix_fmt yuv420p output.mp4
+
+# ffmpeg -f concat -safe 0 -i files.txt -c:v libx264 -pix_fmt yuv420p output.mp4
+
+#%%
+
+#POST_P0 = ig.extract_feature_at_elevation(f_post_h5, im=2, elevation=ele, key='P', ic=0)
+#POST_P1 = ig.extract_feature_at_elevation(f_post_h5, im=2, elevation=ele, key='P', ic=1)#
+#POST_P2 = ig.extract_feature_at_elevation(f_post_h5, im=2, elevation=ele, key='P', ic=2)
+
+#P1 = ig.extract_feature_at_elevation(f_post_h5, im=2, ic=1, elevation=ele)
+#P1 = ig.extract_feature_at_elevation(f_post_h5, im=2, ic=1, elevation=ele)
+
+plt.subplot(2,2,1)
+plt.plot(X, Y, 'k.', markersize=.1)
+plt.scatter(X, Y, c=POST_MODE, s=.2, cmap='jet')
+plt.colorbar(label='Feature at 10 m elevation');plt.axis('equal')
+
+plt.subplot(2,2,2)
+plt.plot(X, Y, 'k.', markersize=.1)
+plt.scatter(X, Y, c=POST_ENTROPY, s=.2, cmap='jet', vmin=0, vmax=1)
+plt.colorbar(label='Feature at 10 m elevation');plt.axis('equal')

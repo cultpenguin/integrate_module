@@ -51,7 +51,9 @@ from integrate.integrate_io import save_prior_data
 from integrate.integrate_io import load_prior_model
 from integrate.integrate_io import save_prior_model
 from integrate.integrate_io import load_data
-from integrate.integrate_io import get_geometry 
+from integrate.integrate_io import get_geometry
+from integrate.integrate_io import extract_feature_at_elevation
+from integrate.integrate_io import get_discrete_classes
 from integrate.integrate_io import get_number_of_datasets
 from integrate.integrate_io import get_number_of_data
 from integrate.integrate_io import read_gex

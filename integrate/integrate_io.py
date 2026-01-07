@@ -1130,6 +1130,389 @@ def get_geometry(f_data_h5):
     return X, Y, LINE, ELEVATION
 
 
+def extract_feature_at_elevation(f_post_h5, elevation, im=1, key='', iz=None, ic=None, iclass=None):
+    """
+    Extract model parameter feature values at a specific elevation for all data points.
+
+    This function extracts values from a posterior model parameter at a specified
+    elevation (e.g., 40m above sea level) across all data points. The function
+    performs linear interpolation between model layers to obtain values at the
+    exact requested elevation. For each data point, it uses the ELEVATION from
+    the data file and the depth discretization from the prior model to compute
+    the interpolated value.
+
+    Parameters
+    ----------
+    f_post_h5 : str
+        Path to the HDF5 file containing posterior sampling results.
+    elevation : float
+        Elevation in meters at which to extract the feature values. This is
+        an absolute elevation value (e.g., 40 means 40m above sea level).
+    im : int, optional
+        Model index to extract from (e.g., 1 for M1, 2 for M2, default is 1).
+    key : str, optional
+        Dataset key within the model group to extract. If empty string,
+        automatically selects appropriate statistic based on parameter type:
+
+        **Continuous parameters**: 'Mean', 'Median', 'Std'
+        - Default: 'Median'
+
+        **Discrete parameters**: 'Mode', 'Entropy', 'P' (probability)
+        - Default: 'Mode'
+        - For 'P': requires ic/iclass parameter to specify which class
+
+    iz : int or None, optional
+        Specific layer/feature index to extract. If None, attempts to find the
+        appropriate depth layer automatically based on the elevation and model
+        discretization (default is None). This parameter is primarily for
+        advanced use when you want to extract a specific indexed feature rather
+        than interpolating at an elevation.
+    ic : int or None, optional
+        Class index for probability extraction when key='P'. Specifies which
+        class probability to extract. If None and key='P', defaults to 0
+        (first class). Alias for iclass parameter (default is None).
+    iclass : int or None, optional
+        Alternative name for ic parameter. Class index for probability extraction
+        when key='P' (default is None).
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of feature values at the specified elevation for all data points.
+        Shape is (N_points,) where N_points is the number of data locations.
+        Values are interpolated from the model layers surrounding the requested
+        elevation. Returns NaN for data points where the requested elevation is
+        outside the model domain (above surface or below maximum depth).
+
+    Raises
+    ------
+    FileNotFoundError
+        If the specified HDF5 file does not exist.
+    KeyError
+        If the requested model index (im) or key is not found in the file.
+    ValueError
+        If the elevation is invalid or cannot be interpolated from the model.
+
+    Notes
+    -----
+    **Elevation and Depth Calculation:**
+
+    The function uses the following coordinate system:
+    - ELEVATION: Ground surface elevation for each data point (from data file)
+    - z: Depth below surface from the prior model (e.g., 0, 1, 2, ... meters)
+    - Absolute elevation = ELEVATION - z
+
+    For example, if a data point has ELEVATION=50m and the model has z=[0,10,20,30]:
+    - At z=0: absolute elevation = 50m (surface)
+    - At z=10: absolute elevation = 40m (10m below surface)
+    - At z=20: absolute elevation = 30m (20m below surface)
+
+    To extract a value at elevation=40m, the function:
+    1. Computes depth below surface: depth = ELEVATION - elevation = 50 - 40 = 10m
+    2. Interpolates the feature value at depth=10m from the model
+
+    **Interpolation:**
+
+    Linear interpolation is used between model layers. If the requested elevation
+    falls exactly on a model layer boundary, that layer's value is returned.
+    If the elevation is between two layers, values are linearly interpolated.
+
+    **Automatic Key Selection:**
+
+    When key='', the function automatically selects an appropriate statistic:
+    - Discrete parameters: defaults to 'Mode' (most probable class)
+    - Continuous parameters: defaults to 'Median' (robust central estimate)
+
+    **Valid Keys by Parameter Type:**
+
+    Continuous parameters:
+    - 'Mean': Average value
+    - 'Median': Median value (default)
+    - 'Std': Standard deviation
+
+    Discrete parameters:
+    - 'Mode': Most probable class (default)
+    - 'Entropy': Uncertainty measure
+    - 'P': Probability for a specific class (requires ic/iclass parameter)
+
+    **Probability Extraction:**
+
+    When extracting probabilities (key='P'), the function requires a class index
+    specified by ic or iclass. The P array has shape (nd, n_classes, nz) where:
+    - nd = number of data points
+    - n_classes = number of discrete classes
+    - nz = number of depth layers
+
+    The ic/iclass parameter selects which class probability to extract.
+
+    Examples
+    --------
+    Extract median resistivity at 40m elevation (continuous):
+
+    >>> values = extract_feature_at_elevation('post.h5', elevation=40, im=1, key='Median')
+    >>> print(values.shape)  # (N_points,)
+
+    Extract mean and standard deviation (continuous):
+
+    >>> mean_vals = extract_feature_at_elevation('post.h5', elevation=40, im=1, key='Mean')
+    >>> std_vals = extract_feature_at_elevation('post.h5', elevation=40, im=1, key='Std')
+
+    Extract mode (most probable class) at 25m elevation (discrete):
+
+    >>> classes = extract_feature_at_elevation('post.h5', elevation=25, im=2, key='Mode')
+
+    Extract entropy (uncertainty) for discrete parameter:
+
+    >>> entropy = extract_feature_at_elevation('post.h5', elevation=25, im=2, key='Entropy')
+
+    Extract probability for first class (discrete):
+
+    >>> prob_class0 = extract_feature_at_elevation('post.h5', elevation=25, im=2, key='P', ic=0)
+
+    Extract probability for second class using iclass parameter:
+
+    >>> prob_class1 = extract_feature_at_elevation('post.h5', elevation=25, im=2, key='P', iclass=1)
+
+    Use automatic key selection (Mode for discrete, Median for continuous):
+
+    >>> values = extract_feature_at_elevation('post.h5', elevation=30, im=1)
+
+    Extract mean values at sea level (elevation=0):
+
+    >>> values = extract_feature_at_elevation('post.h5', elevation=0, im=1, key='Mean')
+    """
+    import integrate as ig
+
+    # Load file references
+    with h5py.File(f_post_h5, 'r') as f_post:
+        f_prior_h5 = f_post['/'].attrs['f5_prior']
+        f_data_h5 = f_post['/'].attrs['f5_data']
+
+    # Get geometry (ELEVATION for each data point)
+    X, Y, LINE, ELEVATION = get_geometry(f_data_h5)
+    nd = len(ELEVATION)
+
+    # Get model information
+    Mstr = '/M%d' % im
+
+    with h5py.File(f_prior_h5, 'r') as f_prior:
+        # Get depth array (z or x)
+        if 'z' in f_prior[Mstr].attrs.keys():
+            z = f_prior[Mstr].attrs['z'][:].flatten()
+        elif 'x' in f_prior[Mstr].attrs.keys():
+            z = f_prior[Mstr].attrs['x'][:].flatten()
+        else:
+            raise KeyError(f"Neither 'z' nor 'x' found in attributes of {Mstr}")
+
+        is_discrete = f_prior[Mstr].attrs['is_discrete']
+
+    # Determine key if not provided
+    if len(key) == 0:
+        with h5py.File(f_post_h5, 'r') as f_post:
+            available_keys = list(f_post[Mstr].keys())
+            if is_discrete:
+                key = 'Mode' if 'Mode' in available_keys else available_keys[0]
+            else:
+                key = 'Median' if 'Median' in available_keys else available_keys[0]
+        print(f"No key provided. Using default key for {'discrete' if is_discrete else 'continuous'} parameter: {key}")
+
+    # Handle class index for probability extraction
+    if key == 'P' or key == 'p':
+        key = 'P'  # Normalize to uppercase
+        # Determine class index - ic takes priority over iclass
+        class_idx = ic if ic is not None else iclass
+        if class_idx is None:
+            class_idx = 0  # Default to first class
+            print(f"No class index provided for key='P'. Using default class index: {class_idx} (first class)")
+        else:
+            print(f"Extracting probability for class index: {class_idx}")
+    else:
+        class_idx = None
+
+    # Load the feature data
+    with h5py.File(f_post_h5, 'r') as f_post:
+        if Mstr not in f_post:
+            raise KeyError(f"Model {Mstr} not found in {f_post_h5}")
+        if key not in f_post[Mstr].keys():
+            raise KeyError(f"Key '{key}' not found in {Mstr} (available: {list(f_post[Mstr].keys())})")
+
+        # Load feature data
+        if key == 'P':
+            # P has shape (nd, n_classes, nz) - extract specific class
+            P_data = f_post[Mstr][key][:]
+            if P_data.ndim != 3:
+                raise ValueError(f"Expected P data to have 3 dimensions (nd, n_classes, nz), got {P_data.ndim}")
+
+            n_classes = P_data.shape[1]
+            if class_idx < 0 or class_idx >= n_classes:
+                raise ValueError(f"Class index {class_idx} out of range. Valid range: 0 to {n_classes-1}")
+
+            # Extract probability for the specified class: shape (nd, nz)
+            feature_data = P_data[:, class_idx, :]
+        else:
+            # Load feature data: shape is (nd, nz) where nd=number of data points, nz=number of depth layers
+            feature_data = f_post[Mstr][key][:]
+
+    # Initialize output array
+    values_at_elevation = np.full(nd, np.nan)
+
+    # For each data point, interpolate at the requested elevation
+    for i in range(nd):
+        elev_i = ELEVATION[i]
+
+        # Compute absolute elevations for this data point
+        # elevation_abs = elev_i - z (surface is at z=0)
+        elevation_abs = elev_i - z
+
+        # Check if requested elevation is within the model domain
+        if elevation > elev_i:
+            # Requested elevation is above ground surface
+            continue  # Leave as NaN
+        if elevation < elevation_abs[-1]:
+            # Requested elevation is below the deepest model layer
+            continue  # Leave as NaN
+
+        # Interpolate feature value at the requested elevation
+        # Note: elevation_abs is in descending order (surface to depth)
+        # so we need to be careful with interpolation
+        values_at_elevation[i] = np.interp(elevation, elevation_abs[::-1], feature_data[i, :][::-1])
+
+    return values_at_elevation
+
+
+def get_discrete_classes(f_h5, im=1):
+    """
+    Get class IDs and class names for a discrete model parameter.
+
+    Retrieves the classification information (class IDs and class names) for
+    a discrete model parameter from either a prior or posterior HDF5 file.
+    This function is useful for understanding the categorical classes used in
+    discrete parameter inversion (e.g., geological units, lithology types).
+
+    Parameters
+    ----------
+    f_h5 : str
+        Path to the HDF5 file. Can be either:
+        - Prior file (f_prior_h5): Reads classes directly from the prior
+        - Posterior file (f_post_h5): Extracts prior file reference first,
+          then reads classes from the prior
+
+    im : int, optional
+        Model index to get classes for (e.g., 1 for M1, 2 for M2, default is 1).
+
+    Returns
+    -------
+    class_id : numpy.ndarray or list
+        Array of class IDs. Empty list if the model parameter is not discrete
+        or if class_id attribute is not set.
+    class_name : numpy.ndarray or list
+        Array of class names corresponding to the class IDs. Empty list if
+        the model parameter is not discrete or if class_name attribute is not set.
+
+    Examples
+    --------
+    Get classes from a prior file:
+
+    >>> class_id, class_name = get_discrete_classes('PRIOR.h5', im=2)
+    >>> for cid, cname in zip(class_id, class_name):
+    ...     print(f"Class {cid}: {cname}")
+
+    Get classes from a posterior file (automatically finds prior):
+
+    >>> class_id, class_name = get_discrete_classes('POST.h5', im=2)
+    >>> if len(class_id) > 0:
+    ...     print(f"Found {len(class_id)} classes")
+
+    Check if parameter is discrete:
+
+    >>> class_id, class_name = get_discrete_classes('POST.h5', im=1)
+    >>> if len(class_id) == 0:
+    ...     print("Model parameter M1 is continuous")
+    ... else:
+    ...     print(f"Model parameter M1 is discrete with {len(class_id)} classes")
+
+    Notes
+    -----
+    The function automatically determines whether the input file is a prior or
+    posterior file. For posterior files, it extracts the prior file reference
+    from the file attributes and reads the class information from the prior.
+
+    Class information is stored in the prior file attributes:
+    - 'class_id': Numeric identifiers for each class (e.g., [0, 1, 2, 3])
+    - 'class_name': Text labels for each class (e.g., ['Clay', 'Sand', 'Gravel', 'Bedrock'])
+    - 'is_discrete': Boolean flag indicating if the parameter is discrete
+
+    If the model parameter is continuous (is_discrete=False) or if the class
+    attributes are not set, the function returns empty lists.
+    """
+
+    import os
+
+    Mstr = '/M%d' % im
+
+    # Try to open as posterior first, if it fails, assume it's a prior file
+    try:
+        with h5py.File(f_h5, 'r') as f:
+            # Check if this is a posterior file by looking for typical posterior attributes
+            if 'f5_prior' in f['/'].attrs:
+                # It's a posterior file, get the prior file reference
+                f_prior_h5_rel = f['/'].attrs['f5_prior']
+
+                # Make path absolute relative to the posterior file location
+                if not os.path.isabs(f_prior_h5_rel):
+                    # Get directory of the posterior file
+                    post_dir = os.path.dirname(os.path.abspath(f_h5))
+                    # Construct absolute path to prior file
+                    f_prior_h5 = os.path.join(post_dir, f_prior_h5_rel)
+                else:
+                    f_prior_h5 = f_prior_h5_rel
+            else:
+                # It's a prior file
+                f_prior_h5 = f_h5
+    except Exception:
+        # If something goes wrong, assume it's the prior file
+        f_prior_h5 = f_h5
+
+    # Now read class information from the prior file
+    class_id = []
+    class_name = []
+
+    try:
+        with h5py.File(f_prior_h5, 'r') as f_prior:
+            if Mstr not in f_prior:
+                # Model parameter doesn't exist
+                return class_id, class_name
+
+            # Check if the parameter is discrete
+            if 'is_discrete' in f_prior[Mstr].attrs:
+                is_discrete = f_prior[Mstr].attrs['is_discrete']
+                if not is_discrete:
+                    # Parameter is continuous, return empty lists
+                    return class_id, class_name
+            else:
+                # Attribute not set, assume continuous
+                return class_id, class_name
+
+            # Get class_id if available
+            if 'class_id' in f_prior[Mstr].attrs.keys():
+                class_id = f_prior[Mstr].attrs['class_id'][:].flatten()
+            else:
+                class_id = []
+
+            # Get class_name if available
+            if 'class_name' in f_prior[Mstr].attrs.keys():
+                class_name = f_prior[Mstr].attrs['class_name'][:].flatten()
+            else:
+                class_name = []
+
+    except Exception as e:
+        # If any error occurs, return empty lists
+        print(f"Warning: Could not read class information: {e}")
+        return [], []
+
+    return class_id, class_name
+
+
 def get_number_of_datasets(f_data_h5, return_ids=False):
     """
     Get the number of datasets (D1, D2, D3, etc.) in an INTEGRATE data HDF5 file.

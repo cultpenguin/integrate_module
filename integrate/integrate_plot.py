@@ -473,8 +473,21 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
 
     if len(key)==0:
         with h5py.File(f_post_h5,'r') as f_post:
-            key = list(f_post[dstr].keys())[0]
-        print("No key was given. Using the first key found: %s" % key)
+            available_keys = list(f_post[dstr].keys())
+            # Set default key based on parameter type
+            if is_discrete:
+                # For discrete parameters, prefer Mode if available
+                if 'Mode' in available_keys:
+                    key = 'Mode'
+                else:
+                    key = available_keys[0]
+            else:
+                # For continuous parameters, prefer Median if available
+                if 'Median' in available_keys:
+                    key = 'Median'
+                else:
+                    key = available_keys[0]
+        print("No key was given. Using default key for %s parameter: %s" % ('discrete' if is_discrete else 'continuous', key))
 
     if showInfo>0:
         print("Plotting Feature %d from %s/%s" % (iz, dstr,key))
