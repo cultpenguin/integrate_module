@@ -336,13 +336,13 @@ def plot_posterior_cumulative_thickness(f_post_h5, im=2, icat=[0], property='med
 
     return fig
 
-def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, title=None, hardcopy=False, cmap=None, clim=None, **kwargs):
+def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, elevation=None, ic=None, uselog=1, title=None, hardcopy=False, cmap=None, clim=None, **kwargs):
     """
     Create 2D spatial scatter plot of model parameter features.
 
     Generates a 2D scatter plot showing the spatial distribution of a specific
     model parameter feature from posterior sampling results. Supports both
-    continuous and discrete data with appropriate colormaps and scaling.
+    continuous and discrete parameters with appropriate colormaps and scaling.
     For discrete model parameters (e.g., geological units), displays class
     names on the colorbar when plotting Mode or other discrete statistics.
 
@@ -351,9 +351,13 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
     f_post_h5 : str
         Path to the HDF5 file containing posterior sampling results.
     key : str, optional
-        Dataset key within the model group to plot. If empty string, uses
-        the first available key in the model group (default is '').
-        For discrete parameters, common keys include 'Mode', 'P', 'Entropy'.
+        Dataset key within the model group to plot. If empty string,
+        automatically selects 'Median' for continuous parameters or 'Mode'
+        for discrete parameters (default is '').
+
+        **Continuous parameters**: 'Mean', 'Median', 'Std'
+
+        **Discrete parameters**: 'Mode', 'P' (probability), 'Entropy'
     i1 : int, optional
         Starting data point index for plotting (1-based indexing, default is 1).
     i2 : float, optional
@@ -363,24 +367,42 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
         Model index to plot from (e.g., 1 for M1, 2 for M2, default is 1).
     iz : int, optional
         Feature/layer index within the model parameter array (default is 0).
+        Ignored if elevation is specified.
+    elevation : float, optional
+        Absolute elevation in meters at which to extract and plot the feature.
+        If provided, extracts values at this elevation using interpolation
+        instead of using layer index iz (default is None).
+    ic : int, optional
+        Class index for probability extraction when key='P'. Required when
+        plotting probabilities at a specific elevation or layer. If not provided,
+        defaults to 0 (first class) when needed (default is None).
     uselog : int, optional
         Apply logarithmic normalization to color scale (1=True, 0=False, default is 1).
         Automatically disabled for discrete statistics (Mode, P, Entropy).
     title : str, optional
-        Additional text to append to the plot title (default is '').
+        Custom plot title. If None, auto-generates descriptive title (default is None).
     hardcopy : bool, optional
-        Save the plot as a PNG file (default is False).
-    cmap : list or str, optional
-        Colormap specification. If empty list, uses colormap from prior file
-        attributes (default is []). For discrete parameters, automatically
-        uses the discrete colormap from the prior file.
-    clim : list, optional
-        Color scale limits as [min, max]. If empty list, uses limits from
-        prior file attributes (default is []). For discrete parameters,
-        automatically set to span all class IDs.
+        Save the plot as a PNG file with auto-generated filename (default is False).
+    cmap : str or None, optional
+        Colormap specification (e.g., 'viridis', 'magma_r', 'RdYlBu').
+        If None, uses colormap from prior file for discrete parameters or
+        default 'resistivity' colormap for continuous parameters (default is None).
+        When explicitly provided, overrides discrete colormap from prior file.
+    clim : list or None, optional
+        Color scale limits as [min, max]. If None, uses automatic limits
+        (default is None). For discrete parameters, automatically set to span
+        all class IDs unless explicitly provided. When explicitly provided,
+        disables discrete colorbar with class labels.
     **kwargs : dict
-        Additional keyword arguments passed to matplotlib scatter function.
-        Common options include showInfo for debug output level.
+        Additional keyword arguments:
+
+        - **plotPoints** (bool): If True, overlay small black dots at each
+          data point location (default is False). Useful for showing data
+          coverage.
+        - **showInfo** (int): Debug output level (0=none, 1=basic, 2=verbose,
+          default is 0).
+        - **s** (float): Marker size for scatter plot (default is 1).
+        - Other matplotlib scatter() parameters.
 
     Returns
     -------
@@ -389,25 +411,124 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
 
     Notes
     -----
+    **Automatic Parameter Type Detection**
+
     The function automatically detects whether the model parameter is discrete
     (e.g., geological unit classifications) or continuous (e.g., resistivity).
-    For discrete parameters with statistics like Mode:
-    - Uses the discrete colormap from the prior file
-    - Creates a colorbar with class names instead of numeric values
-    - Applies linear scaling (logarithmic scaling is disabled)
-    - Inverts the colorbar axis to match standard conventions
 
-    Class names and colors are retrieved from the prior file attributes:
+    **Discrete Parameters**:
+
+    - Uses discrete colormap from prior file (unless user provides cmap)
+    - Creates colorbar with class names instead of numeric values (unless user provides clim)
+    - Applies linear scaling (logarithmic scaling is disabled)
+    - Inverts colorbar axis to match standard conventions
+
+    Class information is retrieved from prior file attributes:
     'class_id', 'class_name', and 'cmap'.
 
-    The function automatically retrieves geometry data and colormap/limit
-    information from linked prior and data files. Plot files are saved with
-    descriptive names including indices and feature information when hardcopy=True.
+    **Continuous Parameters**:
+
+    - Uses standard colormaps (resistivity, viridis, etc.)
+    - Logarithmic scaling by default (disable with uselog=0)
+    - Continuous colorbar with numeric values
+
+    **Elevation vs Layer Modes**:
+
+    When elevation is specified:
+
+    - Uses extract_feature_at_elevation() to interpolate values at that elevation
+    - Works with all keys including 'P' (probability)
+    - For key='P', the ic parameter specifies which class probability to plot
+    - Title shows elevation (e.g., "M2/Median[elev=40.0m]")
+
+    When iz is specified (and elevation is None):
+
+    - Directly extracts values from layer iz
+    - For key='P', plots probability for class ic at layer iz
+    - Title shows layer index (e.g., "M1/Median[iz=5]")
+
+    **Colormap and Colorbar Control**:
+
+    - Providing cmap overrides discrete colormap from prior file
+    - Providing clim disables discrete colorbar (useful for Entropy)
+    - This allows full customization of visualization
+
+    Examples
+    --------
+    **Continuous Parameters - Using Layer Index (iz)**
+
+    Plot median resistivity at layer 5::
+
+        >>> import integrate as ig
+        >>> ig.plot_feature_2d('POST.h5', key='Median', im=1, iz=5)
+
+    Plot standard deviation at layer 3 with custom colormap::
+
+        >>> ig.plot_feature_2d('POST.h5', key='Std', im=1, iz=3,
+        ...                     cmap='viridis', uselog=0)
+
+    **Continuous Parameters - Using Elevation**
+
+    Plot median resistivity at 40m elevation::
+
+        >>> ig.plot_feature_2d('POST.h5', key='Median', im=1, elevation=40)
+
+    Plot mean with data point overlay::
+
+        >>> ig.plot_feature_2d('POST.h5', key='Mean', im=1, elevation=25,
+        ...                     plotPoints=True, hardcopy=True)
+
+    **Discrete Parameters - Using Layer Index (iz)**
+
+    Plot most probable class (Mode) at layer 3::
+
+        >>> ig.plot_feature_2d('POST.h5', key='Mode', im=2, iz=3)
+
+    Plot probability of class 2 at layer 4::
+
+        >>> ig.plot_feature_2d('POST.h5', key='P', im=2, iz=4, ic=2)
+
+    Plot entropy (uncertainty) at layer 2::
+
+        >>> ig.plot_feature_2d('POST.h5', key='Entropy', im=2, iz=2)
+
+    **Discrete Parameters - Using Elevation**
+
+    Plot Mode at 30m elevation::
+
+        >>> ig.plot_feature_2d('POST.h5', key='Mode', im=2, elevation=30)
+
+    Plot probability of class 7 at -30m elevation with custom colormap::
+
+        >>> ig.plot_feature_2d('POST.h5', key='P', im=2, elevation=-30, ic=7,
+        ...                     cmap='magma_r', clim=[0, 1])
+
+    Plot Entropy with continuous colorbar (override discrete)::
+
+        >>> ig.plot_feature_2d('POST.h5', key='Entropy', im=2, elevation=30,
+        ...                     clim=[0, 2])
+
+    **Advanced Usage**
+
+    Plot subset of data with custom settings::
+
+        >>> ig.plot_feature_2d('POST.h5', key='Median', im=1, iz=5,
+        ...                     i1=100, i2=500, uselog=0, cmap='RdYlBu',
+        ...                     clim=[10, 100], plotPoints=True)
+
+    See Also
+    --------
+    extract_feature_at_elevation : Extract feature values at specific elevation
+    get_discrete_classes : Retrieve class IDs and names for discrete parameters
     """
     from matplotlib.colors import LogNorm
 
     # Extract parameters that should not be passed to scatter()
     showInfo = kwargs.pop('showInfo', 0)
+
+    # Track if user provided clim and cmap explicitly
+    clim_user_provided = (clim is not None)
+    cmap_user_provided = (cmap is not None)
 
     #kwargs.setdefault('hardcopy', False)
     kwargs.setdefault('s', 1)
@@ -489,76 +610,140 @@ def plot_feature_2d(f_post_h5, key='', i1=1, i2=1e+9, im=1, iz=0, uselog=1, titl
                     key = available_keys[0]
         print("No key was given. Using default key for %s parameter: %s" % ('discrete' if is_discrete else 'continuous', key))
 
-    if showInfo>0:
-        print("Plotting Feature %d from %s/%s" % (iz, dstr,key))
-
     # Determine if this statistic represents discrete data
     # Discrete statistics include: Mode, P (probability), Entropy
     discrete_stats = ['Mode', 'P', 'Entropy']
     is_discrete_stat = is_discrete and (key in discrete_stats)
 
     # Use discrete colormap and limits if this is discrete data with appropriate statistic
+    # Only override if user didn't explicitly provide cmap or clim
     if is_discrete_stat and discrete_cmap is not None:
-        cmap = discrete_cmap
+        if not cmap_user_provided:
+            cmap = discrete_cmap
         if clim is None and class_id is not None:
             # Set color limits to include all class IDs with half-unit padding
             clim = [class_id.min() - 0.5, class_id.max() + 0.5]
 
-    with h5py.File(f_post_h5,'r') as f_post:
+    # Extract data based on elevation or iz
+    if elevation is not None:
+        # Use extract_feature_at_elevation to get values at specified elevation
+        if showInfo>0:
+            print("Extracting feature at elevation %.1f m from %s/%s" % (elevation, dstr, key))
 
-        if dstr in f_post:
-            if key in f_post[dstr].keys():
-                D = f_post[dstr][key][:,iz][:]
-                # plot this KEY
-                fig = plt.figure(1, figsize=(wx, wy))
+        # Import extract_feature_at_elevation from integrate_io
+        from integrate.integrate_io import extract_feature_at_elevation
 
-                # For discrete Mode statistics, always use linear scale (not log)
-                if is_discrete_stat:
-                    # Apply color limits directly to scatter plot for discrete data
-                    sc = plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],
-                                cmap = cmap,
-                                vmin=clim[0] if clim is not None else None,
-                                vmax=clim[1] if clim is not None else None,
-                                **kwargs)
-                elif uselog:
-                    sc = plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],
-                                cmap = cmap,
-                                norm=LogNorm(),
-                                **kwargs)
-                else:
-                    sc = plt.scatter(X[i1:i2],Y[i1:i2],c=D[i1:i2],
-                                cmap = cmap,
-                                **kwargs)
-                plt.grid()
-                plt.xlabel('X')
+        # Handle ic parameter for probability extraction
+        if key == 'P' or key == 'p':
+            if ic is None:
+                ic = 0  # Default to first class
+                if showInfo>0:
+                    print("  Using default ic=0 for probability extraction")
+            D = extract_feature_at_elevation(f_post_h5, elevation=elevation, im=im, key=key, ic=ic)
+        else:
+            D = extract_feature_at_elevation(f_post_h5, elevation=elevation, im=im, key=key)
 
-                # Create colorbar with class labels for discrete data
-                if is_discrete_stat and class_id is not None and class_name is not None:
-                    cbar = plt.colorbar(sc)
-                    cbar.set_ticks(class_id)
-                    cbar.set_ticklabels(class_name)
-                    cbar.ax.invert_yaxis()
-                else:
-                    plt.colorbar(sc)
-
-                print(title)
-                if title is None:
-                    title = "%s/%s[%d,:] %s" %(dstr,key,iz,name)
-                plt.title(title)
-                plt.axis('equal')
-
-                # Only apply clim after colorbar for continuous data
-                # For discrete data, clim was already applied to scatter plot
-                if not is_discrete_stat:
-                    plt.clim(clim)
-
-                if hardcopy:
-                    f_png = '%s_%d_%d_%d_%s%02d_feature.png' % (os.path.splitext(f_post_h5)[0],i1,i2,im,key,iz)
-                    plt.savefig(f_png)
-                #plt.show()
-
+        # Create title that reflects elevation instead of iz
+        if title is None:
+            if key == 'P' and ic is not None:
+                title = "%s/%s[elev=%.1fm, ic=%d] %s" % (dstr, key, elevation, ic, name)
             else:
-                print("Key %s not found in %s" % (key, dstr))
+                title = "%s/%s[elev=%.1fm] %s" % (dstr, key, elevation, name)
+
+    else:
+        # Original behavior: extract from layer iz
+        if showInfo>0:
+            print("Plotting Feature %d from %s/%s" % (iz, dstr, key))
+
+        with h5py.File(f_post_h5,'r') as f_post:
+            if dstr in f_post:
+                if key in f_post[dstr].keys():
+                    # Handle probability extraction with ic parameter
+                    if key == 'P' or key == 'p':
+                        if ic is None:
+                            ic = 0  # Default to first class
+                            if showInfo>0:
+                                print("  Using default ic=0 for probability extraction")
+                        # P has shape (nd, n_classes, nz)
+                        D = f_post[dstr][key][:, ic, iz][:]
+                    else:
+                        D = f_post[dstr][key][:, iz][:]
+
+                    # Prepare title
+                    if title is None:
+                        if key == 'P' and ic is not None:
+                            title = "%s/%s[iz=%d, ic=%d] %s" % (dstr, key, iz, ic, name)
+                        else:
+                            title = "%s/%s[%d,:] %s" % (dstr, key, iz, name)
+                else:
+                    print("ERROR: Key '%s' not found in %s" % (key, dstr))
+                    return
+            else:
+                print("ERROR: Model parameter %s not found in file" % dstr)
+                return
+
+    # Plot the data
+    fig = plt.figure(1, figsize=(wx, wy))
+
+    plotPoints = kwargs.pop('plotPoints', False)
+    if plotPoints:
+        plt.plot(X[i1:i2], Y[i1:i2], 'k.', markersize=.2)
+
+    # For discrete Mode statistics, always use linear scale (not log)
+    if is_discrete_stat:
+        # Apply color limits directly to scatter plot for discrete data
+        sc = plt.scatter(X[i1:i2], Y[i1:i2], c=D[i1:i2],
+                    cmap=cmap,
+                    vmin=clim[0] if clim is not None else None,
+                    vmax=clim[1] if clim is not None else None,
+                    **kwargs)
+    elif uselog:
+        sc = plt.scatter(X[i1:i2], Y[i1:i2], c=D[i1:i2],
+                    cmap=cmap,
+                    norm=LogNorm(),
+                    **kwargs)
+    else:
+        sc = plt.scatter(X[i1:i2], Y[i1:i2], c=D[i1:i2],
+                    cmap=cmap,
+                    **kwargs)
+
+    plt.grid()
+    plt.xlabel('X')
+
+    # Create colorbar with class labels for discrete data
+    # Only use discrete colorbar if clim was not explicitly set by user
+    if is_discrete_stat and not clim_user_provided and class_id is not None and class_name is not None:
+        cbar = plt.colorbar(sc)
+        cbar.set_ticks(class_id)
+        cbar.set_ticklabels(class_name)
+        cbar.ax.invert_yaxis()
+    else:
+        plt.colorbar(sc)
+
+    print(title)
+    plt.title(title)
+    plt.axis('equal')
+
+    # Only apply clim after colorbar for continuous data
+    # For discrete data, clim was already applied to scatter plot
+    if not is_discrete_stat:
+        plt.clim(clim)
+
+    if hardcopy:
+        if elevation is not None:
+            # Use elevation in filename
+            if key == 'P' and ic is not None:
+                f_png = '%s_%d_%d_%d_%s_ic%d_elev%.0f_feature.png' % (os.path.splitext(f_post_h5)[0], i1, i2, im, key, ic, elevation)
+            else:
+                f_png = '%s_%d_%d_%d_%s_elev%.0f_feature.png' % (os.path.splitext(f_post_h5)[0], i1, i2, im, key, elevation)
+        else:
+            # Use iz in filename
+            if key == 'P' and ic is not None:
+                f_png = '%s_%d_%d_%d_%s_ic%d_iz%02d_feature.png' % (os.path.splitext(f_post_h5)[0], i1, i2, im, key, ic, iz)
+            else:
+                f_png = '%s_%d_%d_%d_%s%02d_feature.png' % (os.path.splitext(f_post_h5)[0], i1, i2, im, key, iz)
+        plt.savefig(f_png)
+    #plt.show()
     return
 
 

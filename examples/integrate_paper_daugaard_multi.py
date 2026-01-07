@@ -812,6 +812,7 @@ ig.plot_profile(f_post_h5, ii=id_line, gap_threshold=50, xaxis='y')
 
 
 # %% 
+cmap, clim = ig.get_colormap_and_limits('evidence', custom_clim=[0, 1])
 f_post_h5='post_daugaard_merged_N2000000_Nuse1000000_T1_inflateNoise2.h5'
 ele=-20
 X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
@@ -824,12 +825,10 @@ nclass = len(class_id)
 POST_MODE = ig.extract_feature_at_elevation(f_post_h5, im=2, elevation=ele, key='Mode')
 POST_ENTROPY = ig.extract_feature_at_elevation(f_post_h5, im=2, elevation=ele, key='Entropy')
 
+
+#%% Make a movie of class probabilities at different elevations
+
 POST_P_CLASS = np.zeros( (nd, nclass) )
-
-
-#%% 
-cmap, clim = ig.get_colormap_and_limits('evidence', custom_clim=[0, 1])
-
 i=0
 for ele in np.arange(80,-51,-1):
     i=i+1 
@@ -857,7 +856,50 @@ for ele in np.arange(80,-51,-1):
 
 # ffmpeg -f concat -safe 0 -i files.txt -c:v libx264 -pix_fmt yuv420p output.mp4
 
-#%%
+
+
+#%% Example use og  ig.plot_feature_2d() 
+
+# %%
+# Plot Median resistivity ad 10m Depth.
+ig.plot_feature_2d(f_post_h5, im=1, iz=10)
+plt.show()
+
+# Plot Median resistivity at elevation -10 Depth.
+ig.plot_feature_2d(f_post_h5, im=1, elevation=-10)
+plt.show()
+
+# Plot Mean, Mode, Std
+# Plot Media resistivity at elevation -10 Depth.
+ig.plot_feature_2d(f_post_h5, im=1, elevation=-10, key='Mean')
+plt.show()
+# Plot Median resistivity at elevation -10 Depth.
+ig.plot_feature_2d(f_post_h5, im=1, elevation=-10, key='Median')
+plt.show()
+# Plot Median resistivity at elevation -10 Depth.
+ig.plot_feature_2d(f_post_h5, im=1, elevation=-10, key='Std', uselog=0, clim=[0, 2])
+plt.show()
+
+
+
+# %%
+# Plot Mode lithology at 10m Depth.
+ig.plot_feature_2d(f_post_h5, im=2, iz=10)
+plt.show()
+
+# Plot Mode lithology at elevation -10 Depth.
+ig.plot_feature_2d(f_post_h5, im=2, elevation=-10)
+plt.show()
+
+
+
+
+
+
+
+
+
+# %% 
 
 #POST_P0 = ig.extract_feature_at_elevation(f_post_h5, im=2, elevation=ele, key='P', ic=0)
 #POST_P1 = ig.extract_feature_at_elevation(f_post_h5, im=2, elevation=ele, key='P', ic=1)#
@@ -875,3 +917,14 @@ plt.subplot(2,2,2)
 plt.plot(X, Y, 'k.', markersize=.1)
 plt.scatter(X, Y, c=POST_ENTROPY, s=.2, cmap='jet', vmin=0, vmax=1)
 plt.colorbar(label='Feature at 10 m elevation');plt.axis('equal')
+
+
+#%% 
+ig.plot_feature_2d(f_post_h5, key='Mode', im=2)
+plt.show()
+ig.plot_feature_2d(f_post_h5, key='Mode', im=2, elevation=0)
+plt.show()
+ig.plot_feature_2d(f_post_h5, elevation = 0, key='P', ic=1, im=2)
+plt.show()
+ig.plot_feature_2d(f_post_h5, elevation = 0, key='P', ic=2, im=2)
+plt.show()
