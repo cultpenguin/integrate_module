@@ -877,7 +877,7 @@ plt.show()
 ig.plot_feature_2d(f_post_h5, im=1, elevation=-10, key='Median')
 plt.show()
 # Plot Median resistivity at elevation -10 Depth.
-ig.plot_feature_2d(f_post_h5, im=1, elevation=-10, key='Std', uselog=0, clim=[0, 2])
+ig.plot_feature_2d(f_post_h5, im=1, elevation=-10, key='Std', uselog=0)
 plt.show()
 
 
@@ -891,7 +891,27 @@ plt.show()
 ig.plot_feature_2d(f_post_h5, im=2, elevation=-10)
 plt.show()
 
+# Plot Mode lithology at elevation -10 Depth.
+ig.plot_feature_2d(f_post_h5, im=2, elevation=-10, key='Mode')
+plt.show()
 
+# Plot Mode lithology at elevation -10 Depth.
+ig.plot_feature_2d(f_post_h5, im=2, elevation=-10, key='Entropy', clim=[0,1])
+plt.show()
+
+# plot class probability of ic=7
+ig.plot_feature_2d(f_post_h5, im=2, iz=80, key='P', ic=7, uselog=0, clim=[0,1])
+
+# Plot class probability
+ig.plot_feature_2d(f_post_h5, im=2, iz=80, key='P', ic=7, uselog=0, clim=[0,1])
+plt.show()
+
+ig.plot_feature_2d(f_post_h5, im=2, elevation=-30, key='P', ic=6, uselog=0, clim=[0,1], cmap='magma_r')
+plt.show()
+
+# same as above, but the position of data points are plotted as well
+ig.plot_feature_2d(f_post_h5, im=2, elevation=-30, key='P', ic=5, uselog=0, clim=[0,1], cmap='magma_r', plotPoints=True)
+plt.show()
 
 
 
