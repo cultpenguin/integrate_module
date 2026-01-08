@@ -807,7 +807,13 @@ def forward_gaaem(C=np.array(()),
         # GEX FILE and STM FILES
         if (showInfo)>1:
             print('Using submitted GEX file (%s)' % (file_gex))
-        GEX =   ig.read_gex(file_gex)
+        # Try legacy read_gex first, fallback to read_gex_workbench if needed
+        try:
+            GEX = ig.read_gex(file_gex)
+        except (ValueError, KeyError) as e:
+            if showInfo > 0:
+                print(f"Legacy read_gex() failed ({type(e).__name__}), trying read_gex_workbench()...")
+            GEX = ig.read_gex_workbench(file_gex, showInfo=showInfo)
     elif (len(stmfiles)>0):
         # USING STM FILES
         if (showInfo)>1:
@@ -833,7 +839,13 @@ def forward_gaaem(C=np.array(()),
             #return -1
         else:
             print('Converting STM files to GEX')
-            GEX =   ig.read_gex(file_gex)
+            # Try legacy read_gex first, fallback to read_gex_workbench if needed
+            try:
+                GEX = ig.read_gex(file_gex)
+            except (ValueError, KeyError) as e:
+                if showInfo > 0:
+                    print(f"Legacy read_gex() failed ({type(e).__name__}), trying read_gex_workbench()...")
+                GEX = ig.read_gex_workbench(file_gex, showInfo=showInfo)
     elif (len(GEX)>0) and (len(stmfiles)==0):
         stmfiles, GEX = ig.gex_to_stm(file_gex, **kwargs)
     elif (file_gex != ''):
@@ -885,7 +897,13 @@ def forward_gaaem(C=np.array(()),
 
     # Setting up geometry
     if len(GEX)>0:
-        GEX = ig.read_gex(file_gex)
+        # Try legacy read_gex first, fallback to read_gex_workbench if needed
+        try:
+            GEX = ig.read_gex(file_gex)
+        except (ValueError, KeyError) as e:
+            if showInfo > 0:
+                print(f"Legacy read_gex() failed ({type(e).__name__}), trying read_gex_workbench()...")
+            GEX = ig.read_gex_workbench(file_gex, showInfo=showInfo)
         if 'TxCoilPosition1' in GEX['General']:
             # Typical for tTEM system
             txrx_dx = float(GEX['General']['RxCoilPosition1'][0])-float(GEX['General']['TxCoilPosition1'][0])

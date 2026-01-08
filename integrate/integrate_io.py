@@ -707,8 +707,12 @@ def write_stm_files(GEX, **kwargs):
     SkipWin_LM = int(GEX['Channel1']['RemoveInitialGates'][0])
     SkipWin_HM = int(GEX['Channel2']['RemoveInitialGates'][0])
 
-    windows_LM = windows[SkipWin_LM:LastWin_LM, :] + GEX['Channel1']['GateTimeShift'][0] + GEX['Channel1']['MeaTimeDelay'][0]
-    windows_HM = windows[SkipWin_HM:LastWin_HM, :] + GEX['Channel2']['GateTimeShift'][0] + GEX['Channel2']['MeaTimeDelay'][0]
+    # Get MeaTimeDelay with default value of 0.0 if not present (Workbench format compatibility)
+    MeaTimeDelay_LM = GEX['Channel1'].get('MeaTimeDelay', np.array([0.0]))[0]
+    MeaTimeDelay_HM = GEX['Channel2'].get('MeaTimeDelay', np.array([0.0]))[0]
+
+    windows_LM = windows[SkipWin_LM:LastWin_LM, :] + GEX['Channel1']['GateTimeShift'][0] + MeaTimeDelay_LM
+    windows_HM = windows[SkipWin_HM:LastWin_HM, :] + GEX['Channel2']['GateTimeShift'][0] + MeaTimeDelay_HM
 
     #windows_LM = GEX['Channel1']['GateFactor'][0] * windows_LM
     #windows_HM = GEX['Channel2']['GateFactor'][0] * windows_HM
@@ -988,7 +992,168 @@ def read_gex(file_gex, **kwargs):
         del GEX['General'][key]
 
     return GEX
-    
+
+
+
+def read_gex_workbench(file_gex, **kwargs):
+    """
+    Parse Seequent Workbench GEX file into structured dictionary.
+
+    Reads and parses electromagnetic system configuration files in the newer
+    Seequent Workbench GEX format, which supports both dual-moment (LM/HM) and
+    single-moment configurations. This function handles:
+    - Dual-moment systems with GateTimeLM## and GateTimeHM## entries
+    - Single-moment systems with GateTime## entries (e.g., Diamond SkyTEM)
+    - WaveformLMPoint## and WaveformHMPoint## entries
+
+    Parameters
+    ----------
+    file_gex : str
+        Path to the GEX file containing electromagnetic system configuration.
+    **kwargs : dict
+        Additional parsing parameters:
+        - showInfo : int, verbosity level (0=silent, >0=verbose, default 0)
+
+    Returns
+    -------
+    dict
+        Dictionary containing parsed GEX file contents with structure:
+        - 'filename' : str, original file path
+        - 'General' : dict, system description and general parameters
+        - 'WaveformLM' : numpy.ndarray, low-moment waveform points
+        - 'WaveformHM' : numpy.ndarray, high-moment waveform points (if present)
+        - 'GateArrayLM' : numpy.ndarray, low-moment gate timing (if dual-moment)
+        - 'GateArrayHM' : numpy.ndarray, high-moment gate timing (if dual-moment)
+        - 'GateArray' : numpy.ndarray, gate timing (if single-moment)
+
+    Raises
+    ------
+    FileNotFoundError
+        If the specified GEX file does not exist or cannot be accessed.
+
+    Notes
+    -----
+    This function supersedes read_gex() for newer Workbench-exported files.
+
+    Format detection:
+    - Dual-moment: Keys contain 'GateTimeLM' or 'GateTimeHM' suffixes
+    - Single-moment: Keys are 'GateTime##' without moment identifier
+
+    Examples
+    --------
+    >>> GEX = read_gex_workbench('TX08_20201112.gex')
+    >>> print(GEX['General']['GateArrayLM'].shape)  # Dual-moment
+    (30, 3)
+    >>> print(GEX['General']['GateArrayHM'].shape)
+    (30, 3)
+
+    >>> GEX = read_gex_workbench('diamond_system.gex')
+    >>> print(GEX['General']['GateArray'].shape)  # Single-moment
+    (25, 3)
+    """
+    showInfo = kwargs.get('showInfo', 0)
+
+    GEX = {}
+    GEX['filename'] = file_gex
+    comment_counter = 1
+    current_key = None
+
+    # Check if file_gex exists
+    if not os.path.exists(file_gex):
+        raise FileNotFoundError(f"Error: file {file_gex} does not exist")
+
+    # Parse the file
+    with open(file_gex, 'r') as file:
+        for line in file.readlines():
+            line = line.strip()
+            if line.startswith('/'):
+                GEX[f'comment{comment_counter}'] = line[1:].strip()
+                comment_counter += 1
+            elif line.startswith('['):
+                current_key = line[1:-1]
+                GEX[current_key] = {}
+            else:
+                key_value = line.split('=')
+                if len(key_value) == 2:
+                    key, value = key_value[0].strip(), key_value[1].strip()
+
+                    try:
+                        GEX[current_key][key] = np.fromstring(value, sep=' ')
+                    except:
+                        GEX[current_key][key] = value
+
+                    if len(GEX[current_key][key]) == 0:
+                        # value is probably a string
+                        GEX[current_key][key] = value
+
+    # Process WaveformLM
+    waveform_keys = [key for key in GEX['General'].keys() if 'WaveformLMPoint' in key]
+    if waveform_keys:
+        waveform_keys.sort(key=lambda x: int(x.replace('WaveformLMPoint', '')))
+        waveform_values = [GEX['General'][key] for key in waveform_keys]
+        GEX['General']['WaveformLM'] = np.vstack(waveform_values)
+        for key in waveform_keys:
+            del GEX['General'][key]
+        if showInfo > 0:
+            print(f"Processed {len(waveform_values)} WaveformLM points")
+
+    # Process WaveformHM
+    waveform_keys = [key for key in GEX['General'].keys() if 'WaveformHMPoint' in key]
+    if waveform_keys:
+        waveform_keys.sort(key=lambda x: int(x.replace('WaveformHMPoint', '')))
+        waveform_values = [GEX['General'][key] for key in waveform_keys]
+        GEX['General']['WaveformHM'] = np.vstack(waveform_values)
+        for key in waveform_keys:
+            del GEX['General'][key]
+        if showInfo > 0:
+            print(f"Processed {len(waveform_values)} WaveformHM points")
+
+    # Process GateTimes - detect format (dual-moment vs single-moment)
+    all_gate_keys = [key for key in GEX['General'].keys() if 'GateTime' in key]
+
+    # Check for dual-moment format (GateTimeLM## or GateTimeHM##)
+    gate_keys_lm = [key for key in all_gate_keys if 'GateTimeLM' in key]
+    gate_keys_hm = [key for key in all_gate_keys if 'GateTimeHM' in key]
+
+    if gate_keys_lm or gate_keys_hm:
+        # Dual-moment format
+        if gate_keys_lm:
+            gate_keys_lm.sort(key=lambda x: int(x.replace('GateTimeLM', '')))
+            gate_values_lm = [GEX['General'][key] for key in gate_keys_lm]
+            GEX['General']['GateArrayLM'] = np.vstack(gate_values_lm)
+            for key in gate_keys_lm:
+                del GEX['General'][key]
+            if showInfo > 0:
+                print(f"Processed {len(gate_values_lm)} GateTimeLM entries")
+
+        if gate_keys_hm:
+            gate_keys_hm.sort(key=lambda x: int(x.replace('GateTimeHM', '')))
+            gate_values_hm = [GEX['General'][key] for key in gate_keys_hm]
+            GEX['General']['GateArrayHM'] = np.vstack(gate_values_hm)
+            for key in gate_keys_hm:
+                del GEX['General'][key]
+            if showInfo > 0:
+                print(f"Processed {len(gate_values_hm)} GateTimeHM entries")
+
+        # Create combined GateArray for compatibility with write_stm_files()
+        # Use HM gates as the base (typically contains all gates)
+        if gate_keys_hm:
+            GEX['General']['GateArray'] = GEX['General']['GateArrayHM'].copy()
+            if showInfo > 0:
+                print(f"Created unified GateArray from GateArrayHM ({GEX['General']['GateArray'].shape[0]} gates)")
+    else:
+        # Single-moment format (standard GateTime##)
+        gate_keys = [key for key in all_gate_keys if key.startswith('GateTime')]
+        if gate_keys:
+            gate_keys.sort(key=lambda x: int(x.replace('GateTime', '')))
+            gate_values = [GEX['General'][key] for key in gate_keys]
+            GEX['General']['GateArray'] = np.vstack(gate_values)
+            for key in gate_keys:
+                del GEX['General'][key]
+            if showInfo > 0:
+                print(f"Processed {len(gate_values)} GateTime entries")
+
+    return GEX
 
 
 # gex_to_stm: convert a GEX file to a set of STM files
@@ -1033,14 +1198,38 @@ def gex_to_stm(file_gex, **kwargs):
     setup by automating the GEX→STM conversion process. The generated STM files
     contain system transfer functions needed for accurate forward modeling
     with GA-AEM.
-    
-    When file_gex is a string, the function calls read_gex() internally.
-    When file_gex is a dictionary, it's assumed to be a valid GEX structure.
+
+    When file_gex is a string, the function attempts to read the GEX file:
+    - First tries read_gex() for legacy format compatibility
+    - If that fails (e.g., Workbench format), automatically falls back to
+      read_gex_workbench() which handles both legacy and Workbench formats
+
+    When file_gex is a dictionary, it's assumed to be a valid GEX structure
+    from a previous read_gex() or read_gex_workbench() call.
+
     The write_stm_files() function handles the actual STM file generation
     with the provided or default parameters.
+
+    Examples
+    --------
+    >>> # Direct file path (automatically detects format)
+    >>> stm_files, GEX = gex_to_stm('TX08_20201112.gex')
+
+    >>> # Pre-loaded GEX dictionary
+    >>> GEX = read_gex_workbench('TX08_20201112.gex')
+    >>> stm_files, _ = gex_to_stm(GEX)
     """
     if isinstance(file_gex, str):
-        GEX = read_gex(file_gex)
+        # Try legacy read_gex first for backward compatibility
+        try:
+            GEX = read_gex(file_gex)
+        except (ValueError, KeyError) as e:
+            # Fall back to read_gex_workbench for newer Workbench format
+            showInfo = kwargs.get('showInfo', 0)
+            if showInfo > 0:
+                print(f"Legacy read_gex() failed ({type(e).__name__}), trying read_gex_workbench()...")
+            GEX = read_gex_workbench(file_gex, showInfo=showInfo)
+
         stm_files = write_stm_files(GEX, file_gex=file_gex, **kwargs)
     else:
         GEX = file_gex
