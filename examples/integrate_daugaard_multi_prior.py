@@ -127,7 +127,7 @@ N_use = 1000
 N_use = 10000
 N_use = 100000
 #N_use = 200000
-#N_use = 1000000
+N_use = 1000000
 
 autoT=True
 T_base = 1
