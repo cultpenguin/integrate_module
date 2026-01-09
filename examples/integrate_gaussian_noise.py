@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # %% [markdown]
 # # Synthetic Case Study example with different noise models (uncorrelated/correlated)
-# Demonstrates the use of different* noise models with tTEM data 
-# using an example using inverting data obtained from synthetic reference model
+# Demonstrates the use of different noise models with tTEM data using an example using inverting data obtained from synthetic reference model 
 #
 #
 # %%
@@ -33,16 +32,15 @@ hardcopy=True
 
 # %% [markdown]
 # ## Create The reference model and data
+# A simple three layer reference model is constructed, where the thickness of layer 2 varies. Them The corresponding noise free data is computed.
 
 # %%
-
-
 # select the type of referenc model
-z_max = 60
+case = '3layer'        # A 3 layer referennce model
+#case = 'wedge'        # A 'wedge' reference model
+z_max = 60             # Max thickness of the model 
+dx=1                   # The layer thickness
 rho = [120,10,120]
-dx=1
-case = '3layer'
-#case = 'wedge'
 if case.lower() == 'wedge':
     # Make Wedge MODEL
     M_ref, x_ref, z_ref, M_ref_lith = ig.synthetic_case(case='Wedge', wedge_angle=10, z_max=z_max, dz=.5, x_max=100, dx=dx, z1=15, rho = rho)
@@ -63,15 +61,15 @@ D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
 
 
 # %% [markdown]
-# ## Plot the reference model and data
+# ### Plot the reference model and data
 
 # %%
-clim   = [min(rho)*0.8, max(rho)*1.25]
+cmap, clim = ig.get_colormap_and_limits(cmap_type='resistivity')
 
 plt.subplot(2,1,1)
 xx_ref, zz_ref = np.meshgrid(x_ref, z_ref)
 #plt.pcolormesh(xx_ref, zz_ref, M_ref.T, cmap='jet', vmin=clim[0], vmax=clim[1])
-plt.pcolormesh(xx_ref, zz_ref, np.log10(M_ref.T), cmap='jet', vmin=np.log10(clim[0]), vmax=np.log10(clim[1]))
+plt.pcolormesh(xx_ref, zz_ref, np.log10(M_ref.T), cmap=cmap, vmin=np.log10(clim[0]), vmax=np.log10(clim[1]))
 plt.xlim([x_ref.min(), x_ref.max()])
 plt.xlabel('Distance (m)')
 plt.ylabel('Depth (m)')
@@ -89,9 +87,9 @@ plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 
 
 # %% [markdown]
-# ## Create prior model and data
+# ### Create prior model and data
 #
-# make prior model realizations
+# Here a prior model is defined (a 3 layer model). The prior model realizations are generated, followed by prior data realizations.
 #
 
 # %%
@@ -100,9 +98,7 @@ N=100000 # sample size
 NLAY_min=3
 NLAY_max=3
 
-
 f_prior_data_h5='PRIOR_UNIFORM_NL_%d-%d_uniform_N%d_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5' % (NLAY_min, NLAY_max, N)
-        
 
 # make prior model realizations
 f_prior_h5 = ig.prior_model_layered(N=N,
@@ -113,10 +109,11 @@ f_prior_h5 = ig.prior_model_layered(N=N,
 # make prior data realizations
 f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 
+# Plot some statistics about the prior model parameters
 ig.plot_prior_stats(f_prior_h5)
 
 # %% [markdown]
-# ## Different types of uncorrelated and correlated noise - No correlated noise
+# ## Three wasy to describe uncorrelated noise
 
 # %%
 # The basic noise model: 3% relative noise and a noise floor at 1e-12
@@ -124,18 +121,23 @@ rng = np.random.default_rng()
 d_std = 0.03 # standard deviation of the noise
 d_std_base = 1e-12 # base noise
 D_std = d_std * D_ref + d_std_base
+
+# Add a realization of of the noise model to the noise free data, and treat these as 'observed' reference data. 
 D_noise = rng.normal(0, D_std, D_ref.shape)
 D_obs = D_ref + D_noise
 # Cd is a diagnoal matrix with the standard deviation of the data
 
+# %% [markdown]
+# ### Setup data with different types of noise assumptions.
+
 # %%
-
-
 # If a single correlated noise model is used, 
 # it can represented by be the mean of the standard deviation of the data.
 # This is though an approximation.
 Cd_single = np.diag(np.mean(D_std, axis=0)**2)
 Cd_single = np.diag(D_std[0]**2) 
+
+
 
 # The full data covariance matrix is represented by a 3D array of shape (ns,nd,nd)
 # Using this type of noise should provide identical results to using d_std, only slower as 
@@ -224,6 +226,9 @@ if doTest:
     plt.ylabel('-log(L)')
     plt.show()
 
+# %% [markdown]
+# ### Invert each data set with different way to represent the noise.
+
 # %%
 import time as time
 f_post_h5_arr = []
@@ -282,14 +287,14 @@ plt.ylabel('EV_post')
 
 
 # %% [markdown]
-# ## Data in the log-space, and correlated Gaussian noise
+# ### Data in the log-space, and correlated Gaussian noise
 # The data can be transformed to the log-space, and the noise model can be applied in the log-space.
 #
 # %%
 
 # Add constant covariance to Cd -->
 # A simple way to introduce correlated noise
-corrlev = 0.01**2
+corrlev = 0.02**2
 
 lD_obs = np.log10(D_ref)
 
@@ -298,6 +303,8 @@ lD_std_down = np.abs(np.log10(D_ref-D_std)-lD_obs)
 lD_std = np.abs((lD_std_up+lD_std_down)/2) + np.sqrt(corrlev)
 
 lCd_single = np.diag(np.mean(lD_std, axis=0)**2)+corrlev
+
+plt.imshow(lCd_single)
 
 ns,nd=D_std.shape
 lCd_mul = np.zeros((ns,nd,nd))
@@ -314,6 +321,9 @@ f_data_log_2_h5_f_out = ig.save_data_gaussian(lD_obs, Cd = lCd_single, f_data_h5
 f_data_log_3_h5_f_out = ig.save_data_gaussian(lD_obs, Cd = lCd_mul, f_data_h5 = 'data_log_corr2', id=1, showInfo=0, is_log=1)
 f_data_arr = [f_data_log_1_h5_f_out,f_data_log_2_h5_f_out,f_data_log_3_h5_f_out]
 
+
+# %%
+lCd_single
 
 # %%
 recomputePriorData = False
