@@ -2350,7 +2350,7 @@ def synthetic_case(case='Wedge', **kwargs):
                 M_ref_lith[ix,iz1] = 1
 
                 # Layer 2 (middle layer with varying thickness)
-                z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))
+                z2 = z1 + z_thick*0.5*(1+np.cos(np.pi+x[ix]/(x_range)*np.pi))
                 iz2 = np.where((z>=z1) & (z<=z2))[0]
                 M[ix,iz2] = rho2_interp[ix]
                 M_ref_lith[ix,iz2] = 2
@@ -2368,7 +2368,7 @@ def synthetic_case(case='Wedge', **kwargs):
                 M_ref_lith[ix,iz1] = 1
 
                 # Layer 2 (middle layer with varying thickness)
-                z2 = z1 + z_thick*0.5*(1+np.cos(x[ix]/(x_range)*np.pi))
+                z2 = z1 + z_thick*0.5*(1+np.cos(np.pi+x[ix]/(x_range)*np.pi))                
                 rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
                 iz2 = np.where((z>=z1) & (z<=z2))[0]
                 M[ix,iz2] = rho2

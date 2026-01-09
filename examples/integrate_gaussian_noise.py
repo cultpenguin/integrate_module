@@ -48,7 +48,9 @@ if case.lower() == 'wedge':
 elif case.lower() == '3layer':
     # Make 3 layer MODEL
     M_ref, x_ref, z_ref, M_ref_lith = ig.synthetic_case(case='3layer', dx=dx, rho1_1 = rho[0], rho1_2 = rho[1], x_max = 100, x_range = 10)
-    M_ref, x_ref, z_ref, M_ref_lith = ig.synthetic_case(case='3layer', dx=dx, rho1_1 = rho[0], rho1_2 = rho[1], x_max = 200, x_range = 20)
+    #M_ref, x_ref, z_ref, M_ref_lith = ig.synthetic_case(case='3layer', dx=dx, rho1_1 = rho[0], rho1_2 = rho[1], x_max = 200, x_range = 20)
+    M_ref, x_ref, z_ref, M_ref_lith = ig.synthetic_case(case='3layer', dx=dx, rho1_1 = rho[0], rho1_2 = rho[1], x_max = 1000, x_range = 100)
+    M_ref, x_ref, z_ref, M_ref_lith = ig.synthetic_case(case='3layer', dx=dx, rho1_1 = rho[0], rho1_2 = rho[1], x_max = 1000, x_range = 50)
 
 # Create reference data
 f_data_h5 = '%s_%d' % (case,z_max)    
@@ -58,6 +60,10 @@ file_gex = ig.get_case_data(case='DAUGAARD', filelist=['TX07_20231016_2x4_RC20-3
 
 # Compute the noise free reference data
 D_ref = ig.forward_gaaem(C=1./M_ref, thickness=thickness, file_gex=file_gex)
+
+
+# %%
+M_ref.shape
 
 
 # %% [markdown]
@@ -73,7 +79,7 @@ plt.pcolormesh(xx_ref, zz_ref, np.log10(M_ref.T), cmap=cmap, vmin=np.log10(clim[
 plt.xlim([x_ref.min(), x_ref.max()])
 plt.xlabel('Distance (m)')
 plt.ylabel('Depth (m)')
-plt.axis('equal')
+#plt.axis('equal')
 plt.gca().invert_yaxis()
 plt.colorbar(label='Resistivity (Ohm-m)')
 
@@ -93,8 +99,8 @@ plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 #
 
 # %%
-#N=1000000 # sample size 
-N=100000 # sample size 
+N=2000000 # sample size 
+#N= 100000 # sample size 
 NLAY_min=3
 NLAY_max=3
 
@@ -113,7 +119,7 @@ f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex)
 ig.plot_prior_stats(f_prior_h5)
 
 # %% [markdown]
-# ## Three wasy to describe uncorrelated noise
+# ## Three ways to describe uncorrelated noise
 
 # %%
 # The basic noise model: 3% relative noise and a noise floor at 1e-12
@@ -153,15 +159,15 @@ for i in range(ns):
 f_data_h5_arr=[]
 name_arr = []
 
-f_out = ig.save_data_gaussian(D_obs, D_std = D_std, f_data_h5 = 'data_uncorr.h5', id=1, showInfo=0)
+f_out = ig.save_data_gaussian(D_obs, D_std = D_std, f_data_h5 = 'data_uncorr.h5', id=1, showInfo=0, delete_if_exist=True)
 f_data_h5_arr.append(f_out)
 name_arr.append('Uncorrelated noise')
 
-f_out  = ig.save_data_gaussian(D_obs, Cd=Cd_single, f_data_h5 = 'data_corr1.h5', id=1, showInfo=0)
+f_out  = ig.save_data_gaussian(D_obs, Cd=Cd_single, f_data_h5 = 'data_corr1.h5', id=1, showInfo=0, delete_if_exist=True)
 f_data_h5_arr.append(f_out)
 name_arr.append('Correlated noise - mean')
 
-f_out = ig.save_data_gaussian(D_obs, Cd=Cd_mul, f_data_h5 = 'data_corr2.h5', id=1, showInfo=0)
+f_out = ig.save_data_gaussian(D_obs, Cd=Cd_mul, f_data_h5 = 'data_corr2.h5', id=1, showInfo=0, delete_if_exist=True)
 f_data_h5_arr.append(f_out)
 name_arr.append('Correlated noise - individual')
 
@@ -242,7 +248,7 @@ for f_data_h5 in f_data_h5_arr:
     f_post_h5 = ig.integrate_rejection(f_prior_data_h5, f_data_h5, 
                                        parallel=parallel, 
                                        Ncpu = 8,
-                                       use_N_best=500
+                                       #use_N_best=500
                                        )
     t_elapsed.append(time.time()-t0)
     with h5py.File(f_post_h5, 'r') as f_post:
@@ -316,9 +322,9 @@ plt.plot(lD_obs,'k-')
 plt.plot(lD_std,':')
 
 
-f_data_log_1_h5_f_out = ig.save_data_gaussian(lD_obs, D_std = lD_std, f_data_h5 = 'data_log_uncorr', id=1, showInfo=0, is_log=1)
-f_data_log_2_h5_f_out = ig.save_data_gaussian(lD_obs, Cd = lCd_single, f_data_h5 = 'data_log_corr', id=1, showInfo=0, is_log=1)
-f_data_log_3_h5_f_out = ig.save_data_gaussian(lD_obs, Cd = lCd_mul, f_data_h5 = 'data_log_corr2', id=1, showInfo=0, is_log=1)
+f_data_log_1_h5_f_out = ig.save_data_gaussian(lD_obs, D_std = lD_std, f_data_h5 = 'data_log_uncorr', id=1, showInfo=0, is_log=1, delete_if_exist=True)
+f_data_log_2_h5_f_out = ig.save_data_gaussian(lD_obs, Cd = lCd_single, f_data_h5 = 'data_log_corr', id=1, showInfo=0, is_log=1, delete_if_exist=True)
+f_data_log_3_h5_f_out = ig.save_data_gaussian(lD_obs, Cd = lCd_mul, f_data_h5 = 'data_log_corr2', id=1, showInfo=0, is_log=1, delete_if_exist=True)
 f_data_arr = [f_data_log_1_h5_f_out,f_data_log_2_h5_f_out,f_data_log_3_h5_f_out]
 
 
@@ -361,3 +367,5 @@ for i in range(len(f_post_log_h5_arr)):
 # %%
 
 
+
+# %%
