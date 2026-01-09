@@ -147,16 +147,16 @@ The ``main`` branch is the most stable, with less frequent updates but larger ch
 
 The ``develop`` branch contains the current development code and may be updated frequently. Some functions and examples may be broken.
 
-An extra set of tests and examples are located in the ``experimental`` sub-branch  `https://github.com/cultpenguin/integrate_module_experimental/ <https://github.com/cultpenguin/integrate_module_experimental/>`. 
-PLease ask the developers for access to this branch if needed. To clone the main repository with experimental branch, use:
+An extra set of tests and examples are located in the ``experimental`` sub-branch `https://github.com/cultpenguin/integrate_module_experimental/ <https://github.com/cultpenguin/integrate_module_experimental/>`_.
+Please ask the developers for access to this branch if needed. To clone the main repository with the experimental branch, use:
 
 ::
 
     git clone --recurse-submodules git@github.com:cultpenguin/integrate_module.git
 
+You may need to run the following command to update the submodules:
 
-You may need to run the following command to update the submodules
+::
 
-:: 
     cd experimental
     git submodule update --init --recursive
