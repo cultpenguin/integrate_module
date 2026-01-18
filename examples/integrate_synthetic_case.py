@@ -46,10 +46,10 @@ rho = [120,10,10]
 dx=0.1
 if case.lower() == 'wedge':
     # Make Wedge MODEL
-    M_ref, x_ref, z_ref, M_ref_lith = ig.synthetic_case(case='Wedge', wedge_angle=10, dx=dx, z_max=z_max, dz=.5, x_max=100, z1=15, rho = rho)
+    M_ref, x_ref, z_ref, M_ref_lith, layer_depths = ig.synthetic_case(case='Wedge', wedge_angle=10, dx=dx, z_max=z_max, dz=.5, x_max=100, z1=15, rho = rho)
 elif case.lower() == '3layer':
     # Make 3 layer MODEL
-    M_ref, x_ref, z_ref, M_ref_lith = ig.synthetic_case(case='3layer', dx=dx, rho1_1 = rho[0], rho1_2 = rho[1], rho3=rho[2], x_max = 100, x_range = 10)
+    M_ref, x_ref, z_ref, M_ref_lith, layer_depths = ig.synthetic_case(case='3layer', dx=dx, rho1_1 = rho[0], rho1_2 = rho[1], rho3=rho[2], x_max = 100, x_range = 10)
 
 # Create reference data
 f_data_h5 = '%s_%d.h5' % (case,z_max)    

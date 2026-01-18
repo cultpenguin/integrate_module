@@ -2214,17 +2214,22 @@ def synthetic_case(case='Wedge', **kwargs):
     M_ref_lith : ndarray
         Lithology/layer number for each pixel, same shape as M. Values are 1, 2, 3
         corresponding to the layer number.
+    layer_depths : ndarray
+        Depth to the top of layers 1, 2, and 3 for each trace, shape (nx, 3).
+        Column 0: depth to top of layer 1 (always 0)
+        Column 1: depth to top of layer 2
+        Column 2: depth to top of layer 3
 
     Examples
     --------
     >>> # Constant resistivity in each layer
-    >>> M, x, z, M_lith = ig.synthetic_case(case='3layer', rho_1=[10], rho_2=[80], rho_3=[10])
+    >>> M, x, z, M_lith, depths = ig.synthetic_case(case='3layer', rho_1=[10], rho_2=[80], rho_3=[10])
     >>>
     >>> # Linear variation from left to right
-    >>> M, x, z, M_lith = ig.synthetic_case(case='3layer', rho_1=[10, 80], rho_2=[80, 10], rho_3=[10, 10])
+    >>> M, x, z, M_lith, depths = ig.synthetic_case(case='3layer', rho_1=[10, 80], rho_2=[80, 10], rho_3=[10, 10])
     >>>
     >>> # Three-point variation (left, middle, right)
-    >>> M, x, z, M_lith = ig.synthetic_case(case='3layer', rho_1=[10, 80, 10], rho_2=[50, 100, 50], rho_3=[10, 10, 10])
+    >>> M, x, z, M_lith, depths = ig.synthetic_case(case='3layer', rho_1=[10, 80, 10], rho_2=[50, 100, 50], rho_3=[10, 10, 10])
     """
     
     showInfo = kwargs.get('showInfo', 0)
@@ -2260,6 +2265,9 @@ def synthetic_case(case='Wedge', **kwargs):
         M = np.zeros((nx,nz))
         M_ref_lith = np.ones((nx,nz), dtype=int)  # Layer 1 by default
 
+        # Initialize layer depths array (nx, 3)
+        layer_depths = np.zeros((nx, 3))
+
         if use_rho_arrays:
             # Convert to numpy arrays
             rho_1 = np.atleast_1d(rho_1)
@@ -2278,23 +2286,26 @@ def synthetic_case(case='Wedge', **kwargs):
 
         # Build the model
         for ix in range(nx):
-            # Layer 1 (top layer)
+            # Layer 1 (top layer) - always starts at depth 0
             M[ix,:] = rho1_interp[ix]
             M_ref_lith[ix,:] = 1
+            layer_depths[ix, 0] = 0  # Layer 1 starts at surface
 
-            # Layer 3 (bottom layer, below z1)
-            iz3 = np.where(z>=z1)[0]
-            M[ix,iz3] = rho3_interp[ix]
-            M_ref_lith[ix,iz3] = 3
-
-            # Layer 2 (wedge)
+            # Layer 2 (wedge) - starts at z1
             wedge_angle_rad = np.deg2rad(wedge_angle)
             z2 = z1 + x[ix]*np.tan(wedge_angle_rad)
             iz2 = np.where((z>=z1) & (z<=z2))[0]
             M[ix,iz2] = rho2_interp[ix]
             M_ref_lith[ix,iz2] = 2
+            layer_depths[ix, 1] = z1  # Layer 2 starts at z1
 
-        return M, x, z, M_ref_lith
+            # Layer 3 (bottom layer, below wedge)
+            iz3 = np.where(z>=z1)[0]
+            M[ix,iz3] = rho3_interp[ix]
+            M_ref_lith[ix,iz3] = 3
+            layer_depths[ix, 2] = z2  # Layer 3 starts at bottom of wedge
+
+        return M, x, z, M_ref_lith, layer_depths
 
     elif case.lower() == '3layer':
         # Create synthetic 3 layer model
@@ -2327,6 +2338,9 @@ def synthetic_case(case='Wedge', **kwargs):
         M = np.zeros((nx,nz))
         M_ref_lith = np.zeros((nx,nz), dtype=int)
 
+        # Initialize layer depths array (nx, 3)
+        layer_depths = np.zeros((nx, 3))
+
         if use_rho_arrays:
             # Convert to numpy arrays
             rho_1 = np.atleast_1d(rho_1)
@@ -2344,16 +2358,21 @@ def synthetic_case(case='Wedge', **kwargs):
                 M[ix,:] = rho3_interp[ix]
                 M_ref_lith[ix,:] = 3
 
-                # Layer 1 (top layer)
+                # Layer 1 (top layer) - starts at surface
                 iz1 = np.where(z<=z1)[0]
                 M[ix,iz1] = rho1_interp[ix]
                 M_ref_lith[ix,iz1] = 1
+                layer_depths[ix, 0] = 0  # Layer 1 starts at surface
 
-                # Layer 2 (middle layer with varying thickness)
+                # Layer 2 (middle layer with varying thickness) - starts at z1
                 z2 = z1 + z_thick*0.5*(1+np.cos(np.pi+x[ix]/(x_range)*np.pi))
                 iz2 = np.where((z>=z1) & (z<=z2))[0]
                 M[ix,iz2] = rho2_interp[ix]
                 M_ref_lith[ix,iz2] = 2
+                layer_depths[ix, 1] = z1  # Layer 2 starts at z1
+
+                # Layer 3 depth
+                layer_depths[ix, 2] = z2  # Layer 3 starts at z2
         else:
             # Use original linear variation from rho1_1 to rho1_2
             for ix in range(nx):
@@ -2361,20 +2380,25 @@ def synthetic_case(case='Wedge', **kwargs):
                 M[ix,:] = rho3
                 M_ref_lith[ix,:] = 3
 
-                # Layer 1 (top layer)
+                # Layer 1 (top layer) - starts at surface
                 iz1 = np.where(z<=z1)[0]
                 rho1 = rho1_1 + (rho1_2 - rho1_1) * x[ix]/x_max
                 M[ix,iz1] = rho1
                 M_ref_lith[ix,iz1] = 1
+                layer_depths[ix, 0] = 0  # Layer 1 starts at surface
 
-                # Layer 2 (middle layer with varying thickness)
-                z2 = z1 + z_thick*0.5*(1+np.cos(np.pi+x[ix]/(x_range)*np.pi))                
+                # Layer 2 (middle layer with varying thickness) - starts at z1
+                z2 = z1 + z_thick*0.5*(1+np.cos(np.pi+x[ix]/(x_range)*np.pi))
                 rho2 = rho2_1 + (rho2_2 - rho2_1) * x[ix]/x_max
                 iz2 = np.where((z>=z1) & (z<=z2))[0]
                 M[ix,iz2] = rho2
                 M_ref_lith[ix,iz2] = 2
+                layer_depths[ix, 1] = z1  # Layer 2 starts at z1
 
-        return M, x, z, M_ref_lith
+                # Layer 3 depth
+                layer_depths[ix, 2] = z2  # Layer 3 starts at z2
+
+        return M, x, z, M_ref_lith, layer_depths
 
 
 ####################################
