@@ -922,17 +922,22 @@ def forward_gaaem(C=np.array(()),
                 tx_height=np.array([40])
     
 
-        # Set geometru once, if tx_height has one value
+        # Set geometry once, if tx_height has one value
         if len(tx_height)==1:
             if (showInfo>1):
                 print('Using tx_height=%f' % tx_height[0])
-            G = Geometry(tx_height=tx_height, txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
+            G = Geometry(tx_height=float(tx_height[0]), txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
         if (showInfo>1):
             print('tx_height=%f, txrx_dx=%f, txrx_dy=%f, txrx_dz=%f' % (tx_height[0], txrx_dx, txrx_dy, txrx_dz))
         
-        ng0 = GEX['Channel1']['NoGates']-GEX['Channel1']['RemoveInitialGates'][0]
+        # Handle both scalar and array values for NumPy 2.x compatibility
+        no_gates_ch1 = np.atleast_1d(GEX['Channel1']['NoGates'])[0]
+        remove_gates_ch1 = np.atleast_1d(GEX['Channel1']['RemoveInitialGates'])[0]
+        ng0 = no_gates_ch1 - remove_gates_ch1
         if nstm>1:
-            ng1 = GEX['Channel2']['NoGates']-GEX['Channel2']['RemoveInitialGates'][0]
+            no_gates_ch2 = np.atleast_1d(GEX['Channel2']['NoGates'])[0]
+            remove_gates_ch2 = np.atleast_1d(GEX['Channel2']['RemoveInitialGates'])[0]
+            ng1 = no_gates_ch2 - remove_gates_ch2
         else:
             ng1 = 0
         ng = int(ng0+ng1)
@@ -940,7 +945,7 @@ def forward_gaaem(C=np.array(()),
     else:
         if len(tx_height)==0:
             tx_height=np.array([0])
-        G = Geometry(tx_height=tx_height, txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
+        G = Geometry(tx_height=float(tx_height[0]), txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
         # Here we should read the number of gates from the lines in STMFILES that conatin 'NumberOfWindows = 41'
         ng = 41
 
@@ -961,11 +966,11 @@ def forward_gaaem(C=np.array(()),
         else:
             conductivity = C[i]
 
-        # Update geomtery, tx_heigght is changing!
+        # Update geometry, tx_height is changing!
         if len(tx_height)>1:
             if (showInfo>1):
                 print('Using tx_height=%f' % tx_height[i])
-            G = Geometry(tx_height=tx_height[i], txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
+            G = Geometry(tx_height=float(tx_height[i]), txrx_dx = txrx_dx, txrx_dy = txrx_dy, txrx_dz = txrx_dz)
     
         #doCompress=True
         if doCompress:
@@ -1071,8 +1076,11 @@ def prior_data_gaaem(f_prior_h5, file_gex=None, stmfiles=None, N=0, doMakePriorC
     ----------
     f_prior_h5 : str
         Path to the prior data file in HDF5 format.
-    file_gex : str
-        Path to the file containing geophysical exploration data.
+    file_gex : str, optional
+        Path to the file containing geophysical exploration data (.gex format).
+    stmfiles : list of str, optional
+        List of STM files for system configuration. If not provided, will be
+        generated from file_gex.
     N : int, optional
         Number of soundings to consider. Default is 0 (use all).
     doMakePriorCopy : bool, optional
@@ -1091,17 +1099,37 @@ def prior_data_gaaem(f_prior_h5, file_gex=None, stmfiles=None, N=0, doMakePriorC
         Flag to apply logarithmic scaling to data. Default is False.
     parallel : bool, optional
         Flag indicating whether multiprocessing is used. Default is True.
+        When True, forward modeling is parallelized across available CPUs.
     **kwargs : dict
-        Additional keyword arguments.
+        Additional keyword arguments:
+
         Ncpu : int, optional
-            Number of CPUs to use (default is 0 for all available).
+            Number of CPUs to use for parallel processing. Default is 0, which
+            uses all available CPUs. Only used when parallel=True.
         showInfo : int, optional
-            Level of verbosity for output.
-    
+            Level of verbosity for output (0=silent, 1=normal, 2=verbose).
+
     Returns
     -------
     str
         Filename of the HDF5 file containing the updated prior data.
+
+    Notes
+    -----
+    This function computes forward-modeled electromagnetic responses for prior
+    model realizations using the GA-AEM forward modeling code. The forward
+    modeling can be parallelized for faster computation on multi-core systems.
+
+    Examples
+    --------
+    >>> # Basic usage with all CPUs
+    >>> f_prior_data = prior_data_gaaem(f_prior_h5, file_gex)
+
+    >>> # Use specific number of CPUs
+    >>> f_prior_data = prior_data_gaaem(f_prior_h5, file_gex, Ncpu=4)
+
+    >>> # Sequential processing (no parallelization)
+    >>> f_prior_data = prior_data_gaaem(f_prior_h5, file_gex, parallel=False)
     """
     import integrate as ig
     import os 

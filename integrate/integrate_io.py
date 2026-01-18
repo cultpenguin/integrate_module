@@ -701,18 +701,19 @@ def write_stm_files(GEX, **kwargs):
 
     windows = GEX['General']['GateArray']
 
-    LastWin_LM = int(GEX['Channel1']['NoGates'][0])
-    LastWin_HM = int(GEX['Channel2']['NoGates'][0])
+    # Handle both scalar and array values for NumPy 2.x compatibility
+    LastWin_LM = int(np.atleast_1d(GEX['Channel1']['NoGates'])[0])
+    LastWin_HM = int(np.atleast_1d(GEX['Channel2']['NoGates'])[0])
 
-    SkipWin_LM = int(GEX['Channel1']['RemoveInitialGates'][0])
-    SkipWin_HM = int(GEX['Channel2']['RemoveInitialGates'][0])
+    SkipWin_LM = int(np.atleast_1d(GEX['Channel1']['RemoveInitialGates'])[0])
+    SkipWin_HM = int(np.atleast_1d(GEX['Channel2']['RemoveInitialGates'])[0])
 
     # Get MeaTimeDelay with default value of 0.0 if not present (Workbench format compatibility)
-    MeaTimeDelay_LM = GEX['Channel1'].get('MeaTimeDelay', np.array([0.0]))[0]
-    MeaTimeDelay_HM = GEX['Channel2'].get('MeaTimeDelay', np.array([0.0]))[0]
+    MeaTimeDelay_LM = np.atleast_1d(GEX['Channel1'].get('MeaTimeDelay', np.array([0.0])))[0]
+    MeaTimeDelay_HM = np.atleast_1d(GEX['Channel2'].get('MeaTimeDelay', np.array([0.0])))[0]
 
-    windows_LM = windows[SkipWin_LM:LastWin_LM, :] + GEX['Channel1']['GateTimeShift'][0] + MeaTimeDelay_LM
-    windows_HM = windows[SkipWin_HM:LastWin_HM, :] + GEX['Channel2']['GateTimeShift'][0] + MeaTimeDelay_HM
+    windows_LM = windows[SkipWin_LM:LastWin_LM, :] + np.atleast_1d(GEX['Channel1']['GateTimeShift'])[0] + MeaTimeDelay_LM
+    windows_HM = windows[SkipWin_HM:LastWin_HM, :] + np.atleast_1d(GEX['Channel2']['GateTimeShift'])[0] + MeaTimeDelay_HM
 
     #windows_LM = GEX['Channel1']['GateFactor'][0] * windows_LM
     #windows_HM = GEX['Channel2']['GateFactor'][0] * windows_HM
@@ -733,8 +734,8 @@ def write_stm_files(GEX, **kwargs):
     HMWFTime1 = LMWF[0, 0]
     HMWFTime2 = LMWF[-1, 0]
 
-    LMWF_Period = 1. / GEX['Channel1']['RepFreq'][0]
-    HMWF_Period = 1. / GEX['Channel2']['RepFreq'][0]
+    LMWF_Period = 1. / np.atleast_1d(GEX['Channel1']['RepFreq'])[0]
+    HMWF_Period = 1. / np.atleast_1d(GEX['Channel2']['RepFreq'])[0]
 
     # Check if full waveform is defined
     LMWF_isfull = (LMWFTime2 - LMWFTime1) == LMWF_Period
@@ -781,7 +782,7 @@ def write_stm_files(GEX, **kwargs):
         fID_LM.write("\t\tNumberOfTurns = 1\n")
         fID_LM.write("\t\tPeakCurrent = 1\n")
         fID_LM.write("\t\tLoopArea = 1\n")
-        fID_LM.write("\t\tBaseFrequency = %f\n" % GEX['Channel1']['RepFreq'][0])
+        fID_LM.write("\t\tBaseFrequency = %f\n" % np.atleast_1d(GEX['Channel1']['RepFreq'])[0])
         fID_LM.write("\t\tWaveformDigitisingFrequency = %s\n" % ('%21.8f' % DigitFreq))
         fID_LM.write("\t\tWaveFormCurrent Begin\n")
         np.savetxt(fID_LM, GEX['General']['WaveformLM'], fmt='%23.6e', delimiter=' ')
@@ -806,7 +807,7 @@ def write_stm_files(GEX, **kwargs):
         
         fID_LM.write('\tForwardModelling Begin\n')
         #fID_LM.write('\t\tModellingLoopRadius = %f\n' % (np.sqrt(GEX['General']['TxLoopArea'][0] / np.pi)))
-        fID_LM.write('\t\tModellingLoopRadius = %5.4f\n' % (np.sqrt(GEX['General']['TxLoopArea'][0] / np.pi)))
+        fID_LM.write('\t\tModellingLoopRadius = %5.4f\n' % (np.sqrt(np.atleast_1d(GEX['General']['TxLoopArea'])[0] / np.pi)))
         fID_LM.write('\t\tOutputType = dB/dt\n')
         fID_LM.write('\t\tSaveDiagnosticFiles = no\n')
         fID_LM.write('\t\tXOutputScaling = 0\n')
@@ -828,7 +829,7 @@ def write_stm_files(GEX, **kwargs):
         fID_HM.write("\t\tNumberOfTurns = 1\n")
         fID_HM.write("\t\tPeakCurrent = 1\n")
         fID_HM.write("\t\tLoopArea = 1\n")
-        fID_HM.write("\t\tBaseFrequency = %f\n" % GEX['Channel2']['RepFreq'][0])
+        fID_HM.write("\t\tBaseFrequency = %f\n" % np.atleast_1d(GEX['Channel2']['RepFreq'])[0])
         fID_HM.write("\t\tWaveformDigitisingFrequency = %s\n" % ('%21.8f' % DigitFreq))
         fID_HM.write("\t\tWaveFormCurrent Begin\n")
         np.savetxt(fID_HM, GEX['General']['WaveformHM'], fmt='%23.6e', delimiter=' ')
@@ -853,7 +854,7 @@ def write_stm_files(GEX, **kwargs):
 
         fID_HM.write('\tForwardModelling Begin\n')
         #fID_HM.write('\t\tModellingLoopRadius = %f\n' % (np.sqrt(GEX['General']['TxLoopArea'][0] / np.pi)))
-        fID_HM.write('\t\tModellingLoopRadius = %5.4f\n' % (np.sqrt(GEX['General']['TxLoopArea'][0] / np.pi)))
+        fID_HM.write('\t\tModellingLoopRadius = %5.4f\n' % (np.sqrt(np.atleast_1d(GEX['General']['TxLoopArea'])[0] / np.pi)))
         fID_HM.write('\t\tOutputType = dB/dt\n')
         fID_HM.write('\t\tSaveDiagnosticFiles = no\n')
         fID_HM.write('\t\tXOutputScaling = 0\n')
@@ -950,15 +951,18 @@ def read_gex(file_gex, **kwargs):
                 if len(key_value) == 2:
                     key, value = key_value[0].strip(), key_value[1].strip()
                     
-                    try:                        
+                    try:
                         GEX[current_key][key] = np.fromstring(value, sep=' ')
+                        # Check if array is empty before converting
+                        if isinstance(GEX[current_key][key], np.ndarray) and len(GEX[current_key][key]) == 0:
+                            # value is probably a string
+                            GEX[current_key][key] = value
+                        # Convert single-element arrays to scalars for NumPy 2.x compatibility
+                        elif isinstance(GEX[current_key][key], np.ndarray) and GEX[current_key][key].size == 1:
+                            GEX[current_key][key] = GEX[current_key][key].item()
                     #except ValueError:
                     except:
                         GEX[current_key][key] = value
-
-                    if len(GEX[current_key][key])==0:
-                        # value is probably a string
-                        GEX[current_key][key]=value
 
 
     # WaveformLM
@@ -1079,11 +1083,14 @@ def read_gex_workbench(file_gex, **kwargs):
 
                     try:
                         GEX[current_key][key] = np.fromstring(value, sep=' ')
+                        # Check if array is empty before converting
+                        if isinstance(GEX[current_key][key], np.ndarray) and len(GEX[current_key][key]) == 0:
+                            # value is probably a string
+                            GEX[current_key][key] = value
+                        # Convert single-element arrays to scalars for NumPy 2.x compatibility
+                        elif isinstance(GEX[current_key][key], np.ndarray) and GEX[current_key][key].size == 1:
+                            GEX[current_key][key] = GEX[current_key][key].item()
                     except:
-                        GEX[current_key][key] = value
-
-                    if len(GEX[current_key][key]) == 0:
-                        # value is probably a string
                         GEX[current_key][key] = value
 
     # Process WaveformLM

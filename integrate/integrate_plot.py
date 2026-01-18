@@ -1215,7 +1215,12 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='index',
     im : int, optional
         Model identifier to plot. If 0, automatically detects and plots all models (default is 0).
     xaxis : str, optional
-        X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'index').
+        X-axis type for plotting (default is 'index').
+        Options:
+        - 'index' : Sequential indices (0, 1, 2, ...)
+        - 'id' : Data point ID from the file
+        - 'x' : X coordinate (easting)
+        - 'y' : Y coordinate (northing)
     gap_threshold : float, optional
         Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, the region becomes transparent. If None, no gap transparency is applied (default is None).
     panels : list of str or None, optional
@@ -1262,6 +1267,18 @@ def plot_profile(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=0, xaxis='index',
     Plot continuous model with partial transparency:
 
     >>> plot_profile(f_post_h5, im=1, alpha=0.5)
+
+    Plot profile with X coordinates on x-axis:
+
+    >>> plot_profile(f_post_h5, im=1, xaxis='x')
+
+    Plot profile with Y coordinates on x-axis:
+
+    >>> plot_profile(f_post_h5, im=1, xaxis='y')
+
+    Plot profile with data IDs on x-axis:
+
+    >>> plot_profile(f_post_h5, im=1, xaxis='id')
     """
 
     with h5py.File(f_post_h5,'r') as f_post:
@@ -1327,7 +1344,12 @@ def plot_profile_discrete(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xaxis
     im : int, optional
         Model index to plot (e.g., 1 for M1, 2 for M2, default is 1).
     xaxis : str, optional
-        X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'index').
+        X-axis type for plotting (default is 'index').
+        Options:
+        - 'index' : Sequential indices (0, 1, 2, ...)
+        - 'id' : Data point ID from the file
+        - 'x' : X coordinate (easting)
+        - 'y' : Y coordinate (northing)
     gap_threshold : float, optional
         Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, regions after the gaps become completely transparent to indicate missing data. If None, no gap transparency is applied (default is None).
     panels : list of str or None, optional
@@ -1833,7 +1855,12 @@ def plot_profile_continuous(f_post_h5, i1=1, i2=1e+9, ii=np.array(()), im=1, xax
     im : int, optional
         Model index to plot (e.g., 1 for M1, 2 for M2, default is 1).
     xaxis : str, optional
-        X-axis type for plotting. Options: 'id' (data index), 'x' (X coordinate), 'y' (Y coordinate), 'index' (sequential 0,1,2...) (default is 'id').
+        X-axis type for plotting (default is 'id').
+        Options:
+        - 'index' : Sequential indices (0, 1, 2, ...)
+        - 'id' : Data point ID from the file
+        - 'x' : X coordinate (easting)
+        - 'y' : Y coordinate (northing)
     gap_threshold : float, optional
         Threshold for making large gaps transparent. If the distance between consecutive data points exceeds this value, regions after the gaps become completely transparent to indicate missing data. If None, no gap transparency is applied (default is None).
     panels : list of str or None, optional

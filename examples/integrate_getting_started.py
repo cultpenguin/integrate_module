@@ -31,6 +31,7 @@ import integrate as ig
 parallel = ig.use_parallel(showInfo=1)
 hardcopy = True 
 import matplotlib.pyplot as plt
+import numpy as np
 
 # %% [markdown]
 # ## 0. Get TTEM data
@@ -70,6 +71,36 @@ ig.plot_geometry(f_data_h5, pl='ELEVATION')
 ig.plot_geometry(f_data_h5, pl='id')
 
 
+
+# %%
+useSubset = False
+X, Y, LINE, ELEVATION = ig.get_geometry(f_data_h5)
+# Find points within buffer distance
+Xl = np.array([544000, 543550])
+Yl = np.array([6174500, 6176500])
+#Xl = np.array([544000, 543550, 543000])
+#Yl = np.array([6174500, 6176500, 6176400])
+buffer = 10.0
+indices, distances, segment_ids = ig.find_points_along_line_segments(
+    X, Y, Xl, Yl, tolerance=buffer
+)
+i_line = indices
+if useSubset:
+    i_use = i_line
+else:
+# Use all data 1:len(X)
+    i_use = np.arange(len(X))
+
+plt.figure()
+ig.plot_geometry(f_data_h5, pl='ELEVATION')
+plt.plot(Xl, Yl,'ko', markersize=15)
+plt.plot(X[i_use], Y[i_use], 'ko', markersize=5)
+plt.title('Profile line')
+plt.show()
+
+
+
+
 # %%
 # The electromagnetic data (d_obs and d_std) can be plotted using ig.plot_data:
 ig.plot_data(f_data_h5, hardcopy=hardcopy)
@@ -102,8 +133,8 @@ ig.plot_data_xy(f_data_h5, data_channel=15, cmap='jet');
 # %%
 # Select how many prior model realizations (N) should be generated
 N=2000000
-#N=100000
-f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR.h5')
+N=100000
+f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR_N%d.h5' % N)
 print('%s is used to hold prior realizations' % (f_prior_h5))
 
 
@@ -124,9 +155,20 @@ ig.plot_prior_stats(f_prior_h5, hardcopy=hardcopy)
 
 # %%
 # Option 1: Update the existing PRIOR.h5 file with forward-modeled data
-f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True)
+
+# set the default hdf file to be the f_prior_data_h5 (without extension) + file_gex (without extension) + .h5
+f_prior_data_h5 = '%s_%s_Nh280_Nf12.h5' % (f_prior_h5[:-3], file_gex[:-4])
+useExistingData = True
+if useExistingData:
+    # if exist f_post_data_h5 then used it, otherwise create it
+    import os 
+    if not os.path.exists(f_prior_data_h5):
+        f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=True, f_prior_data_h5=f_prior_data_h5, parallel=parallel)
+    else:
+        print('Using existing prior data file: %s' % f_prior_data_h5)
+
 #f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, doMakePriorCopy=False, parallel=parallel)
-# f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=parallel)
+#f_prior_data_h5 = ig.prior_data_gaaem(f_prior_h5, file_gex, parallel=False)
 
 print('Updated %s to hold prior data (forward-modeled responses)' % (f_prior_data_h5))
 
@@ -163,12 +205,14 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
                                    autoT = autoT,
                                    T_base = T_base,                            
                                    showInfo=1, 
-                                   parallel=parallel)
+                                   parallel=parallel,
+                                   ip_range=i_use)
 
 # %%
 # Posterior statistics computation (typically done after inversion)
 # This computes summary statistics like mean, median, standard deviation
 # ig.integrate_posterior_stats(f_post_h5)
+# ig.integrate_posterior_stats(f_post_h5, ip_range = i_use)
 
 # %% [markdown]
 # ## 3. Plot statistics from the posterior $\sigma(\mathbf{m})$
@@ -179,7 +223,8 @@ f_post_h5 = ig.integrate_rejection(f_prior_data_h5,
 
 # %%
 ig.plot_data_prior_post(f_post_h5, i_plot=100,hardcopy=hardcopy)
-ig.plot_data_prior_post(f_post_h5, i_plot=0,hardcopy=hardcopy)
+ig.plot_data_prior_post(f_post_h5, i_plot=i_use[0],hardcopy=hardcopy)
+ig.plot_data_prior_post(f_post_h5, i_plot=i_use[-1],hardcopy=hardcopy)
 
 # %% [markdown]
 # ### Evidence and annealing temperature
@@ -191,7 +236,7 @@ ig.plot_data_prior_post(f_post_h5, i_plot=0,hardcopy=hardcopy)
 ig.plot_T_EV(f_post_h5, pl='T',hardcopy=hardcopy)
 # Plot the evidence (log-likelihood) estimated during inversion
 ig.plot_T_EV(f_post_h5, pl='EV',hardcopy=hardcopy)
-# Plot the normalized mean-loglikelihood
+# Plot the chi-squared data fit (normalized mean-loglikelihood)
 # Values less than one suggest overfitting
 # Values above one suggest underfitting
 ig.plot_T_EV(f_post_h5, pl='CHI2',hardcopy=hardcopy)
@@ -203,7 +248,19 @@ ig.plot_T_EV(f_post_h5, pl='CHI2',hardcopy=hardcopy)
 # along a section of the survey line.
 
 # %%
-ig.plot_profile(f_post_h5, i1=1, i2=2000, im=1, hardcopy=hardcopy)
+# Plot resistivity profile for model M1
+ig.plot_profile(f_post_h5, im=1, hardcopy=hardcopy)
+# Plot resistivity profile for model M1 from data point i1 to i2
+ig.plot_profile(f_post_h5, i1=1401, i2=2000, im=1, hardcopy=hardcopy)
+if useSubset:
+    # Plot resistivity profile for model M1 for specific data points, along 'x', 'y' and 'index' axes
+    ig.plot_profile(f_post_h5, ii=i_use, im=1, hardcopy=hardcopy, xaxis='x')
+    ig.plot_profile(f_post_h5, ii=i_use, im=1, hardcopy=hardcopy, xaxis='y')
+    ig.plot_profile(f_post_h5, ii=i_use, im=1, hardcopy=hardcopy, xaxis='index')
+    #
+    ig.plot_profile(f_post_h5, ii=i_use, im=1, hardcopy=hardcopy, xaxis='index', panels=['Median'])
+
+
 # %% [markdown]
 # ### Plot 2D spatial features
 #
@@ -230,6 +287,20 @@ try:
     plt.show()
 except:
     pass
+
+
+# %%
+
+# Plot 2D features: Resistivity at different elevations
+try:
+    for ele in np.arange(60,-51,-20):
+        plt.figure()
+        ig.plot_feature_2d(f_post_h5,im=1,elevation=ele, key='Median', uselog=1, clim=[1,2000],s=2, hardcopy=hardcopy)
+        plt.show()
+except:
+    pass
+
+
 
 # %%
 try:
@@ -275,9 +346,3 @@ if plPyVista:
     p.show_grid()
     p.show()
 
-
-# %%
-
-# %%
-
-# %%
