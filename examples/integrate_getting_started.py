@@ -87,16 +87,17 @@ indices, distances, segment_ids = ig.find_points_along_line_segments(
 i_line = indices
 if useSubset:
     i_use = i_line
+    plt.figure()
+    ig.plot_geometry(f_data_h5, pl='ELEVATION')
+    plt.plot(Xl, Yl,'ko', markersize=15)
+    plt.plot(X[i_use], Y[i_use], 'ko', markersize=5)
+    plt.title('Profile line')
+    plt.show()
+
 else:
 # Use all data 1:len(X)
     i_use = np.arange(len(X))
 
-plt.figure()
-ig.plot_geometry(f_data_h5, pl='ELEVATION')
-plt.plot(Xl, Yl,'ko', markersize=15)
-plt.plot(X[i_use], Y[i_use], 'ko', markersize=5)
-plt.title('Profile line')
-plt.show()
 
 
 
@@ -133,7 +134,7 @@ ig.plot_data_xy(f_data_h5, data_channel=15, cmap='jet');
 # %%
 # Select how many prior model realizations (N) should be generated
 N=2000000
-N=100000
+N=1000000
 f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR_N%d.h5' % N)
 print('%s is used to hold prior realizations' % (f_prior_h5))
 
