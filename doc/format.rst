@@ -122,12 +122,12 @@ For continuous data and the multivariate Gaussian noise model can be chosen by s
      - 
      - *
      - Standard deviation of observed data (db/dT). Is the size is [1,Nd], the same ``d_std`` is used for all data.
-   * - /D1/Ct
+   * - /D1/Cd
      - [Nd1,Nd1]
      - 
      - 
-     - Correlated noise matrix. ``Ct`` is the same for all data
-   * - /D1/Ct
+     - Correlated noise matrix. ``Cd`` is the same for all data
+   * - /D1/Cd
      - [Np,Nd1,Nd1]
      - 
      - 
