@@ -1442,7 +1442,7 @@ def prior_data_identity(f_prior_h5, id=0, im=1, N=0, doMakePriorCopy=False, **kw
 def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
                         NLAY_min=3, NLAY_max=6, NLAY_deg=6,
                         RHO_dist='log-uniform', RHO_min=0.1, RHO_max=5000, RHO_mean=100, RHO_std=80,
-                        N=100000, save_sparse=True, **kwargs):
+                        N=100000, save_sparse=True, RHO_threshold=0.001, **kwargs):
     """
     Generate a prior model with layered structure.
 
@@ -1485,6 +1485,11 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
         Whether to save the sparse representation (M2: depth-resistivity pairs)
         to the HDF5 file. Setting to False can reduce file size and processing
         time for large priors. Default is True.
+    RHO_threshold : float, optional
+        Minimum physical resistivity threshold in Ohm·m. Any generated resistivity
+        values below this threshold (including zero or negative values from 'normal'
+        distribution) will be clamped to this value. Ensures physically realistic
+        positive resistivity values. Default is 0.001 Ohm·m.
     **kwargs : dict
         Additional keyword arguments.
         f_prior_h5 : str, optional
@@ -1565,8 +1570,13 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
     elif RHO_dist == 'uniform':
         rho_all = np.random.uniform(RHO_min, RHO_max, (N, NLAY_max))
 
-    # Clip resistivity values to bounds
-    rho_all = np.clip(rho_all, RHO_min, RHO_max)
+    # Ensure physical resistivity values (must be positive)
+    # First clamp to threshold to handle zero/negative values
+    rho_all = np.maximum(rho_all, RHO_threshold)
+
+    # Then clip to user-specified bounds, ensuring RHO_min is at least threshold
+    effective_rho_min = max(RHO_min, RHO_threshold)
+    rho_all = np.clip(rho_all, effective_rho_min, RHO_max)
 
     # Assign resistivity values to depth profiles
     if showInfo > 0:
@@ -1657,9 +1667,10 @@ def prior_model_layered(lay_dist='uniform', dz = 1, z_max = 90,
 
     return f_prior_h5
 
-def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 100, 
+def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 100,
                           nlayers=0, p=2, NLAY_min=3, NLAY_max=6,
-                          RHO_min = 1, RHO_max= 300, RHO_mean=180, RHO_std=80, chi2_deg= 100, **kwargs):
+                          RHO_min = 1, RHO_max= 300, RHO_mean=180, RHO_std=80, chi2_deg= 100,
+                          RHO_threshold=0.001, **kwargs):
     """
     Generate a prior model with increasingly thick layers.
     
@@ -1692,11 +1703,16 @@ def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 
         Mean resistivity value. Only applicable if RHO_dist is 'normal' or 
         'lognormal'. Default is 180.
     RHO_std : float, optional
-        Standard deviation of resistivity value. Only applicable if RHO_dist is 
+        Standard deviation of resistivity value. Only applicable if RHO_dist is
         'normal' or 'lognormal'. Default is 80.
     chi2_deg : int, optional
-        Degrees of freedom for chi2 distribution. Only applicable if RHO_dist is 
+        Degrees of freedom for chi2 distribution. Only applicable if RHO_dist is
         'chi2'. Default is 100.
+    RHO_threshold : float, optional
+        Minimum physical resistivity threshold in Ohm·m. Any generated resistivity
+        values below this threshold (including zero or negative values from 'normal'
+        distribution) will be clamped to this value. Ensures physically realistic
+        positive resistivity values. Default is 0.001 Ohm·m.
     **kwargs : dict
         Additional keyword arguments.
         f_prior_h5 : str, optional
@@ -1717,12 +1733,12 @@ def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 
 
     if nlayers<1:
         nlayers = 30
-    
+
     z2=z_max
     z= z1 + (z2 - z1) * np.linspace(0, 1, nlayers) ** p
 
     nz = len(z)
-    
+
     if RHO_dist=='uniform':
         M_rho = np.random.uniform(low=RHO_min, high = RHO_max, size=(N, nz))
         if len(f_prior_h5)<1:
@@ -1745,6 +1761,14 @@ def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 
             f_prior_h5 = '%s_deg%d.h5' % (f_prior_h5,chi2_deg)
     else:
         raise ValueError('RHO_dist=%s not supported' % RHO_dist)
+
+    # Ensure physical resistivity values (must be positive)
+    # First clamp to threshold to handle zero/negative values
+    M_rho = np.maximum(M_rho, RHO_threshold)
+
+    # Then clip to user-specified bounds, ensuring RHO_min is at least threshold
+    effective_rho_min = max(RHO_min, RHO_threshold)
+    M_rho = np.clip(M_rho, effective_rho_min, RHO_max)
     
     
     if (showInfo>0):
@@ -1769,8 +1793,9 @@ def prior_model_workbench_direct(N=100000, RHO_dist='log-uniform', z1=0, z_max= 
 
 def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
                           lay_dist='uniform', nlayers=0, NLAY_min=3, NLAY_max=6, NLAY_deg=5,
-                          RHO_dist='log-uniform', 
-                          RHO_min = 1, RHO_max= 300, RHO_mean=180, RHO_std=80, chi2_deg= 100, **kwargs):
+                          RHO_dist='log-uniform',
+                          RHO_min = 1, RHO_max= 300, RHO_mean=180, RHO_std=80, chi2_deg= 100,
+                          RHO_threshold=0.001, **kwargs):
     """
     Generate a prior model with increasingly thick layers.
  
@@ -1813,8 +1838,13 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
         Standard deviation of resistivity value. Only applicable if RHO_dist is 
         'normal' or 'lognormal'. Default is 80.
     chi2_deg : int, optional
-        Degrees of freedom for chi2 distribution. Only applicable if RHO_dist is 
+        Degrees of freedom for chi2 distribution. Only applicable if RHO_dist is
         'chi2'. Default is 100.
+    RHO_threshold : float, optional
+        Minimum physical resistivity threshold in Ohm·m. Any generated resistivity
+        values below this threshold (including zero or negative values from 'normal'
+        distribution) will be clamped to this value. Ensures physically realistic
+        positive resistivity values. Default is 0.001 Ohm·m.
     **kwargs : dict
         Additional keyword arguments.
         f_prior_h5 : str, optional
@@ -1901,6 +1931,14 @@ def prior_model_workbench(N=100000, p=2, z1=0, z_max= 100, dz=1,
         else:
             # Default to log-uniform if RHO_dist is not recognized
             M_rho_single = np.exp(np.random.uniform(low=np.log(RHO_min), high = np.log(RHO_max), size=(1, nlayers)))
+
+        # Ensure physical resistivity values (must be positive)
+        # First clamp to threshold to handle zero/negative values
+        M_rho_single = np.maximum(M_rho_single, RHO_threshold)
+
+        # Then clip to user-specified bounds, ensuring RHO_min is at least threshold
+        effective_rho_min = max(RHO_min, RHO_threshold)
+        M_rho_single = np.clip(M_rho_single, effective_rho_min, RHO_max)
 
         for j in range(nlayers):
             ind = np.where(z>=z_single[j])[0]

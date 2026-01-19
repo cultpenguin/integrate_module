@@ -1,4 +1,4 @@
-  =============
+=============
 Data format
 =============
 
@@ -482,8 +482,92 @@ For discrete model parameters the following generic posterior statistics are com
 
 
 
+Compression in HDF5 files
+=========================
+ 
+All HDF5 files created by INTEGRATE use compression by default to reduce file sizes while maintaining reasonable I/O performance. The default compression settings are optimized based on extensive benchmarking:
+
+- **Default**: ``gzip`` level 1 (provides 3.5× file size reduction, 78% faster than level 9)
+- **Performance**: Write overhead of ~3× compared to no compression, but results in significantly smaller files
+- **Customizable**: Compression can be configured per-function call or globally
+
+Per-function Configuration
+"""""""""""""""""""""""""""
+
+Example usage::
+
+    import integrate as ig
+
+    # Use default compression (gzip level 1)
+    ig.prior_model_layered(N=50000)
+
+    # Custom compression level
+    ig.prior_model_layered(N=50000, compression='gzip', compression_opts=4)
+
+    # Fast LZF compression
+    ig.prior_model_layered(N=50000, compression='lzf')
+
+    # Disable compression for temporary files
+    ig.prior_model_layered(N=50000, compression=False)
+
+    # Same parameters work for data functions
+    ig.save_data_gaussian(D_obs, compression='gzip', compression_opts=9)
+
+Global Default Configuration
+"""""""""""""""""""""""""""""
+
+You can modify the module-wide compression defaults in ``integrate_io.py``::
+
+    import integrate.integrate_io as io
+
+    # Change global defaults (affects all subsequent saves)
+    io.DEFAULT_COMPRESSION = 'lzf'        # Options: 'gzip', 'lzf', or None
+    io.DEFAULT_COMPRESSION_OPTS = 4       # For gzip: 1-9 (1=fastest, 9=smallest)
+
+    # Now all functions use the new defaults
+    ig.prior_model_layered(N=50000)  # Will use lzf compression
+
+Compression Performance Comparison
+"""""""""""""""""""""""""""""""""""
+
+Based on benchmarks with N=50,000 models:
+
++-----------------------------------+-------------+-----------+------------------------+
+| Setting                           | Write Speed | File Size | Best For               |
++===================================+=============+===========+========================+
+| ``compression=False``             | Fastest     | 19.7 MB   | Temporary files        |
++-----------------------------------+-------------+-----------+------------------------+
+| ``compression='gzip'``            | Fast        | 5.6 MB    | **Default** (best      |
+| ``compression_opts=1``            |             | (3.5×)    | balance)               |
++-----------------------------------+-------------+-----------+------------------------+
+| ``compression='lzf'``             | Very Fast   | ~6-7 MB   | Speed-critical         |
+|                                   |             | (2-3×)    | workflows              |
++-----------------------------------+-------------+-----------+------------------------+
+| ``compression='gzip'``            | Medium      | 5.5 MB    | Good alternative       |
+| ``compression_opts=4``            |             | (3.6×)    |                        |
++-----------------------------------+-------------+-----------+------------------------+
+| ``compression='gzip'``            | Slowest     | 5.5 MB    | Long-term archival     |
+| ``compression_opts=9``            | (1.51s)     | (3.6×)    | (diminishing returns)  |
++-----------------------------------+-------------+-----------+------------------------+
+
+**Note**: The difference between gzip levels 1 and 9 is only ~2% in file size but 4.6× difference in write time. Level 1 is recommended for most use cases.
+
+Functions Supporting Compression
+"""""""""""""""""""""""""""""""""
+
+All HDF5 write functions accept ``compression`` and ``compression_opts`` parameters:
+
+- ``save_prior_model()`` - Model parameter arrays
+- ``save_prior_data()`` - Forward-modeled data
+- ``save_data_gaussian()`` - Observed data with Gaussian noise model
+- ``save_data_multinomial()`` - Observed data with multinomial noise model
+- ``prior_model_layered()`` - Passes compression settings to internal saves
+
+
+
 A typical workflow
-==================
+------------------
+
 1. Setup DATA.h5
    
    * Store the observed data and its associated uncertainty in DATA.h5
