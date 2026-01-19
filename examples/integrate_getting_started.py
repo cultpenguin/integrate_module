@@ -54,9 +54,6 @@ file_gex= ig.get_gex_file_from_data(f_data_h5)
 print("Using data file: %s" % f_data_h5)
 print("Using GEX file: %s" % file_gex)
 
-
-
-
 # %% [markdown]
 # ### Plot the geometry and data
 # `ig.plot_geometry` plots the spatial geometry of the data (i.e., the locations of the soundings).
@@ -69,8 +66,6 @@ print("Using GEX file: %s" % file_gex)
 ig.plot_geometry(f_data_h5, pl='LINE')
 ig.plot_geometry(f_data_h5, pl='ELEVATION')
 ig.plot_geometry(f_data_h5, pl='id')
-
-
 
 # %%
 useSubset = False
@@ -97,10 +92,6 @@ if useSubset:
 else:
 # Use all data 1:len(X)
     i_use = np.arange(len(X))
-
-
-
-
 
 # %%
 # The electromagnetic data (d_obs and d_std) can be plotted using ig.plot_data:
@@ -134,11 +125,10 @@ ig.plot_data_xy(f_data_h5, data_channel=15, cmap='jet');
 # %%
 # Select how many prior model realizations (N) should be generated
 N=2000000
-N=5000
-f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=4, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR_N%d.h5' % N)
-print('%s is used to hold prior realizations' % (f_prior_h5))
-
-
+N=100000
+f_prior_h5 = ig.prior_model_layered(N=N,lay_dist='chi2', NLAY_deg=3, RHO_min=1, RHO_max=3000, f_prior_h5='PRIOR_N%d.h5' % N, 
+                                    showInfo=1)
+#print('%s is used to hold prior realizations' % (f_prior_h5))
 
 
 # %%
