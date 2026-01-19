@@ -2576,7 +2576,7 @@ def download_file_old(url, download_dir, **kwargs):
     print(f'Downloaded {file_name}')
 
 
-def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kwargs):
+def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=None, **kwargs):
     """
     Get case data for a specific case.
 
@@ -2586,12 +2586,15 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
     :type loadAll: bool
     :param loadType: The type of files to load. Options are '', 'prior', 'prior_data', 'post', and 'inout'.
     :type loadType: str
-    :param filelist: A list of files to load. Default is an empty list.
-    :type filelist: list
+    :param filelist: A list of files to load. Default is None (creates new empty list).
+    :type filelist: list or None
     :param kwargs: Additional keyword arguments.
     :return: A list of file names for the case.
     :rtype: list
     """
+    if filelist is None:
+        filelist = []
+
     showInfo = kwargs.get('showInfo', 0)
 
     if showInfo>-1:
@@ -2649,7 +2652,13 @@ def get_case_data(case='DAUGAARD', loadAll=False, loadType='', filelist=[], **kw
             filelist.append('prior_detailed_inout_N4000000_dmax90_TX07_20231016_2x4_RC20-33_Nh280_Nf12.h5')
 
     elif case=='ESBJERG':
-        
+
+        if len(filelist)==0:
+            filelist.append('ESBJERG_ALL.h5')
+            filelist.append('TX07_20230906_2x4_RC20-33.gex')
+            filelist.append('README_ESBJERG')
+            
+
         if (loadAll or loadType=='gex'):  
             filelist.append('TX07_20230906_2x4_RC20-33.gex')
             filelist.append('TX07_20231016_2x4_RC20-33.gex')

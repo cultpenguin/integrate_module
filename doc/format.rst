@@ -178,11 +178,6 @@ For discrete data the multinomial distribution can be used as likelihood by sett
      - 
      - *
      - Observed data (class probabilities)
-   * - /D2/i_group
-     - [Np,Nm]
-     - 
-     - 
-     - Indicates whether the Nd2 data should considered as groups or individually.
    * - /D2/i_use
      - [Np,1]
      - 
@@ -191,8 +186,8 @@ For discrete data the multinomial distribution can be used as likelihood by sett
 
 
 
-PRIOR 
-=====
+PRIOR.h5 
+========
 
 PRIOR.h5 contains ``N`` realizations of a prior model (represented as potentially multiple types of model parameters, such as resistivity, lithology, grainsize,....), and corresponding data (consisting of potentially multiple types of data, such as tTEM, SkyTEM, WellData,..)
 
@@ -368,8 +363,8 @@ LOG: Well log conditioning, method='log'
 ``/method='identity'`` maps attributes of a specific model (realizations of the prior) directly into data. 
   
 
-POST - :samp:`f_post_h5`
-========================
+POST.h5
+=======
 
 At the very minimum POST.h5 needs to contain the index (in PRIOR.h5) of realizations from the posterior
 
@@ -483,11 +478,6 @@ For discrete model parameters the following generic posterior statistics are com
      - 
      - 
      - Pointwise posterior probability of each class.
-   * - /M1/M_N
-     - [N,Nclass]
-     - 
-     - 
-     - Median number of layers with specific class_id
      
 
 

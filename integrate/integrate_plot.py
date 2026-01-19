@@ -780,7 +780,11 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=F
     hardcopy : bool, optional
         Save plots as PNG files with descriptive names (default is False).
     **kwargs : dict
-        Additional keyword arguments passed to matplotlib scatter function.
+        Additional keyword arguments:
+        - s : int, marker size (default is 1)
+        - CHI2_min : float, minimum CHI2 color scale value (default is 0)
+        - CHI2_max : float, maximum CHI2 color scale value (default is 5)
+        - Other matplotlib scatter parameters
 
     Returns
     -------
@@ -792,9 +796,14 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=F
     Temperature values are displayed on log10 scale. Evidence values are
     clamped to reasonable ranges (1st to 99th percentile) for better visualization.
     The number of data plot shows non-NaN data count per location.
+
+    CHI2 color scale is fixed to [0, 5] by default for consistent comparison
+    across different datasets. Values can be overridden via kwargs.
     """
 
     s=kwargs.setdefault('s', 1)
+    CHI2_min = kwargs.get('CHI2_min', 0)
+    CHI2_max = kwargs.get('CHI2_max', 5)
 
     with h5py.File(f_post_h5,'r') as f_post:
         f_prior_h5 = f_post['/'].attrs['f5_prior']
@@ -908,10 +917,8 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=F
             else:
                 CHI2_plot = CHI2
 
-            # Set color limits for CHI2 (typically 0-3 for good fits)
-            CHI2_min = 0
-            CHI2_max = np.nanpercentile(CHI2_plot, 95)
-            CHI2_max = max(CHI2_max, 2.0)  # At least show range 0-2
+            # Use fixed color limits for CHI2 from kwargs (default: 0-5)
+            # User can override with CHI2_min and CHI2_max in kwargs
 
             # Create custom colormap: green -> white -> red with white at CHI2=1
             from matplotlib.colors import LinearSegmentedColormap, Normalize
@@ -919,18 +926,18 @@ def plot_T_EV(f_post_h5, i1=1, i2=1e+9, T_min=1, T_max=100, pl='all', hardcopy=F
             # Define color segments with CHI2=1 (perfect fit) as white
             # 0 -> 1: green to white, 1 -> max: white to red
             if CHI2_max > 1.0:
-                # Position of CHI2=1 in the colormap range [0, CHI2_max]
-                white_position = 1.0 / CHI2_max
+                # Position of CHI2=1 in the colormap range [CHI2_min, CHI2_max]
+                white_position = (1.0 - CHI2_min) / (CHI2_max - CHI2_min)
                 colors = ['green', 'white', 'red']
                 segment_positions = [0.0, white_position, 1.0]
             else:
-                # If max < 1, use green to white only
+                # If max <= 1, use green to white only
                 colors = ['green', 'white']
                 segment_positions = [0.0, 1.0]
 
             custom_cmap = LinearSegmentedColormap.from_list('chi2_cmap', list(zip(segment_positions, colors)), N=256)
 
-            # Use standard normalization
+            # Use standard normalization with fixed limits
             norm = Normalize(vmin=CHI2_min, vmax=CHI2_max)
 
             plt.figure(4, figsize=(wx, wy))
